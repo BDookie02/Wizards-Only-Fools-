@@ -8,3 +8,22 @@ coverage/
 .env*
 !.env.example
 certs/
+
+# Local captures and duplicate scratch assets. Game assets belong in public/.
+/*.gif
+/*.mov
+/*.mp4
+/*.png
+
+# One-off local helper files.
+/check_size.ts
+/check_sizes.ts
+/fix_magic_hands.js
+/fix_missing.mjs
+/fix_proj.mjs
+/move_sprites.ts
+/out.js
+/refactor.cjs
+/refactor.ts
+/refactor2.cjs
+/test_svg.html
