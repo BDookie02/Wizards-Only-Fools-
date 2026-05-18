@@ -1,0 +1,1685 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-mono: 'Press Start 2P', monospace;
+  --font-sans: 'VT323', monospace;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  background: #050207;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  background: #050207;
+}
+
+#root {
+  position: fixed;
+  inset: 0;
+}
+
+/* Mobile browser chrome can briefly expose the layout viewport beneath the visual
+   viewport. Keep that strip dark so iOS/Android never show a white bottom bar. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: #050207;
+}
+
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+input,
+select,
+textarea,
+.spell-menu-hologram,
+.menu-scroll-panel {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+canvas {
+  touch-action: none;
+}
+
+.doom-panel {
+  background-color: #555;
+  border-top: 4px solid #888;
+  border-left: 4px solid #888;
+  border-bottom: 4px solid #222;
+  border-right: 4px solid #222;
+  box-shadow: inset -2px -2px 0px rgba(0,0,0,0.5), inset 2px 2px 0px rgba(255,255,255,0.2);
+}
+
+.wizard-panel {
+  background-color: #3b2a45;
+  border-top: 4px solid #5d466e;
+  border-left: 4px solid #5d466e;
+  border-bottom: 4px solid #1c1421;
+  border-right: 4px solid #1c1421;
+  box-shadow: inset -2px -2px 0px rgba(0,0,0,0.5), inset 2px 2px 0px rgba(255,255,255,0.1);
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px);
+}
+
+.wizard-inset {
+  background-color: #211627;
+  border-top: 4px solid #120c16;
+  border-left: 4px solid #120c16;
+  border-bottom: 4px solid #4a3359;
+  border-right: 4px solid #4a3359;
+  box-shadow: inset 4px 4px 10px rgba(0,0,0,0.8);
+}
+
+.game-frame {
+  container-type: size;
+  width: var(--app-vw, 100dvw);
+  height: var(--app-vh, 100dvh);
+}
+
+.mobile-touch-controls {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+.mobile-touch-controls button {
+  touch-action: none;
+}
+
+.mobile-action-button,
+.mobile-scroll-wheel,
+.mobile-joystick,
+.mobile-pause-button {
+  box-shadow: inset 0 0 14px rgba(125, 211, 252, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.lobby-notification-feed {
+  left: calc(env(safe-area-inset-left) + 0.75rem);
+  top: calc(env(safe-area-inset-top) + 0.75rem);
+}
+
+.hud-shell {
+  --hud-status-height: clamp(84px, 12vh, 108px);
+}
+
+.hud-status-grid > * {
+  min-width: 0;
+}
+
+.hud-status-grid {
+  max-width: min(100%, 1180px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@container (min-width: 1px) {
+  .hud-status-grid {
+    max-width: min(100%, 177.78cqh, 1180px);
+  }
+}
+
+.magic-hands-fill-offset {
+  translate: 0 clamp(18px, 6vh, 64px);
+}
+
+.magic-hands-classic-offset {
+  top: auto;
+  height: min(100%, calc(100cqw * 9 / 16));
+}
+
+.magic-hands-ultrawide-offset {
+  translate: 0 0;
+}
+
+.magic-hands-frame {
+  scale: 1;
+}
+
+.magic-hands-frame-left {
+  transform-origin: bottom left;
+}
+
+.magic-hands-frame-right {
+  transform-origin: bottom right;
+}
+
+.menu-scroll-panel {
+  scrollbar-width: none;
+}
+
+.menu-scroll-panel::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.settings-panel {
+  overflow: hidden;
+}
+
+.character-menu-grid {
+  grid-template-columns: minmax(240px, 0.9fr) minmax(300px, 1.1fr);
+  align-items: start;
+}
+
+.character-control-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.character-preview-canvas {
+  display: block;
+  max-width: min(100%, 360px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@container (max-width: 860px) {
+  .character-menu-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .character-preview-canvas {
+    max-width: min(240px, 54cqw, 38cqh);
+  }
+}
+
+@container (max-height: 660px) {
+  .character-menu-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .character-preview-canvas {
+    max-width: min(240px, 54cqw, 38cqh);
+  }
+}
+
+@container (max-width: 700px) {
+  .character-control-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-height: 520px) {
+  .settings-panel {
+    gap: 0.35rem;
+    border-width: 2px;
+  }
+
+  .character-menu-grid {
+    gap: 0.4rem;
+  }
+
+  .character-preview-canvas {
+    max-width: min(170px, 48cqw, 34cqh);
+  }
+}
+
+@container (max-width: 460px) {
+  .character-preview-canvas {
+    max-width: min(210px, 72cqw);
+  }
+}
+
+@media (max-width: 640px), (max-height: 520px) {
+  .minimap-open-hint {
+    display: none !important;
+  }
+}
+
+@media (max-width: 430px), (max-height: 390px) {
+  .hud-shell {
+    --hud-status-height: clamp(64px, 18vh, 78px);
+  }
+
+  .hud-status-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .hud-status-grid .wizard-inset {
+    border-width: 2px;
+    min-width: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .hud-panel-title {
+    font-size: 6px !important;
+    letter-spacing: 0.12em !important;
+    margin-bottom: 1px !important;
+  }
+
+  .hud-hotkey-list {
+    gap: 0 !important;
+    padding: 0 2px !important;
+    font-size: 5px !important;
+    line-height: 1 !important;
+  }
+
+  .hud-hotkey-row {
+    gap: 1px !important;
+  }
+
+  .hud-hotkey-label {
+    width: 8px !important;
+    font-size: 5px !important;
+  }
+
+  .hud-hotkey-slots {
+    gap: 0 !important;
+  }
+
+  .hud-spell-line {
+    font-size: 6px !important;
+    line-height: 0.95 !important;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+  }
+
+  .hud-buff-list {
+    display: none !important;
+  }
+
+  .hud-vitality-panel,
+  .hud-aether-panel {
+    gap: 1px;
+  }
+
+  .hud-health-bar,
+  .hud-armor-bar {
+    height: 12px !important;
+    margin-top: 1px !important;
+  }
+
+  .hud-bar-label {
+    font-size: 5px !important;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+  }
+
+  .hud-aether-bar {
+    height: 14px !important;
+  }
+
+  .mana-meter {
+    bottom: calc(var(--hud-status-height) + 6px) !important;
+    width: min(180px, calc(100% - 96px)) !important;
+    border-width: 2px !important;
+    border-radius: 8px !important;
+    padding: 2px !important;
+  }
+
+  .mana-meter-title {
+    font-size: 8px !important;
+    line-height: 1 !important;
+    padding-bottom: 1px !important;
+  }
+
+  .mana-meter-bar {
+    height: 12px !important;
+  }
+
+  .minimap-label {
+    width: clamp(70px, 22vmin, 88px) !important;
+    height: clamp(70px, 22vmin, 88px) !important;
+    top: 4px !important;
+    right: 4px !important;
+  }
+
+  .minimap-coords {
+    display: none !important;
+  }
+
+  .magic-hands-fill-offset {
+    translate: 0 clamp(4px, 3vh, 16px);
+  }
+
+  .magic-hands-frame {
+    scale: 0.84;
+  }
+}
+
+@media (max-width: 430px) and (min-height: 470px) {
+  .hud-shell {
+    --hud-status-height: clamp(112px, 25vh, 132px);
+  }
+
+  .hud-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .hud-status-grid .wizard-inset {
+    border-width: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .hud-panel-title {
+    font-size: clamp(7px, 2.4vw, 11px) !important;
+    letter-spacing: 0.18em !important;
+    margin-bottom: 3px !important;
+  }
+
+  .hud-hotkey-list {
+    gap: 2px !important;
+    padding: 0 6px 2px !important;
+    font-size: clamp(6px, 1.8vw, 10px) !important;
+  }
+
+  .hud-hotkey-row {
+    gap: 4px !important;
+  }
+
+  .hud-hotkey-label {
+    width: 14px !important;
+    font-size: 7px !important;
+  }
+
+  .hud-hotkey-slots {
+    gap: 2px !important;
+  }
+
+  .hud-spell-line {
+    font-size: clamp(8px, 2.4vw, 13px) !important;
+    line-height: 1 !important;
+  }
+
+  .hud-health-bar,
+  .hud-armor-bar {
+    height: 16px !important;
+  }
+
+  .hud-bar-label {
+    font-size: 7px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .hud-aether-bar {
+    height: 18px !important;
+  }
+
+  .mana-meter {
+    bottom: calc(var(--hud-status-height) + 8px) !important;
+    width: min(280px, calc(100% - 32px)) !important;
+    border-width: 3px !important;
+    border-radius: 12px !important;
+    padding: 4px !important;
+  }
+
+  .mana-meter-title {
+    font-size: 10px !important;
+    padding-bottom: 3px !important;
+  }
+
+  .mana-meter-bar {
+    height: 18px !important;
+  }
+
+  .minimap-label {
+    width: clamp(82px, 20vmin, 108px) !important;
+    height: clamp(82px, 20vmin, 108px) !important;
+  }
+
+  .minimap-coords {
+    display: flex !important;
+  }
+
+  .magic-hands-fill-offset {
+    translate: 0 clamp(12px, 4vh, 34px);
+  }
+
+  .magic-hands-frame {
+    scale: 0.9;
+  }
+}
+
+@container (max-height: 390px) {
+  .hud-shell {
+    --hud-status-height: clamp(58px, 16cqh, 70px);
+  }
+
+  .hud-status-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .hud-status-grid .wizard-inset {
+    border-width: 2px;
+    min-width: 0;
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+
+  .hud-panel-title {
+    font-size: 6px !important;
+    letter-spacing: 0.12em !important;
+    margin-bottom: 1px !important;
+  }
+
+  .hud-hotkey-list {
+    gap: 0 !important;
+    padding: 0 2px !important;
+    font-size: 5px !important;
+    line-height: 1 !important;
+  }
+
+  .hud-hotkey-row {
+    gap: 1px !important;
+  }
+
+  .hud-hotkey-label {
+    width: 8px !important;
+    font-size: 5px !important;
+  }
+
+  .hud-hotkey-slots {
+    gap: 0 !important;
+  }
+
+  .hud-spell-line {
+    font-size: 6px !important;
+    line-height: 0.95 !important;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+  }
+
+  .hud-buff-list {
+    display: none !important;
+  }
+
+  .hud-vitality-panel,
+  .hud-aether-panel {
+    gap: 1px;
+  }
+
+  .hud-health-bar,
+  .hud-armor-bar {
+    height: 12px !important;
+    margin-top: 1px !important;
+  }
+
+  .hud-bar-label {
+    font-size: 5px !important;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+  }
+
+  .hud-aether-bar {
+    height: 14px !important;
+  }
+
+  .mana-meter {
+    bottom: calc(var(--hud-status-height) + 6px) !important;
+    width: min(180px, calc(100% - 96px)) !important;
+    border-width: 2px !important;
+    border-radius: 8px !important;
+    padding: 2px !important;
+  }
+
+  .mana-meter-title {
+    font-size: 8px !important;
+    line-height: 1 !important;
+    padding-bottom: 1px !important;
+  }
+
+  .mana-meter-bar {
+    height: 12px !important;
+  }
+
+  .minimap-label {
+    width: clamp(70px, 22cqmin, 88px) !important;
+    height: clamp(70px, 22cqmin, 88px) !important;
+    top: 4px !important;
+    right: 4px !important;
+  }
+
+  .minimap-coords {
+    display: none !important;
+  }
+
+  .magic-hands-fill-offset {
+    translate: 0 clamp(4px, 3cqh, 16px);
+  }
+
+  .magic-hands-ultrawide-offset {
+    translate: 0 0;
+  }
+
+  .magic-hands-frame {
+    scale: 0.84;
+  }
+}
+
+@container (max-height: 260px) {
+  .hud-shell {
+    --hud-status-height: clamp(36px, 20cqh, 46px);
+  }
+
+  .hud-status-grid {
+    max-width: min(100%, 620px);
+    gap: 1px;
+    padding: 1px;
+  }
+
+  .hud-status-grid .wizard-inset {
+    border-width: 1px;
+    padding-left: 1px;
+    padding-right: 1px;
+  }
+
+  .hud-panel-title {
+    font-size: 5px !important;
+    letter-spacing: 0.08em !important;
+    margin-bottom: 0 !important;
+  }
+
+  .hud-hotkey-list {
+    display: none !important;
+  }
+
+  .hud-spell-line {
+    font-size: 5px !important;
+    line-height: 0.9 !important;
+  }
+
+  .hud-health-bar,
+  .hud-armor-bar {
+    height: 8px !important;
+    margin-top: 0 !important;
+  }
+
+  .hud-bar-label {
+    font-size: 4px !important;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+  }
+
+  .hud-aether-bar {
+    height: 10px !important;
+  }
+
+  .mana-meter {
+    bottom: calc(var(--hud-status-height) + 4px) !important;
+    width: min(150px, calc(100% - 80px)) !important;
+    border-width: 1px !important;
+    border-radius: 6px !important;
+    padding: 1px !important;
+  }
+
+  .mana-meter-title {
+    font-size: 6px !important;
+    padding-bottom: 0 !important;
+  }
+
+  .mana-meter-bar {
+    height: 8px !important;
+  }
+
+  .minimap-label {
+    width: clamp(48px, 28cqmin, 62px) !important;
+    height: clamp(48px, 28cqmin, 62px) !important;
+    top: 3px !important;
+    right: 3px !important;
+  }
+
+  .minimap-open-hint,
+  .minimap-coords {
+    display: none !important;
+  }
+
+  .magic-hands-fill-offset {
+    translate: 0 clamp(6px, 5cqh, 18px);
+  }
+
+  .magic-hands-ultrawide-offset {
+    translate: 0 0;
+  }
+
+  .magic-hands-frame {
+    scale: 0.72;
+  }
+
+  #play-button-overlay > div {
+    padding: 4px !important;
+  }
+
+  #play-button-overlay .font-bold.tracking-\[0\.1em\] {
+    font-size: clamp(1rem, 18cqh, 2rem) !important;
+    margin-bottom: 4px !important;
+  }
+
+  #play-button {
+    font-size: clamp(0.55rem, 5cqh, 0.85rem) !important;
+    padding: 4px 8px !important;
+    box-shadow: 3px 3px 0 #000 !important;
+  }
+
+  #play-button + * {
+    margin-top: 2px !important;
+  }
+
+  #play-button-overlay button {
+    font-size: clamp(0.5rem, 4cqh, 0.75rem) !important;
+    padding: 3px 6px !important;
+  }
+}
+
+@media (pointer: coarse) and (max-height: 560px) {
+  .hud-shell {
+    --hud-status-height: clamp(54px, 12.5vh, 68px);
+  }
+
+  .hud-status-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .hud-status-grid .wizard-inset {
+    border-width: 2px;
+    min-width: 0;
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+
+  .hud-panel-title {
+    font-size: 7px !important;
+    letter-spacing: 0.14em !important;
+    margin-bottom: 1px !important;
+  }
+
+  .hud-hotkey-list {
+    gap: 0 !important;
+    padding: 0 3px !important;
+    font-size: 5px !important;
+    line-height: 1 !important;
+  }
+
+  .hud-hotkey-row {
+    gap: 2px !important;
+  }
+
+  .hud-hotkey-label {
+    width: 9px !important;
+    font-size: 5px !important;
+  }
+
+  .hud-spell-line {
+    font-size: 7px !important;
+    line-height: 0.95 !important;
+  }
+
+  .hud-buff-list {
+    display: none !important;
+  }
+
+  .hud-health-bar,
+  .hud-armor-bar {
+    height: 13px !important;
+    margin-top: 1px !important;
+  }
+
+  .hud-bar-label {
+    font-size: 6px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+
+  .hud-aether-bar {
+    height: 15px !important;
+  }
+
+  .mobile-touch-controls {
+    --mobile-hud-bottom: clamp(54px, 12.5vh, 68px);
+  }
+
+  .mobile-top-actions {
+    transform: scale(0.84);
+    transform-origin: top left;
+  }
+
+  .mobile-joystick-zone {
+    bottom: calc(var(--mobile-hud-bottom) + 12px) !important;
+    left: calc(env(safe-area-inset-left) + 10px) !important;
+  }
+
+  .mobile-action-cluster {
+    right: calc(env(safe-area-inset-right) + 10px) !important;
+    bottom: calc(var(--mobile-hud-bottom) + 10px) !important;
+    gap: 10px !important;
+    transform: scale(0.92);
+    transform-origin: bottom right;
+  }
+
+  .mobile-movement-column {
+    gap: 11px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .mobile-action-button {
+    width: 54px !important;
+    height: 54px !important;
+    border-color: rgba(255, 255, 255, 0.24) !important;
+    background: rgba(8, 7, 10, 0.34) !important;
+    font-size: 9px !important;
+  }
+
+  .mobile-scroll-wheel {
+    width: 44px !important;
+    height: 60px !important;
+    border-color: rgba(207, 250, 254, 0.28) !important;
+    background: rgba(8, 7, 10, 0.32) !important;
+  }
+
+  .mobile-joystick {
+    width: 104px !important;
+    height: 104px !important;
+    border-color: rgba(207, 250, 254, 0.24) !important;
+    background: rgba(8, 7, 10, 0.22) !important;
+  }
+
+  .mobile-joystick-knob {
+    width: 44px !important;
+    height: 44px !important;
+    background: rgba(165, 243, 252, 0.12) !important;
+  }
+
+  .mobile-joystick-center {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .minimap-label {
+    width: clamp(70px, 18vmin, 88px) !important;
+    height: clamp(70px, 18vmin, 88px) !important;
+  }
+
+  .mana-meter {
+    bottom: calc(var(--hud-status-height) + 7px) !important;
+    width: clamp(180px, 28vw, 280px) !important;
+    border-width: 2px !important;
+    border-radius: 9px !important;
+    padding: 2px !important;
+  }
+
+  .mana-meter-title {
+    font-size: 8px !important;
+    line-height: 1 !important;
+    padding-bottom: 1px !important;
+  }
+
+  .mana-meter-bar {
+    height: 13px !important;
+  }
+
+  .lobby-notification-feed {
+    top: calc(env(safe-area-inset-top) + 64px);
+    width: min(300px, calc(var(--app-vw, 100dvw) - 24px));
+  }
+
+  .magic-hands-frame {
+    scale: 0.82;
+  }
+
+  .magic-hands-fill-offset {
+    translate: 0 clamp(-8px, 1.2vh, 8px);
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 430px) {
+  .hud-shell {
+    --hud-status-height: clamp(46px, 11.5vh, 56px);
+  }
+
+  .mobile-touch-controls {
+    --mobile-hud-bottom: clamp(46px, 11.5vh, 56px);
+  }
+
+  .mobile-top-actions {
+    transform: scale(0.76);
+  }
+
+  .mobile-joystick-zone {
+    bottom: calc(var(--mobile-hud-bottom) + 10px) !important;
+  }
+
+  .mobile-action-cluster {
+    bottom: calc(var(--mobile-hud-bottom) + 8px) !important;
+    gap: 11px !important;
+    transform: scale(0.94);
+  }
+
+  .mobile-movement-column {
+    gap: 12px !important;
+  }
+
+  .mobile-action-button {
+    width: 58px !important;
+    height: 58px !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    background: rgba(8, 7, 10, 0.28) !important;
+    font-size: 9px !important;
+  }
+
+  .mobile-scroll-wheel {
+    width: 46px !important;
+    height: 62px !important;
+    background: rgba(8, 7, 10, 0.26) !important;
+  }
+
+  .mobile-joystick {
+    width: 106px !important;
+    height: 106px !important;
+    background: rgba(8, 7, 10, 0.18) !important;
+  }
+
+  .mobile-joystick-knob {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .minimap-label {
+    width: clamp(60px, 16vmin, 76px) !important;
+    height: clamp(60px, 16vmin, 76px) !important;
+  }
+
+  .mana-meter {
+    width: clamp(150px, 26vw, 230px) !important;
+  }
+
+  .lobby-notification-feed {
+    top: calc(env(safe-area-inset-top) + 58px);
+    width: min(280px, calc(var(--app-vw, 100dvw) - 24px));
+  }
+
+  .magic-hands-frame {
+    scale: 0.72;
+  }
+
+  .magic-hands-fill-offset,
+  .magic-hands-classic-offset {
+    translate: 0 clamp(-16px, -2vh, -4px);
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 340px) {
+  .hud-shell {
+    --hud-status-height: clamp(40px, 14vh, 48px);
+  }
+
+  .mobile-touch-controls {
+    --mobile-hud-bottom: clamp(40px, 14vh, 48px);
+  }
+
+  .mobile-top-actions {
+    transform: scale(0.68);
+  }
+
+  .mobile-action-cluster {
+    bottom: calc(var(--mobile-hud-bottom) + 10px) !important;
+    gap: 9px !important;
+    transform: scale(0.86);
+  }
+
+  .mobile-action-button {
+    width: 52px !important;
+    height: 52px !important;
+    font-size: 8px !important;
+  }
+
+  .mobile-scroll-wheel {
+    width: 40px !important;
+    height: 56px !important;
+  }
+
+  .mobile-joystick {
+    width: 94px !important;
+    height: 94px !important;
+  }
+
+  .mobile-joystick-knob {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .minimap-label {
+    width: clamp(54px, 20vmin, 66px) !important;
+    height: clamp(54px, 20vmin, 66px) !important;
+  }
+
+  .lobby-notification-feed {
+    top: calc(env(safe-area-inset-top) + 54px);
+    width: min(250px, calc(var(--app-vw, 100dvw) - 24px));
+  }
+
+  .magic-hands-frame {
+    scale: 0.66;
+  }
+
+  .magic-hands-fill-offset,
+  .magic-hands-classic-offset {
+    translate: 0 -18px;
+  }
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  .lobby-notification-feed {
+    top: calc(env(safe-area-inset-top) + 68px);
+  }
+
+  .magic-hands-frame {
+    scale: 0.86;
+  }
+
+  .magic-hands-fill-offset {
+    translate: 0 clamp(-4px, 1.6vh, 18px);
+  }
+
+  .mobile-action-cluster {
+    gap: 10px !important;
+    transform: scale(0.96);
+    transform-origin: bottom right;
+  }
+
+  .mobile-action-button {
+    width: 58px !important;
+    height: 58px !important;
+    font-size: 9px !important;
+  }
+
+  .mobile-scroll-wheel {
+    width: 44px !important;
+    height: 60px !important;
+  }
+
+  .mobile-joystick {
+    width: 112px !important;
+    height: 112px !important;
+  }
+
+  .mobile-joystick-knob {
+    width: 48px !important;
+    height: 48px !important;
+  }
+}
+
+@keyframes bob-walk {
+  0% { transform: translateY(0px) translateX(0px); }
+  25% { transform: translateY(-15px) translateX(-5px) rotate(-2deg); }
+  50% { transform: translateY(0px) translateX(0px); }
+  75% { transform: translateY(-15px) translateX(5px) rotate(2deg); }
+  100% { transform: translateY(0px) translateX(0px); }
+}
+
+@keyframes bob-sprint {
+  0% { transform: translateY(0px) translateX(0px); }
+  25% { transform: translateY(-25px) translateX(-15px) rotate(-8deg); }
+  50% { transform: translateY(0px) translateX(0px); }
+  75% { transform: translateY(-25px) translateX(15px) rotate(8deg); }
+  100% { transform: translateY(0px) translateX(0px); }
+}
+
+.animate-bob-walk {
+  animation: bob-walk 1.5s infinite ease-in-out;
+}
+
+.animate-bob-sprint {
+  animation: bob-sprint 0.8s infinite ease-in-out;
+}
+
+@keyframes slow-hover {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+/* iPhone 12 Pro / modern phone landscape baseline: 844x390 CSS px.
+   Keep this block late so it wins over the broad coarse/max-height rules. */
+@media (orientation: landscape) and (min-width: 760px) and (max-width: 1020px) and (max-height: 460px) {
+  .hud-shell {
+    --hud-status-height: clamp(68px, 19vh, 78px);
+  }
+
+  .hud-status-grid {
+    max-width: 100%;
+    gap: 2px;
+    padding: 3px 4px;
+  }
+
+  .hud-status-grid .wizard-inset {
+    border-width: 2px;
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+
+  .hud-panel-title {
+    font-size: 8px !important;
+    letter-spacing: 0.16em !important;
+    margin-bottom: 2px !important;
+  }
+
+  .hud-hotkey-list {
+    padding: 0 6px 2px !important;
+    font-size: 6px !important;
+    gap: 1px !important;
+  }
+
+  .hud-spell-line {
+    font-size: 8px !important;
+    line-height: 1 !important;
+  }
+
+  .hud-health-bar,
+  .hud-armor-bar {
+    height: 15px !important;
+  }
+
+  .hud-bar-label {
+    font-size: 7px !important;
+  }
+
+  .hud-aether-bar {
+    height: 20px !important;
+  }
+
+  .mana-meter {
+    bottom: calc(var(--hud-status-height) + 8px) !important;
+    width: clamp(180px, 26vw, 232px) !important;
+    border-width: 2px !important;
+    border-radius: 9px !important;
+    padding: 2px !important;
+  }
+
+  .mana-meter-title {
+    font-size: 8px !important;
+    padding-bottom: 1px !important;
+  }
+
+  .mana-meter-bar {
+    height: 13px !important;
+  }
+
+  .mobile-touch-controls {
+    --mobile-hud-bottom: clamp(68px, 19vh, 78px);
+  }
+
+  .mobile-top-actions {
+    left: calc(env(safe-area-inset-left) + 8px) !important;
+    top: calc(env(safe-area-inset-top) + 6px) !important;
+    gap: 4px !important;
+    transform: scale(0.68);
+  }
+
+  .mobile-spellbook-button {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .mobile-pause-button {
+    width: 42px !important;
+    height: 42px !important;
+    background: rgba(0, 0, 0, 0.42) !important;
+  }
+
+  .lobby-notification-feed {
+    top: calc(env(safe-area-inset-top) + 54px);
+    width: min(278px, calc(var(--app-vw, 100dvw) - 124px));
+    font-size: 9px;
+    line-height: 1.12;
+  }
+
+  .minimap-label {
+    width: clamp(60px, 16vmin, 72px) !important;
+    height: clamp(60px, 16vmin, 72px) !important;
+    top: calc(env(safe-area-inset-top) + 5px) !important;
+    right: calc(env(safe-area-inset-right) + 8px) !important;
+  }
+
+  .mobile-joystick-zone {
+    bottom: calc(var(--mobile-hud-bottom) + 34px) !important;
+    left: calc(env(safe-area-inset-left) + 10px) !important;
+    transform: scale(1);
+    transform-origin: bottom left;
+  }
+
+  .mobile-joystick {
+    width: 112px !important;
+    height: 112px !important;
+    border-color: rgba(207, 250, 254, 0.2) !important;
+    background: rgba(8, 7, 10, 0.12) !important;
+  }
+
+  .mobile-joystick-knob {
+    width: 48px !important;
+    height: 48px !important;
+    background: rgba(165, 243, 252, 0.1) !important;
+  }
+
+  .mobile-action-cluster {
+    right: calc(env(safe-area-inset-right) + 2px) !important;
+    bottom: calc(var(--mobile-hud-bottom) + 58px) !important;
+    gap: 8px !important;
+    transform: scale(0.9);
+    transform-origin: bottom right;
+  }
+
+  .mobile-movement-column {
+    gap: 10px !important;
+  }
+
+  .mobile-action-button {
+    width: 62px !important;
+    height: 62px !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    background: rgba(8, 7, 10, 0.2) !important;
+    font-size: 10px !important;
+  }
+
+  .mobile-scroll-wheel {
+    width: 48px !important;
+    height: 64px !important;
+    border-color: rgba(207, 250, 254, 0.23) !important;
+    background: rgba(8, 7, 10, 0.18) !important;
+  }
+
+  .magic-hands-frame {
+    scale: 0.74;
+  }
+
+  .magic-hands-fill-offset,
+  .magic-hands-classic-offset {
+    translate: 0 -46px;
+  }
+
+  #play-button-overlay > div {
+    padding: 6px 10px !important;
+  }
+
+  #play-button-overlay .font-bold.tracking-\[0\.1em\] {
+    font-size: clamp(1.4rem, 13cqh, 2.8rem) !important;
+    margin-bottom: 6px !important;
+  }
+
+  #play-button-overlay form[data-testid="invite-code-form"] {
+    width: min(380px, calc(var(--app-vw, 100dvw) - 40px)) !important;
+    padding: 6px !important;
+  }
+
+  #play-button-overlay input[data-testid="invite-code-input"] {
+    min-width: 140px !important;
+    padding: 6px 8px !important;
+    font-size: 10px !important;
+  }
+
+  #play-button-overlay button {
+    font-size: 9px !important;
+  }
+
+  .settings-panel {
+    width: calc(var(--app-vw, 100dvw) - 16px) !important;
+    max-height: calc(var(--app-vh, 100dvh) - 14px) !important;
+    padding: 6px !important;
+    gap: 4px !important;
+  }
+
+  .settings-panel h2 {
+    font-size: 12px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .settings-panel > .grid {
+    gap: 4px !important;
+  }
+
+  .settings-panel > .grid button {
+    padding: 4px 5px !important;
+    font-size: 7px !important;
+  }
+
+  .settings-panel .menu-scroll-panel {
+    max-height: calc(var(--app-vh, 100dvh) - 82px) !important;
+    padding-right: 0 !important;
+  }
+
+  .settings-panel input[type="range"] {
+    margin-top: 6px !important;
+  }
+
+  .character-menu-grid {
+    grid-template-columns: minmax(120px, 0.52fr) minmax(0, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .character-preview-card {
+    padding: 6px !important;
+  }
+
+  .character-preview-canvas {
+    max-width: min(130px, 34cqh) !important;
+  }
+
+  .character-control-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+  }
+
+  .spell-menu-hologram {
+    width: calc(var(--app-vw, 100dvw) - 12px) !important;
+    max-height: calc(var(--app-vh, 100dvh) - 14px) !important;
+    padding: 6px !important;
+  }
+
+  .spell-menu-header {
+    gap: 6px !important;
+    padding-bottom: 5px !important;
+  }
+
+  .spell-menu-header > div:first-child > div:first-child {
+    font-size: 7px !important;
+    letter-spacing: 0.22em !important;
+  }
+
+  .spell-menu-title {
+    margin-top: 2px !important;
+    font-size: 15px !important;
+  }
+
+  .spell-menu-close-button {
+    padding: 5px 8px !important;
+    font-size: 7px !important;
+  }
+
+  .spell-menu-layout {
+    grid-template-columns: 54px minmax(0, 1fr) 54px !important;
+    gap: 4px !important;
+    margin-top: 6px !important;
+  }
+
+  .spell-menu-hotbar-column {
+    padding: 4px !important;
+  }
+
+  .spell-menu-hotbar-column > div:first-child {
+    font-size: 6px !important;
+    letter-spacing: 0.16em !important;
+  }
+
+  .spell-menu-hotbar-column .mt-1\.5 {
+    gap: 2px !important;
+    margin-top: 4px !important;
+  }
+
+  .spell-menu-hotbar-slot {
+    height: 23px !important;
+    grid-template-columns: 11px minmax(0, 1fr) !important;
+    gap: 1px !important;
+    padding: 1px !important;
+  }
+
+  .spell-menu-hotbar-slot div {
+    font-size: 5px !important;
+    line-height: 1 !important;
+  }
+
+  .spell-menu-spell-panel {
+    padding: 4px !important;
+  }
+
+  .spell-menu-spell-panel > div:first-child {
+    display: none !important;
+  }
+
+  .spell-menu-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+  }
+
+  .spell-menu-card {
+    min-height: 54px !important;
+    padding: 4px !important;
+  }
+
+  .spell-menu-card > .flex {
+    gap: 4px !important;
+  }
+
+  .spell-menu-thumb {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .spell-menu-card [class*="text-[8px]"] {
+    font-size: 6px !important;
+    line-height: 1.1 !important;
+  }
+
+  .spell-menu-card [class*="text-[7px]"] {
+    display: none !important;
+  }
+
+  .spell-menu-card .mt-3 {
+    margin-top: 4px !important;
+  }
+
+  .spell-menu-footer {
+    display: none !important;
+  }
+
+  .player-score-menu {
+    padding: calc(env(safe-area-inset-top) + 26px) 8px 0 !important;
+  }
+
+  .player-score-panel {
+    width: calc(var(--app-vw, 100dvw) - 16px) !important;
+    padding: 6px !important;
+  }
+
+  .player-score-header {
+    margin-bottom: 6px !important;
+    padding-bottom: 4px !important;
+  }
+
+  .player-score-header .text-xl {
+    font-size: 14px !important;
+  }
+
+  .player-score-row {
+    grid-template-columns: 1.2fr 0.9fr 0.48fr 0.58fr 0.48fr !important;
+    gap: 4px !important;
+    padding: 4px !important;
+    font-size: 7px !important;
+  }
+}
+
+/* iPhone 12 Pro portrait baseline: 390x844 CSS px. */
+@media (orientation: portrait) and (min-width: 360px) and (max-width: 430px) and (min-height: 760px) and (max-height: 940px) {
+  .hud-shell {
+    --hud-status-height: clamp(118px, 16vh, 136px);
+  }
+
+  .mobile-touch-controls {
+    --mobile-hud-bottom: clamp(118px, 16vh, 136px);
+  }
+
+  .mobile-action-cluster {
+    right: calc(env(safe-area-inset-right) + 8px) !important;
+    bottom: calc(var(--mobile-hud-bottom) + 62px) !important;
+    gap: 10px !important;
+    transform: scale(0.96);
+    transform-origin: bottom right;
+  }
+
+  .mobile-action-button {
+    width: 58px !important;
+    height: 58px !important;
+    background: rgba(8, 7, 10, 0.28) !important;
+  }
+
+  .mobile-scroll-wheel {
+    width: 44px !important;
+    height: 60px !important;
+  }
+
+  .mobile-joystick-zone {
+    bottom: calc(var(--mobile-hud-bottom) + 62px) !important;
+    left: calc(env(safe-area-inset-left) + 10px) !important;
+  }
+
+  .mobile-joystick {
+    width: 112px !important;
+    height: 112px !important;
+    background: rgba(8, 7, 10, 0.2) !important;
+  }
+
+  .mobile-top-actions {
+    transform: scale(0.86);
+    transform-origin: top left;
+  }
+
+  .minimap-label {
+    width: clamp(82px, 21vmin, 104px) !important;
+    height: clamp(82px, 21vmin, 104px) !important;
+  }
+
+  .mana-meter {
+    width: min(280px, calc(var(--app-vw, 100dvw) - 36px)) !important;
+  }
+
+  .spell-menu-hologram,
+  .settings-panel,
+  .player-score-panel {
+    width: calc(var(--app-vw, 100dvw) - 14px) !important;
+    max-height: calc(var(--app-vh, 100dvh) - 18px) !important;
+  }
+
+  .spell-menu-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .spell-menu-hotbar-column .mt-1\.5 {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px !important;
+  }
+
+  .spell-menu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .spell-menu-footer {
+    display: none !important;
+  }
+
+  .settings-panel .menu-scroll-panel {
+    max-height: calc(var(--app-vh, 100dvh) - 98px) !important;
+  }
+
+  .character-menu-grid,
+  .character-control-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .character-preview-canvas {
+    max-width: min(220px, 58cqw, 26cqh) !important;
+  }
+}
+
+/* Desktop safety net: phone-sized browser windows and stale touch emulation can
+   match the mobile media queries above. Only real mobile/touch gameplay should
+   inherit those overrides. */
+html:not(.wizards-touch-layout) .mobile-touch-controls {
+  display: none !important;
+}
+
+html:not(.wizards-touch-layout) .hud-shell {
+  --hud-status-height: clamp(84px, 12vh, 108px) !important;
+}
+
+html:not(.wizards-touch-layout) .hud-status-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  max-width: min(100%, 1180px) !important;
+  gap: clamp(4px, 1vw, 16px) !important;
+  padding: clamp(4px, 0.8vw, 8px) !important;
+}
+
+html:not(.wizards-touch-layout) .hud-status-grid .wizard-inset {
+  border-width: 4px !important;
+}
+
+html:not(.wizards-touch-layout) .hud-panel-title {
+  font-size: clamp(7px, 1.2vw, 12px) !important;
+  letter-spacing: 0.16em !important;
+}
+
+html:not(.wizards-touch-layout) .hud-hotkey-list {
+  display: flex !important;
+  gap: 0.25rem !important;
+  font-size: clamp(6px, 1.05vw, 11px) !important;
+}
+
+html:not(.wizards-touch-layout) .hud-spell-line {
+  font-size: clamp(0.52rem, 1.45vw, 1.05rem) !important;
+  line-height: 1 !important;
+}
+
+html:not(.wizards-touch-layout) .hud-health-bar,
+html:not(.wizards-touch-layout) .hud-armor-bar {
+  height: 1.25rem !important;
+}
+
+html:not(.wizards-touch-layout) .hud-bar-label {
+  font-size: 9px !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+
+html:not(.wizards-touch-layout) .hud-aether-bar {
+  height: 1.5rem !important;
+}
+
+html:not(.wizards-touch-layout) .mana-meter {
+  bottom: calc(var(--hud-status-height) + 10px) !important;
+  width: min(clamp(220px, 72%, 400px), calc(100% - 32px)) !important;
+  border-width: 3px !important;
+  border-radius: 0.75rem !important;
+  padding: 0.25rem !important;
+}
+
+html:not(.wizards-touch-layout) .mana-meter-title {
+  font-size: 12px !important;
+  line-height: 1 !important;
+  padding-bottom: 0.25rem !important;
+}
+
+html:not(.wizards-touch-layout) .mana-meter-bar {
+  height: 1.25rem !important;
+}
+
+html:not(.wizards-touch-layout) .minimap-label {
+  width: var(--live-minimap-size, clamp(82px, 18vmin, 176px)) !important;
+  height: var(--live-minimap-size, clamp(82px, 18vmin, 176px)) !important;
+  top: var(--live-minimap-inset, clamp(8px, 2vmin, 16px)) !important;
+  right: var(--live-minimap-inset, clamp(8px, 2vmin, 16px)) !important;
+}
+
+html:not(.wizards-touch-layout) .minimap-coords {
+  display: flex !important;
+}
+
+html:not(.wizards-touch-layout) .magic-hands-frame {
+  scale: 1 !important;
+}
+
+html:not(.wizards-touch-layout) .magic-hands-fill-offset {
+  translate: 0 clamp(18px, 6vh, 64px) !important;
+}
+
+html:not(.wizards-touch-layout) .magic-hands-classic-offset,
+html:not(.wizards-touch-layout) .magic-hands-ultrawide-offset {
+  translate: 0 0 !important;
+}
+
+.animate-slow-hover {
+  animation: slow-hover 3s infinite ease-in-out;
+}
+
+@keyframes spell-menu-pulse {
+  0% { box-shadow: 0 0 24px rgba(34, 211, 238, 0.32), inset 0 0 28px rgba(14, 165, 233, 0.12); }
+  50% { box-shadow: 0 0 42px rgba(103, 232, 249, 0.58), inset 0 0 36px rgba(14, 165, 233, 0.2); }
+  100% { box-shadow: 0 0 24px rgba(34, 211, 238, 0.32), inset 0 0 28px rgba(14, 165, 233, 0.12); }
+}
+
+@keyframes spell-menu-scan {
+  from { background-position: 0 0; }
+  to { background-position: 0 12px; }
+}
+
+.spell-menu-hologram {
+  animation: spell-menu-pulse 2.4s ease-in-out infinite;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  contain: layout paint style;
+  transform: translateZ(0);
+  background-image:
+    radial-gradient(circle at 50% 20%, rgba(216, 180, 254, 0.1), transparent 38%),
+    linear-gradient(135deg, rgba(88, 28, 135, 0.22), rgba(20, 8, 35, 0.28) 48%, rgba(59, 7, 100, 0.24)),
+    repeating-linear-gradient(90deg, rgba(216, 180, 254, 0.055) 0, rgba(216, 180, 254, 0.055) 1px, transparent 1px, transparent 64px),
+    repeating-linear-gradient(180deg, rgba(216, 180, 254, 0.03) 0, rgba(216, 180, 254, 0.03) 1px, transparent 1px, transparent 56px);
+}
+
+.spell-menu-hologram::-webkit-scrollbar {
+  display: none;
+}
+
+.spell-menu-scanline {
+  animation: spell-menu-scan 0.55s linear infinite;
+  background-image: repeating-linear-gradient(180deg, transparent 0, transparent 11px, rgba(216, 180, 254, 0.05) 12px, transparent 13px);
+}
+
+.spell-menu-card {
+  clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+html.wizards-mouse-gameplay-active #play-button-overlay {
+  display: none !important;
+  pointer-events: none !important;
+}

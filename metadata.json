@@ -1,0 +1,6 @@
+{
+  "name": "Wizards Only Fools!",
+  "description": "Multiplayer reimagined version of classical Doom but with Wizard hands, Slide mechanics, Jetpack jump, scaling arcane runes, and 32 player web sockets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
