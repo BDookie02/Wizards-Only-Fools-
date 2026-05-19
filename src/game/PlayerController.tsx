@@ -160,7 +160,7 @@ type QaSurvivalSpawn = {
 
 const TEMP_MOUNTAIN_VILLAGE_SPAWN_CHUNK: [number, number] = [3, 0];
 const TEMP_MOUNTAIN_VILLAGE_SPAWN_Y = 270;
-const TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_Z = 118;
+const TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_Z = 62;
 const DEFAULT_PLAYER_SPAWN_POSITION: [number, number, number] = [0, 5, 30];
 const DEFAULT_FALL_RECOVERY_SPAWN_POSITION: [number, number, number] = [0, 15, 30];
 
