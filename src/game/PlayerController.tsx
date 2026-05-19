@@ -121,15 +121,23 @@ function isMouseGameplayInputActive() {
   return Boolean(document.pointerLockElement || isMouseLookFallbackActive());
 }
 
+function isKeyboardArrowLookInputActive() {
+  const state = useGameStore.getState();
+  return state.keyboardArrowLookEnabled &&
+    state.isGameLaunched &&
+    !state.isPauseMenuOpen &&
+    !state.isSpellMenuOpen &&
+    !state.isMapExpanded &&
+    !state.isScoreboardOpen &&
+    state.health > 0 &&
+    (isMouseGameplayInputActive() || state.isTouchControlsActive);
+}
+
 window.addEventListener("keydown", (e) => {
   if (isEditableTarget(e.target)) return;
   if (keys.hasOwnProperty(e.code)) {
     keys[e.code as keyof typeof keys] = true;
-    if (
-      e.code.startsWith("Arrow") &&
-      useGameStore.getState().keyboardArrowLookEnabled &&
-      (isMouseGameplayInputActive() || useGameStore.getState().isTouchControlsActive)
-    ) {
+    if (e.code.startsWith("Arrow") && isKeyboardArrowLookInputActive()) {
       e.preventDefault();
     }
   }
@@ -1415,8 +1423,9 @@ export function PlayerController() {
 
       if (
         storeState.keyboardArrowLookEnabled &&
-        mouseGameplayRequested &&
+        (mouseGameplayRequested || storeState.isTouchControlsActive) &&
         !storeState.isPauseMenuOpen &&
+        !storeState.isSpellMenuOpen &&
         !storeState.isMapExpanded &&
         !storeState.isScoreboardOpen
       ) {

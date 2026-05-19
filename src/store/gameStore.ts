@@ -76,6 +76,7 @@ export const DEFAULT_RIGHT_HOTBAR_SPELLS: SpellType[] = ['iceshard', 'lightning'
 export const DEFAULT_MOUSE_SENSITIVITY = 0.002;
 export const DEFAULT_MOBILE_LOOK_SENSITIVITY = DEFAULT_MOUSE_SENSITIVITY * 2;
 export const DEFAULT_CONTROLLER_LOOK_SENSITIVITY = 2.65;
+export const DEFAULT_KEYBOARD_ARROW_LOOK_ENABLED = true;
 export const DEFAULT_VOICE_PUSH_TO_TALK_KEY = 'KeyV';
 export const DEFAULT_VOICE_OUTPUT_VOLUME = 0.85;
 export const DEFAULT_VOICE_PROXIMITY_RANGE = 28;
@@ -611,7 +612,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setTouchControlsActive: (active) => set({ isTouchControlsActive: active }),
   isControllerGameplayActive: false,
   setControllerGameplayActive: (active) => set({ isControllerGameplayActive: active }),
-  keyboardArrowLookEnabled: false,
+  keyboardArrowLookEnabled: DEFAULT_KEYBOARD_ARROW_LOOK_ENABLED,
   setKeyboardArrowLookEnabled: (enabled) => set({ keyboardArrowLookEnabled: enabled }),
   mouseSensitivity: DEFAULT_MOUSE_SENSITIVITY,
   controllerLookSensitivity: DEFAULT_CONTROLLER_LOOK_SENSITIVITY,
