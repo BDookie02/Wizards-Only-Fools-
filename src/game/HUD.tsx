@@ -2143,7 +2143,7 @@ export function HUD() {
 
   const touchGameplayActive = isTouchDevice && isTouchControlsActive;
   const controllerGameplayActive = isControllerGameplayActive;
-  const isDevSurvivalObserver = import.meta.env.DEV && new URLSearchParams(window.location.search).get("qaSurvival") === "1";
+  const isMenuOverlaySuppressedForQa = import.meta.env.DEV && new URLSearchParams(window.location.search).get("qaHideMenu") === "1";
   const hasPointerLock = typeof document !== "undefined" && document.pointerLockElement !== null;
   const hasMouseLookFallback = typeof document !== "undefined" && document.documentElement.dataset.wizardsMouseLookFallback === "true";
   const mouseGameplayActive = !pauseMenuRequestedRef.current && (hasPointerLock || hasMouseLookFallback);
@@ -2152,7 +2152,7 @@ export function HUD() {
     && startMenuStage === "resume"
     && ((isPauseOverlayOpen && pauseMenuRequestedRef.current) || showVideoMenu)
     && !mouseGameplayActive;
-  const shouldShowMenuOverlay = !isDevSurvivalObserver
+  const shouldShowMenuOverlay = !isMenuOverlaySuppressedForQa
     && !isCommandConsoleOpen
     && !isSpellMenuOpen
     && !isReturningToGame
@@ -2562,8 +2562,11 @@ export function HUD() {
       if (isCommandConsoleOpen || isEditableTarget(e.target)) return;
       if (
         e.code === "Escape" &&
+        isGameLaunched &&
+        startMenuStage === "resume" &&
         !isPauseMenuVisible &&
-        (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)
+        !isSpellMenuOpen &&
+        !showVideoMenu
       ) {
         e.preventDefault();
         e.stopPropagation();
@@ -2600,7 +2603,7 @@ export function HUD() {
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [controllerGameplayActive, isCommandConsoleOpen, isLocked, isPauseMenuVisible, isReturningToGame, isSpellMenuOpen, openPauseMenuFromGameplay, setPauseMenuOpen, showVideoMenu, touchGameplayActive]);
+  }, [controllerGameplayActive, isCommandConsoleOpen, isGameLaunched, isLocked, isPauseMenuVisible, isReturningToGame, isSpellMenuOpen, openPauseMenuFromGameplay, setPauseMenuOpen, showVideoMenu, startMenuStage, touchGameplayActive]);
 
   useEffect(() => {
     if (!isLocked && !touchGameplayActive && !controllerGameplayActive) return;

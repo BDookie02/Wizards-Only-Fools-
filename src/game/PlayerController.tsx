@@ -347,14 +347,37 @@ export function PlayerController() {
   useEffect(() => {
     const cameraEuler = new THREE.Euler(0, 0, 0, "YXZ");
     const maxPitch = Math.PI / 2;
+    let fallbackMousePosition: { x: number; y: number } | null = null;
 
     const handleMouseMove = (event: MouseEvent) => {
-      if (!isMouseGameplayInputActive()) return;
+      const pointerLocked = document.pointerLockElement !== null;
+      const fallbackActive = !pointerLocked && isMouseLookFallbackActive();
+      if (!pointerLocked && !fallbackActive) {
+        fallbackMousePosition = null;
+        return;
+      }
+
+      let movementX = event.movementX;
+      let movementY = event.movementY;
+      if (fallbackActive) {
+        const previousMousePosition = fallbackMousePosition;
+        fallbackMousePosition = { x: event.clientX, y: event.clientY };
+        const clientMovementX = previousMousePosition ? event.clientX - previousMousePosition.x : 0;
+        const clientMovementY = previousMousePosition ? event.clientY - previousMousePosition.y : 0;
+        if (!Number.isFinite(movementX) || movementX === 0) movementX = clientMovementX;
+        if (!Number.isFinite(movementY) || movementY === 0) movementY = clientMovementY;
+        movementX = THREE.MathUtils.clamp(movementX, -96, 96);
+        movementY = THREE.MathUtils.clamp(movementY, -96, 96);
+      } else {
+        fallbackMousePosition = null;
+      }
+
+      if (movementX === 0 && movementY === 0) return;
 
       cameraEuler.setFromQuaternion(camera.quaternion);
       const mouseSensitivity = useGameStore.getState().mouseSensitivity || DEFAULT_MOUSE_SENSITIVITY;
-      cameraEuler.y -= event.movementX * mouseSensitivity;
-      cameraEuler.x -= event.movementY * mouseSensitivity;
+      cameraEuler.y -= movementX * mouseSensitivity;
+      cameraEuler.x -= movementY * mouseSensitivity;
       cameraEuler.x = THREE.MathUtils.clamp(cameraEuler.x, -maxPitch, maxPitch);
       camera.quaternion.setFromEuler(cameraEuler);
     };

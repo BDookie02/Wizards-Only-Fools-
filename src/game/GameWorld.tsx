@@ -8438,6 +8438,10 @@ const MOUNTAIN_VILLAGE_TRAIL_START_RADIUS = SURVIVAL_BLOCK_SIZE * 0.385;
 const MOUNTAIN_VILLAGE_TRAIL_END_RADIUS = 76;
 const MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET = 7.4;
 const MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS = MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 4;
+const MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS = 32;
+const MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS = 36;
+const MOUNTAIN_VILLAGE_MINESHAFT_RIM_MID_RADIUS = 41;
+const MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS = 48;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -8647,6 +8651,28 @@ function getMountainVillageTrailWidth(t: number) {
   return lerpNumber(19.5, 13.5, smoothstep01(t));
 }
 
+function cutCircularHoleFromPlaneGeometry(geo: THREE.BufferGeometry, radius: number) {
+  const pos = geo.attributes.position as THREE.BufferAttribute;
+  const sourceIndex = geo.getIndex();
+  const sourceIndices = sourceIndex
+    ? Array.from(sourceIndex.array)
+    : Array.from({ length: pos.count }, (_, index) => index);
+  const nextIndices: number[] = [];
+
+  for (let i = 0; i < sourceIndices.length; i += 3) {
+    const a = sourceIndices[i];
+    const b = sourceIndices[i + 1];
+    const c = sourceIndices[i + 2];
+    const centerX = (pos.getX(a) + pos.getX(b) + pos.getX(c)) / 3;
+    const centerZ = (pos.getZ(a) + pos.getZ(b) + pos.getZ(c)) / 3;
+
+    if (Math.hypot(centerX, centerZ) < radius) continue;
+    nextIndices.push(a, b, c);
+  }
+
+  geo.setIndex(nextIndices);
+}
+
 function makeMountainVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
   const segments = chunk.lod === "near" ? 128 : 54;
   const baseHeight = getSurvivalVillageBaseHeight(chunk);
@@ -8665,6 +8691,7 @@ function makeMountainVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
   }
 
   geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  cutCircularHoleFromPlaneGeometry(geo, MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS);
   geo.computeVertexNormals();
   return geo;
 }
@@ -8718,6 +8745,7 @@ function makeMountainVillageTerrainColliderGeometry(chunk: SurvivalChunkInfo) {
     pos.setY(i, getMountainVillageColliderHeight(chunk, pos.getX(i), pos.getZ(i), baseHeight));
   }
 
+  cutCircularHoleFromPlaneGeometry(geo, MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS);
   geo.computeVertexNormals();
   return geo;
 }
@@ -8911,12 +8939,15 @@ function makeMountainVillageTrailDeckGeometry(points: MountainVillageTrailPoint[
 function makeMountainVillageSummitColliderGeometry(summitY: number) {
   const segments = 56;
   const y = summitY + 0.32;
-  const vertices = [0, y, 0];
+  const vertices: number[] = [];
   const indices: number[] = [];
 
   for (let index = 0; index < segments; index += 1) {
     const angle = (index / segments) * Math.PI * 2;
     vertices.push(
+      Math.sin(angle) * MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS,
+      y,
+      Math.cos(angle) * MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS,
       Math.sin(angle) * MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS,
       y,
       Math.cos(angle) * MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS,
@@ -8924,9 +8955,11 @@ function makeMountainVillageSummitColliderGeometry(summitY: number) {
   }
 
   for (let index = 0; index < segments; index += 1) {
-    const current = index + 1;
-    const next = ((index + 1) % segments) + 1;
-    indices.push(0, current, next);
+    const inner = index * 2;
+    const outer = inner + 1;
+    const nextInner = ((index + 1) % segments) * 2;
+    const nextOuter = nextInner + 1;
+    indices.push(inner, outer, nextInner, outer, nextOuter, nextInner);
   }
 
   const geometry = new THREE.BufferGeometry();
@@ -9219,22 +9252,26 @@ function MountainCabin({ cabin, summitY, showDetails }: { cabin: MountainVillage
 function MountainMineshaftOpening({ summitY, showDetails }: { summitY: number; showDetails: boolean }) {
   return (
     <group name="mountain-village-mineshaft">
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.34, 0]} renderOrder={4}>
-        <circleGeometry args={[24, 40]} />
-        <meshBasicMaterial color="#050505" />
+      <mesh position={[0, summitY - 12.4, 0]} castShadow={false} renderOrder={3}>
+        <cylinderGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS * 0.82, 26, 48, 1, true]} />
+        <meshStandardMaterial color="#0b0908" roughness={1} metalness={0} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY - 24.9, 0]} renderOrder={4}>
+        <circleGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS * 0.78, 48]} />
+        <meshBasicMaterial color="#030202" />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.42, 0]} renderOrder={5}>
-        <ringGeometry args={[24, 33, 40]} />
+        <ringGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_RIM_MID_RADIUS, 48]} />
         <meshBasicMaterial color="#3a281a" />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.5, 0]} renderOrder={6}>
-        <ringGeometry args={[33, 40, 40]} />
+        <ringGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_RIM_MID_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS, 48]} />
         <meshBasicMaterial color="#796650" />
       </mesh>
       {Array.from({ length: 12 }, (_, index) => {
         const angle = (Math.PI * 2 * index) / 12;
-        const x = Math.sin(angle) * 36;
-        const z = Math.cos(angle) * 36;
+        const x = Math.sin(angle) * ((MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS) / 2);
+        const z = Math.cos(angle) * ((MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS) / 2);
         return (
           <mesh key={`mine-rim-beam-${index}`} position={[x, summitY + 1.02, z]} rotation={[0, angle + Math.PI / 2, 0]} castShadow={false}>
             <boxGeometry args={[3.4, 0.9, 9.5]} />
