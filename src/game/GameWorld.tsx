@@ -9599,7 +9599,7 @@ function ChapelPewNpcs() {
 
 function ChapelPopeAtPulpit() {
   return (
-    <group name="chapel-pope-at-pulpit" position={[18, 3.08, -37.25]} scale={[1.18, 1.18, 1.18]}>
+    <group name="chapel-pope-at-pulpit" position={[18, 4.42, -37.25]} scale={[1.18, 1.18, 1.18]}>
       <AvatarBillboard character={CHAPEL_POPE_CHARACTER} animation="idle" yaw={Math.PI} health={100} />
       <mesh position={[0, 2.74, 0]} castShadow={false}>
         <coneGeometry args={[0.5, 1.06, 4]} />
