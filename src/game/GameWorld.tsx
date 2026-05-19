@@ -9200,47 +9200,6 @@ function createChapelStoneBrickTexture({
   return texture;
 }
 
-function ChapelBrickPattern({ wall, z = 0, x = 0 }: { wall: "front" | "back" | "left" | "right" | "tower"; z?: number; x?: number }) {
-  const rotation: [number, number, number] = wall === "left" ? [0, Math.PI / 2, 0] : wall === "right" ? [0, -Math.PI / 2, 0] : [0, 0, 0];
-  const position: [number, number, number] = wall === "left"
-    ? [-35.45, 0, z]
-    : wall === "right"
-      ? [35.45, 0, z]
-      : [x, 0, wall === "back" ? -58.05 : wall === "tower" ? 58.72 : 41.98];
-  const courseWidth = wall === "left" || wall === "right" ? 92 : wall === "tower" ? 20 : wall === "back" ? 64 : 18;
-  const rowCount = wall === "tower" ? 14 : 10;
-  const verticalJoinCount = wall === "tower" ? 3 : wall === "front" ? 4 : 7;
-
-  return (
-    <group position={position} rotation={rotation}>
-      {Array.from({ length: rowCount }, (_, row) => (
-        <mesh key={`brick-course-${row}`} position={[0, 5.4 + row * 3.45, -0.18]} castShadow={false}>
-          <boxGeometry args={[courseWidth, 0.34, 0.2]} />
-          <meshBasicMaterial color="#17161b" transparent opacity={0.72} />
-        </mesh>
-      ))}
-      {Array.from({ length: rowCount * verticalJoinCount }, (_, index) => {
-        const row = Math.floor(index / verticalJoinCount);
-        const column = index % verticalJoinCount;
-        const spacing = courseWidth / verticalJoinCount;
-        const stagger = row % 2 === 0 ? spacing * 0.5 : 0;
-        return (
-          <mesh key={`brick-join-${index}`} position={[-courseWidth * 0.5 + spacing * (column + 1) + stagger, 7.05 + row * 3.45, -0.22]} castShadow={false}>
-            <boxGeometry args={[0.28, 2.65, 0.18]} />
-            <meshBasicMaterial color="#17161b" transparent opacity={0.66} />
-          </mesh>
-        );
-      })}
-      {Array.from({ length: wall === "tower" ? 18 : 28 }, (_, index) => (
-        <mesh key={`brick-highlight-${index}`} position={[-courseWidth * 0.42 + (index % 5) * (courseWidth / 5.2), 6.45 + Math.floor(index / 5) * 5.8, -0.26]} castShadow={false}>
-          <boxGeometry args={[courseWidth / (wall === "tower" ? 6.8 : 11.5), 0.22, 0.14]} />
-          <meshBasicMaterial color="#9a948d" transparent opacity={0.44} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
 function ChapelCrack({ position, rotation = [0, 0, 0], scale = 1 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number }) {
   return (
     <group position={position} rotation={rotation} scale={[scale, scale, scale]}>
@@ -9867,34 +9826,18 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
     }),
     [],
   );
-  const chapelTrimStoneTexture = useMemo(
-    () => createChapelStoneBrickTexture({
-      base: "#6f6961",
-      mid: "#7b746b",
-      light: "#898175",
-      mortar: "#25221f",
-      highlight: "#b2aa9f",
-      shadow: "#504a43",
-      chip: "#d0c5b6",
-      repeatX: 2,
-      repeatY: 1,
-    }),
-    [],
-  );
-
   useEffect(() => () => {
     chapelStoneTexture.dispose();
     chapelDarkStoneTexture.dispose();
-    chapelTrimStoneTexture.dispose();
-  }, [chapelDarkStoneTexture, chapelStoneTexture, chapelTrimStoneTexture]);
+  }, [chapelDarkStoneTexture, chapelStoneTexture]);
 
   const apronPieces = [
-    { key: "front-walk", position: [0, 1.08, 82], args: [34, 0.14, 46], texture: chapelDarkStoneTexture },
-    { key: "front-left", position: [-36, 1.07, 70], args: [18, 0.12, 28], texture: chapelDarkStoneTexture },
-    { key: "front-right", position: [36, 1.07, 70], args: [18, 0.12, 28], texture: chapelDarkStoneTexture },
-    { key: "left-side", position: [-47, 1.05, -8], args: [10, 0.12, 116], texture: chapelDarkStoneTexture },
-    { key: "right-side", position: [47, 1.05, -8], args: [10, 0.12, 116], texture: chapelDarkStoneTexture },
-    { key: "rear", position: [0, 1.05, -68], args: [94, 0.12, 12], texture: chapelDarkStoneTexture },
+    { key: "front-walk", position: [0, 1.08, 82], args: [34, 0.14, 46], color: "#24232a" },
+    { key: "front-left", position: [-36, 1.07, 70], args: [18, 0.12, 28], color: "#1d1c22" },
+    { key: "front-right", position: [36, 1.07, 70], args: [18, 0.12, 28], color: "#1d1c22" },
+    { key: "left-side", position: [-47, 1.05, -8], args: [10, 0.12, 116], color: "#1a1920" },
+    { key: "right-side", position: [47, 1.05, -8], args: [10, 0.12, 116], color: "#1a1920" },
+    { key: "rear", position: [0, 1.05, -68], args: [94, 0.12, 12], color: "#1a1920" },
   ] as const;
 
   return (
@@ -9903,7 +9846,7 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         {apronPieces.map((piece) => (
           <mesh key={`chapel-apron-${piece.key}`} position={piece.position} castShadow={false} receiveShadow>
             <boxGeometry args={piece.args} />
-            <meshBasicMaterial map={piece.texture} />
+            <meshBasicMaterial color={piece.color} />
           </mesh>
         ))}
       </group>
@@ -9974,10 +9917,6 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         <boxGeometry args={[20.2, 24, 0.32]} />
         <meshBasicMaterial color="#050403" transparent opacity={0.16} depthWrite={false} />
       </mesh>
-      <mesh position={[0, 25.1, 58.1]} castShadow={false}>
-        <boxGeometry args={[22.6, 2.2, 1.4]} />
-        <meshBasicMaterial map={chapelTrimStoneTexture} />
-      </mesh>
       <mesh position={[0, 0.98, 59.2]} castShadow={false}>
         <boxGeometry args={[21.5, 0.28, 4.2]} />
         <meshBasicMaterial color="#1d1711" />
@@ -10019,23 +9958,10 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
       ))}
       {showDetails && (
         <>
-          <ChapelBrickPattern wall="front" x={-25.1} />
-          <ChapelBrickPattern wall="front" x={25.1} />
-          <ChapelBrickPattern wall="tower" x={-13.7} />
-          <ChapelBrickPattern wall="tower" x={13.7} />
-          <ChapelBrickPattern wall="back" />
-          <ChapelBrickPattern wall="left" z={-22} />
-          <ChapelBrickPattern wall="right" z={-22} />
           <ChapelCrack position={[-24, 24, 42.16]} scale={1.12} />
           <ChapelCrack position={[23, 18, 58.92]} scale={0.86} />
           <ChapelCrack position={[-35.82, 25, 7]} rotation={[0, Math.PI / 2, 0]} scale={0.95} />
           <ChapelCrack position={[35.82, 16, -35]} rotation={[0, -Math.PI / 2, 0]} scale={1.18} />
-          {Array.from({ length: 7 }, (_, index) => (
-            <mesh key={`chapel-pixel-highlight-${index}`} position={[-28 + index * 9.4, 31.5 + (index % 2) * 2.6, 40.4]} castShadow={false}>
-              <boxGeometry args={[5.2, 0.5, 0.42]} />
-              <meshBasicMaterial color="#8e877e" transparent opacity={0.62} />
-            </mesh>
-          ))}
           <pointLight color="#f8d477" intensity={4.2} distance={54} decay={2} position={[0, 18, 59]} />
           <pointLight color="#f9cf71" intensity={3.5} distance={72} decay={2} position={[0, 18, -28]} />
         </>
