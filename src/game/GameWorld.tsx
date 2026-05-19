@@ -8437,7 +8437,7 @@ const MOUNTAIN_VILLAGE_TRAIL_TURNS = 0.42;
 const MOUNTAIN_VILLAGE_TRAIL_START_RADIUS = SURVIVAL_BLOCK_SIZE * 0.385;
 const MOUNTAIN_VILLAGE_TRAIL_END_RADIUS = 76;
 const MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET = 7.4;
-const MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS = MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 20;
+const MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS = MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 4;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -8502,6 +8502,7 @@ type MountainVillageLayout = {
   trailDeckGeometry: THREE.BufferGeometry;
   trailTopGeometry: THREE.BufferGeometry;
   trailColliderGeometry: THREE.BufferGeometry;
+  summitColliderGeometry: THREE.BufferGeometry;
   cabins: MountainVillageCabin[];
   hutInfos: HutInfo[];
   waterfall: MountainVillageWaterfall;
@@ -8534,6 +8535,25 @@ function getMountainVillageHeight(chunk: SurvivalChunkInfo, localX: number, loca
   const edgeBlend = smoothstepRange(MOUNTAIN_VILLAGE_EDGE_BLEND_START, SURVIVAL_BLOCK_SIZE / 2, radius);
 
   return lerpNumber(mountainHeight, naturalHeight, edgeBlend);
+}
+
+function getMountainVillageColliderHeight(chunk: SurvivalChunkInfo, localX: number, localZ: number, baseHeight = getSurvivalVillageBaseHeight(chunk)) {
+  const naturalHeight = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+  const radius = Math.hypot(localX, localZ);
+  const angle = Math.atan2(localX, localZ);
+  const raw = 1 - (radius - MOUNTAIN_VILLAGE_PLATEAU_RADIUS) / (MOUNTAIN_VILLAGE_RADIUS - MOUNTAIN_VILLAGE_PLATEAU_RADIUS);
+  const shoulder = Math.pow(smoothstep01(raw), 1.08);
+  const ridgeNoise = (
+    Math.sin(angle * 9 + radius * 0.053 + chunk.cx * 1.7) +
+    Math.cos(angle * 5 - radius * 0.037 + chunk.cz * 1.3)
+  ) * 0.7;
+  const roughness = (1 - smoothstepRange(82, MOUNTAIN_VILLAGE_RADIUS, radius)) * ridgeNoise;
+  const mountainHeight = baseHeight + shoulder * MOUNTAIN_VILLAGE_HEIGHT + roughness;
+  const edgeBlend = smoothstepRange(MOUNTAIN_VILLAGE_EDGE_BLEND_START, SURVIVAL_BLOCK_SIZE / 2, radius);
+  const plateauCutout = 1 - smoothstepRange(MOUNTAIN_VILLAGE_PLATEAU_RADIUS - 7, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 7, radius);
+  const hiddenUnderSummit = baseHeight + MOUNTAIN_VILLAGE_HEIGHT - 1.25;
+
+  return lerpNumber(lerpNumber(mountainHeight, naturalHeight, edgeBlend), hiddenUnderSummit, plateauCutout);
 }
 
 function getMountainVillageTrailAngleOffset(chunk: SurvivalChunkInfo) {
@@ -8620,6 +8640,21 @@ function makeMountainVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
   return geo;
 }
 
+function makeMountainVillageTerrainColliderGeometry(chunk: SurvivalChunkInfo) {
+  const segments = chunk.lod === "near" ? 34 : 24;
+  const baseHeight = getSurvivalVillageBaseHeight(chunk);
+  const geo = new THREE.PlaneGeometry(SURVIVAL_BLOCK_SIZE, SURVIVAL_BLOCK_SIZE, segments, segments);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+
+  for (let i = 0; i < pos.count; i += 1) {
+    pos.setY(i, getMountainVillageColliderHeight(chunk, pos.getX(i), pos.getZ(i), baseHeight));
+  }
+
+  geo.computeVertexNormals();
+  return geo;
+}
+
 function getMountainVillageTrailPoint(chunk: SurvivalChunkInfo, baseHeight: number, t: number) {
   const eased = Math.pow(smoothstep01(t), 0.86);
   const radius = lerpNumber(MOUNTAIN_VILLAGE_TRAIL_START_RADIUS, MOUNTAIN_VILLAGE_TRAIL_END_RADIUS, eased);
@@ -8628,7 +8663,7 @@ function getMountainVillageTrailPoint(chunk: SurvivalChunkInfo, baseHeight: numb
   const localX = Math.sin(angle) * radius;
   const localZ = Math.cos(angle) * radius;
   const stiltLift = smoothstepRange(0.02, 0.16, t) * (1 - smoothstepRange(0.84, 0.98, t));
-  const lift = lerpNumber(2.1, MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET, stiltLift) + Math.sin(t * Math.PI) * 1.1;
+  const lift = lerpNumber(0.35, MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET, stiltLift) + Math.sin(t * Math.PI) * 1.1;
   const y = getMountainVillageHeight(chunk, localX, localZ, baseHeight) + lift;
 
   return { localX, localZ, y, width: getMountainVillageTrailWidth(t), t };
@@ -8805,6 +8840,34 @@ function makeMountainVillageTrailDeckGeometry(points: MountainVillageTrailPoint[
   return geometry;
 }
 
+function makeMountainVillageSummitColliderGeometry(summitY: number) {
+  const segments = 56;
+  const y = summitY + 0.32;
+  const vertices = [0, y, 0];
+  const indices: number[] = [];
+
+  for (let index = 0; index < segments; index += 1) {
+    const angle = (index / segments) * Math.PI * 2;
+    vertices.push(
+      Math.sin(angle) * MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS,
+      y,
+      Math.cos(angle) * MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS,
+    );
+  }
+
+  for (let index = 0; index < segments; index += 1) {
+    const current = index + 1;
+    const next = ((index + 1) % segments) + 1;
+    indices.push(0, current, next);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number): MountainVillageLayout {
   const summitY = getMountainVillageHeight(chunk, 0, 0, baseHeight) + 0.18;
   const trailPoints = makeMountainVillageTrailPoints(chunk, baseHeight);
@@ -8878,6 +8941,7 @@ function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number)
     trailDeckGeometry: makeMountainVillageTrailDeckGeometry(trailPoints),
     trailTopGeometry: makeMountainVillageTrailSurfaceGeometry(trailPoints, 0.72, 0.53),
     trailColliderGeometry: makeMountainVillageTrailSurfaceGeometry(trailPoints, 0.82, 0.55),
+    summitColliderGeometry: makeMountainVillageSummitColliderGeometry(summitY),
     cabins,
     hutInfos,
     waterfall,
@@ -9162,11 +9226,11 @@ function MountainSnowCap({ summitY }: { summitY: number }) {
 
 function MountainVillageColliders({
   chunk,
-  terrainGeometry,
+  terrainColliderGeometry,
   layout,
 }: {
   chunk: SurvivalChunkInfo;
-  terrainGeometry: THREE.BufferGeometry;
+  terrainColliderGeometry: THREE.BufferGeometry;
   layout: MountainVillageLayout;
 }) {
   if (chunk.distance !== 0) return null;
@@ -9174,7 +9238,7 @@ function MountainVillageColliders({
   return (
     <>
       <RigidBody type="fixed" colliders="trimesh" friction={0.38} restitution={0} position={[chunk.x, 0, chunk.z]}>
-        <mesh geometry={terrainGeometry} dispose={null}>
+        <mesh geometry={terrainColliderGeometry} dispose={null}>
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       </RigidBody>
@@ -9183,17 +9247,17 @@ function MountainVillageColliders({
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       </RigidBody>
+      <RigidBody type="fixed" colliders="trimesh" friction={0.72} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        <mesh geometry={layout.summitColliderGeometry} dispose={null}>
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.72} restitution={0} position={[chunk.x, 0, chunk.z]}>
-        <CylinderCollider
-          args={[0.3, MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS]}
-          position={[0, layout.summitY + 0.12, 0]}
-        />
         {layout.cabins.map((cabin) => (
-          <CuboidCollider
+          <CylinderCollider
             key={`${cabin.key}-collider`}
-            args={[cabin.width / 2, cabin.height / 2, cabin.depth / 2]}
+            args={[cabin.height / 2, Math.max(5.25, Math.min(cabin.width, cabin.depth) * 0.38)]}
             position={[cabin.localX, layout.summitY + cabin.height / 2, cabin.localZ]}
-            rotation={[0, cabin.rotation, 0]}
           />
         ))}
       </RigidBody>
@@ -9204,13 +9268,14 @@ function MountainVillageColliders({
 function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
   const baseHeight = useMemo(() => getSurvivalVillageBaseHeight(chunk), [chunk]);
   const terrainGeometry = useMemo(() => makeMountainVillageTerrainGeometry(chunk), [chunk]);
+  const terrainColliderGeometry = useMemo(() => makeMountainVillageTerrainColliderGeometry(chunk), [chunk]);
   const layout = useMemo(() => makeMountainVillageLayout(chunk, baseHeight), [chunk, baseHeight]);
   const terrainTexture = useMemo(() => getSurvivalTerrainDetailTexture(), []);
   const showDetails = chunk.distance === 0;
 
   return (
     <>
-      <MountainVillageColliders chunk={chunk} terrainGeometry={terrainGeometry} layout={layout} />
+      <MountainVillageColliders chunk={chunk} terrainColliderGeometry={terrainColliderGeometry} layout={layout} />
       <group name={`survival-mountain-village-${chunk.key}`} position={[chunk.x, 0, chunk.z]}>
         <mesh geometry={terrainGeometry} receiveShadow={showDetails} dispose={null}>
           <meshBasicMaterial map={terrainTexture} vertexColors side={THREE.DoubleSide} />
