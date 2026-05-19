@@ -9540,36 +9540,13 @@ function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainM
         </Fragment>
       ))}
       {[-1, 1].map((side) => (
-        <Fragment key={`platform-rail-${side}`}>
-          <mesh position={[side * hut.platformWidth * 0.48, 1.42, platformZ]} castShadow={false}>
-            <boxGeometry args={[0.42, 1.4, hut.platformDepth * 0.88]} />
-            <meshBasicMaterial color="#23170f" />
-          </mesh>
-          <mesh position={[side * hut.platformWidth * 0.38, -2.0, platformZ - hut.platformDepth * 0.1]} rotation={[0, 0, side * 0.28]} castShadow={false}>
-            <boxGeometry args={[0.58, 4.8, 0.58]} />
-            <meshBasicMaterial color="#2d1e14" />
-          </mesh>
-        </Fragment>
+        <mesh key={`platform-support-${side}`} position={[side * hut.platformWidth * 0.38, -2.0, platformZ - hut.platformDepth * 0.1]} rotation={[0, 0, side * 0.28]} castShadow={false}>
+          <boxGeometry args={[0.58, 4.8, 0.58]} />
+          <meshBasicMaterial color="#2d1e14" />
+        </mesh>
       ))}
       {showDetails && (
         <>
-          {[-1, 1].map((side) => (
-            <Fragment key={`platform-rail-detail-${side}`}>
-              {Array.from({ length: 4 }, (_, postIndex) => {
-                const z = platformZ - hut.platformDepth * 0.3 + postIndex * ((hut.platformDepth * 0.62) / 3);
-                return (
-                  <mesh key={`rail-post-${postIndex}`} position={[side * hut.platformWidth * 0.48, 2.12, z]} castShadow={false}>
-                    <boxGeometry args={[0.56, 1.08, 0.42]} />
-                    <meshBasicMaterial color={postIndex % 2 === 0 ? "#2b1c12" : "#4d301b"} />
-                  </mesh>
-                );
-              })}
-              <mesh position={[side * hut.platformWidth * 0.48, 2.72, platformZ]} castShadow={false}>
-                <boxGeometry args={[0.56, 0.26, hut.platformDepth * 0.88]} />
-                <meshBasicMaterial color="#8d6238" />
-              </mesh>
-            </Fragment>
-          ))}
           <MountainMineshaftLightPole
             position={[poleSide * hut.platformWidth * 0.33, 0.78, platformZ + hut.platformDepth * 0.26]}
             direction={poleSide}
@@ -9707,6 +9684,9 @@ function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMine
 
 function MountainMineshaftCatwalkRing({ hut, showDetails }: { hut: MountainMineshaftHut; showDetails: boolean }) {
   const plankRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
+  const centerGuardRailRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 0.55;
+  const centerGuardPostCount = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS * 2;
+  const centerGuardRailSegmentLength = ((Math.PI * 2 * centerGuardRailRadius) / centerGuardPostCount) * 0.78;
   const lightPoleRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS + 0.95;
 
   return (
@@ -9730,20 +9710,37 @@ function MountainMineshaftCatwalkRing({ hut, showDetails }: { hut: MountainMines
       })}
       {showDetails && Array.from({ length: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS }, (_, index) => {
         const angle = ((index + 0.5) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
-        const radius = index % 2 === 0 ? MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 0.55 : MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS - 0.55;
 
         return (
-          <mesh key={`catwalk-edge-block-${index}`} position={[Math.sin(angle) * radius, 0.46, Math.cos(angle) * radius]} rotation={[0, angle, 0]} castShadow={false}>
+          <mesh key={`catwalk-edge-block-${index}`} position={[Math.sin(angle) * centerGuardRailRadius, 0.46, Math.cos(angle) * centerGuardRailRadius]} rotation={[0, angle, 0]} castShadow={false}>
             <boxGeometry args={[0.68, 0.34, 0.54]} />
             <meshBasicMaterial color={index % 3 === 0 ? "#9b6a3b" : "#2f1e13"} />
           </mesh>
         );
       })}
-      {showDetails && [MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS].map((radius, railIndex) => (
-        <mesh key={`catwalk-rail-${railIndex}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 1.05, 0]} castShadow={false}>
-          <ringGeometry args={[radius - 0.14, radius + 0.14, 64]} />
-          <meshBasicMaterial color="#24170f" side={THREE.DoubleSide} />
-        </mesh>
+      {showDetails && Array.from({ length: centerGuardPostCount }, (_, index) => {
+        const angle = (index / centerGuardPostCount) * Math.PI * 2;
+
+        return (
+          <mesh key={`catwalk-center-guard-post-${index}`} position={[Math.sin(angle) * centerGuardRailRadius, 1.18, Math.cos(angle) * centerGuardRailRadius]} rotation={[0, angle, 0]} castShadow={false}>
+            <boxGeometry args={[0.42, 1.48, 0.42]} />
+            <meshBasicMaterial color={index % 2 === 0 ? "#2b1c12" : "#4d301b"} />
+          </mesh>
+        );
+      })}
+      {showDetails && [0.86, 1.55, 2.08].map((height, railIndex) => (
+        <Fragment key={`catwalk-center-guard-rail-row-${railIndex}`}>
+          {Array.from({ length: centerGuardPostCount }, (_, index) => {
+            const angle = ((index + 0.5) / centerGuardPostCount) * Math.PI * 2;
+
+            return (
+              <mesh key={`rail-${index}`} position={[Math.sin(angle) * centerGuardRailRadius, height, Math.cos(angle) * centerGuardRailRadius]} rotation={[0, angle, 0]} castShadow={false}>
+                <boxGeometry args={[centerGuardRailSegmentLength, 0.24, railIndex === 0 ? 0.32 : 0.28]} />
+                <meshBasicMaterial color={railIndex === 1 ? "#8d6238" : "#24170f"} />
+              </mesh>
+            );
+          })}
+        </Fragment>
       ))}
       {showDetails && Array.from({ length: 4 }, (_, index) => {
         const angle = hut.angle + index * Math.PI / 2 + 0.38;
