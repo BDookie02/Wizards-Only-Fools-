@@ -9283,6 +9283,7 @@ function RetroVerticalTimberDetails({
           <meshBasicMaterial color={index === 0 ? darkColor : lightColor} transparent opacity={0.82} />
         </mesh>
       ))}
+      <RetroPixelWoodTexture width={width * 0.82} height={height * 0.86} z={z + 0.12} count={Math.max(5, Math.min(14, Math.floor(height / 2.8)))} seed={Math.floor(height + width * 5)} dark />
       {[-1, 1].map((side) => (
         <mesh key={`timber-dark-edge-${side}`} position={[side * (width / 2 + 0.03), 0, z + 0.02]} castShadow={false}>
           <boxGeometry args={[0.12, height * 0.92, 0.1]} />
@@ -9339,6 +9340,7 @@ function RetroHorizontalTimberDetails({
           <meshBasicMaterial color={darkColor} transparent opacity={index === 0 ? 0.72 : 0.46} />
         </mesh>
       ))}
+      <RetroPixelWoodTexture width={length * 0.86} height={height * 0.86} z={z + 0.12} count={Math.max(6, Math.min(16, Math.floor(length / 2.8)))} seed={Math.floor(length + height * 9)} dark />
       {[-1, 1].map((side) => (
         <mesh key={`horizontal-end-shadow-${side}`} position={[side * (length / 2 + 0.02), 0, z + 0.04]} castShadow={false}>
           <boxGeometry args={[0.16, height + 0.16, 0.12]} />
@@ -9350,6 +9352,122 @@ function RetroHorizontalTimberDetails({
         <meshBasicMaterial color="#090604" transparent opacity={0.58} />
       </mesh>
     </>
+  );
+}
+
+function RetroPixelWoodTexture({
+  width,
+  height,
+  z = 0.08,
+  count = 10,
+  seed = 0,
+  dark = false,
+}: {
+  width: number;
+  height: number;
+  z?: number;
+  count?: number;
+  seed?: number;
+  dark?: boolean;
+}) {
+  const colors = dark ? ["#0a0604", "#1a100a", "#2f1d11", "#4d301b"] : ["#1b1009", "#3c2415", "#704627", "#b47a3f"];
+
+  return (
+    <>
+      {Array.from({ length: count }, (_, index) => {
+        const t = ((index * 37 + seed * 19) % 100) / 100;
+        const u = ((index * 53 + seed * 11) % 100) / 100;
+        const x = -width * 0.42 + t * width * 0.84;
+        const y = -height * 0.38 + u * height * 0.76;
+        const pieceWidth = width * (0.09 + ((index + seed) % 3) * 0.045);
+        const pieceHeight = Math.max(0.08, height * (0.025 + (index % 2) * 0.012));
+
+        return (
+          <mesh key={`pixel-wood-${index}`} position={[x, y, z]} castShadow={false}>
+            <boxGeometry args={[pieceWidth, pieceHeight, 0.08]} />
+            <meshBasicMaterial color={colors[(index + seed) % colors.length]} transparent opacity={dark ? 0.76 : 0.68} />
+          </mesh>
+        );
+      })}
+      {Array.from({ length: Math.max(2, Math.floor(count / 4)) }, (_, index) => {
+        const t = ((index * 29 + seed * 7) % 100) / 100;
+        const u = ((index * 41 + seed * 13) % 100) / 100;
+
+        return (
+          <mesh key={`pixel-knot-${index}`} position={[-width * 0.36 + t * width * 0.72, -height * 0.32 + u * height * 0.64, z + 0.02]} castShadow={false}>
+            <boxGeometry args={[Math.max(0.28, width * 0.08), Math.max(0.18, height * 0.035), 0.1]} />
+            <meshBasicMaterial color="#090604" transparent opacity={0.72} />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
+function MountainHutDoorPanel({
+  doorWidth,
+  doorHeight,
+  floorY,
+  frontZ,
+  compact = false,
+}: {
+  doorWidth: number;
+  doorHeight: number;
+  floorY: number;
+  frontZ: number;
+  compact?: boolean;
+}) {
+  const panelWidth = doorWidth * 0.86;
+  const panelHeight = doorHeight * 0.84;
+  const boardCount = compact ? 3 : 4;
+  const boardWidth = panelWidth / boardCount;
+  const panelY = floorY + doorHeight * 0.46;
+  const panelZ = frontZ + 0.42;
+
+  return (
+    <group name="solid-pixel-wood-door">
+      <mesh position={[0, panelY, panelZ - 0.04]} castShadow={false}>
+        <boxGeometry args={[panelWidth + 0.28, panelHeight + 0.22, 0.32]} />
+        <meshBasicMaterial color="#1b1009" />
+      </mesh>
+      {Array.from({ length: boardCount }, (_, index) => {
+        const x = -panelWidth / 2 + boardWidth * (index + 0.5);
+
+        return (
+          <group key={`door-board-${index}`} position={[x, panelY, panelZ]}>
+            <mesh castShadow={false}>
+              <boxGeometry args={[boardWidth + 0.04, panelHeight, 0.24]} />
+              <meshBasicMaterial color={index % 2 === 0 ? "#6f4528" : "#4c2e1a"} />
+            </mesh>
+            <RetroPixelWoodTexture width={boardWidth * 0.88} height={panelHeight * 0.92} z={0.16} count={compact ? 5 : 7} seed={index + (compact ? 8 : 2)} />
+          </group>
+        );
+      })}
+      {Array.from({ length: boardCount + 1 }, (_, index) => {
+        const x = -panelWidth / 2 + index * boardWidth;
+
+        return (
+          <mesh key={`door-board-gap-${index}`} position={[x, panelY, panelZ + 0.18]} castShadow={false}>
+            <boxGeometry args={[0.1, panelHeight * 0.96, 0.1]} />
+            <meshBasicMaterial color="#080504" />
+          </mesh>
+        );
+      })}
+      {[0.31, 0.64].map((heightRatio, index) => (
+        <mesh key={`door-cross-brace-${index}`} position={[0, floorY + doorHeight * heightRatio, panelZ + 0.24]} castShadow={false}>
+          <boxGeometry args={[panelWidth + 0.42, 0.42, 0.2]} />
+          <meshBasicMaterial color={index === 0 ? "#2a180d" : "#9a6333"} />
+        </mesh>
+      ))}
+      <mesh position={[panelWidth * 0.24, floorY + doorHeight * 0.5, panelZ + 0.34]} castShadow={false}>
+        <boxGeometry args={[0.36, 0.36, 0.22]} />
+        <meshBasicMaterial color="#d0a05d" />
+      </mesh>
+      <mesh position={[0, floorY + doorHeight + 0.08, panelZ + 0.08]} castShadow={false}>
+        <boxGeometry args={[panelWidth + 0.72, 0.24, 0.16]} />
+        <meshBasicMaterial color="#070504" transparent opacity={0.78} />
+      </mesh>
+    </group>
   );
 }
 
@@ -9378,6 +9496,7 @@ function MountainHutWallDetails({
   const sidePlankCount = compact ? 4 : 5;
   const lowerBandY = floorY + 1.2;
   const upperBandY = floorY + height - 1.2;
+  const frontPanelWidth = Math.max(1.2, (width - doorWidth) / 2);
 
   return (
     <>
@@ -9438,24 +9557,12 @@ function MountainHutWallDetails({
         <boxGeometry args={[width + 1.1, 0.3, 0.2]} />
         <meshBasicMaterial color="#100b07" transparent opacity={0.68} />
       </mesh>
-      {Array.from({ length: 3 }, (_, index) => {
-        const x = -doorWidth * 0.25 + index * doorWidth * 0.25;
-
-        return (
-          <mesh key={`door-plank-${index}`} position={[x, floorY + doorHeight / 2, frontZ + 0.32]} castShadow={false}>
-            <boxGeometry args={[0.1, doorHeight * 0.68, 0.12]} />
-            <meshBasicMaterial color={index === 1 ? "#7c5534" : "#11100d"} transparent opacity={0.86} />
-          </mesh>
-        );
-      })}
-      <mesh position={[doorWidth * 0.22, floorY + doorHeight * 0.48, frontZ + 0.42]} castShadow={false}>
-        <boxGeometry args={[0.34, 0.34, 0.2]} />
-        <meshBasicMaterial color="#d0a05d" />
-      </mesh>
-      <mesh position={[0, floorY + doorHeight + 0.08, frontZ + 0.44]} castShadow={false}>
-        <boxGeometry args={[doorWidth + 1.3, 0.24, 0.16]} />
-        <meshBasicMaterial color="#070504" transparent opacity={0.78} />
-      </mesh>
+      {[-1, 1].map((side) => (
+        <group key={`front-wall-pixel-wood-${side}`} position={[side * (doorWidth / 2 + frontPanelWidth / 2), floorY + height / 2, frontZ + 0.36]}>
+          <RetroPixelWoodTexture width={frontPanelWidth * 0.82} height={height * 0.78} z={0} count={compact ? 7 : 10} seed={side > 0 ? 4 : 9} dark />
+        </group>
+      ))}
+      <MountainHutDoorPanel doorWidth={doorWidth} doorHeight={doorHeight} floorY={floorY} frontZ={frontZ} compact={compact} />
     </>
   );
 }
@@ -9723,6 +9830,10 @@ function MountainCabin({ cabin, summitY, showDetails }: { cabin: MountainVillage
       <mesh position={[0, doorHeight + lintelHeight / 2, frontZ]} castShadow={false} receiveShadow>
         <boxGeometry args={[doorWidth, lintelHeight, wallThickness]} />
         <meshBasicMaterial color={cabin.bodyColor} />
+      </mesh>
+      <mesh position={[0, doorHeight * 0.46, cabin.depth / 2 + 0.16]} castShadow={false}>
+        <boxGeometry args={[doorWidth * 0.84, doorHeight * 0.86, 0.32]} />
+        <meshBasicMaterial color="#4c2e1a" />
       </mesh>
       <mesh position={[0, cabin.height + 4.2, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false} receiveShadow>
         <coneGeometry args={[Math.max(cabin.width, cabin.depth) * 0.78, 9.2, 4]} />
