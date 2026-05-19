@@ -550,6 +550,18 @@ function isPointerLockSecurityError(reason: unknown) {
   return /pointer lock|pointerlock/i.test(message);
 }
 
+function isPermanentPointerLockRejection(reason: unknown) {
+  if (!reason) return false;
+
+  const message = typeof reason === "string"
+    ? reason
+    : reason instanceof Error
+      ? `${reason.name}: ${reason.message}`
+      : String(reason);
+
+  return /pointer lock|pointerlock/i.test(message) && /sandbox|permission|policy|iframe|frame|allow/i.test(message);
+}
+
 function wrapIndex(index: number, count: number) {
   if (count <= 0) return 0;
   return ((index % count) + count) % count;
@@ -2014,7 +2026,11 @@ export function HUD() {
   const pointerLockUnavailableRef = useRef(false);
   const pointerLockRequestIdRef = useRef(0);
   const pointerLockResumeGraceUntilRef = useRef(0);
-  const pauseMenuRequestedRef = useRef(false);
+  const pauseMenuRequestedRef = useRef(
+    useGameStore.getState().isGameLaunched &&
+    !useGameStore.getState().isControllerGameplayActive &&
+    !useGameStore.getState().isTouchControlsActive
+  );
   const commandConsoleShouldRelockRef = useRef(false);
   const lastGameplayInputModeRef = useRef<GameplayInputMode>(
     useGameStore.getState().isControllerGameplayActive
@@ -2119,7 +2135,8 @@ export function HUD() {
   const touchGameplayActive = isTouchDevice && isTouchControlsActive;
   const controllerGameplayActive = isControllerGameplayActive;
   const isDevSurvivalObserver = import.meta.env.DEV && new URLSearchParams(window.location.search).get("qaSurvival") === "1";
-  const mouseGameplayActive = isLocked || (!pauseMenuRequestedRef.current && typeof document !== "undefined" && document.pointerLockElement !== null);
+  const hasPointerLock = typeof document !== "undefined" && document.pointerLockElement !== null;
+  const mouseGameplayActive = !pauseMenuRequestedRef.current && hasPointerLock;
   const isGameplayActive = mouseGameplayActive || touchGameplayActive || controllerGameplayActive;
   const isResumePauseOverlayRequested = isGameLaunched
     && startMenuStage === "resume"
@@ -2587,7 +2604,8 @@ export function HUD() {
         finishMouseGameplayResume();
       } else {
         if (!pauseMenuRequestedRef.current && performance.now() < pointerLockResumeGraceUntilRef.current) {
-          setIsLocked(true);
+          document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+          setCanLock(true);
           return;
         }
         document.documentElement.classList.remove("wizards-mouse-gameplay-active");
@@ -2828,7 +2846,7 @@ export function HUD() {
 
     const handlePointerLockDenied = (reason?: unknown) => {
       if (pointerLockRequestIdRef.current !== requestId) return;
-      if (isPointerLockSecurityError(reason)) {
+      if (isPermanentPointerLockRejection(reason) || !canRequestPointerLockHere()) {
         pointerLockUnavailableRef.current = true;
       }
       pauseMenuRequestedRef.current = true;
@@ -2854,12 +2872,18 @@ export function HUD() {
 
     try {
       setCanLock(false);
-      setIsLocked(true);
+      setIsLocked(false);
       pointerLockResumeGraceUntilRef.current = performance.now() + 1800;
       setPauseOverlayOpen(false);
       setPauseMenuOpen(false);
-      document.documentElement.classList.add("wizards-mouse-gameplay-active");
-      const request = (lockTarget as HTMLElement & { requestPointerLock?: () => Promise<void> | void }).requestPointerLock?.();
+      setIsReturningToGame(true);
+      const requestPointerLock = (lockTarget as HTMLElement & { requestPointerLock?: () => Promise<void> | void }).requestPointerLock;
+      if (!requestPointerLock) {
+        pointerLockUnavailableRef.current = true;
+        handlePointerLockDenied();
+        return false;
+      }
+      const request = requestPointerLock.call(lockTarget);
       if (request && typeof request.catch === "function") {
         request.then(handlePointerLockGranted).catch(handlePointerLockDenied);
       } else {
@@ -3070,12 +3094,11 @@ export function HUD() {
       return;
     }
 
-    document.documentElement.classList.add("wizards-mouse-gameplay-active");
     pointerLockResumeGraceUntilRef.current = performance.now() + 1800;
-    setIsLocked(true);
+    setIsLocked(false);
     setPauseMenuOpen(false);
     setIsReturningToGame(true);
-    window.setTimeout(requestGamePointerLock, 0);
+    requestGamePointerLock();
   };
 
   const cycleLobbyMap = (direction: 1 | -1) => {
@@ -3141,9 +3164,8 @@ export function HUD() {
 
     if (canLock) {
       pauseMenuRequestedRef.current = false;
-      document.documentElement.classList.add("wizards-mouse-gameplay-active");
       pointerLockResumeGraceUntilRef.current = performance.now() + 1800;
-      setIsLocked(true);
+      setIsLocked(false);
       setPauseOverlayOpen(false);
       setPauseMenuOpen(false);
       setIsReturningToGame(true);
