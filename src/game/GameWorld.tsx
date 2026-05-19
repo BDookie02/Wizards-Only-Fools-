@@ -710,7 +710,7 @@ type SurvivalChunkInfo = {
   lod: "near" | "mid" | "far";
 };
 
-type SurvivalVillageKind = "desert" | "swamp" | "chicago";
+type SurvivalVillageKind = "desert" | "swamp" | "chicago" | "mountain";
 
 const SURVIVAL_RENDER_RADIUS = 2;
 const SURVIVAL_NEAR_RADIUS = 1;
@@ -1277,7 +1277,7 @@ function getSurvivalVillageKindForChunk(biome: SurvivalBiome, cx: number, cz: nu
   if (isChicagoChunk(cx, cz)) return "chicago";
   if (biome === "desert") return "desert";
   if (biome === "swamp") return "swamp";
-  return null;
+  return "mountain";
 }
 
 export type SurvivalManaWellSource = {
@@ -8429,6 +8429,518 @@ function SurvivalSwampVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
   );
 }
 
+const MOUNTAIN_VILLAGE_RADIUS = SURVIVAL_BLOCK_SIZE * 0.49;
+const MOUNTAIN_VILLAGE_EDGE_BLEND_START = SURVIVAL_BLOCK_SIZE * 0.43;
+const MOUNTAIN_VILLAGE_HEIGHT = 214;
+const MOUNTAIN_VILLAGE_PLATEAU_RADIUS = 92;
+const MOUNTAIN_VILLAGE_TRAIL_TURNS = 3.45;
+const MOUNTAIN_VILLAGE_TRAIL_START_RADIUS = SURVIVAL_BLOCK_SIZE * 0.445;
+const MOUNTAIN_VILLAGE_TRAIL_END_RADIUS = 104;
+
+type MountainVillageTrailSegment = {
+  key: string;
+  localX: number;
+  localZ: number;
+  y: number;
+  yaw: number;
+  slope: number;
+  width: number;
+  length: number;
+  index: number;
+};
+
+type MountainVillageCabin = {
+  key: string;
+  localX: number;
+  localZ: number;
+  rotation: number;
+  width: number;
+  depth: number;
+  height: number;
+  bodyColor: string;
+  roofColor: string;
+  accentColor: string;
+};
+
+type MountainVillageWaterfall = {
+  angle: number;
+  topX: number;
+  topZ: number;
+  topY: number;
+  bottomX: number;
+  bottomZ: number;
+  bottomY: number;
+  width: number;
+};
+
+type MountainVillageLayout = {
+  baseHeight: number;
+  summitY: number;
+  trailSegments: MountainVillageTrailSegment[];
+  cabins: MountainVillageCabin[];
+  hutInfos: HutInfo[];
+  waterfall: MountainVillageWaterfall;
+};
+
+function getMountainVillageRadialLift(radius: number) {
+  if (radius <= MOUNTAIN_VILLAGE_PLATEAU_RADIUS) return MOUNTAIN_VILLAGE_HEIGHT;
+
+  const raw = 1 - (radius - MOUNTAIN_VILLAGE_PLATEAU_RADIUS) / (MOUNTAIN_VILLAGE_RADIUS - MOUNTAIN_VILLAGE_PLATEAU_RADIUS);
+  const shoulder = Math.pow(smoothstep01(raw), 1.12);
+  const terraced = Math.floor(shoulder * 9) / 9;
+  return lerpNumber(shoulder, terraced, 0.16) * MOUNTAIN_VILLAGE_HEIGHT;
+}
+
+function getMountainVillageHeight(chunk: SurvivalChunkInfo, localX: number, localZ: number, baseHeight = getSurvivalVillageBaseHeight(chunk)) {
+  const naturalHeight = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+  const radius = Math.hypot(localX, localZ);
+  const angle = Math.atan2(localX, localZ);
+  const lift = getMountainVillageRadialLift(radius);
+  const ridgeNoise = (
+    Math.sin(angle * 9 + radius * 0.053 + chunk.cx * 1.7) +
+    Math.cos(angle * 5 - radius * 0.037 + chunk.cz * 1.3)
+  ) * 2.6;
+  const cliffBands = Math.max(0, Math.sin(radius * 0.19 + angle * 4.2)) * 2.1;
+  const roughness = (1 - smoothstepRange(72, MOUNTAIN_VILLAGE_RADIUS, radius)) * (ridgeNoise + cliffBands);
+  const plateauNoise = radius < MOUNTAIN_VILLAGE_PLATEAU_RADIUS
+    ? Math.sin(localX * 0.06 + chunk.cx) * 0.55 + Math.cos(localZ * 0.052 - chunk.cz) * 0.45
+    : 0;
+  const mountainHeight = baseHeight + lift + roughness + plateauNoise;
+  const edgeBlend = smoothstepRange(MOUNTAIN_VILLAGE_EDGE_BLEND_START, SURVIVAL_BLOCK_SIZE / 2, radius);
+
+  return lerpNumber(mountainHeight, naturalHeight, edgeBlend);
+}
+
+function getMountainVillageTerrainColor(chunk: SurvivalChunkInfo, localX: number, localZ: number, height: number, baseHeight: number) {
+  const worldX = chunk.x + localX;
+  const worldZ = chunk.z + localZ;
+  const radius = Math.hypot(localX, localZ);
+  const lift = height - baseHeight;
+  const naturalColor = getSurvivalTerrainColor(worldX, worldZ, getSurvivalTerrainHeightForChunk(chunk, localX, localZ));
+  const stone = new THREE.Color("#5f6668");
+  const darkStone = new THREE.Color("#34393b");
+  const summitStone = new THREE.Color("#8d9aa0");
+  const snow = new THREE.Color("#eef8ff");
+  const ice = new THREE.Color("#a7d8ef");
+  const moss = new THREE.Color("#3d6344");
+  const snowMix = smoothstepRange(MOUNTAIN_VILLAGE_HEIGHT * 0.66, MOUNTAIN_VILLAGE_HEIGHT * 0.94, lift);
+  const cliffMix = smoothstepRange(20, 130, lift);
+  const plateauMix = 1 - smoothstepRange(MOUNTAIN_VILLAGE_PLATEAU_RADIUS - 8, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 18, radius);
+  const edgeBlend = smoothstepRange(MOUNTAIN_VILLAGE_EDGE_BLEND_START, SURVIVAL_BLOCK_SIZE / 2, radius);
+  const vein = Math.max(0, Math.sin(radius * 0.21 + localX * 0.018 - localZ * 0.024));
+
+  const color = naturalColor
+    .clone()
+    .lerp(moss, 0.18 * (1 - cliffMix))
+    .lerp(stone, cliffMix * 0.78)
+    .lerp(darkStone, vein * cliffMix * 0.18)
+    .lerp(summitStone, plateauMix * 0.42)
+    .lerp(snow, snowMix * 0.82)
+    .lerp(ice, snowMix * vein * 0.18);
+
+  return color.lerp(naturalColor, edgeBlend);
+}
+
+function makeMountainVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
+  const segments = chunk.lod === "near" ? 54 : 30;
+  const baseHeight = getSurvivalVillageBaseHeight(chunk);
+  const geo = new THREE.PlaneGeometry(SURVIVAL_BLOCK_SIZE, SURVIVAL_BLOCK_SIZE, segments, segments);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const colors: number[] = [];
+
+  for (let i = 0; i < pos.count; i += 1) {
+    const localX = pos.getX(i);
+    const localZ = pos.getZ(i);
+    const height = getMountainVillageHeight(chunk, localX, localZ, baseHeight);
+    const color = getMountainVillageTerrainColor(chunk, localX, localZ, height, baseHeight);
+    pos.setY(i, height);
+    colors.push(color.r, color.g, color.b);
+  }
+
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function getMountainVillageTrailPoint(chunk: SurvivalChunkInfo, baseHeight: number, t: number) {
+  const eased = smoothstep01(t);
+  const radius = lerpNumber(MOUNTAIN_VILLAGE_TRAIL_START_RADIUS, MOUNTAIN_VILLAGE_TRAIL_END_RADIUS, eased);
+  const angleOffset = survivalHash01(chunk.cx, chunk.cz, 4420) * Math.PI * 2;
+  const angle = angleOffset + t * MOUNTAIN_VILLAGE_TRAIL_TURNS * Math.PI * 2;
+  const localX = Math.sin(angle) * radius;
+  const localZ = Math.cos(angle) * radius;
+  const y = getMountainVillageHeight(chunk, localX, localZ, baseHeight) + 1.05;
+
+  return { localX, localZ, y };
+}
+
+function makeMountainVillageTrailSegments(chunk: SurvivalChunkInfo, baseHeight: number): MountainVillageTrailSegment[] {
+  const segmentCount = chunk.lod === "near" ? 72 : 46;
+  const points = Array.from({ length: segmentCount + 1 }, (_, index) => (
+    getMountainVillageTrailPoint(chunk, baseHeight, index / segmentCount)
+  ));
+
+  return points.slice(0, -1).map((point, index) => {
+    const next = points[index + 1];
+    const dx = next.localX - point.localX;
+    const dz = next.localZ - point.localZ;
+    const dy = next.y - point.y;
+    const horizontalLength = Math.max(0.1, Math.hypot(dx, dz));
+    const midpoint = {
+      localX: (point.localX + next.localX) / 2,
+      localZ: (point.localZ + next.localZ) / 2,
+      y: (point.y + next.y) / 2,
+    };
+
+    return {
+      key: `${chunk.key}-mountain-trail-${index}`,
+      ...midpoint,
+      yaw: Math.atan2(dx, dz),
+      slope: Math.atan2(dy, horizontalLength),
+      width: lerpNumber(22, 16, index / segmentCount),
+      length: horizontalLength * 1.18,
+      index,
+    };
+  });
+}
+
+function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number): MountainVillageLayout {
+  const summitY = getMountainVillageHeight(chunk, 0, 0, baseHeight) + 0.18;
+  const cabinCount = chunk.lod === "near" ? 8 : 5;
+  const bodyColors = ["#584633", "#64513d", "#4f4538", "#6b573f"];
+  const roofColors = ["#dceefa", "#cfe4f3", "#edf7ff", "#b9d3e8"];
+  const accentColors = ["#82d8ff", "#f5d28a", "#bce7ff", "#d6f4ff"];
+  const cabins: MountainVillageCabin[] = Array.from({ length: cabinCount }, (_, index) => {
+    const angle = (Math.PI * 2 * index) / cabinCount + 0.28 + survivalHash01(chunk.cx, chunk.cz, 4480) * 0.2;
+    const ring = 59 + (index % 2) * 12 + survivalHash01(chunk.cx, chunk.cz, 4510 + index) * 7;
+    const width = 17 + survivalHash01(chunk.cx, chunk.cz, 4540 + index) * 7;
+    const depth = 15 + survivalHash01(chunk.cx, chunk.cz, 4570 + index) * 6;
+    const height = 9 + survivalHash01(chunk.cx, chunk.cz, 4600 + index) * 4;
+
+    return {
+      key: `${chunk.key}-mountain-cabin-${index}`,
+      localX: Math.sin(angle) * ring,
+      localZ: Math.cos(angle) * ring,
+      rotation: angle + Math.PI,
+      width,
+      depth,
+      height,
+      bodyColor: bodyColors[index % bodyColors.length],
+      roofColor: roofColors[(index + Math.floor(survivalHash01(chunk.cx, chunk.cz, 4610) * roofColors.length)) % roofColors.length],
+      accentColor: accentColors[index % accentColors.length],
+    };
+  });
+  const hutInfos: HutInfo[] = cabins.map((cabin, index) => ({
+    id: `${chunk.key}-mountain-hut-${index}`,
+    x: chunk.x + cabin.localX,
+    y: summitY,
+    z: chunk.z + cabin.localZ,
+    hutType: 2,
+    colorIndex: index % 4,
+    rotation: cabin.rotation,
+    hasPath: true,
+    pathRot: cabin.rotation,
+    isMushroom: false,
+    interiorWidth: cabin.width,
+    interiorDepth: cabin.depth,
+    interiorHeight: cabin.height,
+    villagerBackOffset: -Math.max(cabin.depth * 0.42, 7.5),
+    villagerSideOffset: (index % 2 === 0 ? -1 : 1) * 1.25,
+    villagerYOffset: 0.95,
+    villagerTheme: "village",
+  }));
+  const waterfallAngle = -Math.PI * 0.28 + survivalHash01(chunk.cx, chunk.cz, 4700) * 0.52;
+  const topRadius = 112;
+  const bottomRadius = MOUNTAIN_VILLAGE_TRAIL_START_RADIUS + 8;
+  const topX = Math.sin(waterfallAngle) * topRadius;
+  const topZ = Math.cos(waterfallAngle) * topRadius;
+  const bottomX = Math.sin(waterfallAngle) * bottomRadius;
+  const bottomZ = Math.cos(waterfallAngle) * bottomRadius;
+  const waterfall: MountainVillageWaterfall = {
+    angle: waterfallAngle,
+    topX,
+    topZ,
+    topY: getMountainVillageHeight(chunk, topX, topZ, baseHeight) + 4.8,
+    bottomX,
+    bottomZ,
+    bottomY: getMountainVillageHeight(chunk, bottomX, bottomZ, baseHeight) + 1.25,
+    width: 12 + survivalHash01(chunk.cx, chunk.cz, 4730) * 7,
+  };
+
+  return {
+    baseHeight,
+    summitY,
+    trailSegments: makeMountainVillageTrailSegments(chunk, baseHeight),
+    cabins,
+    hutInfos,
+    waterfall,
+  };
+}
+
+function MountainVillageTrail({ segments, showDetails }: { segments: MountainVillageTrailSegment[]; showDetails: boolean }) {
+  return (
+    <group name="mountain-village-wrapping-trail">
+      {segments.map((segment) => (
+        <group key={segment.key} position={[segment.localX, segment.y, segment.localZ]} rotation={[segment.slope, segment.yaw, 0]}>
+          <mesh castShadow={false} receiveShadow>
+            <boxGeometry args={[segment.width, 0.72, segment.length]} />
+            <meshBasicMaterial color={segment.index % 2 === 0 ? "#7c6a50" : "#6e5e48"} />
+          </mesh>
+          <mesh position={[0, 0.42, 0]} castShadow={false}>
+            <boxGeometry args={[segment.width * 0.92, 0.12, segment.length * 0.92]} />
+            <meshBasicMaterial color="#a18d66" transparent opacity={0.54} />
+          </mesh>
+          {showDetails && segment.index % 4 === 0 && (
+            <>
+              <mesh position={[-segment.width / 2 + 1.2, 1.28, 0]} castShadow={false}>
+                <boxGeometry args={[0.55, 2.25, Math.min(7.5, segment.length * 0.55)]} />
+                <meshBasicMaterial color="#3a2a1d" />
+              </mesh>
+              <mesh position={[segment.width / 2 - 1.2, 1.28, 0]} castShadow={false}>
+                <boxGeometry args={[0.55, 2.25, Math.min(7.5, segment.length * 0.55)]} />
+                <meshBasicMaterial color="#3a2a1d" />
+              </mesh>
+              <mesh position={[0, 1.82, 0]} castShadow={false}>
+                <boxGeometry args={[segment.width - 1.6, 0.28, 0.52]} />
+                <meshBasicMaterial color="#4a3726" />
+              </mesh>
+            </>
+          )}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function MountainCabin({ cabin, summitY, showDetails }: { cabin: MountainVillageCabin; summitY: number; showDetails: boolean }) {
+  return (
+    <group position={[cabin.localX, summitY, cabin.localZ]} rotation={[0, cabin.rotation, 0]}>
+      <mesh position={[0, cabin.height / 2, 0]} castShadow={false} receiveShadow>
+        <boxGeometry args={[cabin.width, cabin.height, cabin.depth]} />
+        <meshBasicMaterial color={cabin.bodyColor} />
+      </mesh>
+      <mesh position={[0, cabin.height + 4.2, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false} receiveShadow>
+        <coneGeometry args={[Math.max(cabin.width, cabin.depth) * 0.78, 9.2, 4]} />
+        <meshBasicMaterial color={cabin.roofColor} />
+      </mesh>
+      <mesh position={[0, cabin.height + 8.9, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
+        <coneGeometry args={[Math.max(cabin.width, cabin.depth) * 0.34, 3.4, 4]} />
+        <meshBasicMaterial color="#f8fdff" />
+      </mesh>
+      <mesh position={[0, 3.1, cabin.depth / 2 + 0.12]} castShadow={false}>
+        <boxGeometry args={[4.8, 6.2, 0.45]} />
+        <meshBasicMaterial color="#251a12" />
+      </mesh>
+      {showDetails && (
+        <>
+          <mesh position={[-cabin.width * 0.27, 5.9, cabin.depth / 2 + 0.16]} castShadow={false}>
+            <boxGeometry args={[3.4, 2.8, 0.36]} />
+            <meshBasicMaterial color={cabin.accentColor} transparent opacity={0.88} />
+          </mesh>
+          <mesh position={[cabin.width * 0.27, 5.9, cabin.depth / 2 + 0.16]} castShadow={false}>
+            <boxGeometry args={[3.4, 2.8, 0.36]} />
+            <meshBasicMaterial color={cabin.accentColor} transparent opacity={0.88} />
+          </mesh>
+          <mesh position={[0, cabin.height + 2.4, cabin.depth * 0.18]} castShadow={false}>
+            <boxGeometry args={[2.2, 5.4, 2.2]} />
+            <meshBasicMaterial color="#3b2b1d" />
+          </mesh>
+          <mesh position={[0, cabin.height + 5.4, cabin.depth * 0.18]} castShadow={false}>
+            <boxGeometry args={[3.2, 1.2, 3.2]} />
+            <meshBasicMaterial color="#d8edf8" />
+          </mesh>
+        </>
+      )}
+    </group>
+  );
+}
+
+function MountainMineshaftOpening({ summitY, showDetails }: { summitY: number; showDetails: boolean }) {
+  return (
+    <group name="mountain-village-mineshaft">
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.34, 0]} renderOrder={4}>
+        <circleGeometry args={[28, 32]} />
+        <meshBasicMaterial color="#050505" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.42, 0]} renderOrder={5}>
+        <ringGeometry args={[28, 37, 32]} />
+        <meshBasicMaterial color="#3a281a" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.5, 0]} renderOrder={6}>
+        <ringGeometry args={[37, 43, 32]} />
+        <meshBasicMaterial color="#7a6750" />
+      </mesh>
+      {Array.from({ length: 8 }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / 8;
+        const x = Math.sin(angle) * 35;
+        const z = Math.cos(angle) * 35;
+        return (
+          <mesh key={`mine-rim-beam-${index}`} position={[x, summitY + 1.15, z]} rotation={[0, angle, 0]} castShadow={false}>
+            <boxGeometry args={[4.2, 1.2, 14]} />
+            <meshBasicMaterial color={index % 2 === 0 ? "#4b3421" : "#5e442d"} />
+          </mesh>
+        );
+      })}
+      {showDetails && Array.from({ length: 4 }, (_, index) => {
+        const angle = index * Math.PI / 2 + Math.PI / 4;
+        return (
+          <group key={`mine-support-${index}`} rotation={[0, angle, 0]}>
+            <mesh position={[-12, summitY + 8.2, 29]} rotation={[0, 0, -0.12]} castShadow={false}>
+              <boxGeometry args={[2.3, 15.5, 2.3]} />
+              <meshBasicMaterial color="#392719" />
+            </mesh>
+            <mesh position={[12, summitY + 8.2, 29]} rotation={[0, 0, 0.12]} castShadow={false}>
+              <boxGeometry args={[2.3, 15.5, 2.3]} />
+              <meshBasicMaterial color="#392719" />
+            </mesh>
+            <mesh position={[0, summitY + 16.2, 29]} castShadow={false}>
+              <boxGeometry args={[27.5, 2.4, 2.6]} />
+              <meshBasicMaterial color="#513821" />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+function MountainWaterfall({ waterfall, summitY }: { waterfall: MountainVillageWaterfall; summitY: number }) {
+  const midX = (waterfall.topX + waterfall.bottomX) / 2;
+  const midZ = (waterfall.topZ + waterfall.bottomZ) / 2;
+  const height = Math.max(18, waterfall.topY - waterfall.bottomY);
+  const midY = waterfall.bottomY + height / 2;
+
+  return (
+    <group name="mountain-village-waterfall">
+      <mesh position={[midX, midY, midZ]} rotation={[0, waterfall.angle, 0]} renderOrder={2}>
+        <planeGeometry args={[waterfall.width, height]} />
+        <meshBasicMaterial color="#89e9ff" transparent opacity={0.54} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <mesh position={[midX, midY + height * 0.04, midZ]} rotation={[0, waterfall.angle, 0]} renderOrder={3}>
+        <planeGeometry args={[waterfall.width * 0.36, height * 0.96]} />
+        <meshBasicMaterial color="#effdff" transparent opacity={0.34} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[waterfall.topX * 0.74, summitY + 0.72, waterfall.topZ * 0.74]} scale={[28, 9, 1]} renderOrder={1}>
+        <circleGeometry args={[1, 18]} />
+        <meshBasicMaterial color="#b9f1ff" transparent opacity={0.58} depthWrite={false} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[waterfall.bottomX, waterfall.bottomY + 0.16, waterfall.bottomZ]} scale={[35, 24, 1]} renderOrder={1}>
+        <circleGeometry args={[1, 24]} />
+        <meshBasicMaterial color="#5bbbd4" transparent opacity={0.68} depthWrite={false} />
+      </mesh>
+      {Array.from({ length: 10 }, (_, index) => {
+        const t = index / 9;
+        const x = lerpNumber(waterfall.topX, waterfall.bottomX, t);
+        const z = lerpNumber(waterfall.topZ, waterfall.bottomZ, t);
+        const y = lerpNumber(waterfall.topY, waterfall.bottomY, t);
+        return (
+          <mesh key={`mountain-fall-spray-${index}`} position={[x, y, z]} scale={[1.8 + (index % 3), 0.7, 1.8 + (index % 2)]} castShadow={false}>
+            <sphereGeometry args={[1, 6, 4]} />
+            <meshBasicMaterial color="#dffaff" transparent opacity={0.32} depthWrite={false} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+function MountainSnowCap({ summitY }: { summitY: number }) {
+  return (
+    <group name="mountain-village-snow-cap">
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.18, 0]} renderOrder={0}>
+        <circleGeometry args={[MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 20, 36]} />
+        <meshBasicMaterial color="#eaf8ff" transparent opacity={0.68} />
+      </mesh>
+      {Array.from({ length: 12 }, (_, index) => {
+        const angle = (index * Math.PI * 2) / 12;
+        const radius = 48 + (index % 3) * 14;
+        return (
+          <mesh key={`summit-snow-drift-${index}`} rotation={[-Math.PI / 2, 0, angle]} position={[Math.sin(angle) * radius, summitY + 0.31, Math.cos(angle) * radius]} scale={[11 + (index % 4) * 3, 4.5 + (index % 2) * 2, 1]} renderOrder={2}>
+            <circleGeometry args={[1, 10]} />
+            <meshBasicMaterial color={index % 2 === 0 ? "#f8fdff" : "#cdeafa"} transparent opacity={0.76} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+function MountainVillageColliders({
+  chunk,
+  terrainGeometry,
+  layout,
+}: {
+  chunk: SurvivalChunkInfo;
+  terrainGeometry: THREE.BufferGeometry;
+  layout: MountainVillageLayout;
+}) {
+  if (chunk.distance !== 0) return null;
+
+  return (
+    <>
+      <RigidBody type="fixed" colliders="trimesh" friction={0.38} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        <mesh geometry={terrainGeometry} dispose={null}>
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      </RigidBody>
+      <RigidBody type="fixed" colliders={false} friction={0.48} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        {layout.trailSegments.map((segment) => (
+          <group key={`${segment.key}-collider`} position={[segment.localX, 0, segment.localZ]} rotation={[0, segment.yaw, 0]}>
+            <CuboidCollider
+              args={[segment.width / 2, 0.54, segment.length / 2]}
+              position={[0, segment.y, 0]}
+              rotation={[segment.slope, 0, 0]}
+            />
+          </group>
+        ))}
+        <CuboidCollider args={[MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 6, 0.42, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 6]} position={[0, layout.summitY + 0.06, 0]} />
+        {layout.cabins.map((cabin) => (
+          <CuboidCollider
+            key={`${cabin.key}-collider`}
+            args={[cabin.width / 2, cabin.height / 2, cabin.depth / 2]}
+            position={[cabin.localX, layout.summitY + cabin.height / 2, cabin.localZ]}
+            rotation={[0, cabin.rotation, 0]}
+          />
+        ))}
+      </RigidBody>
+    </>
+  );
+}
+
+function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
+  const baseHeight = useMemo(() => getSurvivalVillageBaseHeight(chunk), [chunk]);
+  const terrainGeometry = useMemo(() => makeMountainVillageTerrainGeometry(chunk), [chunk]);
+  const layout = useMemo(() => makeMountainVillageLayout(chunk, baseHeight), [chunk, baseHeight]);
+  const terrainTexture = useMemo(() => getSurvivalTerrainDetailTexture(), []);
+  const showDetails = chunk.distance === 0;
+
+  return (
+    <>
+      <MountainVillageColliders chunk={chunk} terrainGeometry={terrainGeometry} layout={layout} />
+      <group name={`survival-mountain-village-${chunk.key}`} position={[chunk.x, 0, chunk.z]}>
+        <mesh geometry={terrainGeometry} receiveShadow={showDetails} dispose={null}>
+          <meshBasicMaterial map={terrainTexture} vertexColors side={THREE.DoubleSide} />
+        </mesh>
+        <MountainSnowCap summitY={layout.summitY} />
+        <MountainVillageTrail segments={layout.trailSegments} showDetails={showDetails} />
+        <MountainWaterfall waterfall={layout.waterfall} summitY={layout.summitY} />
+        <MountainMineshaftOpening summitY={layout.summitY} showDetails={showDetails} />
+        {layout.cabins.map((cabin) => (
+          <MountainCabin key={cabin.key} cabin={cabin} summitY={layout.summitY} showDetails={showDetails} />
+        ))}
+      </group>
+      {showDetails && (
+        <Villagers
+          key={`survival-mountain-villagers-${chunk.key}`}
+          huts={layout.hutInfos}
+          name={`survival-mountain-villagers-${chunk.key}`}
+        />
+      )}
+    </>
+  );
+}
+
 function SurvivalChunk({ chunk }: { chunk: SurvivalChunkInfo }) {
   if (chunk.cx === 0 && chunk.cz === 0) {
     return null;
@@ -8443,6 +8955,9 @@ function SurvivalChunk({ chunk }: { chunk: SurvivalChunkInfo }) {
     }
     if (chunk.villageKind === "swamp") {
       return <SurvivalSwampVillage chunk={chunk} />;
+    }
+    if (chunk.villageKind === "mountain") {
+      return <SurvivalMountainVillage chunk={chunk} />;
     }
   }
 
