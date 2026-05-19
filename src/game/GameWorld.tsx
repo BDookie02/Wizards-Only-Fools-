@@ -1464,12 +1464,37 @@ function getBaseVillageTransitionMask(worldX: number, worldZ: number) {
   return clamp01(edgeApron * Math.max(gateRoadMask, wallApronMask));
 }
 
+function getSurvivalRawTerrainHeightAtWorld(worldX: number, worldZ: number) {
+  return getSurvivalBiomeWeights(worldX, worldZ).reduce((sum, { biome, weight }) => (
+    sum + getBiomeTerrainHeight(biome, worldX, worldZ) * weight
+  ), 0);
+}
+
+function getGraveyardGateApproachAtWorld(worldX: number, worldZ: number) {
+  let mask = 0;
+  let height = 0;
+
+  SPECIAL_SURVIVAL_VILLAGE_CHUNKS.forEach((village) => {
+    if (village.kind !== "graveyard") return;
+
+    const centerX = village.cx * SURVIVAL_BLOCK_SIZE;
+    const centerZ = village.cz * SURVIVAL_BLOCK_SIZE;
+    const localX = worldX - centerX;
+    const localZ = worldZ - centerZ;
+    const gateMask = getGraveyardGateEntryMask(localX, localZ);
+    if (gateMask <= mask) return;
+
+    mask = gateMask;
+    height = getSurvivalRawTerrainHeightAtWorld(centerX, centerZ) - 0.46;
+  });
+
+  return { mask, height };
+}
+
 function getSurvivalTerrainHeightForChunk(chunk: SurvivalChunkInfo, localX: number, localZ: number) {
   const worldX = chunk.x + localX;
   const worldZ = chunk.z + localZ;
-  let height = getSurvivalBiomeWeights(worldX, worldZ).reduce((sum, { biome, weight }) => (
-    sum + getBiomeTerrainHeight(biome, worldX, worldZ) * weight
-  ), 0);
+  let height = getSurvivalRawTerrainHeightAtWorld(worldX, worldZ);
 
   const riverCarve = getSurvivalRiverCarveAtWorld(worldX, worldZ);
   if (riverCarve.strength > 0) {
@@ -1494,6 +1519,11 @@ function getSurvivalTerrainHeightForChunk(chunk: SurvivalChunkInfo, localX: numb
   const baseTransitionMask = getBaseVillageTransitionMask(worldX, worldZ);
   if (baseTransitionMask > 0) {
     height = lerpNumber(height, BASE_VILLAGE_EXIT_HEIGHT, baseTransitionMask);
+  }
+
+  const graveyardGateApproach = getGraveyardGateApproachAtWorld(worldX, worldZ);
+  if (graveyardGateApproach.mask > 0) {
+    height = lerpNumber(height, graveyardGateApproach.height, graveyardGateApproach.mask * 0.95);
   }
 
   return height;
@@ -8586,8 +8616,14 @@ function getGraveyardPathMask(localX: number, localZ: number) {
 function getGraveyardGateEntryMask(localX: number, localZ: number) {
   const absX = Math.abs(localX);
   const absZ = Math.abs(localZ);
-  const northSouthGate = (1 - smoothstepRange(22, 54, absX)) * smoothstepRange(176, 216, absZ);
-  const eastWestGate = (1 - smoothstepRange(22, 54, absZ)) * smoothstepRange(176, 216, absX);
+  const northSouthGate =
+    (1 - smoothstepRange(82, 154, absX)) *
+    smoothstepRange(88, 146, absZ) *
+    (1 - smoothstepRange(GRAVEYARD_FENCE_RADIUS + 28, GRAVEYARD_FENCE_RADIUS + 184, absZ));
+  const eastWestGate =
+    (1 - smoothstepRange(82, 154, absZ)) *
+    smoothstepRange(88, 146, absX) *
+    (1 - smoothstepRange(GRAVEYARD_FENCE_RADIUS + 28, GRAVEYARD_FENCE_RADIUS + 184, absX));
   return clamp01(Math.max(northSouthGate, eastWestGate));
 }
 
