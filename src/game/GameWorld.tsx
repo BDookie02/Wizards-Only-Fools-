@@ -8444,6 +8444,12 @@ const MOUNTAIN_VILLAGE_MINESHAFT_RIM_MID_RADIUS = 41;
 const MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS = 48;
 const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET = 3.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS = 28.5;
+const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_COUNT = 12;
+const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_RADIUS = 23.4;
+const MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS = 6.4;
+const MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS = 10.2;
+const MOUNTAIN_VILLAGE_MINESHAFT_THRONE_Z = -15.6;
+const MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES = [-2.36, -1.57, -0.78, 0, 0.78, 1.57, 2.36] as const;
 const MOUNTAIN_VILLAGE_MINESHAFT_HUT_RADIUS = 24.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS = 13.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS = 22.6;
@@ -10023,6 +10029,272 @@ function MountainMineshaftLightPole({
   );
 }
 
+function MountainMineshaftBottomLightRing() {
+  return (
+    <group name="mineshaft-bottom-light-ring">
+      {Array.from({ length: MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_COUNT }, (_, index) => {
+        const angle = (index / MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_COUNT) * Math.PI * 2;
+        const x = Math.sin(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_RADIUS;
+        const z = Math.cos(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_RADIUS;
+
+        return (
+          <group key={`bottom-light-${index}`} position={[x, 0.08, z]} rotation={[0, angle + Math.PI, 0]}>
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} renderOrder={9}>
+              <circleGeometry args={[3.4, 12]} />
+              <meshBasicMaterial color="#ff9d36" transparent opacity={0.24} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+            </mesh>
+            <mesh position={[0, 0.12, 0]} castShadow={false}>
+              <cylinderGeometry args={[1.55, 1.85, 0.24, 8]} />
+              <meshBasicMaterial color="#20140d" />
+            </mesh>
+            <mesh position={[0, 0.42, 0]} castShadow={false}>
+              <cylinderGeometry args={[1.1, 1.35, 0.46, 8]} />
+              <meshBasicMaterial color={index % 2 === 0 ? "#5c3d24" : "#372315"} />
+            </mesh>
+            <mesh position={[0, 1.1, 0]} castShadow={false}>
+              <boxGeometry args={[0.42, 1.35, 0.42]} />
+              <meshBasicMaterial color="#1a100a" />
+            </mesh>
+            <RetroMineshaftLantern position={[0, 2.08, 0]} scale={0.72} withLight={index % 2 === 0} />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+function MountainMineshaftBanquetChair({
+  angle,
+  index,
+}: {
+  angle: number;
+  index: number;
+}) {
+  const x = Math.sin(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS;
+  const z = Math.cos(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS;
+
+  return (
+    <group position={[x, 0, z]} rotation={[0, angle, 0]}>
+      <mesh position={[0, 0.72, 0]} castShadow={false}>
+        <boxGeometry args={[2.0, 0.38, 1.72]} />
+        <meshBasicMaterial color={index % 2 === 0 ? "#6f4528" : "#55341e"} />
+      </mesh>
+      <mesh position={[0, 0.96, -0.12]} castShadow={false}>
+        <boxGeometry args={[1.62, 0.22, 1.2]} />
+        <meshBasicMaterial color="#8e1e24" />
+      </mesh>
+      <mesh position={[0, 1.86, 0.82]} castShadow={false}>
+        <boxGeometry args={[2.18, 2.32, 0.42]} />
+        <meshBasicMaterial color="#3d2617" />
+      </mesh>
+      <mesh position={[0, 2.0, 1.08]} castShadow={false}>
+        <boxGeometry args={[1.54, 1.74, 0.18]} />
+        <meshBasicMaterial color="#7b5332" />
+      </mesh>
+      <mesh position={[-1.24, 1.12, -0.08]} castShadow={false}>
+        <boxGeometry args={[0.32, 0.98, 1.74]} />
+        <meshBasicMaterial color="#2a1a10" />
+      </mesh>
+      <mesh position={[1.24, 1.12, -0.08]} castShadow={false}>
+        <boxGeometry args={[0.32, 0.98, 1.74]} />
+        <meshBasicMaterial color="#2a1a10" />
+      </mesh>
+      {[-0.74, 0.74].flatMap((legX) => [-0.5, 0.54].map((legZ) => (
+        <mesh key={`chair-leg-${legX}-${legZ}`} position={[legX, 0.36, legZ]} castShadow={false}>
+          <boxGeometry args={[0.24, 0.72, 0.24]} />
+          <meshBasicMaterial color="#1b1009" />
+        </mesh>
+      )))}
+      {[-0.72, 0, 0.72].map((barX) => (
+        <mesh key={`chair-back-gold-${barX}`} position={[barX, 2.92, 1.1]} castShadow={false}>
+          <boxGeometry args={[0.24, 0.36, 0.24]} />
+          <meshBasicMaterial color="#d7a548" />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function MountainMineshaftKingsThrone() {
+  return (
+    <group position={[0, 0, MOUNTAIN_VILLAGE_MINESHAFT_THRONE_Z]} rotation={[0, Math.PI, 0]}>
+      <mesh position={[0, 0.28, -0.04]} castShadow={false}>
+        <boxGeometry args={[5.2, 0.56, 3.8]} />
+        <meshBasicMaterial color="#21140c" />
+      </mesh>
+      <mesh position={[0, 0.86, -0.28]} castShadow={false}>
+        <boxGeometry args={[4.35, 0.72, 3.0]} />
+        <meshBasicMaterial color="#704527" />
+      </mesh>
+      <mesh position={[0, 1.16, -0.42]} castShadow={false}>
+        <boxGeometry args={[3.45, 0.24, 2.1]} />
+        <meshBasicMaterial color="#8e1e24" />
+      </mesh>
+      <mesh position={[0, 2.46, 1.08]} castShadow={false}>
+        <boxGeometry args={[4.55, 3.8, 0.72]} />
+        <meshBasicMaterial color="#3a2415" />
+      </mesh>
+      <mesh position={[0, 2.56, 1.48]} castShadow={false}>
+        <boxGeometry args={[3.18, 2.86, 0.22]} />
+        <meshBasicMaterial color="#9f2428" />
+      </mesh>
+      {[-1.94, 1.94].map((side) => (
+        <Fragment key={`throne-arm-${side}`}>
+          <mesh position={[side, 1.28, -0.3]} castShadow={false}>
+            <boxGeometry args={[0.62, 1.42, 3.12]} />
+            <meshBasicMaterial color="#2b1a0f" />
+          </mesh>
+          <mesh position={[side, 2.12, -1.18]} castShadow={false}>
+            <boxGeometry args={[0.78, 0.28, 1.28]} />
+            <meshBasicMaterial color="#d7a548" />
+          </mesh>
+        </Fragment>
+      ))}
+      <mesh position={[0, 4.64, 1.1]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
+        <coneGeometry args={[1.26, 1.16, 4]} />
+        <meshBasicMaterial color="#e2b34c" />
+      </mesh>
+      {[-1.72, 0, 1.72].map((x, index) => (
+        <mesh key={`throne-spire-${index}`} position={[x, 4.36 + (index === 1 ? 0.36 : 0), 1.12]} castShadow={false}>
+          <boxGeometry args={[0.4, index === 1 ? 1.28 : 0.9, 0.42]} />
+          <meshBasicMaterial color="#d7a548" />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.74, -2.45]} castShadow={false}>
+        <boxGeometry args={[6.4, 0.16, 1.7]} />
+        <meshBasicMaterial color="#68161d" />
+      </mesh>
+    </group>
+  );
+}
+
+function MountainMineshaftBanquetTable() {
+  const tableRadius = MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS;
+  const plateAngles = [...MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES, Math.PI];
+
+  return (
+    <group name="mineshaft-royal-banquet-table">
+      <mesh position={[0, 1.2, 0]} castShadow={false}>
+        <cylinderGeometry args={[1.55, 2.1, 1.75, 12]} />
+        <meshBasicMaterial color="#3a2415" />
+      </mesh>
+      <mesh position={[0, 1.78, 0]} castShadow={false}>
+        <cylinderGeometry args={[tableRadius, tableRadius * 0.96, 0.58, 20]} />
+        <meshBasicMaterial color="#5e3a20" />
+      </mesh>
+      <mesh position={[0, 2.14, 0]} castShadow={false}>
+        <cylinderGeometry args={[tableRadius * 1.05, tableRadius * 1.05, 0.22, 20]} />
+        <meshBasicMaterial color="#2a1a10" />
+      </mesh>
+      {Array.from({ length: 9 }, (_, index) => {
+        const z = -tableRadius * 0.72 + index * ((tableRadius * 1.44) / 8);
+        const width = Math.sqrt(Math.max(0, tableRadius * tableRadius - z * z)) * 1.82;
+
+        return (
+          <mesh key={`table-plank-${index}`} position={[0, 2.28, z]} castShadow={false}>
+            <boxGeometry args={[width, 0.08, 0.32]} />
+            <meshBasicMaterial color={index % 2 === 0 ? "#8a5b34" : "#3c2415"} transparent opacity={0.76} />
+          </mesh>
+        );
+      })}
+      {Array.from({ length: 6 }, (_, index) => {
+        const angle = (index / 6) * Math.PI * 2;
+        return (
+          <mesh key={`table-leg-${index}`} position={[Math.sin(angle) * 3.95, 0.92, Math.cos(angle) * 3.95]} castShadow={false}>
+            <boxGeometry args={[0.42, 1.55, 0.42]} />
+            <meshBasicMaterial color="#21140c" />
+          </mesh>
+        );
+      })}
+      <mesh position={[0, 2.7, 0]} scale={[2.35, 0.52, 1.22]} castShadow={false}>
+        <sphereGeometry args={[1, 10, 6]} />
+        <meshBasicMaterial color="#9a4f2c" />
+      </mesh>
+      <mesh position={[-1.86, 2.72, 0.12]} rotation={[0, 0, Math.PI / 2]} castShadow={false}>
+        <cylinderGeometry args={[0.16, 0.16, 1.42, 8]} />
+        <meshBasicMaterial color="#f1d8a0" />
+      </mesh>
+      <mesh position={[1.86, 2.72, 0.12]} rotation={[0, 0, Math.PI / 2]} castShadow={false}>
+        <cylinderGeometry args={[0.16, 0.16, 1.42, 8]} />
+        <meshBasicMaterial color="#f1d8a0" />
+      </mesh>
+      {[[-2.9, -1.3], [2.65, 1.45], [-0.9, 3.2], [1.34, -3.1]].map(([x, z], index) => (
+        <group key={`banquet-bread-${index}`} position={[x, 2.5, z]} rotation={[0, index * 0.7, 0]}>
+          <mesh scale={[1.18, 0.36, 0.62]} castShadow={false}>
+            <sphereGeometry args={[1, 8, 5]} />
+            <meshBasicMaterial color={index % 2 === 0 ? "#d29a4a" : "#b87833"} />
+          </mesh>
+          <mesh position={[0, 0.12, 0.18]} castShadow={false}>
+            <boxGeometry args={[1.4, 0.08, 0.12]} />
+            <meshBasicMaterial color="#fff0b2" transparent opacity={0.44} />
+          </mesh>
+        </group>
+      ))}
+      {[[-3.7, 1.7], [3.55, -1.55], [0.8, 3.9], [-1.2, -3.75]].map(([x, z], index) => (
+        <group key={`fruit-bowl-${index}`} position={[x, 2.48, z]}>
+          <mesh position={[0, -0.04, 0]} castShadow={false}>
+            <cylinderGeometry args={[0.86, 0.7, 0.18, 10]} />
+            <meshBasicMaterial color="#2b1a0f" />
+          </mesh>
+          {Array.from({ length: 5 }, (_, fruitIndex) => (
+            <mesh key={`fruit-${fruitIndex}`} position={[(fruitIndex - 2) * 0.22, 0.18 + (fruitIndex % 2) * 0.12, Math.sin(fruitIndex) * 0.24]} scale={[0.24, 0.24, 0.24]} castShadow={false}>
+              <sphereGeometry args={[1, 6, 4]} />
+              <meshBasicMaterial color={["#b7202e", "#d6a43e", "#7aa34b", "#8a2b5f", "#efc55b"][(fruitIndex + index) % 5]} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      {plateAngles.map((angle, index) => (
+        <group key={`banquet-place-${index}`} position={[Math.sin(angle) * 4.5, 2.42, Math.cos(angle) * 4.5]} rotation={[0, angle, 0]}>
+          <mesh castShadow={false}>
+            <cylinderGeometry args={[0.82, 0.9, 0.08, 12]} />
+            <meshBasicMaterial color="#d7cab2" />
+          </mesh>
+          <mesh position={[0, 0.09, -0.05]} scale={[0.48, 0.12, 0.32]} castShadow={false}>
+            <sphereGeometry args={[1, 6, 4]} />
+            <meshBasicMaterial color={index % 3 === 0 ? "#89422b" : "#c38a42"} />
+          </mesh>
+          <mesh position={[0.78, 0.2, -0.18]} castShadow={false}>
+            <cylinderGeometry args={[0.16, 0.22, 0.42, 8]} />
+            <meshBasicMaterial color="#b58b45" />
+          </mesh>
+        </group>
+      ))}
+      {[-1.8, 1.8].map((x, index) => (
+        <group key={`table-candle-${index}`} position={[x, 2.54, index === 0 ? 2.2 : -2.2]}>
+          <mesh position={[0, 0.3, 0]} castShadow={false}>
+            <cylinderGeometry args={[0.16, 0.16, 0.6, 8]} />
+            <meshBasicMaterial color="#f6e2a8" />
+          </mesh>
+          <mesh position={[0, 0.74, 0]} castShadow={false} renderOrder={8}>
+            <sphereGeometry args={[0.34, 8, 5]} />
+            <meshBasicMaterial color="#ffb347" transparent opacity={0.84} blending={THREE.AdditiveBlending} toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function MountainMineshaftRoyalBanquet({ bottomY, showDetails }: { bottomY: number; showDetails: boolean }) {
+  if (!showDetails) return null;
+
+  return (
+    <group name="mineshaft-bottom-royal-banquet" position={[0, bottomY, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.09, 0]} renderOrder={8}>
+        <circleGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.62, 40]} />
+        <meshBasicMaterial color="#120b07" transparent opacity={0.28} depthWrite={false} />
+      </mesh>
+      <MountainMineshaftBottomLightRing />
+      <MountainMineshaftBanquetTable />
+      {MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES.map((angle, index) => (
+        <MountainMineshaftBanquetChair key={`banquet-chair-${index}`} angle={angle} index={index} />
+      ))}
+      <MountainMineshaftKingsThrone />
+    </group>
+  );
+}
+
 function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainMineshaftHut; ladder?: MountainMineshaftLadder; showDetails: boolean }) {
   const { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight } = getMountainCabinDoorMetrics(hut);
   const frontZ = hut.depth / 2 - wallThickness / 2;
@@ -10540,7 +10812,7 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
       )}
       {showDetails && Array.from({ length: 14 }, (_, index) => {
         const angle = survivalHash01(9110, index, 3) * Math.PI * 2;
-        const radius = lerpNumber(5, MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS - 4, Math.pow(survivalHash01(9120, index, 7), 0.7));
+        const radius = lerpNumber(12.5, MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS - 4, Math.pow(survivalHash01(9120, index, 7), 0.7));
         const x = Math.sin(angle) * radius;
         const z = Math.cos(angle) * radius;
         const scale = lerpNumber(0.7, 1.8, survivalHash01(9130, index, 11));
@@ -10556,6 +10828,7 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
         <circleGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.32, 36]} />
         <meshBasicMaterial color="#080605" transparent opacity={0.48} />
       </mesh>
+      <MountainMineshaftRoyalBanquet bottomY={bottomY} showDetails={showDetails} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.42, 0]} renderOrder={5}>
         <ringGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_RIM_MID_RADIUS, 48]} />
         <meshBasicMaterial color="#3a281a" />
@@ -10747,6 +11020,7 @@ function MountainVillageColliders({
   };
   const topExitLadder = layout.interiorLadders[layout.interiorLadders.length - 1];
   const topExitBridge = topExitLadder ? getMountainMineshaftExitBridgeFrame(topExitLadder) : null;
+  const bottomY = layout.baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET;
 
   return (
     <>
@@ -10783,6 +11057,29 @@ function MountainVillageColliders({
           ]}
           position={[0, layout.baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET - 0.42, 0]}
         />
+      </RigidBody>
+      <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        <CuboidCollider
+          args={[MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS * 0.82, 1.18, MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS * 0.82]}
+          position={[0, bottomY + 1.2, 0]}
+        />
+        <CuboidCollider
+          args={[2.65, 2.2, 1.85]}
+          position={[0, bottomY + 2.12, MOUNTAIN_VILLAGE_MINESHAFT_THRONE_Z]}
+          rotation={[0, Math.PI, 0]}
+        />
+        {MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES.map((angle, index) => (
+          <CuboidCollider
+            key={`banquet-chair-collider-${index}`}
+            args={[1.18, 1.35, 1.05]}
+            position={[
+              Math.sin(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS,
+              bottomY + 1.28,
+              Math.cos(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS,
+            ]}
+            rotation={[0, angle, 0]}
+          />
+        ))}
       </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
         {layout.interiorHuts.flatMap((hut) => {
