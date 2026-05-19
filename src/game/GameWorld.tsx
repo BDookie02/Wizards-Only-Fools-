@@ -1470,6 +1470,57 @@ function getSurvivalRawTerrainHeightAtWorld(worldX: number, worldZ: number) {
   ), 0);
 }
 
+function getGraveyardLocalSurfaceHeight(
+  localX: number,
+  localZ: number,
+  chunkCx: number,
+  chunkCz: number,
+  baseHeight: number,
+) {
+  const radius = Math.hypot(localX, localZ);
+  const gateEntryMask = getGraveyardGateEntryMask(localX, localZ);
+  const gateClearingMask = getGraveyardGateClearingMask(localX, localZ);
+  const hillA = Math.sin(localX * 0.035 + chunkCx * 1.7) * Math.cos(localZ * 0.028 - chunkCz * 1.3);
+  const hillB = Math.sin((localX + localZ) * 0.023 + 2.4) * 0.58;
+  const moundRing = Math.pow(smoothstepRange(42, GRAVEYARD_VILLAGE_RADIUS, radius) * (1 - smoothstepRange(GRAVEYARD_VILLAGE_RADIUS - 34, GRAVEYARD_VILLAGE_RADIUS, radius)), 0.9);
+  const pathMask = getGraveyardEffectivePathMask(localX, localZ);
+  const chapelMask = getGraveyardChapelMask(localX, localZ);
+  const hills = (hillA * 4.6 + hillB * 2.8 + moundRing * 5.8) * (1 - pathMask * 0.78) * (1 - chapelMask * 0.98) * (1 - gateClearingMask);
+  const gateFlattenMask = Math.max(gateEntryMask * 0.96, gateClearingMask * 0.9);
+  return lerpNumber(baseHeight + hills - pathMask * 0.38, baseHeight - 0.46, gateFlattenMask);
+}
+
+function getGraveyardExteriorApronAtWorld(worldX: number, worldZ: number) {
+  let mask = 0;
+  let height = 0;
+  const apronDistance = 220;
+
+  SPECIAL_SURVIVAL_VILLAGE_CHUNKS.forEach((village) => {
+    if (village.kind !== "graveyard") return;
+
+    const centerX = village.cx * SURVIVAL_BLOCK_SIZE;
+    const centerZ = village.cz * SURVIVAL_BLOCK_SIZE;
+    const localX = worldX - centerX;
+    const localZ = worldZ - centerZ;
+    const maxAbs = Math.max(Math.abs(localX), Math.abs(localZ));
+    const outsideDistance = maxAbs - GRAVEYARD_PAD_FLAT_RADIUS;
+    if (outsideDistance < -4 || outsideDistance > apronDistance) return;
+
+    const apronMask = 1 - smoothstepRange(0, apronDistance, Math.max(0, outsideDistance));
+    if (apronMask <= mask) return;
+
+    const baseHeight = getSurvivalRawTerrainHeightAtWorld(centerX, centerZ);
+    const edgeScale = maxAbs > GRAVEYARD_PAD_FLAT_RADIUS ? GRAVEYARD_PAD_FLAT_RADIUS / maxAbs : 1;
+    const edgeLocalX = localX * edgeScale;
+    const edgeLocalZ = localZ * edgeScale;
+
+    mask = apronMask;
+    height = getGraveyardLocalSurfaceHeight(edgeLocalX, edgeLocalZ, village.cx, village.cz, baseHeight);
+  });
+
+  return { mask, height };
+}
+
 function getGraveyardGateApproachAtWorld(worldX: number, worldZ: number) {
   let mask = 0;
   let height = 0;
@@ -1524,6 +1575,11 @@ function getSurvivalTerrainHeightForChunk(chunk: SurvivalChunkInfo, localX: numb
   const graveyardGateApproach = getGraveyardGateApproachAtWorld(worldX, worldZ);
   if (graveyardGateApproach.mask > 0) {
     height = lerpNumber(height, graveyardGateApproach.height, graveyardGateApproach.mask * 0.99);
+  }
+
+  const graveyardApron = getGraveyardExteriorApronAtWorld(worldX, worldZ);
+  if (graveyardApron.mask > 0) {
+    height = lerpNumber(height, graveyardApron.height, graveyardApron.mask);
   }
 
   return height;
@@ -8912,18 +8968,9 @@ function getGraveyardEffectivePathMask(localX: number, localZ: number) {
 
 function getGraveyardVillageHeight(chunk: SurvivalChunkInfo, localX: number, localZ: number, baseHeight = getSurvivalVillageBaseHeight(chunk)) {
   const naturalHeight = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
-  const radius = Math.hypot(localX, localZ);
-  const gateEntryMask = getGraveyardGateEntryMask(localX, localZ);
   const gateClearingMask = getGraveyardGateClearingMask(localX, localZ);
   const edgeBlend = smoothstepRange(GRAVEYARD_PAD_FLAT_RADIUS, SURVIVAL_BLOCK_SIZE / 2, Math.max(Math.abs(localX), Math.abs(localZ))) * (1 - gateClearingMask * 0.95);
-  const hillA = Math.sin(localX * 0.035 + chunk.cx * 1.7) * Math.cos(localZ * 0.028 - chunk.cz * 1.3);
-  const hillB = Math.sin((localX + localZ) * 0.023 + 2.4) * 0.58;
-  const moundRing = Math.pow(smoothstepRange(42, GRAVEYARD_VILLAGE_RADIUS, radius) * (1 - smoothstepRange(GRAVEYARD_VILLAGE_RADIUS - 34, GRAVEYARD_VILLAGE_RADIUS, radius)), 0.9);
-  const pathMask = getGraveyardEffectivePathMask(localX, localZ);
-  const chapelMask = getGraveyardChapelMask(localX, localZ);
-  const hills = (hillA * 4.6 + hillB * 2.8 + moundRing * 5.8) * (1 - pathMask * 0.78) * (1 - chapelMask * 0.98) * (1 - gateClearingMask);
-  const gateFlattenMask = Math.max(gateEntryMask * 0.96, gateClearingMask * 0.9);
-  const graveyardHeight = lerpNumber(baseHeight + hills - pathMask * 0.38, baseHeight - 0.46, gateFlattenMask);
+  const graveyardHeight = getGraveyardLocalSurfaceHeight(localX, localZ, chunk.cx, chunk.cz, baseHeight);
   return lerpNumber(graveyardHeight, naturalHeight, edgeBlend);
 }
 
