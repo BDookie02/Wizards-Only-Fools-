@@ -10,8 +10,8 @@ function shouldHideForMiniMap(object: THREE.Object3D) {
 }
 
 const COMPACT_MINIMAP_VIEW_SIZE = 80;
-const EXPANDED_MAP_VIEW_SIZE = 720;
-const EXPANDED_MAP_VIEW_SIZE_MOBILE = 520;
+const EXPANDED_MAP_VIEW_SIZE = 1180;
+const EXPANDED_MAP_VIEW_SIZE_MOBILE = 860;
 
 export function LiveMiniMap() {
   const isExpanded = useGameStore(s => s.isMapExpanded);

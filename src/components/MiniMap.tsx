@@ -212,7 +212,7 @@ export function MiniMap() {
              <div className="absolute right-2 top-1/2 -translate-y-1/2 font-serif text-[clamp(0.8rem,1.8cqw,1.2rem)] font-bold text-amber-400 drop-shadow-[0_2px_2px_black]">E</div>
              <div className="absolute left-2 top-1/2 -translate-y-1/2 font-serif text-[clamp(0.8rem,1.8cqw,1.2rem)] font-bold text-amber-400 drop-shadow-[0_2px_2px_black]">W</div>
              <div
-               className="absolute left-1/2 top-1/2 z-10 h-10 w-10 filter drop-shadow-[0_2px_4px_black]"
+               className="absolute left-1/2 top-1/2 z-10 h-6 w-6 filter drop-shadow-[0_2px_4px_black]"
                id="minimap-expanded-player-icon"
                ref={expandedPlayerIconRef}
                style={{
