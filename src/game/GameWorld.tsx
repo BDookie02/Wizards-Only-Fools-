@@ -8901,49 +8901,147 @@ function GraveyardPathStones({ stones, showDetails }: { stones: GraveyardPathSto
 }
 
 function GraveyardTombstone({ tomb }: { tomb: GraveyardTomb }) {
-  const labelTexture = useMemo(() => makeGraveyardTombTextTexture(tomb.name, tomb.joke, Math.floor(tomb.variant * 9)), [tomb.joke, tomb.name, tomb.variant]);
+  const styleIndex = Math.floor(survivalHash01(tomb.localX, tomb.localZ, 12412) * 5) % 5;
+  const labelTexture = useMemo(() => makeGraveyardTombTextTexture(tomb.name, tomb.joke, styleIndex * 11 + Math.floor(tomb.variant * 9)), [tomb.joke, tomb.name, styleIndex, tomb.variant]);
   const stoneColor = tomb.variant > 0.66 ? "#9a9488" : tomb.variant > 0.33 ? "#b2ab9e" : "#7d7972";
   const darkStone = tomb.variant > 0.5 ? "#4a4640" : "#36332f";
-  const width = 7.4 + tomb.variant * 2.2;
-  const height = 9.2 + survivalHash01(tomb.localX, tomb.localZ, 12400) * 2.6;
+  const accentStone = tomb.variant > 0.66 ? "#d2c9b7" : tomb.variant > 0.33 ? "#716b62" : "#bfb7a7";
+  const width = 11.6 + tomb.variant * 5.2 + (styleIndex === 3 ? 2.4 : 0);
+  const height = 15.2 + survivalHash01(tomb.localX, tomb.localZ, 12400) * 7.6 + (styleIndex === 1 ? 4.6 : 0);
+  const depth = 1.85 + tomb.variant * 0.72;
+  const baseWidth = width + (styleIndex === 3 ? 5.8 : 4.1);
+  const baseDepth = depth + 2.45;
+  const labelY = styleIndex === 1 ? height * 0.42 + 1.25 : styleIndex === 3 ? height * 0.39 + 1.15 : height * 0.48 + 1.05;
+  const labelHeight = styleIndex === 1 ? height * 0.42 : styleIndex === 4 ? height * 0.48 : height * 0.52;
+  const labelWidth = styleIndex === 3 ? width * 0.43 : width * 0.78;
+  const frontZ = -depth / 2 - 0.035;
 
   return (
     <group name="graveyard-joke-tomb" position={[tomb.localX, tomb.localY + 0.08, tomb.localZ]} rotation={[0, tomb.rotation, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 1.4]} castShadow={false} renderOrder={1} scale={[1.6, 1, 1]}>
-        <circleGeometry args={[5.6, 10]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 2.0]} castShadow={false} renderOrder={1} scale={[1.9, 1.18, 1]}>
+        <circleGeometry args={[7.4 + tomb.variant * 2.2, 12]} />
         <meshBasicMaterial color="#202519" transparent opacity={0.82} />
       </mesh>
-      <mesh position={[0, 0.68, 0.48]} castShadow={false} receiveShadow>
-        <boxGeometry args={[width + 2.2, 1.36, 3.1]} />
+      <mesh position={[0, 0.78, 0.62]} castShadow={false} receiveShadow>
+        <boxGeometry args={[baseWidth, 1.56, baseDepth]} />
         <meshBasicMaterial color={darkStone} />
       </mesh>
-      <mesh position={[0, height * 0.46 + 0.9, 0]} castShadow={false} receiveShadow>
-        <boxGeometry args={[width, height, 1.24]} />
-        <meshBasicMaterial color={stoneColor} />
-      </mesh>
-      <mesh position={[0, height + 1.0, 0]} castShadow={false}>
-        <boxGeometry args={[width * 0.78, 1.2, 1.28]} />
-        <meshBasicMaterial color={stoneColor} />
-      </mesh>
-      {tomb.variant > 0.55 ? (
+
+      {styleIndex === 0 && (
         <>
-          <mesh position={[0, height * 0.62 + 1.2, -0.72]} castShadow={false}>
-            <boxGeometry args={[0.7, 3.3, 0.24]} />
-            <meshBasicMaterial color="#2d2a27" />
+          <mesh position={[0, height * 0.5 + 1.2, 0]} castShadow={false} receiveShadow>
+            <boxGeometry args={[width, height, depth]} />
+            <meshBasicMaterial color={stoneColor} />
           </mesh>
-          <mesh position={[0, height * 0.72 + 1.2, -0.76]} castShadow={false}>
-            <boxGeometry args={[2.7, 0.58, 0.22]} />
+          <mesh position={[0, height + 1.95, 0]} castShadow={false}>
+            <boxGeometry args={[width * 0.74, 1.5, depth + 0.12]} />
+            <meshBasicMaterial color={stoneColor} />
+          </mesh>
+          <mesh position={[0, height * 0.74 + 1.2, frontZ - 0.02]} castShadow={false}>
+            <boxGeometry args={[width * 0.56, 0.5, 0.24]} />
             <meshBasicMaterial color="#2d2a27" />
           </mesh>
         </>
-      ) : (
-        <mesh position={[0, height * 0.72 + 1.2, -0.72]} castShadow={false}>
-          <boxGeometry args={[width * 0.58, 0.42, 0.2]} />
-          <meshBasicMaterial color="#2d2a27" />
-        </mesh>
       )}
-      <mesh position={[0, height * 0.48 + 1.05, -0.632]} rotation={[0, Math.PI, 0]} frustumCulled={false} renderOrder={3}>
-        <planeGeometry args={[width * 0.96, height * 0.56]} />
+
+      {styleIndex === 1 && (
+        <>
+          <mesh position={[0, height * 0.5 + 1.2, 0]} castShadow={false} receiveShadow>
+            <boxGeometry args={[width * 0.62, height, depth]} />
+            <meshBasicMaterial color={stoneColor} />
+          </mesh>
+          <mesh position={[0, height + 2.7, 0]} castShadow={false}>
+            <boxGeometry args={[width * 0.42, 4.1, depth + 0.12]} />
+            <meshBasicMaterial color={stoneColor} />
+          </mesh>
+          <mesh position={[0, height + 3.0, 0]} castShadow={false}>
+            <boxGeometry args={[width * 0.95, 1.52, depth + 0.18]} />
+            <meshBasicMaterial color={stoneColor} />
+          </mesh>
+          <mesh position={[0, height * 0.72 + 1.1, frontZ - 0.02]} castShadow={false}>
+            <boxGeometry args={[0.72, 4.25, 0.26]} />
+            <meshBasicMaterial color="#2d2a27" />
+          </mesh>
+          <mesh position={[0, height * 0.82 + 1.1, frontZ - 0.04]} castShadow={false}>
+            <boxGeometry args={[3.25, 0.62, 0.24]} />
+            <meshBasicMaterial color="#2d2a27" />
+          </mesh>
+        </>
+      )}
+
+      {styleIndex === 2 && (
+        <>
+          <mesh position={[0, height * 0.46 + 1.1, 0]} castShadow={false} receiveShadow>
+            <boxGeometry args={[width, height * 0.92, depth]} />
+            <meshBasicMaterial color={stoneColor} />
+          </mesh>
+          <mesh position={[0, height * 0.92 + 1.1, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow={false}>
+            <cylinderGeometry args={[width * 0.5, width * 0.5, depth + 0.06, 16]} />
+            <meshBasicMaterial color={stoneColor} />
+          </mesh>
+          <mesh position={[0, height * 0.86 + 1.1, frontZ - 0.04]} castShadow={false}>
+            <boxGeometry args={[width * 0.62, 0.46, 0.24]} />
+            <meshBasicMaterial color="#2d2a27" />
+          </mesh>
+        </>
+      )}
+
+      {styleIndex === 3 && (
+        <>
+          {[-1, 1].map((side) => (
+            <Fragment key={`double-marker-${side}`}>
+              <mesh position={[side * width * 0.27, height * 0.46 + 1.05, 0]} castShadow={false} receiveShadow>
+                <boxGeometry args={[width * 0.42, height * 0.92, depth]} />
+                <meshBasicMaterial color={side < 0 ? stoneColor : accentStone} />
+              </mesh>
+              <mesh position={[side * width * 0.27, height * 0.95 + 1.02, 0]} castShadow={false}>
+                <boxGeometry args={[width * 0.36, 1.35, depth + 0.12]} />
+                <meshBasicMaterial color={side < 0 ? stoneColor : accentStone} />
+              </mesh>
+            </Fragment>
+          ))}
+          <mesh position={[0, height * 0.18 + 1.0, frontZ - 0.04]} castShadow={false}>
+            <boxGeometry args={[width * 0.22, 2.8, 0.22]} />
+            <meshBasicMaterial color="#2d2a27" />
+          </mesh>
+        </>
+      )}
+
+      {styleIndex === 4 && (
+        <>
+          <mesh position={[0, height * 0.42 + 1.12, 0]} castShadow={false} receiveShadow>
+            <boxGeometry args={[width * 0.74, height * 0.84, depth]} />
+            <meshBasicMaterial color={stoneColor} />
+          </mesh>
+          <mesh position={[0, height * 0.92 + 1.02, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
+            <coneGeometry args={[width * 0.52, height * 0.34, 4]} />
+            <meshBasicMaterial color={accentStone} />
+          </mesh>
+          <mesh position={[0, height * 0.62 + 1.1, frontZ - 0.04]} castShadow={false}>
+            <boxGeometry args={[width * 0.42, 0.5, 0.24]} />
+            <meshBasicMaterial color="#2d2a27" />
+          </mesh>
+          <mesh position={[0, height * 0.7 + 1.1, frontZ - 0.05]} castShadow={false}>
+            <boxGeometry args={[0.54, 2.7, 0.22]} />
+            <meshBasicMaterial color="#2d2a27" />
+          </mesh>
+        </>
+      )}
+
+      <mesh position={[0, 1.72, -baseDepth * 0.5 - 0.04]} castShadow={false}>
+        <boxGeometry args={[baseWidth * 0.86, 0.34, 0.2]} />
+        <meshBasicMaterial color="#15130f" transparent opacity={0.54} />
+      </mesh>
+      <mesh position={[-baseWidth * 0.38, height * 0.32 + 1.1, frontZ - 0.045]} castShadow={false}>
+        <boxGeometry args={[0.34, height * 0.48, 0.22]} />
+        <meshBasicMaterial color="#e5dcc8" transparent opacity={0.28} />
+      </mesh>
+      <mesh position={[baseWidth * 0.34, height * 0.58 + 1.1, frontZ - 0.045]} castShadow={false}>
+        <boxGeometry args={[0.28, height * 0.36, 0.22]} />
+        <meshBasicMaterial color="#28241e" transparent opacity={0.46} />
+      </mesh>
+      <mesh position={[styleIndex === 3 ? -width * 0.27 : 0, labelY, frontZ - 0.075]} rotation={[0, Math.PI, 0]} frustumCulled={false} renderOrder={3}>
+        <planeGeometry args={[labelWidth, labelHeight]} />
         <meshBasicMaterial map={labelTexture} transparent depthWrite={false} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-3} polygonOffsetUnits={-3} />
       </mesh>
     </group>
