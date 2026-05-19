@@ -158,12 +158,23 @@ type QaSurvivalSpawn = {
   position: [number, number, number];
 };
 
-const TEMP_SWAMP_VILLAGE_SPAWN_CHUNK: [number, number] = [0, -3];
+const TEMP_MOUNTAIN_VILLAGE_SPAWN_CHUNK: [number, number] = [3, 0];
+const TEMP_MOUNTAIN_VILLAGE_SPAWN_Y = 270;
+const TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_Z = 118;
 
-function getSurvivalChunkSpawn(cx: number, cz: number, keyPrefix: string): QaSurvivalSpawn {
+function getSurvivalChunkSpawn(
+  cx: number,
+  cz: number,
+  keyPrefix: string,
+  options: { y?: number; localZ?: number } = {}
+): QaSurvivalSpawn {
   return {
     key: `${keyPrefix}:${cx},${cz}`,
-    position: [cx * SURVIVAL_BLOCK_SIZE, 140, cz * SURVIVAL_BLOCK_SIZE + 214],
+    position: [
+      cx * SURVIVAL_BLOCK_SIZE,
+      options.y ?? 140,
+      cz * SURVIVAL_BLOCK_SIZE + (options.localZ ?? 214),
+    ],
   };
 }
 
@@ -190,27 +201,34 @@ function getQaSurvivalSpawnFromUrl(): QaSurvivalSpawn | null {
   return null;
 }
 
-function getTemporarySwampVillageSpawn(): QaSurvivalSpawn | null {
+function getTemporaryMountainVillageSpawn(): QaSurvivalSpawn | null {
   if (typeof window === "undefined") return null;
 
   const params = new URLSearchParams(window.location.search);
-  if (params.get("qaSurvivalChunk") || params.get("disableSwampSpawn") === "1") return null;
+  if (
+    params.get("qaSurvivalChunk")
+    || params.get("disableMountainSpawn") === "1"
+    || params.get("disableSwampSpawn") === "1"
+  ) return null;
 
   const gameMode = useGameStore.getState().gameMode;
-  const shouldSpawnAtSwampVillage = (
+  const shouldSpawnAtMountainVillage = (
     params.get("qaSurvival") === "1"
-    || params.get("spawnSwamp") === "1"
+    || params.get("spawnMountain") === "1"
     || gameMode === "solo-survival"
     || gameMode === "multiplayer-survival"
   );
-  if (!shouldSpawnAtSwampVillage) return null;
+  if (!shouldSpawnAtMountainVillage) return null;
 
-  const [cx, cz] = TEMP_SWAMP_VILLAGE_SPAWN_CHUNK;
-  return getSurvivalChunkSpawn(cx, cz, "temp-swamp-village");
+  const [cx, cz] = TEMP_MOUNTAIN_VILLAGE_SPAWN_CHUNK;
+  return getSurvivalChunkSpawn(cx, cz, "temp-mountain-village", {
+    y: TEMP_MOUNTAIN_VILLAGE_SPAWN_Y,
+    localZ: TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_Z,
+  });
 }
 
 function getPlayerSpawnOverride(): QaSurvivalSpawn | null {
-  return getQaSurvivalSpawnFromUrl() ?? getTemporarySwampVillageSpawn();
+  return getQaSurvivalSpawnFromUrl() ?? getTemporaryMountainVillageSpawn();
 }
 
 function getInitialPlayerPosition(): [number, number, number] {
