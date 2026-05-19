@@ -112,9 +112,9 @@ function Window({ position, rotation = [0, 0, 0] }: { position: [number, number,
 function CanopyBlock({ position, size }: { position: [number, number, number]; size: [number, number, number] }) {
   return (
     <group position={position}>
-      <mesh castShadow receiveShadow scale={[1.08, 1.08, 1.08]}>
+      <mesh castShadow receiveShadow scale={[1.045, 1.045, 1.045]}>
         <boxGeometry args={size} />
-        <meshStandardMaterial color={LEAF_EDGE_COLOR} roughness={1} />
+        <meshStandardMaterial color={LEAF_EDGE_COLOR} roughness={1} side={THREE.BackSide} />
       </mesh>
       <mesh castShadow receiveShadow>
         <boxGeometry args={size} />

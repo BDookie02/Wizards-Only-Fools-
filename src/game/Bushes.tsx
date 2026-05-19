@@ -21,7 +21,7 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
     
     ctx.clearRect(0, 0, size, size);
 
-    function drawLobe(x: number, y: number, w: number, h: number, color: string, edge = "#182611") {
+    function drawLobe(x: number, y: number, w: number, h: number, color: string, edge = "#253a1c") {
         const points = [
           [x, y - h * 0.54],
           [x + w * 0.42, y - h * 0.36],
@@ -44,8 +44,8 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
 
         ctx.beginPath();
         points.forEach(([px, py], index) => {
-          const insetX = x + (px - x) * 0.78;
-          const insetY = y + (py - y) * 0.78;
+          const insetX = x + (px - x) * 0.86;
+          const insetY = y + (py - y) * 0.86;
           if (index === 0) ctx.moveTo(insetX, insetY);
           else ctx.lineTo(insetX, insetY);
         });
@@ -55,7 +55,7 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
     }
 
     // Bushes matching the cartoon reference image, but with chunkier pixel-edge definition.
-    const edgeColor = "#16240f";
+    const edgeColor = "#253a1c";
     const colorDark = "#416035";
     const colorMid = "#5a8643";
     const colorLight = "#7dad52";
@@ -68,17 +68,17 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
     drawLobe(size * 0.14, size * 0.8, size * 0.22, size * 0.26, colorDark, edgeColor);
 
     // Draw mid layer
-    drawLobe(size * 0.3, size * 0.75, size * 0.26, size * 0.3, colorMid, "#27411f");
-    drawLobe(size * 0.5, size * 0.65, size * 0.36, size * 0.42, colorMid, "#27411f");
-    drawLobe(size * 0.7, size * 0.72, size * 0.28, size * 0.32, colorMid, "#27411f");
+    drawLobe(size * 0.3, size * 0.75, size * 0.26, size * 0.3, colorMid, "#34562a");
+    drawLobe(size * 0.5, size * 0.65, size * 0.36, size * 0.42, colorMid, "#34562a");
+    drawLobe(size * 0.7, size * 0.72, size * 0.28, size * 0.32, colorMid, "#34562a");
 
     // Draw light layer
-    drawLobe(size * 0.35, size * 0.85, size * 0.16, size * 0.18, colorLight, "#385c2b");
-    drawLobe(size * 0.5, size * 0.8, size * 0.24, size * 0.24, colorLight, "#385c2b");
-    drawLobe(size * 0.65, size * 0.82, size * 0.2, size * 0.22, colorLight, "#385c2b");
+    drawLobe(size * 0.35, size * 0.85, size * 0.16, size * 0.18, colorLight, "#477033");
+    drawLobe(size * 0.5, size * 0.8, size * 0.24, size * 0.24, colorLight, "#477033");
+    drawLobe(size * 0.65, size * 0.82, size * 0.2, size * 0.22, colorLight, "#477033");
 
     ctx.strokeStyle = edgeColor;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(size * 0.1, size * 0.94);
     ctx.lineTo(size * 0.18, size * 0.82);
