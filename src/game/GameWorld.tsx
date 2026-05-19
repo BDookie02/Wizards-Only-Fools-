@@ -9682,12 +9682,21 @@ function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMine
   );
 }
 
-function MountainMineshaftCatwalkRing({ hut, showDetails }: { hut: MountainMineshaftHut; showDetails: boolean }) {
+function MountainMineshaftCatwalkRing({ hut, ladder, showDetails }: { hut: MountainMineshaftHut; ladder?: MountainMineshaftLadder; showDetails: boolean }) {
   const plankRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
   const centerGuardRailRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 0.55;
   const centerGuardPostCount = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS * 2;
   const centerGuardRailSegmentLength = ((Math.PI * 2 * centerGuardRailRadius) / centerGuardPostCount) * 0.78;
   const lightPoleRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS + 0.95;
+  const balconyGapHalfAngle = Math.min(0.52, Math.max(0.34, (hut.platformWidth * 0.38) / centerGuardRailRadius));
+  const ladderGapHalfAngle = ladder ? Math.min(0.34, Math.max(0.22, (ladder.width * 0.72) / centerGuardRailRadius)) : 0;
+  const guardRailGaps = [
+    { angle: hut.angle, halfAngle: balconyGapHalfAngle },
+    ...(ladder ? [{ angle: ladder.angle, halfAngle: ladderGapHalfAngle }] : []),
+  ];
+  const isGuardRailOpening = (angle: number) => guardRailGaps.some((gap) => (
+    Math.abs(Math.atan2(Math.sin(angle - gap.angle), Math.cos(angle - gap.angle))) < gap.halfAngle
+  ));
 
   return (
     <group name={`${hut.key}-catwalk`} position={[0, hut.y + 0.08, 0]}>
@@ -9710,6 +9719,7 @@ function MountainMineshaftCatwalkRing({ hut, showDetails }: { hut: MountainMines
       })}
       {showDetails && Array.from({ length: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS }, (_, index) => {
         const angle = ((index + 0.5) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
+        if (isGuardRailOpening(angle)) return null;
 
         return (
           <mesh key={`catwalk-edge-block-${index}`} position={[Math.sin(angle) * centerGuardRailRadius, 0.46, Math.cos(angle) * centerGuardRailRadius]} rotation={[0, angle, 0]} castShadow={false}>
@@ -9720,6 +9730,7 @@ function MountainMineshaftCatwalkRing({ hut, showDetails }: { hut: MountainMines
       })}
       {showDetails && Array.from({ length: centerGuardPostCount }, (_, index) => {
         const angle = (index / centerGuardPostCount) * Math.PI * 2;
+        if (isGuardRailOpening(angle)) return null;
 
         return (
           <mesh key={`catwalk-center-guard-post-${index}`} position={[Math.sin(angle) * centerGuardRailRadius, 1.18, Math.cos(angle) * centerGuardRailRadius]} rotation={[0, angle, 0]} castShadow={false}>
@@ -9732,6 +9743,7 @@ function MountainMineshaftCatwalkRing({ hut, showDetails }: { hut: MountainMines
         <Fragment key={`catwalk-center-guard-rail-row-${railIndex}`}>
           {Array.from({ length: centerGuardPostCount }, (_, index) => {
             const angle = ((index + 0.5) / centerGuardPostCount) * Math.PI * 2;
+            if (isGuardRailOpening(angle)) return null;
 
             return (
               <mesh key={`rail-${index}`} position={[Math.sin(angle) * centerGuardRailRadius, height, Math.cos(angle) * centerGuardRailRadius]} rotation={[0, angle, 0]} castShadow={false}>
@@ -9772,8 +9784,8 @@ function MountainMineshaftCatwalkRing({ hut, showDetails }: { hut: MountainMines
 function MountainMineshaftInterior({ layout, showDetails }: { layout: MountainVillageLayout; showDetails: boolean }) {
   return (
     <group name="mountain-village-mineshaft-wall-huts">
-      {layout.interiorHuts.map((hut) => (
-        <MountainMineshaftCatwalkRing key={`${hut.key}-catwalk-ring`} hut={hut} showDetails={showDetails} />
+      {layout.interiorHuts.map((hut, index) => (
+        <MountainMineshaftCatwalkRing key={`${hut.key}-catwalk-ring`} hut={hut} ladder={layout.interiorLadders[index]} showDetails={showDetails} />
       ))}
       {layout.interiorHuts.map((hut, index) => (
         <MountainMineshaftMiniHut key={hut.key} hut={hut} ladder={layout.interiorLadders[index]} showDetails={showDetails} />
