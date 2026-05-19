@@ -563,7 +563,7 @@ import { LiveMiniMap } from "./LiveMiniMap";
 import { Huts, type HutInfo } from "./Huts";
 import { Runes } from "./Runes";
 import { Villagers } from "./Villagers";
-import { AvatarBillboard } from "./PixelAvatar";
+import { AvatarBillboard, NPC_AVATAR_GROUND_LIFT, NPC_AVATAR_SCALE } from "./PixelAvatar";
 import { WaterRipples } from "./WaterRipples";
 import { Projectiles } from "./Projectiles";
 import { isMobilePerformanceMode } from "./performanceMode";
@@ -5978,49 +5978,12 @@ function ChicagoBuildingDetails({
 
 function ChicagoInteriorVillager({ character }: { character: CharacterCustomization }) {
   return (
-    <group name="chicago-interior-villager" position={[0, 0.1, 0]} rotation={[0, Math.PI, 0]} scale={[0.92, 0.92, 0.92]}>
-      <mesh position={[-0.32, 0.82, 0]} castShadow={false}>
-        <boxGeometry args={[0.36, 1.18, 0.36]} />
-        <meshBasicMaterial color={character.pantsColor} />
-      </mesh>
-      <mesh position={[0.32, 0.82, 0]} castShadow={false}>
-        <boxGeometry args={[0.36, 1.18, 0.36]} />
-        <meshBasicMaterial color={character.pantsColor} />
-      </mesh>
-      <mesh position={[0, 1.85, 0]} castShadow={false}>
-        <boxGeometry args={[1.08, 1.42, 0.58]} />
-        <meshBasicMaterial color={character.topColor} />
-      </mesh>
-      <mesh position={[-0.76, 1.82, 0]} castShadow={false}>
-        <boxGeometry args={[0.26, 1.12, 0.28]} />
-        <meshBasicMaterial color={character.skinColor} />
-      </mesh>
-      <mesh position={[0.76, 1.82, 0]} castShadow={false}>
-        <boxGeometry args={[0.26, 1.12, 0.28]} />
-        <meshBasicMaterial color={character.skinColor} />
-      </mesh>
-      <mesh position={[0, 2.9, 0]} castShadow={false}>
-        <boxGeometry args={[0.92, 0.82, 0.68]} />
-        <meshBasicMaterial color={character.skinColor} />
-      </mesh>
-      <mesh position={[0, 3.42, -0.02]} castShadow={false}>
-        <boxGeometry args={[1.02, 0.28, 0.72]} />
-        <meshBasicMaterial color={character.hairColor === "none" ? character.hatColor : character.hairColor} />
-      </mesh>
-      {character.hatStyle !== "none" && (
-        <mesh position={[0, 3.78, 0]} castShadow={false}>
-          <coneGeometry args={[0.58, 0.92, 5]} />
-          <meshBasicMaterial color={character.hatColor} />
-        </mesh>
-      )}
-      <mesh position={[-0.2, 2.98, -0.36]} castShadow={false}>
-        <boxGeometry args={[0.1, 0.1, 0.08]} />
-        <meshBasicMaterial color="#111827" />
-      </mesh>
-      <mesh position={[0.2, 2.98, -0.36]} castShadow={false}>
-        <boxGeometry args={[0.1, 0.1, 0.08]} />
-        <meshBasicMaterial color="#111827" />
-      </mesh>
+    <group
+      name="chicago-interior-villager"
+      position={[0, 0.95 + NPC_AVATAR_GROUND_LIFT, 0]}
+      scale={[NPC_AVATAR_SCALE, NPC_AVATAR_SCALE, NPC_AVATAR_SCALE]}
+    >
+      <AvatarBillboard character={character} animation="idle" yaw={Math.PI} health={100} />
     </group>
   );
 }
@@ -9557,15 +9520,13 @@ function ChapelSeatedNpc({
   position,
   yaw,
   character,
-  scale = 0.78,
 }: {
   position: [number, number, number];
   yaw: number;
   character: CharacterCustomization;
-  scale?: number;
 }) {
   return (
-    <group position={position} scale={[scale, scale, scale]} name="chapel-pew-npc">
+    <group position={position} scale={[NPC_AVATAR_SCALE, NPC_AVATAR_SCALE, NPC_AVATAR_SCALE]} name="chapel-pew-npc">
       <AvatarBillboard character={character} animation="idle" yaw={yaw} health={100} />
     </group>
   );
@@ -9573,9 +9534,10 @@ function ChapelSeatedNpc({
 
 function ChapelPewNpcs() {
   const rows = [-32, -20, -8, 4, 16];
+  const seatY = 2.98 + NPC_AVATAR_GROUND_LIFT;
   const seatPlacements = [
-    { x: 10.8, y: 2.9, z: -0.92, scale: 0.9 },
-    { x: 14.2, y: 2.84, z: -0.22, scale: 0.86 },
+    { x: 12.1, y: seatY, z: -0.92 },
+    { x: 19.2, y: seatY, z: -0.22 },
   ];
 
   return (
@@ -9590,7 +9552,6 @@ function ChapelPewNpcs() {
                 position={[side * seat.x, seat.y, z + seat.z]}
                 yaw={0}
                 character={character}
-                scale={seat.scale}
               />
             );
           })
@@ -9653,7 +9614,7 @@ function ChapelPopeMiter() {
 
 function ChapelPopeAtPulpit() {
   return (
-    <group name="chapel-pope-at-pulpit" position={[0, 7.1, -45.8]} scale={[2.25, 2.25, 2.25]}>
+    <group name="chapel-pope-at-pulpit" position={[0, 7.1, -45.8]} scale={[NPC_AVATAR_SCALE, NPC_AVATAR_SCALE, NPC_AVATAR_SCALE]}>
       <AvatarBillboard character={CHAPEL_POPE_CHARACTER} animation="idle" yaw={Math.PI} health={100} />
       <ChapelPopeMiter />
     </group>

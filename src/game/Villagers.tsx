@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { CharacterCustomization, useGameStore } from "../store/gameStore";
 import { getHutList, type HutInfo } from "./Huts";
-import { AvatarBillboard } from "./PixelAvatar";
+import { AvatarBillboard, NPC_AVATAR_GROUND_LIFT, NPC_AVATAR_SCALE } from "./PixelAvatar";
 import { isMobilePerformanceMode } from "./performanceMode";
 
 interface VillagerInfo {
@@ -315,7 +315,10 @@ const VillagerNpc = memo(function VillagerNpc({
   });
 
   return (
-    <group position={[villager.x, villager.y + jumpOffset, villager.z]}>
+    <group
+      position={[villager.x, villager.y + NPC_AVATAR_GROUND_LIFT + jumpOffset, villager.z]}
+      scale={[NPC_AVATAR_SCALE, NPC_AVATAR_SCALE, NPC_AVATAR_SCALE]}
+    >
       <AvatarBillboard character={character} animation={phase} yaw={lookYaw} health={100} />
     </group>
   );
