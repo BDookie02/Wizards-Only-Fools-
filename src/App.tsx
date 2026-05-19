@@ -66,7 +66,8 @@ type LaunchInputSource = 'mouse' | 'controller';
 
 function isDevSurvivalObserver() {
   if (!import.meta.env.DEV || typeof window === 'undefined') return false;
-  return new URLSearchParams(window.location.search).get('qaSurvival') === '1';
+  const params = new URLSearchParams(window.location.search);
+  return params.get('qaSurvival') === '1' || params.get('spawnMountain') === '1';
 }
 
 function LaunchMenu() {

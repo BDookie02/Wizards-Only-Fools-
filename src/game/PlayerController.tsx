@@ -208,8 +208,7 @@ function getTemporaryMountainVillageSpawn(): QaSurvivalSpawn | null {
 
   const params = new URLSearchParams(window.location.search);
   if (
-    params.get("qaSurvivalChunk")
-    || params.get("disableMountainSpawn") === "1"
+    params.get("disableMountainSpawn") === "1"
     || params.get("disableSwampSpawn") === "1"
   ) return null;
 
@@ -230,7 +229,7 @@ function getTemporaryMountainVillageSpawn(): QaSurvivalSpawn | null {
 }
 
 function getPlayerSpawnOverride(): QaSurvivalSpawn | null {
-  return getQaSurvivalSpawnFromUrl() ?? getTemporaryMountainVillageSpawn();
+  return getTemporaryMountainVillageSpawn() ?? getQaSurvivalSpawnFromUrl();
 }
 
 function getPlayerSpawnPosition(fallbackPosition = DEFAULT_PLAYER_SPAWN_POSITION): [number, number, number] {
