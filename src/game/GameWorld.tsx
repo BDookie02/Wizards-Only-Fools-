@@ -1481,7 +1481,7 @@ function getGraveyardGateApproachAtWorld(worldX: number, worldZ: number) {
     const centerZ = village.cz * SURVIVAL_BLOCK_SIZE;
     const localX = worldX - centerX;
     const localZ = worldZ - centerZ;
-    const gateMask = getGraveyardGateEntryMask(localX, localZ);
+    const gateMask = getGraveyardGateClearingMask(localX, localZ);
     if (gateMask <= mask) return;
 
     mask = gateMask;
@@ -1523,7 +1523,7 @@ function getSurvivalTerrainHeightForChunk(chunk: SurvivalChunkInfo, localX: numb
 
   const graveyardGateApproach = getGraveyardGateApproachAtWorld(worldX, worldZ);
   if (graveyardGateApproach.mask > 0) {
-    height = lerpNumber(height, graveyardGateApproach.height, graveyardGateApproach.mask * 0.95);
+    height = lerpNumber(height, graveyardGateApproach.height, graveyardGateApproach.mask * 0.99);
   }
 
   return height;
@@ -8627,6 +8627,20 @@ function getGraveyardGateEntryMask(localX: number, localZ: number) {
   return clamp01(Math.max(northSouthGate, eastWestGate));
 }
 
+function getGraveyardGateClearingMask(localX: number, localZ: number) {
+  const absX = Math.abs(localX);
+  const absZ = Math.abs(localZ);
+  const northSouthShoulder =
+    (1 - smoothstepRange(214, 306, absX)) *
+    smoothstepRange(48, 104, absZ) *
+    (1 - smoothstepRange(GRAVEYARD_FENCE_RADIUS + 116, GRAVEYARD_FENCE_RADIUS + 270, absZ));
+  const eastWestShoulder =
+    (1 - smoothstepRange(214, 306, absZ)) *
+    smoothstepRange(48, 104, absX) *
+    (1 - smoothstepRange(GRAVEYARD_FENCE_RADIUS + 116, GRAVEYARD_FENCE_RADIUS + 270, absX));
+  return clamp01(Math.max(getGraveyardGateEntryMask(localX, localZ), northSouthShoulder, eastWestShoulder));
+}
+
 function getGraveyardChapelFoundationMask(localX: number, localZ: number) {
   const absX = Math.abs(localX);
   const absZ = Math.abs(localZ);
@@ -8658,14 +8672,16 @@ function getGraveyardVillageHeight(chunk: SurvivalChunkInfo, localX: number, loc
   const naturalHeight = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
   const radius = Math.hypot(localX, localZ);
   const gateEntryMask = getGraveyardGateEntryMask(localX, localZ);
-  const edgeBlend = smoothstepRange(GRAVEYARD_PAD_FLAT_RADIUS, SURVIVAL_BLOCK_SIZE / 2, Math.max(Math.abs(localX), Math.abs(localZ))) * (1 - gateEntryMask * 0.95);
+  const gateClearingMask = getGraveyardGateClearingMask(localX, localZ);
+  const edgeBlend = smoothstepRange(GRAVEYARD_PAD_FLAT_RADIUS, SURVIVAL_BLOCK_SIZE / 2, Math.max(Math.abs(localX), Math.abs(localZ))) * (1 - gateClearingMask * 0.95);
   const hillA = Math.sin(localX * 0.035 + chunk.cx * 1.7) * Math.cos(localZ * 0.028 - chunk.cz * 1.3);
   const hillB = Math.sin((localX + localZ) * 0.023 + 2.4) * 0.58;
   const moundRing = Math.pow(smoothstepRange(42, GRAVEYARD_VILLAGE_RADIUS, radius) * (1 - smoothstepRange(GRAVEYARD_VILLAGE_RADIUS - 34, GRAVEYARD_VILLAGE_RADIUS, radius)), 0.9);
   const pathMask = getGraveyardEffectivePathMask(localX, localZ);
   const chapelMask = getGraveyardChapelMask(localX, localZ);
-  const hills = (hillA * 4.6 + hillB * 2.8 + moundRing * 5.8) * (1 - pathMask * 0.78) * (1 - chapelMask * 0.98) * (1 - gateEntryMask * 0.96);
-  const graveyardHeight = lerpNumber(baseHeight + hills - pathMask * 0.38, baseHeight - 0.46, gateEntryMask * 0.92);
+  const hills = (hillA * 4.6 + hillB * 2.8 + moundRing * 5.8) * (1 - pathMask * 0.78) * (1 - chapelMask * 0.98) * (1 - gateClearingMask);
+  const gateFlattenMask = Math.max(gateEntryMask * 0.96, gateClearingMask * 0.9);
+  const graveyardHeight = lerpNumber(baseHeight + hills - pathMask * 0.38, baseHeight - 0.46, gateFlattenMask);
   return lerpNumber(graveyardHeight, naturalHeight, edgeBlend);
 }
 
@@ -8806,7 +8822,7 @@ function makeGraveyardTombs(chunk: SurvivalChunkInfo, baseHeight: number): Grave
 }
 
 function makeGraveyardFenceSegments(chunk: SurvivalChunkInfo, baseHeight: number): GraveyardFenceSegment[] {
-  const segmentLength = (Math.PI * 2 * GRAVEYARD_FENCE_RADIUS / GRAVEYARD_FENCE_SEGMENT_COUNT) * 0.86;
+  const segmentLength = (Math.PI * 2 * GRAVEYARD_FENCE_RADIUS / GRAVEYARD_FENCE_SEGMENT_COUNT) * 1.03;
 
   return Array.from({ length: GRAVEYARD_FENCE_SEGMENT_COUNT }, (_, index) => {
     const angle = (Math.PI * 2 * index) / GRAVEYARD_FENCE_SEGMENT_COUNT;
@@ -10015,10 +10031,12 @@ function GraveyardVillageColliders({
   chunk,
   baseHeight,
   groundGeometry,
+  fenceSegments,
 }: {
   chunk: SurvivalChunkInfo;
   baseHeight: number;
   groundGeometry: THREE.BufferGeometry;
+  fenceSegments: GraveyardFenceSegment[];
 }) {
   if (chunk.distance !== 0) return null;
 
@@ -10050,6 +10068,11 @@ function GraveyardVillageColliders({
         <CuboidCollider args={[2.7, 33.2, 1.2]} position={[13.7, baseHeight + 33.2, 29.2]} />
         <CuboidCollider args={[11, 20, 1.3]} position={[0, baseHeight + 46.4, 57.4]} />
         <CuboidCollider args={[11, 20, 1.2]} position={[0, baseHeight + 46.4, 29.2]} />
+        {fenceSegments.map((segment) => (
+          <group key={`${segment.key}-collider`} position={[segment.localX, 0, segment.localZ]} rotation={[0, segment.rotation, 0]}>
+            <CuboidCollider args={[(segment.length + 3.2) / 2, 7.2, 1.8]} position={[0, segment.localY + 5.6, 0]} />
+          </group>
+        ))}
       </RigidBody>
     </>
   );
@@ -10065,7 +10088,7 @@ function SurvivalGraveyardVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
 
   return (
     <>
-      <GraveyardVillageColliders chunk={chunk} baseHeight={baseHeight} groundGeometry={terrainColliderGeometry} />
+      <GraveyardVillageColliders chunk={chunk} baseHeight={baseHeight} groundGeometry={terrainColliderGeometry} fenceSegments={layout.fenceSegments} />
       <group name={`survival-graveyard-village-${chunk.key}`} position={[chunk.x, 0, chunk.z]}>
         <mesh geometry={terrainGeometry} dispose={null} receiveShadow={showDetails}>
           <meshStandardMaterial vertexColors map={terrainDetailTexture} roughness={1} metalness={0} />
