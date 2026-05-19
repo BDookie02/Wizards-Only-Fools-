@@ -8442,7 +8442,7 @@ const MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS = 32;
 const MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS = 36;
 const MOUNTAIN_VILLAGE_MINESHAFT_RIM_MID_RADIUS = 41;
 const MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS = 48;
-const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_Y_OFFSET = -25.35;
+const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET = 3.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS = 28.5;
 
 type MountainVillageTrailPoint = {
@@ -9251,13 +9251,15 @@ function MountainCabin({ cabin, summitY, showDetails }: { cabin: MountainVillage
   );
 }
 
-function MountainMineshaftOpening({ summitY, showDetails }: { summitY: number; showDetails: boolean }) {
-  const bottomY = summitY + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_Y_OFFSET;
+function MountainMineshaftOpening({ baseHeight, summitY, showDetails }: { baseHeight: number; summitY: number; showDetails: boolean }) {
+  const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET;
+  const shaftWallHeight = Math.max(32, summitY - bottomY + 1.2);
+  const shaftWallY = bottomY + shaftWallHeight / 2 - 0.2;
 
   return (
     <group name="mountain-village-mineshaft">
-      <mesh position={[0, summitY - 12.4, 0]} castShadow={false} renderOrder={3}>
-        <cylinderGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS * 0.82, 26, 48, 1, true]} />
+      <mesh position={[0, shaftWallY, 0]} castShadow={false} renderOrder={3}>
+        <cylinderGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS * 0.82, shaftWallHeight, 48, 1, true]} />
         <meshStandardMaterial color="#0b0908" roughness={1} metalness={0} side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, bottomY - 0.28, 0]} receiveShadow={showDetails} renderOrder={4}>
@@ -9420,7 +9422,7 @@ function MountainVillageColliders({
             0.42,
             MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.82,
           ]}
-          position={[0, layout.summitY + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_Y_OFFSET - 0.42, 0]}
+          position={[0, layout.baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET - 0.42, 0]}
         />
       </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.72} restitution={0} position={[chunk.x, 0, chunk.z]}>
@@ -9464,7 +9466,7 @@ function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
         <MountainSnowCap summitY={layout.summitY} />
         <MountainVillageTrail layout={layout} showDetails={showDetails} />
         <MountainWaterfall waterfall={layout.waterfall} summitY={layout.summitY} />
-        <MountainMineshaftOpening summitY={layout.summitY} showDetails={showDetails} />
+        <MountainMineshaftOpening baseHeight={layout.baseHeight} summitY={layout.summitY} showDetails={showDetails} />
         {layout.cabins.map((cabin) => (
           <MountainCabin key={cabin.key} cabin={cabin} summitY={layout.summitY} showDetails={showDetails} />
         ))}
