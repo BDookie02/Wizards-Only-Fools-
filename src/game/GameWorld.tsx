@@ -8454,6 +8454,10 @@ const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_START_CLEARANCE = 0.78;
 const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_EXIT_CLEARANCE = 1.85;
 const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_SENSOR_DEPTH = 2.1;
 const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_PLATFORM_GAP = 7.6;
+const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH = 8.6;
+const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_Y_OFFSET = 0.94;
+const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_START_RADIUS = MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS - 0.65;
+const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_END_RADIUS = MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS + 8.5;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -9057,10 +9061,11 @@ function makeMountainMineshaftLadders(
   chunk: SurvivalChunkInfo,
   baseHeight: number,
   huts: MountainMineshaftHut[],
+  summitY: number,
 ): MountainMineshaftLadder[] {
   const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET + MOUNTAIN_VILLAGE_MINESHAFT_LADDER_START_CLEARANCE;
 
-  return huts.map((hut, index) => {
+  const ladders = huts.map((hut, index) => {
     const ladderAngle = hut.angle + (index % 2 === 0 ? -0.46 : 0.46) + index * 0.08;
     const startY = index === 0 ? bottomY : huts[index - 1].y + MOUNTAIN_VILLAGE_MINESHAFT_LADDER_START_CLEARANCE;
 
@@ -9075,6 +9080,23 @@ function makeMountainMineshaftLadders(
       width: MOUNTAIN_VILLAGE_MINESHAFT_LADDER_WIDTH,
     };
   });
+
+  const topHut = huts[huts.length - 1];
+  if (topHut) {
+    const exitAngle = topHut.angle + (huts.length % 2 === 0 ? 0.62 : -0.62);
+    ladders.push({
+      key: `${chunk.key}-mineshaft-top-exit-ladder`,
+      angle: exitAngle,
+      localX: Math.sin(exitAngle) * MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS,
+      localZ: Math.cos(exitAngle) * MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS,
+      startY: topHut.y + MOUNTAIN_VILLAGE_MINESHAFT_LADDER_START_CLEARANCE,
+      endY: summitY + MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_Y_OFFSET + 1.45,
+      rotation: exitAngle + Math.PI,
+      width: MOUNTAIN_VILLAGE_MINESHAFT_LADDER_WIDTH,
+    });
+  }
+
+  return ladders;
 }
 
 function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number): MountainVillageLayout {
@@ -9107,7 +9129,7 @@ function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number)
     };
   });
   const interiorHuts = makeMountainMineshaftHuts(chunk, baseHeight, summitY);
-  const interiorLadders = makeMountainMineshaftLadders(chunk, baseHeight, interiorHuts);
+  const interiorLadders = makeMountainMineshaftLadders(chunk, baseHeight, interiorHuts, summitY);
   const cabinHutInfos: HutInfo[] = cabins.map((cabin, index) => ({
     id: `${chunk.key}-mountain-hut-${index}`,
     x: chunk.x + cabin.localX,
@@ -9804,7 +9826,79 @@ function MountainMineshaftInterior({ layout, showDetails }: { layout: MountainVi
   );
 }
 
-function MountainMineshaftOpening({ baseHeight, summitY, showDetails }: { baseHeight: number; summitY: number; showDetails: boolean }) {
+function getMountainMineshaftExitBridgeFrame(ladder: MountainMineshaftLadder) {
+  const startRadius = MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_START_RADIUS;
+  const endRadius = MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_END_RADIUS;
+  const centerRadius = (startRadius + endRadius) / 2;
+  const length = endRadius - startRadius;
+
+  return {
+    angle: ladder.angle,
+    length,
+    x: Math.sin(ladder.angle) * centerRadius,
+    z: Math.cos(ladder.angle) * centerRadius,
+  };
+}
+
+function MountainMineshaftTopExitBridge({ ladder, summitY, showDetails }: { ladder: MountainMineshaftLadder; summitY: number; showDetails: boolean }) {
+  const bridge = getMountainMineshaftExitBridgeFrame(ladder);
+  const y = summitY + MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_Y_OFFSET;
+  const plankCount = 9;
+
+  return (
+    <group name="mountain-village-mineshaft-top-exit" position={[bridge.x, y, bridge.z]} rotation={[0, bridge.angle, 0]}>
+      <mesh castShadow={false} receiveShadow>
+        <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH, 0.58, bridge.length]} />
+        <meshBasicMaterial color="#5d3f28" />
+      </mesh>
+      <mesh position={[0, 0.42, 0]} castShadow={false} receiveShadow>
+        <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.88, 0.2, bridge.length * 0.96]} />
+        <meshBasicMaterial color="#8a653f" />
+      </mesh>
+      {showDetails && Array.from({ length: plankCount }, (_, index) => {
+        const z = -bridge.length / 2 + (index + 0.5) * (bridge.length / plankCount);
+        return (
+          <mesh key={`exit-plank-${index}`} position={[0, 0.64, z]} castShadow={false}>
+            <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH + 0.8, 0.16, 1.45]} />
+            <meshBasicMaterial color={index % 2 === 0 ? "#9b7448" : "#6e4b2e"} />
+          </mesh>
+        );
+      })}
+      {[-1, 1].map((side) => (
+        <Fragment key={`exit-side-${side}`}>
+          <mesh position={[side * (MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH / 2 + 0.36), 1.38, 0]} castShadow={false}>
+            <boxGeometry args={[0.36, 0.36, bridge.length * 0.92]} />
+            <meshBasicMaterial color="#2b1c12" />
+          </mesh>
+          {showDetails && Array.from({ length: 5 }, (_, index) => {
+            const z = -bridge.length * 0.38 + index * ((bridge.length * 0.76) / 4);
+            return (
+              <mesh key={`exit-post-${index}`} position={[side * (MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH / 2 + 0.36), 0.88, z]} castShadow={false}>
+                <boxGeometry args={[0.46, 1.34, 0.46]} />
+                <meshBasicMaterial color={index % 2 === 0 ? "#362315" : "#4e321d"} />
+              </mesh>
+            );
+          })}
+        </Fragment>
+      ))}
+      {showDetails && (
+        <>
+          <mesh position={[0, -1.12, -bridge.length * 0.26]} rotation={[0, 0, 0.22]} castShadow={false}>
+            <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76, 0.42, 0.6]} />
+            <meshBasicMaterial color="#3a2719" />
+          </mesh>
+          <mesh position={[0, -1.12, bridge.length * 0.26]} rotation={[0, 0, -0.22]} castShadow={false}>
+            <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76, 0.42, 0.6]} />
+            <meshBasicMaterial color="#3a2719" />
+          </mesh>
+          <RetroMineshaftLantern position={[0, 1.4, bridge.length / 2 - 3.0]} scale={0.7} withLight />
+        </>
+      )}
+    </group>
+  );
+}
+
+function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails }: { baseHeight: number; summitY: number; exitLadder?: MountainMineshaftLadder; showDetails: boolean }) {
   const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET;
   const shaftWallHeight = Math.max(32, summitY - bottomY + 1.2);
   const shaftWallY = bottomY + shaftWallHeight / 2 - 0.2;
@@ -9851,6 +9945,8 @@ function MountainMineshaftOpening({ baseHeight, summitY, showDetails }: { baseHe
       </mesh>
       {Array.from({ length: 12 }, (_, index) => {
         const angle = (Math.PI * 2 * index) / 12;
+        if (exitLadder && Math.abs(Math.atan2(Math.sin(angle - exitLadder.angle), Math.cos(angle - exitLadder.angle))) < 0.38) return null;
+
         const x = Math.sin(angle) * ((MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS) / 2);
         const z = Math.cos(angle) * ((MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS) / 2);
         return (
@@ -9860,6 +9956,7 @@ function MountainMineshaftOpening({ baseHeight, summitY, showDetails }: { baseHe
           </mesh>
         );
       })}
+      {exitLadder && <MountainMineshaftTopExitBridge ladder={exitLadder} summitY={summitY} showDetails={showDetails} />}
       {showDetails && Array.from({ length: 4 }, (_, index) => {
         const angle = index * Math.PI / 2 + Math.PI / 4;
         return (
@@ -9956,6 +10053,8 @@ function MountainVillageColliders({
     if (typeof window === "undefined") return;
     window.dispatchEvent(new CustomEvent(eventName, { detail: { id } }));
   };
+  const topExitLadder = layout.interiorLadders[layout.interiorLadders.length - 1];
+  const topExitBridge = topExitLadder ? getMountainMineshaftExitBridgeFrame(topExitLadder) : null;
 
   return (
     <>
@@ -9974,6 +10073,15 @@ function MountainVillageColliders({
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       </RigidBody>
+      {topExitBridge && (
+        <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
+          <CuboidCollider
+            args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH / 2, 0.36, topExitBridge.length / 2]}
+            position={[topExitBridge.x, layout.summitY + MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_Y_OFFSET, topExitBridge.z]}
+            rotation={[0, topExitBridge.angle, 0]}
+          />
+        </RigidBody>
+      )}
       <RigidBody type="fixed" colliders={false} friction={0.7} restitution={0} position={[chunk.x, 0, chunk.z]}>
         <CuboidCollider
           args={[
@@ -10096,7 +10204,12 @@ function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
         <MountainSnowCap summitY={layout.summitY} />
         <MountainVillageTrail layout={layout} showDetails={showDetails} />
         <MountainWaterfall waterfall={layout.waterfall} summitY={layout.summitY} />
-        <MountainMineshaftOpening baseHeight={layout.baseHeight} summitY={layout.summitY} showDetails={showDetails} />
+        <MountainMineshaftOpening
+          baseHeight={layout.baseHeight}
+          summitY={layout.summitY}
+          exitLadder={layout.interiorLadders[layout.interiorLadders.length - 1]}
+          showDetails={showDetails}
+        />
         <MountainMineshaftInterior layout={layout} showDetails={showDetails} />
         {layout.cabins.map((cabin) => (
           <MountainCabin key={cabin.key} cabin={cabin} summitY={layout.summitY} showDetails={showDetails} />
