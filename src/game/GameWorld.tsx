@@ -8627,14 +8627,22 @@ function getGraveyardGroundColor(localX: number, localZ: number, height: number,
   const grassA = new THREE.Color("#26301f");
   const grassB = new THREE.Color("#38422b");
   const grassC = new THREE.Color("#1b2118");
-  const pathA = new THREE.Color("#4a4741");
-  const pathB = new THREE.Color("#6a6255");
+  const gravelA = new THREE.Color("#b7b8b0");
+  const gravelB = new THREE.Color("#d9d9cf");
+  const gravelC = new THREE.Color("#8e928d");
+  const gravelEdge = new THREE.Color("#5f625d");
   const chapelGround = new THREE.Color("#504b46");
   const noise = survivalHash01(Math.floor(localX * 0.21), Math.floor(localZ * 0.21), 12050);
+  const gravelNoise = survivalHash01(Math.floor(localX * 0.52), Math.floor(localZ * 0.52), 12062);
+  const gravelSpeckle = survivalHash01(Math.floor(localX * 1.25), Math.floor(localZ * 1.25), 12073);
+  const pathEdgeMask = smoothstepRange(0.18, 0.48, pathMask) * (1 - smoothstepRange(0.66, 0.9, pathMask));
   const slopeTint = clamp01((height - baseHeight + 3) / 12);
   const grass = grassA.clone().lerp(noise > 0.62 ? grassB : grassC, noise > 0.62 ? 0.5 : 0.34).lerp(new THREE.Color("#111511"), slopeTint * 0.22);
-  const path = pathA.clone().lerp(pathB, noise * 0.5);
-  return grass.lerp(path, pathMask).lerp(chapelGround, chapelMask * 0.92);
+  const gravel = gravelA.clone()
+    .lerp(gravelB, gravelNoise * 0.62)
+    .lerp(gravelC, gravelSpeckle > 0.72 ? 0.34 : 0.08)
+    .lerp(gravelEdge, pathEdgeMask * 0.42);
+  return grass.lerp(gravel, clamp01(pathMask * 1.18)).lerp(chapelGround, chapelMask * 0.92);
 }
 
 function makeGraveyardVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
@@ -8767,27 +8775,28 @@ function makeGraveyardFenceSegments(chunk: SurvivalChunkInfo, baseHeight: number
 
 function makeGraveyardPathStones(chunk: SurvivalChunkInfo, baseHeight: number): GraveyardPathStone[] {
   const stones: GraveyardPathStone[] = [];
-  const colors = ["#615a50", "#49443e", "#756b5e", "#373430"];
+  const colors = ["#d7d8cf", "#bfc1ba", "#f0efe4", "#9b9f99", "#caccbf", "#747873"];
 
-  for (let index = 0; index < 132; index += 1) {
-    const ring = index >= 72;
-    const t = ring ? (index - 72) / 60 : index / 72;
+  for (let index = 0; index < 336; index += 1) {
+    const ring = index >= 192;
+    const t = ring ? (index - 192) / 144 : index / 192;
     const angle = t * Math.PI * 2 + survivalHash01(chunk.cx, chunk.cz, 12300 + index) * 0.12;
     const localX = ring
-      ? Math.sin(angle) * (GRAVEYARD_RING_PATH_RADIUS + (survivalHash01(chunk.cx, chunk.cz, 12310 + index) - 0.5) * 13)
-      : (index % 2 === 0 ? (t - 0.5) * 450 : (survivalHash01(chunk.cx, chunk.cz, 12320 + index) - 0.5) * 20);
+      ? Math.sin(angle) * (GRAVEYARD_RING_PATH_RADIUS + (survivalHash01(chunk.cx, chunk.cz, 12310 + index) - 0.5) * 15)
+      : (index % 2 === 0 ? (t - 0.5) * 450 : (survivalHash01(chunk.cx, chunk.cz, 12320 + index) - 0.5) * 25);
     const localZ = ring
-      ? Math.cos(angle) * (GRAVEYARD_RING_PATH_RADIUS + (survivalHash01(chunk.cx, chunk.cz, 12330 + index) - 0.5) * 13)
-      : (index % 2 === 0 ? (survivalHash01(chunk.cx, chunk.cz, 12340 + index) - 0.5) * 20 : (t - 0.5) * 450);
+      ? Math.cos(angle) * (GRAVEYARD_RING_PATH_RADIUS + (survivalHash01(chunk.cx, chunk.cz, 12330 + index) - 0.5) * 15)
+      : (index % 2 === 0 ? (survivalHash01(chunk.cx, chunk.cz, 12340 + index) - 0.5) * 25 : (t - 0.5) * 450);
+    const chipScale = survivalHash01(chunk.cx, chunk.cz, 12380 + index);
 
     stones.push({
       key: `${chunk.key}-grave-path-stone-${index}`,
       localX,
-      localY: getGraveyardVillageHeight(chunk, localX, localZ, baseHeight) + 0.08,
+      localY: getGraveyardVillageHeight(chunk, localX, localZ, baseHeight) + 0.1,
       localZ,
       rotation: ring ? angle : survivalHash01(chunk.cx, chunk.cz, 12350 + index) * Math.PI,
-      width: 2.8 + survivalHash01(chunk.cx, chunk.cz, 12360 + index) * 3.4,
-      depth: 1.7 + survivalHash01(chunk.cx, chunk.cz, 12370 + index) * 2.6,
+      width: 1.2 + chipScale * 3.2,
+      depth: 0.85 + survivalHash01(chunk.cx, chunk.cz, 12370 + index) * 2.3,
       color: colors[index % colors.length],
     });
   }
@@ -8856,7 +8865,7 @@ function GraveyardPathStones({ stones, showDetails }: { stones: GraveyardPathSto
       {stones.map((stone) => (
         <mesh key={stone.key} position={[stone.localX, stone.localY, stone.localZ]} rotation={[-Math.PI / 2, 0, stone.rotation]} castShadow={false} renderOrder={2}>
           <boxGeometry args={[stone.width, stone.depth, 0.12]} />
-          <meshBasicMaterial color={stone.color} transparent opacity={0.72} />
+          <meshBasicMaterial color={stone.color} transparent opacity={0.86} />
         </mesh>
       ))}
     </group>
