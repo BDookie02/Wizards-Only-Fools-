@@ -1795,8 +1795,8 @@ const SURVIVAL_TREE_TRUNK_COLORS: Record<SurvivalBiome, string> = {
   mushroom: "#dcc7aa",
 };
 
-const PLANT_EDGE_COLOR = "#10230d";
-const PLANT_EDGE_SOFT_COLOR = "#213719";
+const PLANT_EDGE_COLOR = "#244a1c";
+const PLANT_EDGE_SOFT_COLOR = "#3a6330";
 
 function FoliageDodeca({
   position,
@@ -1819,7 +1819,7 @@ function FoliageDodeca({
       </mesh>
       <mesh castShadow={false} renderOrder={3}>
         <dodecahedronGeometry args={[radius * 1.004, 0]} />
-        <meshBasicMaterial color={edgeColor} wireframe transparent opacity={0.78} depthWrite={false} />
+        <meshBasicMaterial color={edgeColor} wireframe transparent opacity={0.34} depthWrite={false} />
       </mesh>
     </group>
   );
@@ -2053,15 +2053,15 @@ function SurvivalGrassPatches({ chunk }: { chunk: SurvivalChunkInfo }) {
     <group name={`survival-grass-${chunk.key}`}>
       <instancedMesh ref={grassEdgeRef0} args={[undefined, undefined, capacity]}>
         <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.58} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.24} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={grassEdgeRef1} args={[undefined, undefined, capacity]}>
         <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.58} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.24} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={grassEdgeRef2} args={[undefined, undefined, capacity]}>
         <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.58} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.24} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={grassRef0} args={[undefined, undefined, capacity]}>
         <planeGeometry args={[1, 1]} />
@@ -2219,15 +2219,15 @@ function SurvivalBushClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
     <group name={`survival-bushes-${chunk.key}`}>
       <instancedMesh ref={bushEdgeRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[0.5, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.78} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.28} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={bushEdgeRef1} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[0.5, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.78} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.28} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={bushEdgeRef2} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[0.5, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.78} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.28} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={bushRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[0.5, 0]} />
@@ -2349,15 +2349,15 @@ function SurvivalFernClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
     <group name={`survival-ferns-${chunk.key}`}>
       <instancedMesh ref={fernEdgeRef0} args={[undefined, undefined, capacity]}>
         <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.62} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.26} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={fernEdgeRef1} args={[undefined, undefined, capacity]}>
         <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.62} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.26} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={fernEdgeRef2} args={[undefined, undefined, capacity]}>
         <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.62} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.26} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={fernRef0} args={[undefined, undefined, capacity]}>
         <planeGeometry args={[1, 1]} />
@@ -2544,11 +2544,11 @@ function SurvivalFastGroves({ chunk }: { chunk: SurvivalChunkInfo }) {
       </instancedMesh>
       <instancedMesh ref={canopyEdgeRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={canopyOpacity * 0.78} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={canopyOpacity * 0.26} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={canopyEdgeRef1} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={canopyOpacity * 0.78} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={canopyOpacity * 0.26} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={canopyRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
@@ -2560,11 +2560,11 @@ function SurvivalFastGroves({ chunk }: { chunk: SurvivalChunkInfo }) {
       </instancedMesh>
       <instancedMesh ref={sideCanopyEdgeRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={canopyOpacity * 0.72} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={canopyOpacity * 0.22} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={sideCanopyEdgeRef1} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={canopyOpacity * 0.72} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={canopyOpacity * 0.22} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={sideCanopyRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
@@ -2798,15 +2798,15 @@ function SurvivalRoofForests({ chunk }: { chunk: SurvivalChunkInfo }) {
       </instancedMesh>
       <instancedMesh ref={topCanopyEdgeRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.76} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.24} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={topCanopyEdgeRef1} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.76} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.24} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={topCanopyEdgeRef2} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.76} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.24} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={topCanopyRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
@@ -2822,15 +2822,15 @@ function SurvivalRoofForests({ chunk }: { chunk: SurvivalChunkInfo }) {
       </instancedMesh>
       <instancedMesh ref={lowerCanopyEdgeRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.68} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.2} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={lowerCanopyEdgeRef1} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.68} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.2} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={lowerCanopyEdgeRef2} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
-        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.68} depthWrite={false} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.2} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={lowerCanopyRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
@@ -5017,7 +5017,7 @@ function DesertPalm({ palm }: { palm: DesertVillagePalm }) {
           <group key={index} position={[Math.sin(angle) * 4.2, 25.2, Math.cos(angle) * 4.2]} rotation={[0.5, angle, 0.18]}>
             <mesh scale={[1.004, 1.004, 1.004]} castShadow={false} renderOrder={3}>
               <boxGeometry args={[1.55, 0.44, 16.5]} />
-              <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.72} depthWrite={false} />
+              <meshBasicMaterial color={PLANT_EDGE_COLOR} wireframe transparent opacity={0.24} depthWrite={false} />
             </mesh>
             <mesh castShadow={false}>
               <boxGeometry args={[1.55, 0.44, 16.5]} />

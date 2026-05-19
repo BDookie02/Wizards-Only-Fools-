@@ -6,7 +6,7 @@ import { isMobilePerformanceMode } from "./performanceMode";
 const WOOD_COLOR = "#2a1c12"; // darker brown
 const LIGHT_WOOD_COLOR = "#4a3221"; // lighter brown
 const LEAF_COLOR = "#1f3b18"; // dark green
-const LEAF_EDGE_COLOR = "#071209";
+const LEAF_EDGE_COLOR = "#244a1c";
 const ROOF_COLOR = "#342211"; // distinct roof brown
 const WINDOW_GLOW = "#ffb347"; // warm yellow-orange
 const MOBILE_PERFORMANCE_MODE = isMobilePerformanceMode();
@@ -114,7 +114,7 @@ function CanopyBlock({ position, size }: { position: [number, number, number]; s
     <group position={position}>
       <mesh castShadow={false} receiveShadow scale={[1.004, 1.004, 1.004]} renderOrder={3}>
         <boxGeometry args={size} />
-        <meshStandardMaterial color={LEAF_EDGE_COLOR} roughness={1} wireframe transparent opacity={0.76} depthWrite={false} />
+        <meshStandardMaterial color={LEAF_EDGE_COLOR} roughness={1} wireframe transparent opacity={0.28} depthWrite={false} />
       </mesh>
       <mesh castShadow receiveShadow>
         <boxGeometry args={size} />
