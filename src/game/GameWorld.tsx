@@ -9016,7 +9016,7 @@ function getGraveyardVillageHeight(chunk: SurvivalChunkInfo, localX: number, loc
   return lerpNumber(graveyardHeight, naturalHeight, edgeBlend);
 }
 
-function getGraveyardGroundColor(localX: number, localZ: number, height: number, baseHeight: number) {
+function getGraveyardGroundColor(chunk: SurvivalChunkInfo, localX: number, localZ: number, height: number, baseHeight: number) {
   const pathMask = getGraveyardEffectivePathMask(localX, localZ);
   const chapelFoundationMask = getGraveyardChapelFoundationMask(localX, localZ);
   const grassA = new THREE.Color("#26301f");
@@ -9041,7 +9041,20 @@ function getGraveyardGroundColor(localX: number, localZ: number, height: number,
   const chapelGravel = gravel.clone()
     .lerp(new THREE.Color(chapelStoneNoise > 0.58 ? "#72746d" : "#595b55"), 0.42)
     .lerp(new THREE.Color("#2d302b"), chapelCrackNoise > 0.76 ? 0.32 : 0.06);
-  return grass.lerp(gravel, clamp01(pathMask * 0.92)).lerp(chapelGravel, chapelFoundationMask * 0.48);
+  const graveyardColor = grass.lerp(gravel, clamp01(pathMask * 0.92)).lerp(chapelGravel, chapelFoundationMask * 0.48);
+  const worldX = chunk.x + localX;
+  const worldZ = chunk.z + localZ;
+  const naturalColor = getSurvivalTerrainColor(worldX, worldZ, height);
+  const maxAbs = Math.max(Math.abs(localX), Math.abs(localZ));
+  const edgeBreakup = (
+    Math.sin(localX * 0.034 + chunk.cx * 1.9) * 7.5 +
+    Math.cos(localZ * 0.041 - chunk.cz * 1.4) * 6.5 +
+    Math.sin((localX + localZ) * 0.019) * 5.5
+  );
+  const outerBlend = smoothstepRange(GRAVEYARD_FENCE_RADIUS - 92, SURVIVAL_BLOCK_SIZE / 2 + 10, maxAbs + edgeBreakup);
+  const boundaryBlend = smoothstepRange(SURVIVAL_BLOCK_SIZE / 2 - 34, SURVIVAL_BLOCK_SIZE / 2 - 2, maxAbs);
+  const gatePreserve = getGraveyardGateClearingMask(localX, localZ) * 0.72;
+  return graveyardColor.lerp(naturalColor, clamp01(Math.max(boundaryBlend, outerBlend * (1 - gatePreserve))));
 }
 
 function makeGraveyardVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
@@ -9056,7 +9069,7 @@ function makeGraveyardVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
     const localX = pos.getX(i);
     const localZ = pos.getZ(i);
     const height = getGraveyardVillageHeight(chunk, localX, localZ, baseHeight);
-    const color = getGraveyardGroundColor(localX, localZ, height, baseHeight);
+    const color = getGraveyardGroundColor(chunk, localX, localZ, height, baseHeight);
     pos.setY(i, height);
     colors.push(color.r, color.g, color.b);
   }
