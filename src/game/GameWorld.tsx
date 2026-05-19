@@ -8478,9 +8478,10 @@ const GRAVEYARD_PAD_FLAT_RADIUS = 246;
 const GRAVEYARD_PATH_WIDTH = 35;
 const GRAVEYARD_RING_PATH_RADIUS = 88;
 const GRAVEYARD_RING_PATH_WIDTH = 20;
-const GRAVEYARD_FENCE_RADIUS = 242;
-const GRAVEYARD_FENCE_SEGMENT_COUNT = 92;
+const GRAVEYARD_FENCE_RADIUS = 246;
+const GRAVEYARD_FENCE_SEGMENT_COUNT = 96;
 const GRAVEYARD_FENCE_GATE_HALF_WIDTH = 34;
+const GRAVEYARD_TOMB_INNER_RADIUS = GRAVEYARD_FENCE_RADIUS - 34;
 const GRAVEYARD_TOMB_NAMES = [
   "BARRY D. ALIVE",
   "ANITA NAP",
@@ -8724,11 +8725,13 @@ function makeGraveyardTombs(chunk: SurvivalChunkInfo, baseHeight: number): Grave
 
   zRows.forEach((rowZ, rowIndex) => {
     xPositions.forEach((baseX, colIndex) => {
+      const localX = baseX + (survivalHash01(chunk.cx + rowIndex, chunk.cz + colIndex, 12220) - 0.5) * 8;
+      const localZ = rowZ + (survivalHash01(chunk.cx - rowIndex, chunk.cz + colIndex, 12230) - 0.5) * 6;
+      if (Math.hypot(localX, localZ) > GRAVEYARD_TOMB_INNER_RADIUS) return;
+
       const index = tombs.length;
       if (index >= GRAVEYARD_TOMB_NAMES.length) return;
 
-      const localX = baseX + (survivalHash01(chunk.cx + rowIndex, chunk.cz + colIndex, 12220) - 0.5) * 8;
-      const localZ = rowZ + (survivalHash01(chunk.cx - rowIndex, chunk.cz + colIndex, 12230) - 0.5) * 6;
       const variant = survivalHash01(chunk.cx + index, chunk.cz - index, 12240);
       const name = GRAVEYARD_TOMB_NAMES[(nameOffset + index * 37) % GRAVEYARD_TOMB_NAMES.length];
       const joke = GRAVEYARD_TOMB_JOKES[Math.floor(survivalHash01(chunk.cx - index, chunk.cz + index, 12250) * GRAVEYARD_TOMB_JOKES.length) % GRAVEYARD_TOMB_JOKES.length];
@@ -8818,34 +8821,42 @@ function GraveyardSpikedFence({ segments, showDetails }: { segments: GraveyardFe
     <group name="graveyard-black-spiked-fence">
       {segments.map((segment) => (
         <group key={segment.key} position={[segment.localX, segment.localY, segment.localZ]} rotation={[0, segment.rotation, 0]}>
-          <mesh position={[0, 3.7, 0]} castShadow={false}>
-            <boxGeometry args={[segment.length, 0.34, 0.28]} />
+          <mesh position={[0, 0.38, 0]} castShadow={false}>
+            <boxGeometry args={[segment.length + 1.4, 0.76, 1.05]} />
+            <meshBasicMaterial color="#020202" />
+          </mesh>
+          <mesh position={[0, 7.42, 0]} castShadow={false}>
+            <boxGeometry args={[segment.length, 0.58, 0.52]} />
             <meshBasicMaterial color="#050505" />
           </mesh>
-          <mesh position={[0, 1.8, 0]} castShadow={false}>
-            <boxGeometry args={[segment.length, 0.28, 0.24]} />
+          <mesh position={[0, 4.95, 0]} castShadow={false}>
+            <boxGeometry args={[segment.length, 0.48, 0.42]} />
+            <meshBasicMaterial color="#080808" />
+          </mesh>
+          <mesh position={[0, 2.52, 0]} castShadow={false}>
+            <boxGeometry args={[segment.length, 0.42, 0.36]} />
             <meshBasicMaterial color="#111111" />
           </mesh>
           {[-0.48, 0.48].map((offset) => (
-            <mesh key={`post-${offset}`} position={[offset * segment.length, 2.45, 0]} castShadow={false}>
-              <boxGeometry args={[0.72, 4.9, 0.72]} />
+            <mesh key={`post-${offset}`} position={[offset * segment.length, 5.05, 0]} castShadow={false}>
+              <boxGeometry args={[1.18, 10.1, 1.18]} />
               <meshBasicMaterial color="#080808" />
             </mesh>
           ))}
-          {showDetails && Array.from({ length: 4 }, (_, index) => {
-            const x = -segment.length * 0.34 + index * (segment.length * 0.68 / 3);
+          {showDetails && Array.from({ length: 6 }, (_, index) => {
+            const x = -segment.length * 0.38 + index * (segment.length * 0.76 / 5);
             return (
               <Fragment key={`spike-${index}`}>
-                <mesh position={[x, 2.36, 0]} castShadow={false}>
-                  <boxGeometry args={[0.34, 4.2, 0.34]} />
+                <mesh position={[x, 4.78, 0]} castShadow={false}>
+                  <boxGeometry args={[0.5, 8.2, 0.5]} />
                   <meshBasicMaterial color="#0c0c0c" />
                 </mesh>
-                <mesh position={[x, 4.86, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
-                  <coneGeometry args={[0.48, 1.34, 4]} />
+                <mesh position={[x, 9.85, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
+                  <coneGeometry args={[0.72, 2.15, 4]} />
                   <meshBasicMaterial color="#030303" />
                 </mesh>
-                <mesh position={[x + 0.08, 4.35, -0.18]} castShadow={false}>
-                  <boxGeometry args={[0.12, 0.8, 0.08]} />
+                <mesh position={[x + 0.14, 8.8, -0.24]} castShadow={false}>
+                  <boxGeometry args={[0.16, 1.4, 0.12]} />
                   <meshBasicMaterial color="#333333" />
                 </mesh>
               </Fragment>
@@ -8914,9 +8925,10 @@ function GraveyardTombstone({ tomb }: { tomb: GraveyardTomb }) {
           <meshBasicMaterial color="#2d2a27" />
         </mesh>
       )}
-      <sprite position={[0, height * 0.48 + 1.05, -0.82]} scale={[width * 0.96, height * 0.56, 1]} frustumCulled={false}>
-        <spriteMaterial map={labelTexture} transparent depthWrite={false} />
-      </sprite>
+      <mesh position={[0, height * 0.48 + 1.05, -0.632]} rotation={[0, Math.PI, 0]} frustumCulled={false} renderOrder={3}>
+        <planeGeometry args={[width * 0.96, height * 0.56]} />
+        <meshBasicMaterial map={labelTexture} transparent depthWrite={false} side={THREE.DoubleSide} polygonOffset polygonOffsetFactor={-3} polygonOffsetUnits={-3} />
+      </mesh>
     </group>
   );
 }
