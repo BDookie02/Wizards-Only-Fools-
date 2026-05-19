@@ -8442,6 +8442,8 @@ const MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS = 32;
 const MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS = 36;
 const MOUNTAIN_VILLAGE_MINESHAFT_RIM_MID_RADIUS = 41;
 const MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS = 48;
+const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_Y_OFFSET = -25.35;
+const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS = 28.5;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -9250,15 +9252,39 @@ function MountainCabin({ cabin, summitY, showDetails }: { cabin: MountainVillage
 }
 
 function MountainMineshaftOpening({ summitY, showDetails }: { summitY: number; showDetails: boolean }) {
+  const bottomY = summitY + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_Y_OFFSET;
+
   return (
     <group name="mountain-village-mineshaft">
       <mesh position={[0, summitY - 12.4, 0]} castShadow={false} renderOrder={3}>
         <cylinderGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS * 0.82, 26, 48, 1, true]} />
         <meshStandardMaterial color="#0b0908" roughness={1} metalness={0} side={THREE.DoubleSide} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY - 24.9, 0]} renderOrder={4}>
-        <circleGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS * 0.78, 48]} />
-        <meshBasicMaterial color="#030202" />
+      <mesh position={[0, bottomY - 0.28, 0]} receiveShadow={showDetails} renderOrder={4}>
+        <cylinderGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.96, 0.56, 48]} />
+        <meshStandardMaterial color="#342519" roughness={0.96} metalness={0} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, bottomY + 0.04, 0]} renderOrder={5}>
+        <ringGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.28, MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.96, 48]} />
+        <meshBasicMaterial color="#5c4932" transparent opacity={0.58} />
+      </mesh>
+      {showDetails && Array.from({ length: 14 }, (_, index) => {
+        const angle = survivalHash01(9110, index, 3) * Math.PI * 2;
+        const radius = lerpNumber(5, MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS - 4, Math.pow(survivalHash01(9120, index, 7), 0.7));
+        const x = Math.sin(angle) * radius;
+        const z = Math.cos(angle) * radius;
+        const scale = lerpNumber(0.7, 1.8, survivalHash01(9130, index, 11));
+
+        return (
+          <mesh key={`mine-bottom-rock-${index}`} position={[x, bottomY + 0.12, z]} rotation={[0, angle, 0]} scale={[scale * 1.4, scale * 0.38, scale]} castShadow={false}>
+            <boxGeometry args={[1.8, 0.65, 1.25]} />
+            <meshStandardMaterial color={index % 3 === 0 ? "#4b4237" : index % 3 === 1 ? "#2f2b27" : "#66533c"} roughness={1} />
+          </mesh>
+        );
+      })}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, bottomY - 0.08, 0]} renderOrder={4}>
+        <circleGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.32, 36]} />
+        <meshBasicMaterial color="#080605" transparent opacity={0.48} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.42, 0]} renderOrder={5}>
         <ringGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_RIM_MID_RADIUS, 48]} />
@@ -9386,6 +9412,16 @@ function MountainVillageColliders({
         <mesh geometry={layout.summitColliderGeometry} dispose={null}>
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
+      </RigidBody>
+      <RigidBody type="fixed" colliders={false} friction={0.7} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        <CuboidCollider
+          args={[
+            MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.82,
+            0.42,
+            MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.82,
+          ]}
+          position={[0, layout.summitY + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_Y_OFFSET - 0.42, 0]}
+        />
       </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.72} restitution={0} position={[chunk.x, 0, chunk.z]}>
         {layout.cabins.map((cabin) => {
