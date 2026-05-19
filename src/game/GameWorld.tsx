@@ -9597,21 +9597,100 @@ function ChapelPewNpcs() {
   );
 }
 
+function createChapelPopeMiterTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+
+  if (ctx) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#f4f1e8";
+    ctx.fillRect(24, 6, 16, 6);
+    ctx.fillRect(20, 12, 24, 8);
+    ctx.fillRect(16, 20, 32, 8);
+    ctx.fillRect(12, 28, 40, 10);
+    ctx.fillRect(16, 38, 32, 8);
+    ctx.fillRect(22, 46, 20, 6);
+    ctx.fillStyle = "#c8c1b4";
+    ctx.fillRect(12, 36, 40, 4);
+    ctx.fillRect(18, 44, 28, 4);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(18, 22, 24, 4);
+    ctx.fillRect(22, 14, 14, 4);
+    ctx.fillStyle = "#d4af37";
+    ctx.fillRect(30, 11, 4, 31);
+    ctx.fillRect(24, 22, 16, 4);
+    ctx.fillRect(28, 6, 8, 4);
+    ctx.fillStyle = "#7a5328";
+    ctx.fillRect(35, 15, 3, 25);
+    ctx.fillRect(26, 27, 15, 3);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function ChapelPopeMiter() {
+  const texture = useMemo(() => createChapelPopeMiterTexture(), []);
+
+  useEffect(() => () => texture.dispose(), [texture]);
+
+  return (
+    <sprite position={[0, 2.08, 0.08]} scale={[1.36, 1.36, 1]}>
+      <spriteMaterial map={texture} transparent alphaTest={0.04} depthWrite={false} toneMapped={false} />
+    </sprite>
+  );
+}
+
 function ChapelPopeAtPulpit() {
   return (
-    <group name="chapel-pope-at-pulpit" position={[18, 5.25, -37.25]} scale={[1.18, 1.18, 1.18]}>
+    <group name="chapel-pope-at-pulpit" position={[0, 7.1, -45.8]} scale={[2.25, 2.25, 2.25]}>
       <AvatarBillboard character={CHAPEL_POPE_CHARACTER} animation="idle" yaw={Math.PI} health={100} />
-      <mesh position={[0, 2.5, 0]} castShadow={false}>
-        <coneGeometry args={[0.5, 1.06, 4]} />
-        <meshBasicMaterial color="#f4f1e8" />
+      <ChapelPopeMiter />
+    </group>
+  );
+}
+
+function ChapelWallCross() {
+  return (
+    <group name="chapel-wall-cross-behind-pope" position={[0, 18.2, -54.72]}>
+      <mesh position={[0.35, -0.35, -0.06]} castShadow={false}>
+        <boxGeometry args={[2.7, 19.8, 0.34]} />
+        <meshBasicMaterial color="#120d08" transparent opacity={0.72} />
       </mesh>
-      <mesh position={[0, 2.64, 0.09]} castShadow={false}>
-        <boxGeometry args={[0.12, 0.58, 0.08]} />
-        <meshBasicMaterial color="#d4af37" />
+      <mesh position={[0.35, 2.8, -0.08]} castShadow={false}>
+        <boxGeometry args={[13.6, 2.7, 0.34]} />
+        <meshBasicMaterial color="#120d08" transparent opacity={0.72} />
       </mesh>
-      <mesh position={[0, 2.81, 0.12]} castShadow={false}>
-        <boxGeometry args={[0.54, 0.12, 0.08]} />
-        <meshBasicMaterial color="#d4af37" />
+      <mesh castShadow={false}>
+        <boxGeometry args={[2.25, 19.2, 0.46]} />
+        <meshBasicMaterial color="#d7b46a" />
+      </mesh>
+      <mesh position={[0, 3.05, 0.03]} castShadow={false}>
+        <boxGeometry args={[13.2, 2.25, 0.52]} />
+        <meshBasicMaterial color="#d7b46a" />
+      </mesh>
+      <mesh position={[-0.34, 0.6, 0.08]} castShadow={false}>
+        <boxGeometry args={[0.36, 16.8, 0.12]} />
+        <meshBasicMaterial color="#f5d990" transparent opacity={0.72} />
+      </mesh>
+      <mesh position={[-0.55, 3.55, 0.1]} castShadow={false}>
+        <boxGeometry args={[10.6, 0.34, 0.12]} />
+        <meshBasicMaterial color="#f5d990" transparent opacity={0.7} />
+      </mesh>
+      <mesh position={[0.62, -0.5, 0.09]} castShadow={false}>
+        <boxGeometry args={[0.34, 15.6, 0.12]} />
+        <meshBasicMaterial color="#7a5328" transparent opacity={0.62} />
+      </mesh>
+      <mesh position={[0.66, 2.35, 0.11]} castShadow={false}>
+        <boxGeometry args={[10.8, 0.34, 0.12]} />
+        <meshBasicMaterial color="#7a5328" transparent opacity={0.56} />
       </mesh>
     </group>
   );
@@ -9742,15 +9821,8 @@ function ChapelInterior({ showDetails }: { showDetails: boolean }) {
           <boxGeometry args={[11.5, 0.7, 5.2]} />
           <meshBasicMaterial color="#3c2416" />
         </mesh>
-        <mesh position={[0, 6.1, 2.7]} castShadow={false}>
-          <boxGeometry args={[0.48, 4.7, 0.38]} />
-          <meshBasicMaterial color="#d7b46a" />
-        </mesh>
-        <mesh position={[0, 7.35, 2.7]} castShadow={false}>
-          <boxGeometry args={[3.4, 0.48, 0.38]} />
-          <meshBasicMaterial color="#d7b46a" />
-        </mesh>
       </group>
+      <ChapelWallCross />
       <group position={[18, 1, -34]}>
         <mesh position={[0, 2.0, 0]} castShadow={false}>
           <boxGeometry args={[7.4, 4, 6.4]} />
