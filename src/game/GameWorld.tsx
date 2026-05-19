@@ -1571,7 +1571,7 @@ function makeSurvivalTerrainGeometry(chunk: SurvivalChunkInfo) {
 function SurvivalTerrain({ chunk }: { chunk: SurvivalChunkInfo }) {
   const terrainGeometry = useMemo(() => makeSurvivalTerrainGeometry(chunk), [chunk]);
   const terrainTexture = useMemo(() => getSurvivalTerrainDetailTexture(), []);
-  const hasCollision = chunk.distance === 0;
+  const hasCollision = chunk.distance <= SURVIVAL_NEAR_RADIUS;
   const terrainMesh = (
     <mesh geometry={terrainGeometry} receiveShadow={hasCollision} dispose={null}>
       <meshBasicMaterial map={terrainTexture} vertexColors side={THREE.DoubleSide} />
@@ -10289,7 +10289,7 @@ function GraveyardVillageColliders({
   groundGeometry: THREE.BufferGeometry;
   fenceSegments: GraveyardFenceSegment[];
 }) {
-  if (chunk.distance !== 0) return null;
+  if (chunk.distance > SURVIVAL_NEAR_RADIUS) return null;
 
   return (
     <>
