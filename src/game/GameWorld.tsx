@@ -8513,8 +8513,8 @@ function getMountainVillageRadialLift(radius: number) {
 
   const raw = 1 - (radius - MOUNTAIN_VILLAGE_PLATEAU_RADIUS) / (MOUNTAIN_VILLAGE_RADIUS - MOUNTAIN_VILLAGE_PLATEAU_RADIUS);
   const shoulder = Math.pow(smoothstep01(raw), 1.12);
-  const terraced = Math.floor(shoulder * 9) / 9;
-  return lerpNumber(shoulder, terraced, 0.16) * MOUNTAIN_VILLAGE_HEIGHT;
+  const terraced = Math.floor(shoulder * 12) / 12;
+  return lerpNumber(shoulder, terraced, 0.08) * MOUNTAIN_VILLAGE_HEIGHT;
 }
 
 function getMountainVillageHeight(chunk: SurvivalChunkInfo, localX: number, localZ: number, baseHeight = getSurvivalVillageBaseHeight(chunk)) {
@@ -8619,7 +8619,7 @@ function getMountainVillageTrailWidth(t: number) {
 }
 
 function makeMountainVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
-  const segments = chunk.lod === "near" ? 54 : 30;
+  const segments = chunk.lod === "near" ? 72 : 38;
   const baseHeight = getSurvivalVillageBaseHeight(chunk);
   const geo = new THREE.PlaneGeometry(SURVIVAL_BLOCK_SIZE, SURVIVAL_BLOCK_SIZE, segments, segments);
   geo.rotateX(-Math.PI / 2);
@@ -8699,12 +8699,13 @@ function makeMountainVillageTrailSegments(
     const rightX = Math.cos(yaw);
     const rightZ = -Math.sin(yaw);
     const supportOffset = width / 2 - 1.12;
-    const supports: MountainVillageTrailSupport[] = [-1, 1].map((side) => {
+    const supports = [-1, 1].map((side) => {
       const localX = midpoint.localX + rightX * supportOffset * side;
       const localZ = midpoint.localZ + rightZ * supportOffset * side;
-      const topY = midpoint.y - 0.62;
-      const groundY = getMountainVillageHeight(chunk, localX, localZ, baseHeight) + 0.36;
-      const height = Math.max(3.25, topY - groundY);
+      const topY = midpoint.y - 1.18;
+      const groundY = getMountainVillageHeight(chunk, localX, localZ, baseHeight) + 0.22;
+      const height = topY - groundY;
+      if (height < 4.6) return null;
 
       return {
         key: `${chunk.key}-mountain-trail-support-${index}-${side}`,
@@ -8715,7 +8716,7 @@ function makeMountainVillageTrailSegments(
         yaw,
         side: side as -1 | 1,
       };
-    });
+    }).filter((support): support is MountainVillageTrailSupport => support !== null);
 
     return {
       key: `${chunk.key}-mountain-trail-${index}`,
@@ -8966,62 +8967,22 @@ function MountainVillageTrail({ layout, showDetails }: { layout: MountainVillage
 
         return (
           <group key={segment.key} position={[segment.localX, segment.y, segment.localZ]} rotation={[segment.slope, segment.yaw, 0]}>
-            {hasLanding && (
-              <>
-                {[-1, 1].map((side) => (
-                  <Fragment key={`${segment.key}-landing-posts-${side}`}>
-                    <mesh position={[side * (segment.width * 0.56), 3.02, landingZ - landingLength * 0.34]} castShadow={false}>
-                      <boxGeometry args={[1.25, 5.25, 1.25]} />
-                      <meshBasicMaterial color="#2b1e14" />
-                    </mesh>
-                    <mesh position={[side * (segment.width * 0.56), 3.02, landingZ + landingLength * 0.34]} castShadow={false}>
-                      <boxGeometry args={[1.25, 5.25, 1.25]} />
-                      <meshBasicMaterial color="#2b1e14" />
-                    </mesh>
-                  </Fragment>
-                ))}
-                <mesh position={[0, 5.62, landingZ - landingLength * 0.34]} castShadow={false}>
-                  <boxGeometry args={[segment.width * 1.24, 0.82, 1.18]} />
-                  <meshBasicMaterial color="#4a3220" />
-                </mesh>
-              </>
-            )}
-            <mesh position={[-segment.width / 2 + 0.88, 0.56, 0]} castShadow={false}>
-              <boxGeometry args={[1.42, 0.82, segment.length * 1.02]} />
+            <mesh position={[-segment.width / 2 + 0.94, -0.72, 0]} castShadow={false}>
+              <boxGeometry args={[1.24, 0.54, segment.length * 1.02]} />
               <meshBasicMaterial color="#2f2117" />
             </mesh>
-            <mesh position={[segment.width / 2 - 0.88, 0.56, 0]} castShadow={false}>
-              <boxGeometry args={[1.42, 0.82, segment.length * 1.02]} />
+            <mesh position={[segment.width / 2 - 0.94, -0.72, 0]} castShadow={false}>
+              <boxGeometry args={[1.24, 0.54, segment.length * 1.02]} />
               <meshBasicMaterial color="#2f2117" />
             </mesh>
-            {showDetails && segment.index % 3 === 1 && (
-              <mesh position={[0, 0.63, 0]} castShadow={false}>
-                <boxGeometry args={[segment.width * 0.74, 0.16, 1.15]} />
-                <meshBasicMaterial color="#d0aa72" />
-              </mesh>
-            )}
             {showDetails && (
               <>
-                {[-1, 1].map((side) => (
-                  <Fragment key={`${segment.key}-rail-${side}`}>
-                    <mesh position={[side * (segment.width / 2 - 1.18), 1.66, -segment.length * 0.34]} castShadow={false}>
-                      <boxGeometry args={[0.86, 3.32, 0.86]} />
-                      <meshBasicMaterial color="#2b1e14" />
-                    </mesh>
-                    <mesh position={[side * (segment.width / 2 - 1.18), 1.66, segment.length * 0.34]} castShadow={false}>
-                      <boxGeometry args={[0.86, 3.32, 0.86]} />
-                      <meshBasicMaterial color="#2b1e14" />
-                    </mesh>
-                    <mesh position={[side * (segment.width / 2 - 1.18), 2.94, 0]} castShadow={false}>
-                      <boxGeometry args={[0.68, 0.46, segment.length * 0.92]} />
-                      <meshBasicMaterial color="#4a3220" />
-                    </mesh>
-                    <mesh position={[side * (segment.width / 2 - 1.22), 1.72, 0]} rotation={[0.2 * side, 0, 0]} castShadow={false}>
-                      <boxGeometry args={[0.42, 0.34, segment.length * 0.82]} />
-                      <meshBasicMaterial color="#6a492e" />
-                    </mesh>
-                  </Fragment>
-                ))}
+                {hasLanding && (
+                  <mesh position={[0, -0.96, landingZ]} castShadow={false}>
+                    <boxGeometry args={[segment.width * 1.08, 0.42, landingLength * 0.84]} />
+                    <meshBasicMaterial color="#3a2719" />
+                  </mesh>
+                )}
                 <mesh position={[0, -1.02, -segment.length * 0.34]} castShadow={false}>
                   <boxGeometry args={[segment.width + 1.6, 0.5, 0.9]} />
                   <meshBasicMaterial color="#3a2719" />
@@ -9055,12 +9016,12 @@ function MountainVillageTrail({ layout, showDetails }: { layout: MountainVillage
           </mesh>
           {support.height > 4.2 && (
             <>
-              <mesh position={[support.side * 0.98, 0, 0]} rotation={[0, 0, -support.side * 0.24]} castShadow={false}>
-                <boxGeometry args={[0.9, support.height * 1.06, 0.9]} />
+              <mesh position={[support.side * 0.98, -support.height * 0.08, 0]} rotation={[0, 0, -support.side * 0.24]} castShadow={false}>
+                <boxGeometry args={[0.9, support.height * 0.86, 0.9]} />
                 <meshBasicMaterial color="#3f2d1f" />
               </mesh>
-              <mesh position={[-support.side * 0.9, 0, 0]} rotation={[0, 0, support.side * 0.18]} castShadow={false}>
-                <boxGeometry args={[0.72, support.height * 0.86, 0.72]} />
+              <mesh position={[-support.side * 0.9, -support.height * 0.14, 0]} rotation={[0, 0, support.side * 0.18]} castShadow={false}>
+                <boxGeometry args={[0.72, support.height * 0.7, 0.72]} />
                 <meshBasicMaterial color="#5b4029" />
               </mesh>
             </>
