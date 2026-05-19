@@ -8453,6 +8453,7 @@ const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_WIDTH = 4.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_START_CLEARANCE = 0.78;
 const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_EXIT_CLEARANCE = 1.85;
 const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_SENSOR_DEPTH = 2.1;
+const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_PLATFORM_GAP = 7.6;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -8523,6 +8524,12 @@ type MountainMineshaftLadder = {
   startY: number;
   endY: number;
   rotation: number;
+  width: number;
+};
+
+type MountainMineshaftPlatformPiece = {
+  key: string;
+  centerX: number;
   width: number;
 };
 
@@ -9374,23 +9381,164 @@ function MountainCabin({ cabin, summitY, showDetails }: { cabin: MountainVillage
   );
 }
 
-function MountainMineshaftMiniHut({ hut, showDetails }: { hut: MountainMineshaftHut; showDetails: boolean }) {
+function getMountainMineshaftLadderLandingLocalX(hut: MountainMineshaftHut, ladder?: MountainMineshaftLadder) {
+  if (!ladder) return null;
+
+  const dx = ladder.localX - hut.localX;
+  const dz = ladder.localZ - hut.localZ;
+  const cos = Math.cos(hut.rotation);
+  const sin = Math.sin(hut.rotation);
+
+  return dx * cos - dz * sin;
+}
+
+function getMountainMineshaftPlatformPieces(width: number, gapCenterX: number | null, gapWidth: number): MountainMineshaftPlatformPiece[] {
+  if (gapCenterX === null) {
+    return [{ key: "full", centerX: 0, width }];
+  }
+
+  const halfWidth = width / 2;
+  const halfGap = gapWidth / 2;
+  const gapMin = THREE.MathUtils.clamp(gapCenterX - halfGap, -halfWidth, halfWidth);
+  const gapMax = THREE.MathUtils.clamp(gapCenterX + halfGap, -halfWidth, halfWidth);
+  const pieces: MountainMineshaftPlatformPiece[] = [];
+
+  if (gapMin > -halfWidth + 0.35) {
+    const pieceWidth = gapMin + halfWidth;
+    pieces.push({ key: "left", centerX: -halfWidth + pieceWidth / 2, width: pieceWidth });
+  }
+
+  if (gapMax < halfWidth - 0.35) {
+    const pieceWidth = halfWidth - gapMax;
+    pieces.push({ key: "right", centerX: gapMax + pieceWidth / 2, width: pieceWidth });
+  }
+
+  return pieces.length > 0 ? pieces : [{ key: "full", centerX: 0, width }];
+}
+
+function RetroMineshaftLantern({
+  position,
+  scale = 1,
+  withLight = false,
+}: {
+  position: [number, number, number];
+  scale?: number;
+  withLight?: boolean;
+}) {
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <mesh position={[0, 0.78, 0]} castShadow={false}>
+        <boxGeometry args={[0.82, 0.92, 0.82]} />
+        <meshBasicMaterial color="#2a1b12" />
+      </mesh>
+      <mesh position={[0, 0.78, 0.04]} castShadow={false}>
+        <boxGeometry args={[0.52, 0.62, 0.64]} />
+        <meshBasicMaterial color="#ffba55" transparent opacity={0.9} />
+      </mesh>
+      <mesh position={[0, 0.78, 0.08]} castShadow={false}>
+        <boxGeometry args={[0.2, 0.72, 0.72]} />
+        <meshBasicMaterial color="#fff0b2" transparent opacity={0.52} />
+      </mesh>
+      <mesh position={[0, 1.34, 0]} castShadow={false}>
+        <boxGeometry args={[1.02, 0.22, 1.02]} />
+        <meshBasicMaterial color="#51331f" />
+      </mesh>
+      <mesh position={[0, 0.22, 0]} castShadow={false}>
+        <boxGeometry args={[0.92, 0.22, 0.92]} />
+        <meshBasicMaterial color="#51331f" />
+      </mesh>
+      <mesh position={[0, 1.63, 0]} castShadow={false}>
+        <boxGeometry args={[0.18, 0.42, 0.18]} />
+        <meshBasicMaterial color="#1b120c" />
+      </mesh>
+      {withLight && <pointLight color="#ffb65b" intensity={2.2} distance={13} decay={2.1} position={[0, 0.84, 0]} />}
+    </group>
+  );
+}
+
+function MountainMineshaftLightPole({
+  position,
+  direction = 1,
+}: {
+  position: [number, number, number];
+  direction?: -1 | 1;
+}) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 1.72, 0]} castShadow={false}>
+        <boxGeometry args={[0.42, 3.44, 0.42]} />
+        <meshBasicMaterial color="#22150d" />
+      </mesh>
+      <mesh position={[direction * 0.68, 3.28, 0]} castShadow={false}>
+        <boxGeometry args={[1.62, 0.32, 0.32]} />
+        <meshBasicMaterial color="#392414" />
+      </mesh>
+      <mesh position={[direction * 1.38, 2.94, 0]} castShadow={false}>
+        <boxGeometry args={[0.18, 0.7, 0.18]} />
+        <meshBasicMaterial color="#1b120c" />
+      </mesh>
+      <RetroMineshaftLantern position={[direction * 1.38, 1.72, 0]} scale={0.78} withLight />
+    </group>
+  );
+}
+
+function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainMineshaftHut; ladder?: MountainMineshaftLadder; showDetails: boolean }) {
   const { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight } = getMountainCabinDoorMetrics(hut);
   const frontZ = hut.depth / 2 - wallThickness / 2;
   const backZ = -hut.depth / 2 + wallThickness / 2;
   const platformZ = hut.depth / 2 + hut.platformDepth / 2 - 1.1;
   const floorY = 0.48;
+  const ladderGapCenterX = getMountainMineshaftLadderLandingLocalX(hut, ladder);
+  const platformPieces = getMountainMineshaftPlatformPieces(hut.platformWidth, ladderGapCenterX, MOUNTAIN_VILLAGE_MINESHAFT_LADDER_PLATFORM_GAP);
+  const platformTopPieces = getMountainMineshaftPlatformPieces(
+    hut.platformWidth * 0.94,
+    ladderGapCenterX,
+    MOUNTAIN_VILLAGE_MINESHAFT_LADDER_PLATFORM_GAP
+  );
+  const poleSide: -1 | 1 = ladderGapCenterX !== null && ladderGapCenterX > 0 ? -1 : 1;
+  const platformPlankCount = 5;
 
   return (
     <group position={[hut.localX, hut.y, hut.localZ]} rotation={[0, hut.rotation, 0]}>
-      <mesh position={[0, 0.18, platformZ]} castShadow={false} receiveShadow>
-        <boxGeometry args={[hut.platformWidth, 0.52, hut.platformDepth]} />
-        <meshBasicMaterial color="#3f2b1c" />
-      </mesh>
-      <mesh position={[0, 0.56, platformZ]} castShadow={false} receiveShadow>
-        <boxGeometry args={[hut.platformWidth * 0.94, 0.22, hut.platformDepth * 0.88]} />
-        <meshBasicMaterial color="#6d4a2e" />
-      </mesh>
+      {platformPieces.map((piece) => (
+        <mesh key={`platform-${piece.key}`} position={[piece.centerX, 0.18, platformZ]} castShadow={false} receiveShadow>
+          <boxGeometry args={[piece.width, 0.52, hut.platformDepth]} />
+          <meshBasicMaterial color="#3f2b1c" />
+        </mesh>
+      ))}
+      {platformTopPieces.map((piece) => (
+        <mesh key={`platform-top-${piece.key}`} position={[piece.centerX, 0.56, platformZ]} castShadow={false} receiveShadow>
+          <boxGeometry args={[piece.width, 0.22, hut.platformDepth * 0.88]} />
+          <meshBasicMaterial color="#6d4a2e" />
+        </mesh>
+      ))}
+      {showDetails && platformPieces.map((piece) => (
+        <Fragment key={`platform-detail-${piece.key}`}>
+          {Array.from({ length: platformPlankCount }, (_, plankIndex) => {
+            const z = platformZ - hut.platformDepth * 0.35 + plankIndex * ((hut.platformDepth * 0.7) / Math.max(1, platformPlankCount - 1));
+            return (
+              <mesh key={`plank-groove-${plankIndex}`} position={[piece.centerX, 0.73, z]} castShadow={false}>
+                <boxGeometry args={[piece.width * 0.88, 0.07, 0.09]} />
+                <meshBasicMaterial color={plankIndex % 2 === 0 ? "#2c1d13" : "#8a613b"} />
+              </mesh>
+            );
+          })}
+          <mesh position={[piece.centerX, 0.82, platformZ + hut.platformDepth * 0.46]} castShadow={false}>
+            <boxGeometry args={[piece.width * 0.94, 0.22, 0.32]} />
+            <meshBasicMaterial color="#8b6239" />
+          </mesh>
+          <mesh position={[piece.centerX, 0.8, platformZ - hut.platformDepth * 0.46]} castShadow={false}>
+            <boxGeometry args={[piece.width * 0.94, 0.18, 0.24]} />
+            <meshBasicMaterial color="#2c1d13" />
+          </mesh>
+          {[-1, 1].map((side) => (
+            <mesh key={`bolt-${side}`} position={[piece.centerX + side * piece.width * 0.34, 0.94, platformZ + hut.platformDepth * 0.38]} castShadow={false}>
+              <boxGeometry args={[0.28, 0.1, 0.28]} />
+              <meshBasicMaterial color="#d0a05d" />
+            </mesh>
+          ))}
+        </Fragment>
+      ))}
       {[-1, 1].map((side) => (
         <Fragment key={`platform-rail-${side}`}>
           <mesh position={[side * hut.platformWidth * 0.48, 1.42, platformZ]} castShadow={false}>
@@ -9403,6 +9551,32 @@ function MountainMineshaftMiniHut({ hut, showDetails }: { hut: MountainMineshaft
           </mesh>
         </Fragment>
       ))}
+      {showDetails && (
+        <>
+          {[-1, 1].map((side) => (
+            <Fragment key={`platform-rail-detail-${side}`}>
+              {Array.from({ length: 4 }, (_, postIndex) => {
+                const z = platformZ - hut.platformDepth * 0.3 + postIndex * ((hut.platformDepth * 0.62) / 3);
+                return (
+                  <mesh key={`rail-post-${postIndex}`} position={[side * hut.platformWidth * 0.48, 2.12, z]} castShadow={false}>
+                    <boxGeometry args={[0.56, 1.08, 0.42]} />
+                    <meshBasicMaterial color={postIndex % 2 === 0 ? "#2b1c12" : "#4d301b"} />
+                  </mesh>
+                );
+              })}
+              <mesh position={[side * hut.platformWidth * 0.48, 2.72, platformZ]} castShadow={false}>
+                <boxGeometry args={[0.56, 0.26, hut.platformDepth * 0.88]} />
+                <meshBasicMaterial color="#8d6238" />
+              </mesh>
+            </Fragment>
+          ))}
+          <MountainMineshaftLightPole
+            position={[poleSide * hut.platformWidth * 0.33, 0.78, platformZ + hut.platformDepth * 0.26]}
+            direction={poleSide}
+          />
+          <RetroMineshaftLantern position={[doorWidth / 2 + 1.35, 3.55 + floorY, frontZ + 0.34]} scale={0.62} />
+        </>
+      )}
       <mesh position={[0, hut.height / 2 + floorY, backZ - 0.42]} castShadow={false}>
         <boxGeometry args={[hut.width + 1.6, hut.height + 1.1, 0.7]} />
         <meshBasicMaterial color="#16100c" transparent opacity={0.88} />
@@ -9466,6 +9640,7 @@ function MountainMineshaftMiniHut({ hut, showDetails }: { hut: MountainMineshaft
 function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMineshaftLadder; showDetails: boolean }) {
   const height = Math.max(4, ladder.endY - ladder.startY);
   const rungCount = Math.max(8, Math.min(48, Math.floor(height / 3.6)));
+  const wrapCount = Math.max(3, Math.min(14, Math.floor(height / 7.5)));
 
   return (
     <group position={[ladder.localX, ladder.startY, ladder.localZ]} rotation={[0, ladder.rotation, 0]}>
@@ -9485,6 +9660,37 @@ function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMine
       ))}
       {showDetails && (
         <>
+          {[-1, 1].map((side) => (
+            <mesh key={`rail-highlight-${side}`} position={[side * ladder.width / 2 + side * 0.08, height / 2, 0.2]} castShadow={false}>
+              <boxGeometry args={[0.1, height * 0.94, 0.08]} />
+              <meshBasicMaterial color="#8a5b34" />
+            </mesh>
+          ))}
+          {Array.from({ length: wrapCount }, (_, index) => {
+            const y = 2 + index * ((height - 4) / Math.max(1, wrapCount - 1));
+            return (
+              <Fragment key={`ladder-wrap-${index}`}>
+                <mesh position={[-ladder.width / 2, y, 0.05]} castShadow={false}>
+                  <boxGeometry args={[0.64, 0.3, 0.42]} />
+                  <meshBasicMaterial color={index % 2 === 0 ? "#a07743" : "#c09351"} />
+                </mesh>
+                <mesh position={[ladder.width / 2, y, 0.05]} castShadow={false}>
+                  <boxGeometry args={[0.64, 0.3, 0.42]} />
+                  <meshBasicMaterial color={index % 2 === 0 ? "#a07743" : "#c09351"} />
+                </mesh>
+              </Fragment>
+            );
+          })}
+          {Array.from({ length: Math.min(10, Math.floor(rungCount / 2)) }, (_, index) => {
+            const rungIndex = index * 2;
+            const y = 1.2 + rungIndex * ((height - 2.4) / Math.max(1, rungCount - 1));
+            return (
+              <mesh key={`rung-bright-edge-${index}`} position={[0, y + 0.12, 0.36]} castShadow={false}>
+                <boxGeometry args={[ladder.width + 0.18, 0.07, 0.1]} />
+                <meshBasicMaterial color="#b27a42" />
+              </mesh>
+            );
+          })}
           <mesh position={[0, height + 0.34, 0]} castShadow={false}>
             <boxGeometry args={[ladder.width + 1.2, 0.46, 0.46]} />
             <meshBasicMaterial color="#6f5131" />
@@ -9501,6 +9707,7 @@ function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMine
 
 function MountainMineshaftCatwalkRing({ hut, showDetails }: { hut: MountainMineshaftHut; showDetails: boolean }) {
   const plankRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
+  const lightPoleRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS + 0.95;
 
   return (
     <group name={`${hut.key}-catwalk`} position={[0, hut.y + 0.08, 0]}>
@@ -9521,12 +9728,46 @@ function MountainMineshaftCatwalkRing({ hut, showDetails }: { hut: MountainMines
           </mesh>
         );
       })}
+      {showDetails && Array.from({ length: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS }, (_, index) => {
+        const angle = ((index + 0.5) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
+        const radius = index % 2 === 0 ? MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 0.55 : MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS - 0.55;
+
+        return (
+          <mesh key={`catwalk-edge-block-${index}`} position={[Math.sin(angle) * radius, 0.46, Math.cos(angle) * radius]} rotation={[0, angle, 0]} castShadow={false}>
+            <boxGeometry args={[0.68, 0.34, 0.54]} />
+            <meshBasicMaterial color={index % 3 === 0 ? "#9b6a3b" : "#2f1e13"} />
+          </mesh>
+        );
+      })}
       {showDetails && [MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS].map((radius, railIndex) => (
         <mesh key={`catwalk-rail-${railIndex}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 1.05, 0]} castShadow={false}>
           <ringGeometry args={[radius - 0.14, radius + 0.14, 64]} />
           <meshBasicMaterial color="#24170f" side={THREE.DoubleSide} />
         </mesh>
       ))}
+      {showDetails && Array.from({ length: 4 }, (_, index) => {
+        const angle = hut.angle + index * Math.PI / 2 + 0.38;
+        const x = Math.sin(angle) * lightPoleRadius;
+        const z = Math.cos(angle) * lightPoleRadius;
+
+        return (
+          <group key={`catwalk-light-pole-${index}`} position={[x, 0.78, z]} rotation={[0, angle + Math.PI / 2, 0]}>
+            <mesh position={[0, 1.44, 0]} castShadow={false}>
+              <boxGeometry args={[0.34, 2.88, 0.34]} />
+              <meshBasicMaterial color="#25170e" />
+            </mesh>
+            <mesh position={[-0.62, 2.78, 0]} castShadow={false}>
+              <boxGeometry args={[1.36, 0.26, 0.26]} />
+              <meshBasicMaterial color="#4f321c" />
+            </mesh>
+            <mesh position={[-1.18, 2.48, 0]} castShadow={false}>
+              <boxGeometry args={[0.16, 0.58, 0.16]} />
+              <meshBasicMaterial color="#1b120c" />
+            </mesh>
+            <RetroMineshaftLantern position={[-1.18, 1.44, 0]} scale={0.62} withLight={index === 0} />
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -9537,8 +9778,8 @@ function MountainMineshaftInterior({ layout, showDetails }: { layout: MountainVi
       {layout.interiorHuts.map((hut) => (
         <MountainMineshaftCatwalkRing key={`${hut.key}-catwalk-ring`} hut={hut} showDetails={showDetails} />
       ))}
-      {layout.interiorHuts.map((hut) => (
-        <MountainMineshaftMiniHut key={hut.key} hut={hut} showDetails={showDetails} />
+      {layout.interiorHuts.map((hut, index) => (
+        <MountainMineshaftMiniHut key={hut.key} hut={hut} ladder={layout.interiorLadders[index]} showDetails={showDetails} />
       ))}
       {layout.interiorLadders.map((ladder) => (
         <MountainMineshaftLadder key={ladder.key} ladder={ladder} showDetails={showDetails} />
@@ -9748,16 +9989,28 @@ function MountainVillageColliders({
         })}
       </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
-        {layout.interiorHuts.map((hut) => {
+        {layout.interiorHuts.map((hut, index) => {
           const { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight } = getMountainCabinDoorMetrics(hut);
           const frontZ = hut.depth / 2 - wallThickness / 2;
           const backZ = -hut.depth / 2 + wallThickness / 2;
           const platformZ = hut.depth / 2 + hut.platformDepth / 2 - 1.1;
           const floorY = 0.48;
+          const ladderGapCenterX = getMountainMineshaftLadderLandingLocalX(hut, layout.interiorLadders[index]);
+          const platformPieces = getMountainMineshaftPlatformPieces(
+            hut.platformWidth,
+            ladderGapCenterX,
+            MOUNTAIN_VILLAGE_MINESHAFT_LADDER_PLATFORM_GAP
+          );
 
           return (
             <group key={`${hut.key}-colliders`} position={[hut.localX, hut.y, hut.localZ]} rotation={[0, hut.rotation, 0]}>
-              <CuboidCollider args={[hut.platformWidth / 2, 0.45, hut.platformDepth / 2]} position={[0, 0, platformZ]} />
+              {platformPieces.map((piece) => (
+                <CuboidCollider
+                  key={`${hut.key}-platform-collider-${piece.key}`}
+                  args={[piece.width / 2, 0.45, hut.platformDepth / 2]}
+                  position={[piece.centerX, 0, platformZ]}
+                />
+              ))}
               <CuboidCollider args={[wallThickness / 2, hut.height / 2, hut.depth / 2]} position={[-hut.width / 2 + wallThickness / 2, hut.height / 2 + floorY, 0]} />
               <CuboidCollider args={[wallThickness / 2, hut.height / 2, hut.depth / 2]} position={[hut.width / 2 - wallThickness / 2, hut.height / 2 + floorY, 0]} />
               <CuboidCollider args={[hut.width / 2, hut.height / 2, wallThickness / 2]} position={[0, hut.height / 2 + floorY, backZ]} />
