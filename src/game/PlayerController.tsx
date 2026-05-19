@@ -161,6 +161,8 @@ type QaSurvivalSpawn = {
 const TEMP_MOUNTAIN_VILLAGE_SPAWN_CHUNK: [number, number] = [3, 0];
 const TEMP_MOUNTAIN_VILLAGE_SPAWN_Y = 270;
 const TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_Z = 118;
+const DEFAULT_PLAYER_SPAWN_POSITION: [number, number, number] = [0, 5, 30];
+const DEFAULT_FALL_RECOVERY_SPAWN_POSITION: [number, number, number] = [0, 15, 30];
 
 function getSurvivalChunkSpawn(
   cx: number,
@@ -231,11 +233,12 @@ function getPlayerSpawnOverride(): QaSurvivalSpawn | null {
   return getQaSurvivalSpawnFromUrl() ?? getTemporaryMountainVillageSpawn();
 }
 
-function getInitialPlayerPosition(): [number, number, number] {
-  const spawnOverride = getPlayerSpawnOverride();
-  if (spawnOverride) return spawnOverride.position;
+function getPlayerSpawnPosition(fallbackPosition = DEFAULT_PLAYER_SPAWN_POSITION): [number, number, number] {
+  return getPlayerSpawnOverride()?.position ?? fallbackPosition;
+}
 
-  return [0, 5, 30];
+function getInitialPlayerPosition(): [number, number, number] {
+  return getPlayerSpawnPosition();
 }
 
 function isQaSurvivalWalkEnabled() {
@@ -659,8 +662,10 @@ export function PlayerController() {
           useGameStore.getState().respawn();
           
           if (rigidBody.current) {
-            rigidBody.current.setTranslation({ x: 0, y: 5, z: 30 }, true);
+            const [spawnX, spawnY, spawnZ] = getPlayerSpawnPosition();
+            rigidBody.current.setTranslation({ x: spawnX, y: spawnY, z: spawnZ }, true);
             rigidBody.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+            camera.position.set(spawnX, spawnY + PLAYER_CAMERA_HEIGHT, spawnZ);
           }
         }
         return;
@@ -1722,8 +1727,10 @@ export function PlayerController() {
 
     // Fall logic
     if (!vclipActive && pos.y < -50) {
-      rigidBody.current.setTranslation({ x: 0, y: 15, z: 30 }, true);
+      const [spawnX, spawnY, spawnZ] = getPlayerSpawnPosition(DEFAULT_FALL_RECOVERY_SPAWN_POSITION);
+      rigidBody.current.setTranslation({ x: spawnX, y: spawnY, z: spawnZ }, true);
       rigidBody.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      camera.position.set(spawnX, spawnY + PLAYER_CAMERA_HEIGHT, spawnZ);
     }
 
     // Sync network
