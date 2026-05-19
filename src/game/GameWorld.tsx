@@ -9573,21 +9573,24 @@ function ChapelSeatedNpc({
 
 function ChapelPewNpcs() {
   const rows = [-32, -20, -8, 4, 16];
-  const aisleSeatOffsets = [7.4, 3.8];
+  const seatPlacements = [
+    { x: 10.8, y: 2.9, z: -0.92, scale: 0.9 },
+    { x: 14.2, y: 2.84, z: -0.22, scale: 0.86 },
+  ];
 
   return (
     <group name="chapel-pew-npcs">
       {rows.flatMap((z, rowIndex) => (
         [-1, 1].flatMap((side) => (
-          aisleSeatOffsets.map((_offset, seatIndex) => {
+          seatPlacements.map((seat, seatIndex) => {
             const character = CHAPEL_NPC_CHARACTERS[(rowIndex * 4 + (side > 0 ? 2 : 0) + seatIndex) % CHAPEL_NPC_CHARACTERS.length];
             return (
               <ChapelSeatedNpc
                 key={`chapel-pew-npc-${rowIndex}-${side}-${seatIndex}`}
-                position={[side * (6.2 + seatIndex * 3.4), 3.05, z - 1.1 + seatIndex * 0.8]}
+                position={[side * seat.x, seat.y, z + seat.z]}
                 yaw={0}
                 character={character}
-                scale={0.98 - seatIndex * 0.05}
+                scale={seat.scale}
               />
             );
           })
