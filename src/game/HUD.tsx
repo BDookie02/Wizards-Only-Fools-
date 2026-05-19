@@ -562,6 +562,15 @@ function isPermanentPointerLockRejection(reason: unknown) {
   return /pointer lock|pointerlock/i.test(message) && /sandbox|permission|policy|iframe|frame|allow/i.test(message);
 }
 
+function setMouseLookFallbackActive(active: boolean) {
+  if (active) {
+    document.documentElement.dataset.wizardsMouseLookFallback = "true";
+    return;
+  }
+
+  delete document.documentElement.dataset.wizardsMouseLookFallback;
+}
+
 function wrapIndex(index: number, count: number) {
   if (count <= 0) return 0;
   return ((index % count) + count) % count;
@@ -2136,7 +2145,8 @@ export function HUD() {
   const controllerGameplayActive = isControllerGameplayActive;
   const isDevSurvivalObserver = import.meta.env.DEV && new URLSearchParams(window.location.search).get("qaSurvival") === "1";
   const hasPointerLock = typeof document !== "undefined" && document.pointerLockElement !== null;
-  const mouseGameplayActive = !pauseMenuRequestedRef.current && hasPointerLock;
+  const hasMouseLookFallback = typeof document !== "undefined" && document.documentElement.dataset.wizardsMouseLookFallback === "true";
+  const mouseGameplayActive = !pauseMenuRequestedRef.current && (hasPointerLock || hasMouseLookFallback);
   const isGameplayActive = mouseGameplayActive || touchGameplayActive || controllerGameplayActive;
   const isResumePauseOverlayRequested = isGameLaunched
     && startMenuStage === "resume"
@@ -2312,9 +2322,11 @@ export function HUD() {
     }
   };
 
-  const finishMouseGameplayResume = () => {
+  const finishMouseGameplayResume = (mode: "pointer-lock" | "fallback" = "pointer-lock") => {
     pauseMenuRequestedRef.current = false;
+    pointerLockResumeGraceUntilRef.current = 0;
     document.documentElement.classList.add("wizards-mouse-gameplay-active");
+    setMouseLookFallbackActive(mode === "fallback");
     lastGameplayInputModeRef.current = "mouse";
     setIsLocked(true);
     setPauseOverlayOpen(false);
@@ -2335,6 +2347,7 @@ export function HUD() {
     pauseMenuRequestedRef.current = true;
     pointerLockResumeGraceUntilRef.current = 0;
     document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+    setMouseLookFallbackActive(false);
     lastGameplayInputModeRef.current = inputMode;
     setStartMenuStage("resume");
     setPauseMenuIndex(0);
@@ -2547,7 +2560,11 @@ export function HUD() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isCommandConsoleOpen || isEditableTarget(e.target)) return;
-      if (e.key === 'Escape' && (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)) {
+      if (
+        e.code === "Escape" &&
+        !isPauseMenuVisible &&
+        (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)
+      ) {
         e.preventDefault();
         e.stopPropagation();
         openPauseMenuFromGameplay(touchGameplayActive
@@ -2558,7 +2575,7 @@ export function HUD() {
         return;
       }
 
-      if (e.key === 'Escape' && !isLocked && !isSpellMenuOpen && isReturningToGame) {
+      if (e.code === "Escape" && !isLocked && !isSpellMenuOpen && isReturningToGame) {
         e.preventDefault();
         e.stopPropagation();
         setIsReturningToGame(false);
@@ -2567,7 +2584,7 @@ export function HUD() {
         return;
       }
 
-      if (e.key === 'Escape' && !isLocked && !isSpellMenuOpen && showVideoMenu) {
+      if (e.code === "Escape" && !isLocked && !isSpellMenuOpen && showVideoMenu) {
         e.preventDefault();
         e.stopPropagation();
         setShowVideoMenu(false);
@@ -2581,9 +2598,9 @@ export function HUD() {
       }
 
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [controllerGameplayActive, isCommandConsoleOpen, isLocked, isReturningToGame, isSpellMenuOpen, openPauseMenuFromGameplay, setPauseMenuOpen, showVideoMenu, touchGameplayActive]);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [controllerGameplayActive, isCommandConsoleOpen, isLocked, isPauseMenuVisible, isReturningToGame, isSpellMenuOpen, openPauseMenuFromGameplay, setPauseMenuOpen, showVideoMenu, touchGameplayActive]);
 
   useEffect(() => {
     if (!isLocked && !touchGameplayActive && !controllerGameplayActive) return;
@@ -2614,7 +2631,7 @@ export function HUD() {
           useGameStore.getState().isGameLaunched &&
           !useGameStore.getState().isSpellMenuOpen &&
           !isCommandConsoleOpen &&
-          !isReturningToGame
+          !pauseMenuRequestedRef.current
         ) {
           pauseMenuRequestedRef.current = true;
           setStartMenuStage("resume");
@@ -2849,13 +2866,7 @@ export function HUD() {
       if (isPermanentPointerLockRejection(reason) || !canRequestPointerLockHere()) {
         pointerLockUnavailableRef.current = true;
       }
-      pauseMenuRequestedRef.current = true;
-      pointerLockResumeGraceUntilRef.current = 0;
-      document.documentElement.classList.remove("wizards-mouse-gameplay-active");
-      setIsLocked(false);
-      setIsReturningToGame(false);
-      setPauseOverlayOpen(true);
-      setPauseMenuOpen(true);
+      finishMouseGameplayResume("fallback");
       setCanLock(true);
     };
 
@@ -2906,7 +2917,7 @@ export function HUD() {
     setCommandConsoleOpen(false);
     setCommandConsoleValue("/");
 
-    if (resumeGameplay && commandConsoleShouldRelockRef.current && !pointerLockUnavailableRef.current) {
+    if (resumeGameplay && commandConsoleShouldRelockRef.current) {
       setIsReturningToGame(true);
       window.setTimeout(requestGamePointerLock, 0);
     }
@@ -2917,13 +2928,19 @@ export function HUD() {
   const openCommandConsole = () => {
     if (!isGameLaunched || isCommandConsoleOpen || isSpellMenuOpen) return;
 
-    commandConsoleShouldRelockRef.current = Boolean(document.pointerLockElement) && !isTouchDevice;
+    commandConsoleShouldRelockRef.current = Boolean(
+      (document.pointerLockElement || document.documentElement.dataset.wizardsMouseLookFallback === "true") &&
+      !isTouchDevice
+    );
     setScoreboardSource("keyboard", false);
     setScoreboardSource("controller", false);
     setControllerGameplayActive(false);
     setShowVideoMenu(false);
     setCommandConsoleValue("/");
     setCommandConsoleOpen(true);
+    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+    setMouseLookFallbackActive(false);
+    setIsLocked(false);
     window.dispatchEvent(new Event("command-console-opened"));
 
     if (document.pointerLockElement) {

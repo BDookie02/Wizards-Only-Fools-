@@ -104,6 +104,21 @@ function isMeditationControl(code: string) {
   return code === "ControlLeft" || code === "ControlRight";
 }
 
+function isMouseLookFallbackActive() {
+  const state = useGameStore.getState();
+  return document.documentElement.dataset.wizardsMouseLookFallback === "true" &&
+    state.isGameLaunched &&
+    !state.isPauseMenuOpen &&
+    !state.isSpellMenuOpen &&
+    !state.isMapExpanded &&
+    !state.isScoreboardOpen &&
+    state.health > 0;
+}
+
+function isMouseGameplayInputActive() {
+  return Boolean(document.pointerLockElement || isMouseLookFallbackActive());
+}
+
 window.addEventListener("keydown", (e) => {
   if (isEditableTarget(e.target)) return;
   if (keys.hasOwnProperty(e.code)) {
@@ -111,7 +126,7 @@ window.addEventListener("keydown", (e) => {
     if (
       e.code.startsWith("Arrow") &&
       useGameStore.getState().keyboardArrowLookEnabled &&
-      (document.pointerLockElement || useGameStore.getState().isTouchControlsActive)
+      (isMouseGameplayInputActive() || useGameStore.getState().isTouchControlsActive)
     ) {
       e.preventDefault();
     }
@@ -334,7 +349,7 @@ export function PlayerController() {
     const maxPitch = Math.PI / 2;
 
     const handleMouseMove = (event: MouseEvent) => {
-      if (!document.pointerLockElement) return;
+      if (!isMouseGameplayInputActive()) return;
 
       cameraEuler.setFromQuaternion(camera.quaternion);
       const mouseSensitivity = useGameStore.getState().mouseSensitivity || DEFAULT_MOUSE_SENSITIVITY;
@@ -392,7 +407,7 @@ export function PlayerController() {
     const canUseGameplayInput = () => {
       const state = useGameStore.getState();
       const controllerGameplayReady = state.isControllerGameplayActive && controllerGameplayArmed.current;
-      return Boolean(document.pointerLockElement || state.isTouchControlsActive || controllerGameplayReady) &&
+      return Boolean(isMouseGameplayInputActive() || state.isTouchControlsActive || controllerGameplayReady) &&
         !state.isPauseMenuOpen &&
         !state.isMapExpanded &&
         !state.isScoreboardOpen &&
@@ -1171,7 +1186,8 @@ export function PlayerController() {
       astralExitHoldStartedAt.current = null;
       astralActive = false;
     }
-    const controllerGameplayRequested = storeState.isControllerGameplayActive || Boolean(document.pointerLockElement);
+    const mouseGameplayRequested = isMouseGameplayInputActive();
+    const controllerGameplayRequested = storeState.isControllerGameplayActive || mouseGameplayRequested;
     const controllerModeReady = Boolean(
       gamepad &&
       controllerGameplayRequested &&
@@ -1190,7 +1206,7 @@ export function PlayerController() {
       controllerSprintWasPressed.current = false;
     }
     const controllerInputActive = controllerModeReady && controllerGameplayArmed.current;
-    const gameplayInputActive = Boolean(document.pointerLockElement || storeState.isTouchControlsActive || controllerInputActive);
+    const gameplayInputActive = Boolean(mouseGameplayRequested || storeState.isTouchControlsActive || controllerInputActive);
     (window as any).localPlayerPos = pos;
     (window as any).localPlayerRigidBody = rigidBody.current;
 
@@ -1354,7 +1370,7 @@ export function PlayerController() {
 
       if (
         storeState.keyboardArrowLookEnabled &&
-        document.pointerLockElement &&
+        mouseGameplayRequested &&
         !storeState.isPauseMenuOpen &&
         !storeState.isMapExpanded &&
         !storeState.isScoreboardOpen
