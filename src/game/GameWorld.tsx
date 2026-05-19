@@ -1504,15 +1504,15 @@ function getGraveyardExteriorApronAtWorld(worldX: number, worldZ: number) {
     const centerZ = village.cz * SURVIVAL_BLOCK_SIZE;
     const localX = worldX - centerX;
     const localZ = worldZ - centerZ;
-    const maxAbs = Math.max(Math.abs(localX), Math.abs(localZ));
-    const outsideDistance = maxAbs - GRAVEYARD_PAD_FLAT_RADIUS;
+    const radius = Math.hypot(localX, localZ);
+    const outsideDistance = radius - GRAVEYARD_PAD_FLAT_RADIUS;
     if (outsideDistance < -4 || outsideDistance > apronDistance) return;
 
     const apronMask = 1 - smoothstepRange(0, apronDistance, Math.max(0, outsideDistance));
     if (apronMask <= mask) return;
 
     const baseHeight = getSurvivalRawTerrainHeightAtWorld(centerX, centerZ);
-    const edgeScale = maxAbs > GRAVEYARD_PAD_FLAT_RADIUS ? GRAVEYARD_PAD_FLAT_RADIUS / maxAbs : 1;
+    const edgeScale = radius > GRAVEYARD_PAD_FLAT_RADIUS ? GRAVEYARD_PAD_FLAT_RADIUS / radius : 1;
     const edgeLocalX = localX * edgeScale;
     const edgeLocalZ = localZ * edgeScale;
 
@@ -9011,7 +9011,8 @@ function getGraveyardEffectivePathMask(localX: number, localZ: number) {
 function getGraveyardVillageHeight(chunk: SurvivalChunkInfo, localX: number, localZ: number, baseHeight = getSurvivalVillageBaseHeight(chunk)) {
   const naturalHeight = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
   const gateClearingMask = getGraveyardGateClearingMask(localX, localZ);
-  const edgeBlend = smoothstepRange(GRAVEYARD_PAD_FLAT_RADIUS, SURVIVAL_BLOCK_SIZE / 2, Math.max(Math.abs(localX), Math.abs(localZ))) * (1 - gateClearingMask * 0.95);
+  const radius = Math.hypot(localX, localZ);
+  const edgeBlend = smoothstepRange(GRAVEYARD_FENCE_RADIUS - 42, SURVIVAL_BLOCK_SIZE / 2, radius) * (1 - gateClearingMask * 0.95);
   const graveyardHeight = getGraveyardLocalSurfaceHeight(localX, localZ, chunk.cx, chunk.cz, baseHeight);
   return lerpNumber(graveyardHeight, naturalHeight, edgeBlend);
 }
@@ -9045,16 +9046,14 @@ function getGraveyardGroundColor(chunk: SurvivalChunkInfo, localX: number, local
   const worldX = chunk.x + localX;
   const worldZ = chunk.z + localZ;
   const naturalColor = getSurvivalTerrainColor(worldX, worldZ, height);
-  const maxAbs = Math.max(Math.abs(localX), Math.abs(localZ));
+  const radius = Math.hypot(localX, localZ);
   const edgeBreakup = (
-    Math.sin(localX * 0.034 + chunk.cx * 1.9) * 7.5 +
-    Math.cos(localZ * 0.041 - chunk.cz * 1.4) * 6.5 +
-    Math.sin((localX + localZ) * 0.019) * 5.5
+    Math.sin(localX * 0.034 + chunk.cx * 1.9) * 4.5 +
+    Math.cos(localZ * 0.041 - chunk.cz * 1.4) * 3.5 +
+    Math.sin((localX + localZ) * 0.019) * 3
   );
-  const outerBlend = smoothstepRange(GRAVEYARD_FENCE_RADIUS - 92, SURVIVAL_BLOCK_SIZE / 2 + 10, maxAbs + edgeBreakup);
-  const boundaryBlend = smoothstepRange(SURVIVAL_BLOCK_SIZE / 2 - 34, SURVIVAL_BLOCK_SIZE / 2 - 2, maxAbs);
-  const gatePreserve = getGraveyardGateClearingMask(localX, localZ) * 0.72;
-  return graveyardColor.lerp(naturalColor, clamp01(Math.max(boundaryBlend, outerBlend * (1 - gatePreserve))));
+  const outerBlend = smoothstepRange(GRAVEYARD_FENCE_RADIUS - 92, SURVIVAL_BLOCK_SIZE / 2 - 2, radius + edgeBreakup);
+  return graveyardColor.lerp(naturalColor, clamp01(outerBlend));
 }
 
 function makeGraveyardVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
