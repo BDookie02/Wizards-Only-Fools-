@@ -1253,8 +1253,25 @@ function getSurvivalBiome(cx: number, cz: number): SurvivalBiome {
   return survivalBiomes[Math.floor(survivalHash01(cx, cz, 1) * survivalBiomes.length) % survivalBiomes.length];
 }
 
+const SPECIAL_SURVIVAL_VILLAGE_CHUNKS: Array<{ cx: number; cz: number; kind: SurvivalVillageKind }> = [
+  { cx: -3, cz: -3, kind: "chicago" },
+  { cx: 5, cz: 2, kind: "graveyard" },
+];
+
+function getSpecialSurvivalVillageKind(cx: number, cz: number): SurvivalVillageKind | null {
+  return SPECIAL_SURVIVAL_VILLAGE_CHUNKS.find((village) => village.cx === cx && village.cz === cz)?.kind ?? null;
+}
+
+function isNextToSpecialSurvivalVillage(cx: number, cz: number) {
+  return SPECIAL_SURVIVAL_VILLAGE_CHUNKS.some((village) => {
+    if (village.cx === cx && village.cz === cz) return false;
+    return Math.max(Math.abs(village.cx - cx), Math.abs(village.cz - cz)) <= 1;
+  });
+}
+
 function hasSurvivalVillage(cx: number, cz: number) {
-  if (isGraveyardChunk(cx, cz)) return true;
+  if (getSpecialSurvivalVillageKind(cx, cz)) return true;
+  if (isNextToSpecialSurvivalVillage(cx, cz)) return false;
   if (cx === 0 && cz === 0) return false;
   const absCx = Math.abs(cx);
   const absCz = Math.abs(cz);
@@ -1270,17 +1287,17 @@ function hasSurvivalVillage(cx: number, cz: number) {
 }
 
 function isChicagoChunk(cx: number, cz: number) {
-  return cx === -3 && cz === -3;
+  return getSpecialSurvivalVillageKind(cx, cz) === "chicago";
 }
 
 function isGraveyardChunk(cx: number, cz: number) {
-  return cx === 4 && cz === 0;
+  return getSpecialSurvivalVillageKind(cx, cz) === "graveyard";
 }
 
 function getSurvivalVillageKindForChunk(biome: SurvivalBiome, cx: number, cz: number): SurvivalVillageKind | null {
-  if (isGraveyardChunk(cx, cz)) return "graveyard";
+  const specialVillageKind = getSpecialSurvivalVillageKind(cx, cz);
+  if (specialVillageKind) return specialVillageKind;
   if (!hasSurvivalVillage(cx, cz)) return null;
-  if (isChicagoChunk(cx, cz)) return "chicago";
   if (biome === "desert") return "desert";
   if (biome === "swamp") return "swamp";
   return "mountain";
