@@ -8450,6 +8450,8 @@ const MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS = 6.4;
 const MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS = 10.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_THRONE_Z = -15.6;
 const MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES = [-2.36, -1.57, -0.78, 0, 0.78, 1.57, 2.36] as const;
+const MOUNTAIN_VILLAGE_MINESHAFT_WALL_LANTERN_COUNT = 10;
+const MOUNTAIN_VILLAGE_MINESHAFT_WALL_PAINTING_COUNT = 8;
 const MOUNTAIN_VILLAGE_MINESHAFT_HUT_RADIUS = 24.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS = 13.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS = 22.6;
@@ -10029,6 +10031,274 @@ function MountainMineshaftLightPole({
   );
 }
 
+function MountainMineshaftWallHangingLantern({
+  angle,
+  y,
+  index,
+}: {
+  angle: number;
+  y: number;
+  index: number;
+}) {
+  const radius = MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS - 0.72;
+
+  return (
+    <group position={[Math.sin(angle) * radius, y, Math.cos(angle) * radius]} rotation={[0, angle, 0]}>
+      <mesh position={[0, 0.42, -0.08]} castShadow={false}>
+        <boxGeometry args={[2.34, 0.52, 0.3]} />
+        <meshBasicMaterial color="#1b1009" />
+      </mesh>
+      <mesh position={[0, 0.14, -0.92]} castShadow={false}>
+        <boxGeometry args={[2.08, 0.26, 1.62]} />
+        <meshBasicMaterial color={index % 2 === 0 ? "#53331d" : "#342113"} />
+      </mesh>
+      <mesh position={[0, -0.72, -1.72]} castShadow={false}>
+        <boxGeometry args={[0.18, 1.38, 0.18]} />
+        <meshBasicMaterial color="#0f0906" />
+      </mesh>
+      <mesh position={[0, -1.5, -1.72]} rotation={[0, 0, Math.PI / 4]} castShadow={false}>
+        <torusGeometry args={[0.42, 0.06, 4, 8]} />
+        <meshBasicMaterial color="#2a1a10" />
+      </mesh>
+      <RetroMineshaftLantern position={[0, -2.5, -1.72]} scale={0.72} withLight={index % 2 === 0} />
+    </group>
+  );
+}
+
+function MountainMineshaftWallLanterns({
+  bottomY,
+  summitY,
+  showDetails,
+}: {
+  bottomY: number;
+  summitY: number;
+  showDetails: boolean;
+}) {
+  if (!showDetails) return null;
+
+  const usableHeight = Math.max(36, summitY - bottomY - 24);
+
+  return (
+    <group name="mineshaft-wall-hanging-lanterns">
+      {Array.from({ length: MOUNTAIN_VILLAGE_MINESHAFT_WALL_LANTERN_COUNT }, (_, index) => {
+        const layer = index % 5;
+        const y = bottomY + 12 + (layer / 4) * usableHeight + (index % 2) * 3.4;
+        const angle = index * 1.94 + (index % 3) * 0.18;
+
+        return <MountainMineshaftWallHangingLantern key={`wall-lantern-${index}`} angle={angle} y={y} index={index} />;
+      })}
+    </group>
+  );
+}
+
+function MountainMineshaftVillagerFigure({
+  x,
+  y,
+  scale = 1,
+  bodyColor,
+  hatColor,
+}: {
+  x: number;
+  y: number;
+  scale?: number;
+  bodyColor: string;
+  hatColor: string;
+}) {
+  const z = -0.36;
+
+  return (
+    <group position={[x, y, z]} scale={[scale, scale, 1]}>
+      <mesh position={[0, 0.74, 0]} castShadow={false}>
+        <boxGeometry args={[0.46, 0.42, 0.08]} />
+        <meshBasicMaterial color="#c88d68" />
+      </mesh>
+      <mesh position={[0, 0.28, 0.02]} castShadow={false}>
+        <boxGeometry args={[0.58, 0.74, 0.08]} />
+        <meshBasicMaterial color={bodyColor} />
+      </mesh>
+      <mesh position={[-0.4, 0.28, 0.02]} castShadow={false}>
+        <boxGeometry args={[0.18, 0.58, 0.08]} />
+        <meshBasicMaterial color="#3a2415" />
+      </mesh>
+      <mesh position={[0.4, 0.28, 0.02]} castShadow={false}>
+        <boxGeometry args={[0.18, 0.58, 0.08]} />
+        <meshBasicMaterial color="#3a2415" />
+      </mesh>
+      <mesh position={[0, 1.06, 0.03]} castShadow={false}>
+        <boxGeometry args={[0.72, 0.22, 0.08]} />
+        <meshBasicMaterial color={hatColor} />
+      </mesh>
+      <mesh position={[0, 1.24, 0.04]} castShadow={false}>
+        <boxGeometry args={[0.46, 0.28, 0.08]} />
+        <meshBasicMaterial color={hatColor} />
+      </mesh>
+      <mesh position={[-0.1, 0.82, 0.06]} castShadow={false}>
+        <boxGeometry args={[0.08, 0.08, 0.06]} />
+        <meshBasicMaterial color="#090604" />
+      </mesh>
+      <mesh position={[0.14, 0.82, 0.06]} castShadow={false}>
+        <boxGeometry args={[0.08, 0.08, 0.06]} />
+        <meshBasicMaterial color="#090604" />
+      </mesh>
+    </group>
+  );
+}
+
+function MountainMineshaftVillagerPainting({
+  variant,
+}: {
+  variant: number;
+}) {
+  const frameColor = variant % 2 === 0 ? "#5c3a20" : "#2e1d12";
+  const canvasColor = ["#263345", "#473328", "#2f4638", "#3b2d4f"][variant % 4];
+  const floorColor = ["#6d4a2e", "#4e3826", "#3f4f37", "#7b5730"][variant % 4];
+  const moon = variant % 3 === 0;
+  const groupScene = variant % 2 === 0;
+
+  return (
+    <group name="villager-wall-painting">
+      <mesh castShadow={false}>
+        <boxGeometry args={[6.8, 4.92, 0.28]} />
+        <meshBasicMaterial color="#0b0705" />
+      </mesh>
+      <mesh position={[0, 0, -0.08]} castShadow={false}>
+        <boxGeometry args={[6.28, 4.42, 0.18]} />
+        <meshBasicMaterial color={frameColor} />
+      </mesh>
+      <mesh position={[0, 0, -0.2]} castShadow={false}>
+        <boxGeometry args={[5.38, 3.48, 0.12]} />
+        <meshBasicMaterial color={canvasColor} />
+      </mesh>
+      <mesh position={[0, -1.18, -0.29]} castShadow={false}>
+        <boxGeometry args={[5.42, 1.1, 0.08]} />
+        <meshBasicMaterial color={floorColor} />
+      </mesh>
+      <mesh position={[moon ? -1.92 : 1.78, 1.08, -0.31]} castShadow={false}>
+        <boxGeometry args={[0.64, 0.64, 0.08]} />
+        <meshBasicMaterial color={moon ? "#f4e5b0" : "#ffb347"} transparent opacity={0.9} />
+      </mesh>
+      {groupScene ? (
+        <>
+          <MountainMineshaftVillagerFigure x={-1.55} y={-0.78} scale={0.94} bodyColor="#8e1e24" hatColor="#d7a548" />
+          <MountainMineshaftVillagerFigure x={0} y={-0.72} scale={1.08} bodyColor="#3a6b78" hatColor="#6f4528" />
+          <MountainMineshaftVillagerFigure x={1.48} y={-0.82} scale={0.88} bodyColor="#5c6f35" hatColor="#a67642" />
+        </>
+      ) : (
+        <>
+          <MountainMineshaftVillagerFigure x={-0.72} y={-0.88} scale={1.22} bodyColor="#6d4a8e" hatColor="#d7a548" />
+          <mesh position={[1.28, -0.34, -0.34]} castShadow={false}>
+            <boxGeometry args={[0.82, 1.94, 0.08]} />
+            <meshBasicMaterial color="#2a1a10" />
+          </mesh>
+          <mesh position={[1.28, 0.7, -0.32]} castShadow={false}>
+            <boxGeometry args={[1.24, 0.34, 0.08]} />
+            <meshBasicMaterial color="#d7a548" />
+          </mesh>
+          <mesh position={[1.28, 1.0, -0.3]} castShadow={false}>
+            <boxGeometry args={[0.74, 0.58, 0.08]} />
+            <meshBasicMaterial color="#9f2428" />
+          </mesh>
+        </>
+      )}
+      {[-2.56, 2.56].map((x) => (
+        <mesh key={`painting-pin-${x}`} position={[x, 1.82, -0.38]} castShadow={false}>
+          <boxGeometry args={[0.22, 0.22, 0.08]} />
+          <meshBasicMaterial color="#d7a548" />
+        </mesh>
+      ))}
+      {Array.from({ length: 4 }, (_, index) => (
+        <mesh key={`painting-highlight-${index}`} position={[-2.1 + index * 1.35, 1.54 - (index % 2) * 0.36, -0.36]} castShadow={false}>
+          <boxGeometry args={[0.92, 0.08, 0.06]} />
+          <meshBasicMaterial color="#f6e2a8" transparent opacity={0.26} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function MountainMineshaftWallPaintings({
+  bottomY,
+  summitY,
+  showDetails,
+}: {
+  bottomY: number;
+  summitY: number;
+  showDetails: boolean;
+}) {
+  if (!showDetails) return null;
+
+  const radius = MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS - 0.48;
+  const usableHeight = Math.max(48, summitY - bottomY - 34);
+
+  return (
+    <group name="mineshaft-villager-wall-paintings">
+      {Array.from({ length: MOUNTAIN_VILLAGE_MINESHAFT_WALL_PAINTING_COUNT }, (_, index) => {
+        const angle = 0.38 + index * ((Math.PI * 2) / MOUNTAIN_VILLAGE_MINESHAFT_WALL_PAINTING_COUNT);
+        const y = bottomY + 15 + ((index % 4) / 3) * Math.min(usableHeight, 86) + Math.floor(index / 4) * 6;
+
+        return (
+          <group key={`villager-painting-${index}`} position={[Math.sin(angle) * radius, y, Math.cos(angle) * radius]} rotation={[0, angle, 0]}>
+            <MountainMineshaftVillagerPainting variant={index} />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+function MountainMineshaftWallRopeLights({
+  bottomY,
+  summitY,
+  showDetails,
+}: {
+  bottomY: number;
+  summitY: number;
+  showDetails: boolean;
+}) {
+  if (!showDetails) return null;
+
+  const strandCount = 8;
+  const radius = MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS - 0.62;
+  const startY = bottomY + 5.8;
+  const ropeHeight = Math.max(28, summitY - bottomY - 11.5);
+  const beadCount = 18;
+
+  return (
+    <group name="mineshaft-wall-rope-lights">
+      {Array.from({ length: strandCount }, (_, strandIndex) => {
+        const angle = strandIndex * ((Math.PI * 2) / strandCount) + 0.18;
+
+        return (
+          <group key={`rope-light-strand-${strandIndex}`} position={[Math.sin(angle) * radius, startY + ropeHeight / 2, Math.cos(angle) * radius]} rotation={[0, angle, 0]}>
+            <mesh position={[0, 0, -0.08]} castShadow={false}>
+              <boxGeometry args={[0.18, ropeHeight, 0.12]} />
+              <meshBasicMaterial color="#160d08" />
+            </mesh>
+            {Array.from({ length: beadCount }, (_, beadIndex) => {
+              const t = beadIndex / Math.max(1, beadCount - 1);
+              const beadY = -ropeHeight / 2 + t * ropeHeight;
+              const glowColor = ["#ffb65b", "#ffd56f", "#ff8a3a"][beadIndex % 3];
+
+              return (
+                <Fragment key={`rope-bead-${beadIndex}`}>
+                  <mesh position={[0, beadY, -0.26]} castShadow={false} renderOrder={8}>
+                    <boxGeometry args={[0.48, 0.48, 0.08]} />
+                    <meshBasicMaterial color={glowColor} transparent opacity={0.82} blending={THREE.AdditiveBlending} toneMapped={false} />
+                  </mesh>
+                  <mesh position={[0, beadY, -0.32]} castShadow={false} renderOrder={7}>
+                    <boxGeometry args={[1.18, 1.18, 0.04]} />
+                    <meshBasicMaterial color={glowColor} transparent opacity={0.12} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+                  </mesh>
+                </Fragment>
+              );
+            })}
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 function MountainMineshaftBottomLightRing() {
   return (
     <group name="mineshaft-bottom-light-ring">
@@ -10796,6 +11066,9 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
         <cylinderGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS * 0.82, shaftWallHeight, 48, 1, true]} />
         <meshStandardMaterial color="#0b0908" roughness={1} metalness={0} side={THREE.DoubleSide} />
       </mesh>
+      <MountainMineshaftWallRopeLights bottomY={bottomY} summitY={summitY} showDetails={showDetails} />
+      <MountainMineshaftWallLanterns bottomY={bottomY} summitY={summitY} showDetails={showDetails} />
+      <MountainMineshaftWallPaintings bottomY={bottomY} summitY={summitY} showDetails={showDetails} />
       <mesh position={[0, bottomY - 0.28, 0]} receiveShadow={showDetails} renderOrder={4}>
         <cylinderGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.96, 0.56, 48]} />
         <meshStandardMaterial color="#342519" roughness={0.96} metalness={0} />
