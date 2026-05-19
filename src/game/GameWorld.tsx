@@ -719,6 +719,7 @@ const BASE_VILLAGE_STREAM_DISTANCE = SURVIVAL_BLOCK_SIZE * 1.45;
 const SURVIVAL_BIOME_HEX_RADIUS = SURVIVAL_BLOCK_SIZE * 0.62;
 const SURVIVAL_TERRAIN_NEAR_SEGMENTS = 38;
 const SURVIVAL_TERRAIN_MID_SEGMENTS = 16;
+const SURVIVAL_TERRAIN_COLLISION_SEGMENTS = 56;
 const SURVIVAL_VILLAGE_PAD_SEGMENTS = 18;
 const SURVIVAL_TERRAIN_CACHE_LIMIT = 48;
 const BASE_VILLAGE_HALF_SIZE = 256;
@@ -726,6 +727,7 @@ const BASE_VILLAGE_EXIT_HEIGHT = 2;
 const BASE_VILLAGE_EXIT_BLEND_DISTANCE = 220;
 const BASE_VILLAGE_APRON_DISTANCE = 172;
 const survivalTerrainGeometryCache = new Map<string, THREE.BufferGeometry>();
+const survivalTerrainCollisionGeometryCache = new Map<string, THREE.BufferGeometry>();
 
 const survivalBiomeStyle: Record<SurvivalBiome, { ground: string; accent: string; water: string }> = {
   plains: { ground: "#4f8730", accent: "#78b94f", water: "#2e72a8" },
@@ -1624,10 +1626,50 @@ function makeSurvivalTerrainGeometry(chunk: SurvivalChunkInfo) {
   return geo;
 }
 
+function makeSurvivalTerrainCollisionGeometry(chunk: SurvivalChunkInfo) {
+  const cacheKey = `${chunk.key}:collision:${SURVIVAL_TERRAIN_COLLISION_SEGMENTS}`;
+  const cached = survivalTerrainCollisionGeometryCache.get(cacheKey);
+  if (cached) {
+    survivalTerrainCollisionGeometryCache.delete(cacheKey);
+    survivalTerrainCollisionGeometryCache.set(cacheKey, cached);
+    return cached;
+  }
+
+  const geo = new THREE.PlaneGeometry(
+    SURVIVAL_BLOCK_SIZE,
+    SURVIVAL_BLOCK_SIZE,
+    SURVIVAL_TERRAIN_COLLISION_SEGMENTS,
+    SURVIVAL_TERRAIN_COLLISION_SEGMENTS,
+  );
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+
+  for (let i = 0; i < pos.count; i += 1) {
+    pos.setY(i, getSurvivalTerrainHeightForChunk(chunk, pos.getX(i), pos.getZ(i)));
+  }
+
+  geo.computeVertexNormals();
+
+  survivalTerrainCollisionGeometryCache.set(cacheKey, geo);
+  if (survivalTerrainCollisionGeometryCache.size > SURVIVAL_TERRAIN_CACHE_LIMIT) {
+    const oldestKey = survivalTerrainCollisionGeometryCache.keys().next().value;
+    if (oldestKey) {
+      survivalTerrainCollisionGeometryCache.get(oldestKey)?.dispose();
+      survivalTerrainCollisionGeometryCache.delete(oldestKey);
+    }
+  }
+
+  return geo;
+}
+
 function SurvivalTerrain({ chunk }: { chunk: SurvivalChunkInfo }) {
   const terrainGeometry = useMemo(() => makeSurvivalTerrainGeometry(chunk), [chunk]);
-  const terrainTexture = useMemo(() => getSurvivalTerrainDetailTexture(), []);
   const hasCollision = chunk.distance <= SURVIVAL_NEAR_RADIUS;
+  const terrainCollisionGeometry = useMemo(
+    () => hasCollision ? makeSurvivalTerrainCollisionGeometry(chunk) : null,
+    [chunk, hasCollision]
+  );
+  const terrainTexture = useMemo(() => getSurvivalTerrainDetailTexture(), []);
   const terrainMesh = (
     <mesh geometry={terrainGeometry} receiveShadow={hasCollision} dispose={null}>
       <meshBasicMaterial map={terrainTexture} vertexColors side={THREE.DoubleSide} />
@@ -1641,11 +1683,11 @@ function SurvivalTerrain({ chunk }: { chunk: SurvivalChunkInfo }) {
   return (
     <group>
       <group position={[chunk.x, 0, chunk.z]}>{terrainMesh}</group>
-      <RigidBody type="fixed" colliders="trimesh" friction={0.2} restitution={0} position={[chunk.x, 0, chunk.z]}>
-        <mesh geometry={terrainGeometry} dispose={null}>
+      {terrainCollisionGeometry && <RigidBody type="fixed" colliders="trimesh" friction={0.2} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        <mesh geometry={terrainCollisionGeometry} dispose={null}>
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
-      </RigidBody>
+      </RigidBody>}
     </group>
   );
 }
@@ -11185,7 +11227,7 @@ function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number)
     trailSegments,
     trailDeckGeometry: makeMountainVillageTrailDeckGeometry(trailPoints),
     trailTopGeometry: makeMountainVillageTrailSurfaceGeometry(trailPoints, 0.72, 0.53),
-    trailColliderGeometry: makeMountainVillageTrailSurfaceGeometry(trailPoints, 0.82, 0.55),
+    trailColliderGeometry: makeMountainVillageTrailDeckGeometry(trailPoints),
     summitColliderGeometry: makeMountainVillageSummitColliderGeometry(summitY),
     cliffPatches,
     cabins,

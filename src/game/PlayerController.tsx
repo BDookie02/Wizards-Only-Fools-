@@ -22,6 +22,11 @@ const PLAYER_COLLIDER_RADIUS = 0.5;
 const PLAYER_FOOT_OFFSET = PLAYER_COLLIDER_HALF_HEIGHT + PLAYER_COLLIDER_RADIUS;
 const PLAYER_CAMERA_HEIGHT = 1.08;
 const PLAYER_SLIDE_CAMERA_HEIGHT = 0.12;
+const FLOOR_RECOVERY_RAY_UP = 3.4;
+const FLOOR_RECOVERY_RAY_DOWN = 8.5;
+const FLOOR_RECOVERY_TRIGGER_DEPTH = 0.42;
+const FLOOR_RECOVERY_MAX_LIFT = 5.8;
+const FLOOR_RECOVERY_VERTICAL_SETTLE = 0.08;
 const SPELL_SPAWN_FORWARD_OFFSET = 1.55;
 const SPELL_SPAWN_VERTICAL_OFFSET = 0.08;
 const DIRECT_STATUS_TARGET_RANGE = 48;
@@ -1279,6 +1284,11 @@ export function PlayerController() {
     }
     const controllerInputActive = controllerModeReady && controllerGameplayArmed.current;
     const gameplayInputActive = Boolean(mouseGameplayRequested || storeState.isTouchControlsActive || controllerInputActive);
+    const isSolidWorldCollider = (collider: any) => {
+      const parent = typeof collider.parent === "function" ? collider.parent() : null;
+      const isSensor = typeof collider.isSensor === "function" ? collider.isSensor() : collider.isSensor === true;
+      return parent?.handle !== rigidBody.current?.handle && !isSensor;
+    };
     (window as any).localPlayerPos = pos;
     (window as any).localPlayerRigidBody = rigidBody.current;
 
@@ -1495,7 +1505,7 @@ export function PlayerController() {
           { x: Math.sin(yaw), y: 0, z: -Math.cos(yaw) },
         );
         // @ts-ignore - rapier exposes the collider predicate in this overload.
-        const hit = world.castRay(ray, distance, true, undefined, undefined, undefined, undefined, (collider) => collider.parent()?.handle !== rigidBody.current?.handle);
+        const hit = world.castRay(ray, distance, true, undefined, undefined, undefined, undefined, isSolidWorldCollider);
         return hit ? hit.timeOfImpact : distance;
       };
 
@@ -1714,10 +1724,48 @@ export function PlayerController() {
       ? null
       // Use filterPredicate to ignore the player's own colliders.
       // @ts-ignore
-      : world.castRay(ray, 0.25, true, undefined, undefined, undefined, undefined, (collider) => collider.parent()?.handle !== rigidBody.current?.handle);
-    const grounded = !vclipActive && hit !== null && hit.timeOfImpact < 0.2;
+      : world.castRay(ray, 0.25, true, undefined, undefined, undefined, undefined, isSolidWorldCollider);
+    let grounded = !vclipActive && hit !== null && hit.timeOfImpact < 0.2;
     const climbingLadder = ladderActive && !vclipActive;
-    const effectiveGrounded = grounded || climbingLadder;
+    let effectiveGrounded = grounded || climbingLadder;
+
+    if (!vclipActive && !climbingLadder && !grounded && velocity.y < -0.35 && !jumpHeld && !grabbedState.current) {
+      const recoveryRayOriginY = pos.y + FLOOR_RECOVERY_RAY_UP;
+      const recoveryRay = new rapier.Ray(
+        { x: pos.x, y: recoveryRayOriginY, z: pos.z },
+        { x: 0, y: -1, z: 0 },
+      );
+      // @ts-ignore - rapier exposes the collider predicate in this overload.
+      const recoveryHit = world.castRay(
+        recoveryRay,
+        FLOOR_RECOVERY_RAY_UP + FLOOR_RECOVERY_RAY_DOWN,
+        true,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        isSolidWorldCollider,
+      );
+
+      if (recoveryHit) {
+        const floorY = recoveryRayOriginY - recoveryHit.timeOfImpact;
+        const correctedY = floorY + PLAYER_FOOT_OFFSET + FLOOR_RECOVERY_VERTICAL_SETTLE;
+        const lift = correctedY - pos.y;
+        if (lift > FLOOR_RECOVERY_TRIGGER_DEPTH && lift < FLOOR_RECOVERY_MAX_LIFT) {
+          rigidBody.current.setTranslation({ x: pos.x, y: correctedY, z: pos.z }, true);
+          rigidBody.current.setLinvel({ x: velocity.x, y: 0, z: velocity.z }, true);
+          camera.position.set(pos.x, correctedY + (isSliding ? PLAYER_SLIDE_CAMERA_HEIGHT : PLAYER_CAMERA_HEIGHT), pos.z);
+          (window as any).localPlayerPos = { x: pos.x, y: correctedY, z: pos.z };
+          window.dispatchEvent(new CustomEvent('player-state', {
+            detail: { isMoving: hasMovementInput, isSprinting, isSliding: false, isGrounded: true, isMeditating: false }
+          }));
+          window.dispatchEvent(new CustomEvent('player-moved', { detail: { x: pos.x, y: correctedY, z: pos.z, angle: yaw, isMoving: hasMovementInput, grounded: true } }));
+          if (isSliding) setIsSliding(false);
+          setJumps(0);
+          return;
+        }
+      }
+    }
     
     // Dispatch player state for HUD animations
     window.dispatchEvent(new CustomEvent('player-state', { 
