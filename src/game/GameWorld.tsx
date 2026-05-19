@@ -9682,17 +9682,19 @@ function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMine
   );
 }
 
-function MountainMineshaftCatwalkRing({ hut, ladder, showDetails }: { hut: MountainMineshaftHut; ladder?: MountainMineshaftLadder; showDetails: boolean }) {
+function MountainMineshaftCatwalkRing({ hut, ladders, showDetails }: { hut: MountainMineshaftHut; ladders: MountainMineshaftLadder[]; showDetails: boolean }) {
   const plankRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
   const centerGuardRailRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 0.55;
   const centerGuardPostCount = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS * 2;
   const centerGuardRailSegmentLength = ((Math.PI * 2 * centerGuardRailRadius) / centerGuardPostCount) * 0.78;
   const lightPoleRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS + 0.95;
   const balconyGapHalfAngle = Math.min(0.52, Math.max(0.34, (hut.platformWidth * 0.38) / centerGuardRailRadius));
-  const ladderGapHalfAngle = ladder ? Math.min(0.34, Math.max(0.22, (ladder.width * 0.72) / centerGuardRailRadius)) : 0;
   const guardRailGaps = [
     { angle: hut.angle, halfAngle: balconyGapHalfAngle },
-    ...(ladder ? [{ angle: ladder.angle, halfAngle: ladderGapHalfAngle }] : []),
+    ...ladders.map((ladder) => ({
+      angle: ladder.angle,
+      halfAngle: Math.min(0.5, Math.max(0.34, (ladder.width * 1.35) / centerGuardRailRadius)),
+    })),
   ];
   const isGuardRailOpening = (angle: number) => guardRailGaps.some((gap) => (
     Math.abs(Math.atan2(Math.sin(angle - gap.angle), Math.cos(angle - gap.angle))) < gap.halfAngle
@@ -9785,7 +9787,12 @@ function MountainMineshaftInterior({ layout, showDetails }: { layout: MountainVi
   return (
     <group name="mountain-village-mineshaft-wall-huts">
       {layout.interiorHuts.map((hut, index) => (
-        <MountainMineshaftCatwalkRing key={`${hut.key}-catwalk-ring`} hut={hut} ladder={layout.interiorLadders[index]} showDetails={showDetails} />
+        <MountainMineshaftCatwalkRing
+          key={`${hut.key}-catwalk-ring`}
+          hut={hut}
+          ladders={layout.interiorLadders.slice(index, index + 2)}
+          showDetails={showDetails}
+        />
       ))}
       {layout.interiorHuts.map((hut, index) => (
         <MountainMineshaftMiniHut key={hut.key} hut={hut} ladder={layout.interiorLadders[index]} showDetails={showDetails} />
