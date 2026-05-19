@@ -21,34 +21,74 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
     
     ctx.clearRect(0, 0, size, size);
 
-    function drawCircle(x: number, y: number, r: number, color: string) {
+    function drawLobe(x: number, y: number, w: number, h: number, color: string, edge = "#182611") {
+        const points = [
+          [x, y - h * 0.54],
+          [x + w * 0.42, y - h * 0.36],
+          [x + w * 0.56, y],
+          [x + w * 0.34, y + h * 0.42],
+          [x, y + h * 0.56],
+          [x - w * 0.34, y + h * 0.42],
+          [x - w * 0.56, y],
+          [x - w * 0.42, y - h * 0.36],
+        ];
+
         ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
+        points.forEach(([px, py], index) => {
+          if (index === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.closePath();
+        ctx.fillStyle = edge;
+        ctx.fill();
+
+        ctx.beginPath();
+        points.forEach(([px, py], index) => {
+          const insetX = x + (px - x) * 0.78;
+          const insetY = y + (py - y) * 0.78;
+          if (index === 0) ctx.moveTo(insetX, insetY);
+          else ctx.lineTo(insetX, insetY);
+        });
+        ctx.closePath();
         ctx.fillStyle = color;
         ctx.fill();
     }
 
-    // Bushes matching the cartoon reference image
+    // Bushes matching the cartoon reference image, but with chunkier pixel-edge definition.
+    const edgeColor = "#16240f";
     const colorDark = "#416035";
     const colorMid = "#5a8643";
     const colorLight = "#7dad52";
 
-    // Draw dark background layer
-    drawCircle(size * 0.25, size * 0.7, size * 0.25, colorDark);
-    drawCircle(size * 0.5, size * 0.55, size * 0.35, colorDark);
-    drawCircle(size * 0.75, size * 0.65, size * 0.25, colorDark);
-    drawCircle(size * 0.85, size * 0.8, size * 0.15, colorDark);
-    drawCircle(size * 0.15, size * 0.8, size * 0.15, colorDark);
+    // Draw dark faceted background layer
+    drawLobe(size * 0.25, size * 0.7, size * 0.34, size * 0.42, colorDark, edgeColor);
+    drawLobe(size * 0.5, size * 0.55, size * 0.48, size * 0.52, colorDark, edgeColor);
+    drawLobe(size * 0.75, size * 0.65, size * 0.34, size * 0.42, colorDark, edgeColor);
+    drawLobe(size * 0.86, size * 0.8, size * 0.22, size * 0.26, colorDark, edgeColor);
+    drawLobe(size * 0.14, size * 0.8, size * 0.22, size * 0.26, colorDark, edgeColor);
 
     // Draw mid layer
-    drawCircle(size * 0.3, size * 0.75, size * 0.2, colorMid);
-    drawCircle(size * 0.5, size * 0.65, size * 0.28, colorMid);
-    drawCircle(size * 0.7, size * 0.72, size * 0.22, colorMid);
+    drawLobe(size * 0.3, size * 0.75, size * 0.26, size * 0.3, colorMid, "#27411f");
+    drawLobe(size * 0.5, size * 0.65, size * 0.36, size * 0.42, colorMid, "#27411f");
+    drawLobe(size * 0.7, size * 0.72, size * 0.28, size * 0.32, colorMid, "#27411f");
 
     // Draw light layer
-    drawCircle(size * 0.35, size * 0.85, size * 0.12, colorLight);
-    drawCircle(size * 0.5, size * 0.8, size * 0.18, colorLight);
-    drawCircle(size * 0.65, size * 0.82, size * 0.15, colorLight);
+    drawLobe(size * 0.35, size * 0.85, size * 0.16, size * 0.18, colorLight, "#385c2b");
+    drawLobe(size * 0.5, size * 0.8, size * 0.24, size * 0.24, colorLight, "#385c2b");
+    drawLobe(size * 0.65, size * 0.82, size * 0.2, size * 0.22, colorLight, "#385c2b");
+
+    ctx.strokeStyle = edgeColor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(size * 0.1, size * 0.94);
+    ctx.lineTo(size * 0.18, size * 0.82);
+    ctx.lineTo(size * 0.29, size * 0.89);
+    ctx.lineTo(size * 0.42, size * 0.78);
+    ctx.lineTo(size * 0.56, size * 0.88);
+    ctx.lineTo(size * 0.69, size * 0.77);
+    ctx.lineTo(size * 0.84, size * 0.86);
+    ctx.lineTo(size * 0.92, size * 0.94);
+    ctx.stroke();
 
     // Flatten bottom edge
     ctx.clearRect(0, size * 0.95, size, size * 0.05);
@@ -61,6 +101,13 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
         ctx.lineTo(x + 3, y);
         ctx.lineTo(x, y + 3);
         ctx.lineTo(x - 3, y);
+        ctx.fillStyle = "#14230e";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x, y - 2);
+        ctx.lineTo(x + 2, y);
+        ctx.lineTo(x, y + 2);
+        ctx.lineTo(x - 2, y);
         ctx.fillStyle = color;
         ctx.fill();
     }

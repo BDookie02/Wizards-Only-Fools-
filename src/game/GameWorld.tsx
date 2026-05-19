@@ -1678,14 +1678,20 @@ function SurvivalHangingVine({
   return (
     <group>
       <SurvivalBranch start={start} end={end} radius={0.13} color="#1f4f20" />
-      <mesh position={[x + Math.sin(sway) * 0.65, y - length * 0.52, z + Math.cos(sway) * 0.65]} rotation={[0.25, sway, 0.65]} castShadow={false}>
-        <planeGeometry args={[1.2, 2.6]} />
-        <meshBasicMaterial color="#2f7b35" side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[x - Math.sin(sway) * 0.55, y - length * 0.78, z - Math.cos(sway) * 0.55]} rotation={[-0.18, sway + 0.9, -0.5]} castShadow={false}>
-        <planeGeometry args={[1, 2.1]} />
-        <meshBasicMaterial color="#3d8f42" side={THREE.DoubleSide} />
-      </mesh>
+      <FoliageLeafPlane
+        position={[x + Math.sin(sway) * 0.65, y - length * 0.52, z + Math.cos(sway) * 0.65]}
+        rotation={[0.25, sway, 0.65]}
+        width={1.2}
+        height={2.6}
+        color="#2f7b35"
+      />
+      <FoliageLeafPlane
+        position={[x - Math.sin(sway) * 0.55, y - length * 0.78, z - Math.cos(sway) * 0.55]}
+        rotation={[-0.18, sway + 0.9, -0.5]}
+        width={1}
+        height={2.1}
+        color="#3d8f42"
+      />
     </group>
   );
 }
@@ -1789,6 +1795,63 @@ const SURVIVAL_TREE_TRUNK_COLORS: Record<SurvivalBiome, string> = {
   mushroom: "#dcc7aa",
 };
 
+const PLANT_EDGE_COLOR = "#061209";
+const PLANT_EDGE_SOFT_COLOR = "#10210d";
+
+function FoliageDodeca({
+  position,
+  radius,
+  color,
+  edgeColor = PLANT_EDGE_COLOR,
+  scale = [1, 1, 1],
+}: {
+  position: [number, number, number];
+  radius: number;
+  color: string;
+  edgeColor?: string;
+  scale?: [number, number, number];
+}) {
+  return (
+    <group position={position} scale={scale}>
+      <mesh scale={[1.14, 1.12, 1.14]} castShadow={false}>
+        <dodecahedronGeometry args={[radius, 0]} />
+        <meshBasicMaterial color={edgeColor} />
+      </mesh>
+      <mesh castShadow={false}>
+        <dodecahedronGeometry args={[radius, 0]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+    </group>
+  );
+}
+
+function FoliageLeafPlane({
+  position,
+  rotation,
+  width,
+  height,
+  color,
+}: {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  width: number;
+  height: number;
+  color: string;
+}) {
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh position={[0, 0, -0.01]} scale={[1.28, 1.16, 1]} castShadow={false}>
+        <planeGeometry args={[width, height]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 0, 0.01]} castShadow={false}>
+        <planeGeometry args={[width, height]} />
+        <meshBasicMaterial color={color} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
 function supportsRoofForest(biome: SurvivalBiome) {
   return biome === "plains" || biome === "jungle" || biome === "mushroom";
 }
@@ -1869,6 +1932,9 @@ function finalizeSurvivalInstancedMesh(
 }
 
 function SurvivalGrassPatches({ chunk }: { chunk: SurvivalChunkInfo }) {
+  const grassEdgeRef0 = useRef<THREE.InstancedMesh>(null);
+  const grassEdgeRef1 = useRef<THREE.InstancedMesh>(null);
+  const grassEdgeRef2 = useRef<THREE.InstancedMesh>(null);
   const grassRef0 = useRef<THREE.InstancedMesh>(null);
   const grassRef1 = useRef<THREE.InstancedMesh>(null);
   const grassRef2 = useRef<THREE.InstancedMesh>(null);
@@ -1942,14 +2008,24 @@ function SurvivalGrassPatches({ chunk }: { chunk: SurvivalChunkInfo }) {
   }, [chunk, palette.length]);
 
   useEffect(() => {
+    const edgeMeshes = [grassEdgeRef0.current, grassEdgeRef1.current, grassEdgeRef2.current];
     const meshes = [grassRef0.current, grassRef1.current, grassRef2.current];
 
     meshes.forEach((mesh, colorIndex) => {
       if (!mesh) return;
+      const edgeMesh = edgeMeshes[colorIndex];
 
       let instance = 0;
       blades.forEach((blade) => {
         if (blade.colorIndex !== colorIndex) return;
+
+        if (edgeMesh) {
+          dummy.position.set(chunk.x + blade.x, blade.y + blade.height * 0.47, chunk.z + blade.z);
+          dummy.rotation.set(blade.tilt, blade.yaw, Math.sin(blade.yaw + blade.tilt) * 0.1);
+          dummy.scale.set(blade.width * 1.85, blade.height * 1.1, 1);
+          dummy.updateMatrix();
+          edgeMesh.setMatrixAt(instance, dummy.matrix);
+        }
 
         dummy.position.set(chunk.x + blade.x, blade.y + blade.height * 0.48, chunk.z + blade.z);
         dummy.rotation.set(blade.tilt, blade.yaw, Math.sin(blade.yaw + blade.tilt) * 0.1);
@@ -1961,6 +2037,10 @@ function SurvivalGrassPatches({ chunk }: { chunk: SurvivalChunkInfo }) {
 
       mesh.count = instance;
       finalizeSurvivalInstancedMesh(mesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.72, 18);
+      if (edgeMesh) {
+        edgeMesh.count = instance;
+        finalizeSurvivalInstancedMesh(edgeMesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.72, 18);
+      }
     });
   }, [blades, chunk.x, chunk.z, dummy]);
 
@@ -1971,6 +2051,18 @@ function SurvivalGrassPatches({ chunk }: { chunk: SurvivalChunkInfo }) {
 
   return (
     <group name={`survival-grass-${chunk.key}`}>
+      <instancedMesh ref={grassEdgeRef0} args={[undefined, undefined, capacity]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.8} depthWrite={false} />
+      </instancedMesh>
+      <instancedMesh ref={grassEdgeRef1} args={[undefined, undefined, capacity]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.8} depthWrite={false} />
+      </instancedMesh>
+      <instancedMesh ref={grassEdgeRef2} args={[undefined, undefined, capacity]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial color={PLANT_EDGE_SOFT_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.8} depthWrite={false} />
+      </instancedMesh>
       <instancedMesh ref={grassRef0} args={[undefined, undefined, capacity]}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial color={palette[0]} side={THREE.DoubleSide} transparent opacity={opacity} />
@@ -2019,6 +2111,9 @@ const SURVIVAL_FERN_COLORS: Record<SurvivalBiome, string[]> = {
 };
 
 function SurvivalBushClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
+  const bushEdgeRef0 = useRef<THREE.InstancedMesh>(null);
+  const bushEdgeRef1 = useRef<THREE.InstancedMesh>(null);
+  const bushEdgeRef2 = useRef<THREE.InstancedMesh>(null);
   const bushRef0 = useRef<THREE.InstancedMesh>(null);
   const bushRef1 = useRef<THREE.InstancedMesh>(null);
   const bushRef2 = useRef<THREE.InstancedMesh>(null);
@@ -2080,14 +2175,24 @@ function SurvivalBushClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
   }, [chunk, palette.length]);
 
   useEffect(() => {
+    const edgeMeshes = [bushEdgeRef0.current, bushEdgeRef1.current, bushEdgeRef2.current];
     const meshes = [bushRef0.current, bushRef1.current, bushRef2.current];
 
     meshes.forEach((mesh, colorIndex) => {
       if (!mesh) return;
+      const edgeMesh = edgeMeshes[colorIndex];
 
       let instance = 0;
       blobs.forEach((blob) => {
         if (blob.colorIndex !== colorIndex) return;
+
+        if (edgeMesh) {
+          dummy.position.set(chunk.x + blob.x, blob.y - blob.height * 0.02, chunk.z + blob.z);
+          dummy.rotation.set(0, blob.yaw, 0);
+          dummy.scale.set(blob.width * 1.1, blob.height * 1.14, blob.depth * 1.1);
+          dummy.updateMatrix();
+          edgeMesh.setMatrixAt(instance, dummy.matrix);
+        }
 
         dummy.position.set(chunk.x + blob.x, blob.y, chunk.z + blob.z);
         dummy.rotation.set(0, blob.yaw, 0);
@@ -2099,6 +2204,10 @@ function SurvivalBushClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
 
       mesh.count = instance;
       finalizeSurvivalInstancedMesh(mesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.74, 24);
+      if (edgeMesh) {
+        edgeMesh.count = instance;
+        finalizeSurvivalInstancedMesh(edgeMesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.74, 24);
+      }
     });
   }, [blobs, chunk.x, chunk.z, dummy]);
 
@@ -2108,6 +2217,18 @@ function SurvivalBushClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
 
   return (
     <group name={`survival-bushes-${chunk.key}`}>
+      <instancedMesh ref={bushEdgeRef0} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[0.5, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} />
+      </instancedMesh>
+      <instancedMesh ref={bushEdgeRef1} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[0.5, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} />
+      </instancedMesh>
+      <instancedMesh ref={bushEdgeRef2} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[0.5, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} />
+      </instancedMesh>
       <instancedMesh ref={bushRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[0.5, 0]} />
         <meshBasicMaterial color={palette[0]} />
@@ -2125,6 +2246,9 @@ function SurvivalBushClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
 }
 
 function SurvivalFernClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
+  const fernEdgeRef0 = useRef<THREE.InstancedMesh>(null);
+  const fernEdgeRef1 = useRef<THREE.InstancedMesh>(null);
+  const fernEdgeRef2 = useRef<THREE.InstancedMesh>(null);
   const fernRef0 = useRef<THREE.InstancedMesh>(null);
   const fernRef1 = useRef<THREE.InstancedMesh>(null);
   const fernRef2 = useRef<THREE.InstancedMesh>(null);
@@ -2182,14 +2306,23 @@ function SurvivalFernClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
   }, [chunk, palette.length]);
 
   useEffect(() => {
+    const edgeMeshes = [fernEdgeRef0.current, fernEdgeRef1.current, fernEdgeRef2.current];
     const meshes = [fernRef0.current, fernRef1.current, fernRef2.current];
 
     meshes.forEach((mesh, colorIndex) => {
       if (!mesh) return;
+      const edgeMesh = edgeMeshes[colorIndex];
 
       let instance = 0;
       fronds.forEach((frond) => {
         if (frond.colorIndex !== colorIndex) return;
+        if (edgeMesh) {
+          dummy.position.set(chunk.x + frond.x, frond.y + frond.height * 0.49, chunk.z + frond.z);
+          dummy.rotation.set(frond.tilt, frond.yaw, Math.sin(frond.yaw) * 0.18);
+          dummy.scale.set(frond.width * 1.78, frond.height * 1.12, 1);
+          dummy.updateMatrix();
+          edgeMesh.setMatrixAt(instance, dummy.matrix);
+        }
         dummy.position.set(chunk.x + frond.x, frond.y + frond.height * 0.5, chunk.z + frond.z);
         dummy.rotation.set(frond.tilt, frond.yaw, Math.sin(frond.yaw) * 0.18);
         dummy.scale.set(frond.width, frond.height, 1);
@@ -2200,6 +2333,10 @@ function SurvivalFernClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
 
       mesh.count = instance;
       finalizeSurvivalInstancedMesh(mesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.74, 20);
+      if (edgeMesh) {
+        edgeMesh.count = instance;
+        finalizeSurvivalInstancedMesh(edgeMesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.74, 20);
+      }
     });
   }, [chunk.x, chunk.z, dummy, fronds]);
 
@@ -2210,6 +2347,18 @@ function SurvivalFernClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
 
   return (
     <group name={`survival-ferns-${chunk.key}`}>
+      <instancedMesh ref={fernEdgeRef0} args={[undefined, undefined, capacity]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.86} depthWrite={false} />
+      </instancedMesh>
+      <instancedMesh ref={fernEdgeRef1} args={[undefined, undefined, capacity]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.86} depthWrite={false} />
+      </instancedMesh>
+      <instancedMesh ref={fernEdgeRef2} args={[undefined, undefined, capacity]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} side={THREE.DoubleSide} transparent opacity={opacity * 0.86} depthWrite={false} />
+      </instancedMesh>
       <instancedMesh ref={fernRef0} args={[undefined, undefined, capacity]}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial color={palette[0]} side={THREE.DoubleSide} transparent opacity={opacity} />
@@ -2228,8 +2377,12 @@ function SurvivalFernClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
 
 function SurvivalFastGroves({ chunk }: { chunk: SurvivalChunkInfo }) {
   const trunkRef = useRef<THREE.InstancedMesh>(null);
+  const canopyEdgeRef0 = useRef<THREE.InstancedMesh>(null);
+  const canopyEdgeRef1 = useRef<THREE.InstancedMesh>(null);
   const canopyRef0 = useRef<THREE.InstancedMesh>(null);
   const canopyRef1 = useRef<THREE.InstancedMesh>(null);
+  const sideCanopyEdgeRef0 = useRef<THREE.InstancedMesh>(null);
+  const sideCanopyEdgeRef1 = useRef<THREE.InstancedMesh>(null);
   const sideCanopyRef0 = useRef<THREE.InstancedMesh>(null);
   const sideCanopyRef1 = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
@@ -2308,12 +2461,22 @@ function SurvivalFastGroves({ chunk }: { chunk: SurvivalChunkInfo }) {
     }
 
     const canopyMeshes = [canopyRef0.current, canopyRef1.current];
+    const canopyEdgeMeshes = [canopyEdgeRef0.current, canopyEdgeRef1.current];
     const sideMeshes = [sideCanopyRef0.current, sideCanopyRef1.current];
+    const sideEdgeMeshes = [sideCanopyEdgeRef0.current, sideCanopyEdgeRef1.current];
     canopyMeshes.forEach((mesh, colorIndex) => {
       if (!mesh) return;
+      const edgeMesh = canopyEdgeMeshes[colorIndex];
       let instance = 0;
       trees.forEach((tree) => {
         if (tree.colorIndex !== colorIndex) return;
+        if (edgeMesh) {
+          dummy.position.set(chunk.x + tree.x, tree.y + tree.trunkHeight + tree.canopyHeight * 0.18, chunk.z + tree.z);
+          dummy.rotation.set(0, tree.yaw, 0);
+          dummy.scale.set(tree.canopyRadius * 1.43, tree.canopyHeight * 1.16, tree.canopyRadius * 1.14);
+          dummy.updateMatrix();
+          edgeMesh.setMatrixAt(instance, dummy.matrix);
+        }
         dummy.position.set(chunk.x + tree.x, tree.y + tree.trunkHeight + tree.canopyHeight * 0.2, chunk.z + tree.z);
         dummy.rotation.set(0, tree.yaw, 0);
         dummy.scale.set(tree.canopyRadius * 1.25, tree.canopyHeight, tree.canopyRadius);
@@ -2323,15 +2486,31 @@ function SurvivalFastGroves({ chunk }: { chunk: SurvivalChunkInfo }) {
       });
       mesh.count = instance;
       finalizeSurvivalInstancedMesh(mesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.88, 96);
+      if (edgeMesh) {
+        edgeMesh.count = instance;
+        finalizeSurvivalInstancedMesh(edgeMesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.88, 96);
+      }
     });
 
     sideMeshes.forEach((mesh, colorIndex) => {
       if (!mesh) return;
+      const edgeMesh = sideEdgeMeshes[colorIndex];
       let instance = 0;
       trees.forEach((tree) => {
         if (tree.colorIndex !== colorIndex) return;
         const side = tree.variant > 0.5 ? 1 : -1;
         const offset = tree.canopyRadius * 0.62;
+        if (edgeMesh) {
+          dummy.position.set(
+            chunk.x + tree.x + Math.sin(tree.yaw) * offset * side,
+            tree.y + tree.trunkHeight + tree.canopyHeight * 0.0,
+            chunk.z + tree.z + Math.cos(tree.yaw) * offset * side
+          );
+          dummy.rotation.set(0.05, tree.yaw + side * 0.4, 0.02 * side);
+          dummy.scale.set(tree.canopyRadius * 0.92, tree.canopyHeight * 0.9, tree.canopyRadius * 0.74);
+          dummy.updateMatrix();
+          edgeMesh.setMatrixAt(instance, dummy.matrix);
+        }
         dummy.position.set(
           chunk.x + tree.x + Math.sin(tree.yaw) * offset * side,
           tree.y + tree.trunkHeight + tree.canopyHeight * 0.02,
@@ -2345,6 +2524,10 @@ function SurvivalFastGroves({ chunk }: { chunk: SurvivalChunkInfo }) {
       });
       mesh.count = instance;
       finalizeSurvivalInstancedMesh(mesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.88, 86);
+      if (edgeMesh) {
+        edgeMesh.count = instance;
+        finalizeSurvivalInstancedMesh(edgeMesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.88, 86);
+      }
     });
   }, [chunk.x, chunk.z, dummy, trees]);
 
@@ -2359,6 +2542,14 @@ function SurvivalFastGroves({ chunk }: { chunk: SurvivalChunkInfo }) {
         <cylinderGeometry args={[1, 1, 1, 5]} />
         <meshBasicMaterial color={trunkColor} />
       </instancedMesh>
+      <instancedMesh ref={canopyEdgeRef0} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} transparent={canopyOpacity < 1} opacity={canopyOpacity} />
+      </instancedMesh>
+      <instancedMesh ref={canopyEdgeRef1} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} transparent={canopyOpacity < 1} opacity={canopyOpacity} />
+      </instancedMesh>
       <instancedMesh ref={canopyRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
         <meshBasicMaterial color={canopyColors[0]} transparent={canopyOpacity < 1} opacity={canopyOpacity} />
@@ -2366,6 +2557,14 @@ function SurvivalFastGroves({ chunk }: { chunk: SurvivalChunkInfo }) {
       <instancedMesh ref={canopyRef1} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
         <meshBasicMaterial color={canopyColors[1]} transparent={canopyOpacity < 1} opacity={canopyOpacity} />
+      </instancedMesh>
+      <instancedMesh ref={sideCanopyEdgeRef0} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} transparent={canopyOpacity < 1} opacity={canopyOpacity * 0.96} />
+      </instancedMesh>
+      <instancedMesh ref={sideCanopyEdgeRef1} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} transparent={canopyOpacity < 1} opacity={canopyOpacity * 0.96} />
       </instancedMesh>
       <instancedMesh ref={sideCanopyRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
@@ -2381,9 +2580,15 @@ function SurvivalFastGroves({ chunk }: { chunk: SurvivalChunkInfo }) {
 
 function SurvivalRoofForests({ chunk }: { chunk: SurvivalChunkInfo }) {
   const trunkRef = useRef<THREE.InstancedMesh>(null);
+  const topCanopyEdgeRef0 = useRef<THREE.InstancedMesh>(null);
+  const topCanopyEdgeRef1 = useRef<THREE.InstancedMesh>(null);
+  const topCanopyEdgeRef2 = useRef<THREE.InstancedMesh>(null);
   const topCanopyRef0 = useRef<THREE.InstancedMesh>(null);
   const topCanopyRef1 = useRef<THREE.InstancedMesh>(null);
   const topCanopyRef2 = useRef<THREE.InstancedMesh>(null);
+  const lowerCanopyEdgeRef0 = useRef<THREE.InstancedMesh>(null);
+  const lowerCanopyEdgeRef1 = useRef<THREE.InstancedMesh>(null);
+  const lowerCanopyEdgeRef2 = useRef<THREE.InstancedMesh>(null);
   const lowerCanopyRef0 = useRef<THREE.InstancedMesh>(null);
   const lowerCanopyRef1 = useRef<THREE.InstancedMesh>(null);
   const lowerCanopyRef2 = useRef<THREE.InstancedMesh>(null);
@@ -2489,12 +2694,22 @@ function SurvivalRoofForests({ chunk }: { chunk: SurvivalChunkInfo }) {
     }
 
     const topMeshes = [topCanopyRef0.current, topCanopyRef1.current, topCanopyRef2.current];
+    const topEdgeMeshes = [topCanopyEdgeRef0.current, topCanopyEdgeRef1.current, topCanopyEdgeRef2.current];
     const lowerMeshes = [lowerCanopyRef0.current, lowerCanopyRef1.current, lowerCanopyRef2.current];
+    const lowerEdgeMeshes = [lowerCanopyEdgeRef0.current, lowerCanopyEdgeRef1.current, lowerCanopyEdgeRef2.current];
     topMeshes.forEach((mesh, colorIndex) => {
       if (!mesh) return;
+      const edgeMesh = topEdgeMeshes[colorIndex];
       let instance = 0;
       trees.forEach((tree) => {
         if (tree.colorIndex !== colorIndex) return;
+        if (edgeMesh) {
+          dummy.position.set(chunk.x + tree.x, tree.y + tree.trunkHeight + tree.canopyThickness * 0.25, chunk.z + tree.z);
+          dummy.rotation.set(0.02, tree.yaw, 0);
+          dummy.scale.set(tree.canopyWidth * 1.1, tree.canopyThickness * 1.28, tree.canopyDepth * 1.1);
+          dummy.updateMatrix();
+          edgeMesh.setMatrixAt(instance, dummy.matrix);
+        }
         dummy.position.set(chunk.x + tree.x, tree.y + tree.trunkHeight + tree.canopyThickness * 0.28, chunk.z + tree.z);
         dummy.rotation.set(0.02, tree.yaw, 0);
         dummy.scale.set(tree.canopyWidth, tree.canopyThickness, tree.canopyDepth);
@@ -2504,15 +2719,31 @@ function SurvivalRoofForests({ chunk }: { chunk: SurvivalChunkInfo }) {
       });
       mesh.count = instance;
       finalizeSurvivalInstancedMesh(mesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.92, 128);
+      if (edgeMesh) {
+        edgeMesh.count = instance;
+        finalizeSurvivalInstancedMesh(edgeMesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.92, 128);
+      }
     });
 
     lowerMeshes.forEach((mesh, colorIndex) => {
       if (!mesh) return;
+      const edgeMesh = lowerEdgeMeshes[colorIndex];
       let instance = 0;
       trees.forEach((tree) => {
         if (tree.colorIndex !== colorIndex) return;
         const side = tree.variant > 0.5 ? 1 : -1;
         const offset = tree.canopyWidth * 0.28;
+        if (edgeMesh) {
+          dummy.position.set(
+            chunk.x + tree.x + Math.cos(tree.yaw) * offset * side,
+            tree.y + tree.trunkHeight - tree.canopyThickness * 0.36,
+            chunk.z + tree.z + Math.sin(tree.yaw) * offset * side,
+          );
+          dummy.rotation.set(0.1 * side, tree.yaw + side * 0.28, 0.03 * side);
+          dummy.scale.set(tree.canopyWidth * 0.82, tree.canopyThickness * 0.88, tree.canopyDepth * 0.82);
+          dummy.updateMatrix();
+          edgeMesh.setMatrixAt(instance, dummy.matrix);
+        }
         dummy.position.set(
           chunk.x + tree.x + Math.cos(tree.yaw) * offset * side,
           tree.y + tree.trunkHeight - tree.canopyThickness * 0.34,
@@ -2526,6 +2757,10 @@ function SurvivalRoofForests({ chunk }: { chunk: SurvivalChunkInfo }) {
       });
       mesh.count = instance;
       finalizeSurvivalInstancedMesh(mesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.92, 112);
+      if (edgeMesh) {
+        edgeMesh.count = instance;
+        finalizeSurvivalInstancedMesh(edgeMesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.92, 112);
+      }
     });
 
     const vineMesh = vineRef.current;
@@ -2561,6 +2796,18 @@ function SurvivalRoofForests({ chunk }: { chunk: SurvivalChunkInfo }) {
         <cylinderGeometry args={[1, 1, 1, 6]} />
         <meshBasicMaterial color={trunkColor} />
       </instancedMesh>
+      <instancedMesh ref={topCanopyEdgeRef0} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} />
+      </instancedMesh>
+      <instancedMesh ref={topCanopyEdgeRef1} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} />
+      </instancedMesh>
+      <instancedMesh ref={topCanopyEdgeRef2} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} />
+      </instancedMesh>
       <instancedMesh ref={topCanopyRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
         <meshBasicMaterial color={canopyColors[0]} />
@@ -2572,6 +2819,18 @@ function SurvivalRoofForests({ chunk }: { chunk: SurvivalChunkInfo }) {
       <instancedMesh ref={topCanopyRef2} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
         <meshBasicMaterial color={canopyColors[2]} />
+      </instancedMesh>
+      <instancedMesh ref={lowerCanopyEdgeRef0} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} />
+      </instancedMesh>
+      <instancedMesh ref={lowerCanopyEdgeRef1} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} />
+      </instancedMesh>
+      <instancedMesh ref={lowerCanopyEdgeRef2} args={[undefined, undefined, capacity]}>
+        <dodecahedronGeometry args={[1, 0]} />
+        <meshBasicMaterial color={PLANT_EDGE_COLOR} />
       </instancedMesh>
       <instancedMesh ref={lowerCanopyRef0} args={[undefined, undefined, capacity]}>
         <dodecahedronGeometry args={[1, 0]} />
@@ -2783,18 +3042,12 @@ function SurvivalBiomeTree({
           <cylinderGeometry args={[0.75, 1.05, 7.6, 6]} />
           <meshLambertMaterial color="#e8d5bb" />
         </mesh>
-        <mesh position={[0, 8.3, 0]} castShadow={false}>
-          <dodecahedronGeometry args={[3.1, 0]} />
-          <meshLambertMaterial color={style.accent} />
-        </mesh>
+        <FoliageDodeca position={[0, 8.3, 0]} radius={3.1} color={style.accent} edgeColor="#271231" />
         <mesh position={[2.7, 4.4, -1.8]} scale={[0.72, 0.72, 0.72]} castShadow={false}>
           <cylinderGeometry args={[0.55, 0.78, 5.2, 6]} />
           <meshLambertMaterial color="#dfcab0" />
         </mesh>
-        <mesh position={[2.7, 7.5, -1.8]} scale={[0.72, 0.72, 0.72]} castShadow={false}>
-          <dodecahedronGeometry args={[2.6, 0]} />
-          <meshLambertMaterial color="#eb80f0" />
-        </mesh>
+        <FoliageDodeca position={[2.7, 7.5, -1.8]} scale={[0.72, 0.72, 0.72]} radius={2.6} color="#eb80f0" edgeColor="#271231" />
       </group>
     );
   }
@@ -2813,22 +3066,10 @@ function SurvivalBiomeTree({
         <SurvivalBranch start={new THREE.Vector3(0, 19, 0)} end={new THREE.Vector3(10, 27, -4)} radius={0.52} color={branchColor} />
         <SurvivalBranch start={new THREE.Vector3(0, 23, 0)} end={new THREE.Vector3(-12, 32, 3)} radius={0.48} color={branchColor} />
         <SurvivalBranch start={new THREE.Vector3(0, 26, 0)} end={new THREE.Vector3(7, 36, 8)} radius={0.42} color={branchColor} />
-        <mesh position={[0, 36, 0]} castShadow={false}>
-          <dodecahedronGeometry args={[7.2, 0]} />
-          <meshBasicMaterial color={canopy} />
-        </mesh>
-        <mesh position={[6.8, 32.5, -4.2]} castShadow={false}>
-          <dodecahedronGeometry args={[5.4, 0]} />
-          <meshBasicMaterial color={brightCanopy} />
-        </mesh>
-        <mesh position={[-7.5, 35.5, 3.2]} castShadow={false}>
-          <dodecahedronGeometry args={[5.8, 0]} />
-          <meshBasicMaterial color="#2c7b3f" />
-        </mesh>
-        <mesh position={[2.8, 42, 5.6]} castShadow={false}>
-          <dodecahedronGeometry args={[5.2, 0]} />
-          <meshBasicMaterial color="#1d5f32" />
-        </mesh>
+        <FoliageDodeca position={[0, 36, 0]} radius={7.2} color={canopy} />
+        <FoliageDodeca position={[6.8, 32.5, -4.2]} radius={5.4} color={brightCanopy} />
+        <FoliageDodeca position={[-7.5, 35.5, 3.2]} radius={5.8} color="#2c7b3f" />
+        <FoliageDodeca position={[2.8, 42, 5.6]} radius={5.2} color="#1d5f32" />
         <SurvivalHangingVine x={9.2} y={27.2} z={-3.7} length={13.5} sway={prop.variant * 5.1} />
         <SurvivalHangingVine x={-10.6} y={32.2} z={3.1} length={16.5} sway={prop.variant * 4.4 + 1.7} />
         <SurvivalHangingVine x={5.6} y={36} z={7.6} length={12.2} sway={prop.variant * 3.8 + 2.4} />
@@ -2847,18 +3088,9 @@ function SurvivalBiomeTree({
         <SurvivalBranch start={new THREE.Vector3(0, 17, 0)} end={new THREE.Vector3(-7.8, 23.5, 4.6)} radius={0.4} color="#3a2a1d" />
         <SurvivalBranch start={new THREE.Vector3(-0.2, 4.5, 0)} end={new THREE.Vector3(-4.8, 1.1, -4.5)} radius={0.36} color="#2d2117" />
         <SurvivalBranch start={new THREE.Vector3(0.3, 4.2, 0)} end={new THREE.Vector3(5.2, 1, 3.6)} radius={0.34} color="#2d2117" />
-        <mesh position={[0, 25, 0]} castShadow={false}>
-          <dodecahedronGeometry args={[5.5, 0]} />
-          <meshBasicMaterial color="#56652b" />
-        </mesh>
-        <mesh position={[5.5, 22.5, -2.4]} castShadow={false}>
-          <dodecahedronGeometry args={[4.1, 0]} />
-          <meshBasicMaterial color="#667536" />
-        </mesh>
-        <mesh position={[-4.8, 24.4, 3.5]} castShadow={false}>
-          <dodecahedronGeometry args={[4.4, 0]} />
-          <meshBasicMaterial color="#4a5f28" />
-        </mesh>
+        <FoliageDodeca position={[0, 25, 0]} radius={5.5} color="#56652b" edgeColor="#171c0d" />
+        <FoliageDodeca position={[5.5, 22.5, -2.4]} radius={4.1} color="#667536" edgeColor="#171c0d" />
+        <FoliageDodeca position={[-4.8, 24.4, 3.5]} radius={4.4} color="#4a5f28" edgeColor="#171c0d" />
         <SurvivalHangingVine x={7.2} y={21.3} z={-2.6} length={12.2} sway={prop.variant * 5.7} />
         <SurvivalHangingVine x={-6.3} y={23.8} z={4.3} length={13.4} sway={prop.variant * 4.2 + 1.2} />
       </group>
@@ -2874,18 +3106,9 @@ function SurvivalBiomeTree({
       <SurvivalBranch start={new THREE.Vector3(0, 10, 0)} end={new THREE.Vector3(6.4, 17.5, -2.4)} radius={0.38} color="#5b3a20" />
       <SurvivalBranch start={new THREE.Vector3(0, 12.2, 0)} end={new THREE.Vector3(-6.8, 18.8, 3.1)} radius={0.35} color="#5b3a20" />
       <SurvivalBranch start={new THREE.Vector3(0, 15.5, 0)} end={new THREE.Vector3(4.5, 21.5, 4.7)} radius={0.31} color="#5b3a20" />
-      <mesh position={[0, 22, 0]} castShadow={false}>
-        <dodecahedronGeometry args={[5.2, 0]} />
-        <meshBasicMaterial color={style.accent} />
-      </mesh>
-      <mesh position={[4.8, 18.5, -2.2]} castShadow={false}>
-        <dodecahedronGeometry args={[3.9, 0]} />
-        <meshBasicMaterial color="#6aa846" />
-      </mesh>
-      <mesh position={[-5.2, 20.2, 2.6]} castShadow={false}>
-        <dodecahedronGeometry args={[4.2, 0]} />
-        <meshBasicMaterial color="#5d9b3f" />
-      </mesh>
+      <FoliageDodeca position={[0, 22, 0]} radius={5.2} color={style.accent} />
+      <FoliageDodeca position={[4.8, 18.5, -2.2]} radius={3.9} color="#6aa846" />
+      <FoliageDodeca position={[-5.2, 20.2, 2.6]} radius={4.2} color="#5d9b3f" />
     </group>
   );
 }
@@ -2897,25 +3120,49 @@ function DesertCactus({ x, y, z, scale, variant }: { x: number; y: number; z: nu
 
   return (
     <group position={[x, y, z]} scale={[cactusScale, cactusScale, cactusScale]}>
+      <mesh position={[0, 4.58, 0]} scale={[1.18, 1.05, 1.18]} castShadow={false}>
+        <cylinderGeometry args={[0.72, 0.9, 9.2, 6]} />
+        <meshBasicMaterial color="#12351f" />
+      </mesh>
       <mesh position={[0, 4.6, 0]} castShadow={false}>
         <cylinderGeometry args={[0.72, 0.9, 9.2, 6]} />
         <meshBasicMaterial color="#2f7a3f" />
+      </mesh>
+      <mesh position={[0, 9.24, 0]} scale={[1.22, 1.16, 1.22]} castShadow={false}>
+        <sphereGeometry args={[0.72, 6, 4]} />
+        <meshBasicMaterial color="#12351f" />
       </mesh>
       <mesh position={[0, 9.25, 0]} castShadow={false}>
         <sphereGeometry args={[0.72, 6, 4]} />
         <meshBasicMaterial color="#3a8f4b" />
       </mesh>
+      <mesh position={[armSide * 1.45, armHeight + 1.88, 0]} rotation={[0, 0, Math.PI / 2]} scale={[1.22, 1.12, 1.22]} castShadow={false}>
+        <cylinderGeometry args={[0.34, 0.42, 2.4, 5]} />
+        <meshBasicMaterial color="#12351f" />
+      </mesh>
       <mesh position={[armSide * 1.45, armHeight + 1.9, 0]} rotation={[0, 0, Math.PI / 2]} castShadow={false}>
         <cylinderGeometry args={[0.34, 0.42, 2.4, 5]} />
         <meshBasicMaterial color="#2f7a3f" />
+      </mesh>
+      <mesh position={[armSide * 2.55, armHeight + 2.78, 0]} scale={[1.22, 1.1, 1.22]} castShadow={false}>
+        <cylinderGeometry args={[0.34, 0.4, 2.9, 5]} />
+        <meshBasicMaterial color="#12351f" />
       </mesh>
       <mesh position={[armSide * 2.55, armHeight + 2.8, 0]} castShadow={false}>
         <cylinderGeometry args={[0.34, 0.4, 2.9, 5]} />
         <meshBasicMaterial color="#3a8f4b" />
       </mesh>
+      <mesh position={[-armSide * 1.2, armHeight + 0.18, 0]} rotation={[0, 0, Math.PI / 2]} scale={[1.2, 1.12, 1.2]} castShadow={false}>
+        <cylinderGeometry args={[0.25, 0.32, 1.8, 5]} />
+        <meshBasicMaterial color="#12351f" />
+      </mesh>
       <mesh position={[-armSide * 1.2, armHeight + 0.2, 0]} rotation={[0, 0, Math.PI / 2]} castShadow={false}>
         <cylinderGeometry args={[0.25, 0.32, 1.8, 5]} />
         <meshBasicMaterial color="#256b37" />
+      </mesh>
+      <mesh position={[-armSide * 2.05, armHeight + 0.83, 0]} scale={[1.2, 1.1, 1.2]} castShadow={false}>
+        <cylinderGeometry args={[0.25, 0.3, 2.1, 5]} />
+        <meshBasicMaterial color="#12351f" />
       </mesh>
       <mesh position={[-armSide * 2.05, armHeight + 0.85, 0]} castShadow={false}>
         <cylinderGeometry args={[0.25, 0.3, 2.1, 5]} />
@@ -4767,15 +5014,16 @@ function DesertPalm({ palm }: { palm: DesertVillagePalm }) {
       {Array.from({ length: 9 }, (_, index) => {
         const angle = (Math.PI * 2 * index) / 9;
         return (
-          <mesh
-            key={index}
-            position={[Math.sin(angle) * 4.2, 25.2, Math.cos(angle) * 4.2]}
-            rotation={[0.5, angle, 0.18]}
-            castShadow={false}
-          >
-            <boxGeometry args={[1.55, 0.44, 16.5]} />
-            <meshBasicMaterial color={index % 2 === 0 ? "#2f7a3f" : "#3e8f48"} />
-          </mesh>
+          <group key={index} position={[Math.sin(angle) * 4.2, 25.2, Math.cos(angle) * 4.2]} rotation={[0.5, angle, 0.18]}>
+            <mesh scale={[1.34, 1.18, 1.08]} castShadow={false}>
+              <boxGeometry args={[1.55, 0.44, 16.5]} />
+              <meshBasicMaterial color={PLANT_EDGE_COLOR} />
+            </mesh>
+            <mesh castShadow={false}>
+              <boxGeometry args={[1.55, 0.44, 16.5]} />
+              <meshBasicMaterial color={index % 2 === 0 ? "#2f7a3f" : "#3e8f48"} />
+            </mesh>
+          </group>
         );
       })}
       <mesh position={[-1.15, 22.6, 0.95]} castShadow={false}>
@@ -6553,14 +6801,8 @@ function ChicagoStreetDetails({ baseHeight }: { baseHeight: number }) {
             <cylinderGeometry args={[0.55, 0.78, 5.3, 7]} />
             <meshBasicMaterial color="#6b3f22" />
           </mesh>
-          <mesh position={[0, 6.2, 0]} castShadow={false}>
-            <dodecahedronGeometry args={[2.85, 0]} />
-            <meshBasicMaterial color="#15803d" />
-          </mesh>
-          <mesh position={[1.1, 5.55, -0.8]} castShadow={false}>
-            <dodecahedronGeometry args={[2.05, 0]} />
-            <meshBasicMaterial color="#166534" />
-          </mesh>
+          <FoliageDodeca position={[0, 6.2, 0]} radius={2.85} color="#15803d" />
+          <FoliageDodeca position={[1.1, 5.55, -0.8]} radius={2.05} color="#166534" />
         </group>
       ))}
       <ChicagoTrafficLights baseHeight={baseHeight} />

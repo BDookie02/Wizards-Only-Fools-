@@ -6,6 +6,7 @@ import { isMobilePerformanceMode } from "./performanceMode";
 const WOOD_COLOR = "#2a1c12"; // darker brown
 const LIGHT_WOOD_COLOR = "#4a3221"; // lighter brown
 const LEAF_COLOR = "#1f3b18"; // dark green
+const LEAF_EDGE_COLOR = "#071209";
 const ROOF_COLOR = "#342211"; // distinct roof brown
 const WINDOW_GLOW = "#ffb347"; // warm yellow-orange
 const MOBILE_PERFORMANCE_MODE = isMobilePerformanceMode();
@@ -108,6 +109,27 @@ function Window({ position, rotation = [0, 0, 0] }: { position: [number, number,
   );
 }
 
+function CanopyBlock({ position, size }: { position: [number, number, number]; size: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh castShadow receiveShadow scale={[1.08, 1.08, 1.08]}>
+        <boxGeometry args={size} />
+        <meshStandardMaterial color={LEAF_EDGE_COLOR} roughness={1} />
+      </mesh>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={size} />
+        <meshStandardMaterial color={LEAF_COLOR} roughness={1} />
+      </mesh>
+      {!MOBILE_PERFORMANCE_MODE && (
+        <mesh position={[0, size[1] * 0.28, -size[2] * 0.36]} castShadow={false}>
+          <boxGeometry args={[size[0] * 0.62, 0.55, size[2] * 0.12]} />
+          <meshStandardMaterial color="#2e5a22" roughness={1} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
 function House({ position, rotation, scale = 1 }: { position: [number, number, number], rotation?: [number, number, number], scale?: number }) {
   return (
     <group position={position} rotation={rotation || [0, 0, 0]} scale={scale}>
@@ -141,22 +163,10 @@ function GiantTreeCanopy({ position, angleOffset = 0 }: { position: [number, num
   return (
     <group position={position} rotation={[0, angleOffset, 0]}>
       {/* Blocky Canopy for DOOM feel */}
-      <mesh castShadow receiveShadow position={[0, 40, 0]}>
-        <boxGeometry args={[30, 15, 30]} />
-        <meshStandardMaterial color={LEAF_COLOR} roughness={1} />
-      </mesh>
-      <mesh castShadow receiveShadow position={[12, 35, 10]}>
-        <boxGeometry args={[20, 15, 20]} />
-        <meshStandardMaterial color={LEAF_COLOR} roughness={1} />
-      </mesh>
-      <mesh castShadow receiveShadow position={[-15, 38, -12]}>
-        <boxGeometry args={[25, 20, 25]} />
-        <meshStandardMaterial color={LEAF_COLOR} roughness={1} />
-      </mesh>
-      <mesh castShadow receiveShadow position={[-10, 36, 15]}>
-        <boxGeometry args={[20, 12, 20]} />
-        <meshStandardMaterial color={LEAF_COLOR} roughness={1} />
-      </mesh>
+      <CanopyBlock position={[0, 40, 0]} size={[30, 15, 30]} />
+      <CanopyBlock position={[12, 35, 10]} size={[20, 15, 20]} />
+      <CanopyBlock position={[-15, 38, -12]} size={[25, 20, 25]} />
+      <CanopyBlock position={[-10, 36, 15]} size={[20, 12, 20]} />
     </group>
   );
 }
