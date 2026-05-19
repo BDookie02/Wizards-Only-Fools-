@@ -9237,6 +9237,268 @@ function getMountainCabinDoorMetrics(cabin: MountainVillageCabin) {
   return { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight };
 }
 
+function RetroVerticalTimberDetails({
+  height,
+  width,
+  depth,
+  frontZ,
+  bandColor = "#a67642",
+  darkColor = "#1d130d",
+  lightColor = "#6f4b2b",
+}: {
+  height: number;
+  width: number;
+  depth: number;
+  frontZ?: number;
+  bandColor?: string;
+  darkColor?: string;
+  lightColor?: string;
+}) {
+  const z = frontZ ?? depth / 2 + 0.035;
+  const bandCount = Math.max(2, Math.min(6, Math.floor(height / 5.2)));
+
+  return (
+    <>
+      {Array.from({ length: bandCount }, (_, index) => {
+        const y = -height / 2 + (index + 1) * (height / (bandCount + 1));
+
+        return (
+          <Fragment key={`timber-band-${index}`}>
+            <mesh position={[0, y, z]} castShadow={false}>
+              <boxGeometry args={[width + 0.28, 0.28, 0.12]} />
+              <meshBasicMaterial color={bandColor} />
+            </mesh>
+            {[-1, 1].map((side) => (
+              <mesh key={`timber-bolt-${side}`} position={[side * width * 0.32, y + 0.01, z + 0.07]} castShadow={false}>
+                <boxGeometry args={[0.18, 0.18, 0.12]} />
+                <meshBasicMaterial color="#d7a85e" />
+              </mesh>
+            ))}
+          </Fragment>
+        );
+      })}
+      {[-0.27, 0.26].map((offset, index) => (
+        <mesh key={`timber-grain-${index}`} position={[offset * width, 0, z + 0.04]} castShadow={false}>
+          <boxGeometry args={[0.08, height * 0.86, 0.08]} />
+          <meshBasicMaterial color={index === 0 ? darkColor : lightColor} transparent opacity={0.82} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function RetroHorizontalTimberDetails({
+  length,
+  height,
+  depth,
+  frontZ,
+  bandColor = "#a67642",
+  darkColor = "#21150d",
+}: {
+  length: number;
+  height: number;
+  depth: number;
+  frontZ?: number;
+  bandColor?: string;
+  darkColor?: string;
+}) {
+  const z = frontZ ?? depth / 2 + 0.035;
+  const bandCount = Math.max(2, Math.min(7, Math.floor(length / 5.8)));
+
+  return (
+    <>
+      {Array.from({ length: bandCount }, (_, index) => {
+        const x = -length / 2 + (index + 1) * (length / (bandCount + 1));
+
+        return (
+          <Fragment key={`horizontal-band-${index}`}>
+            <mesh position={[x, 0, z]} castShadow={false}>
+              <boxGeometry args={[0.28, height + 0.22, 0.13]} />
+              <meshBasicMaterial color={bandColor} />
+            </mesh>
+            <mesh position={[x, height * 0.18, z + 0.08]} castShadow={false}>
+              <boxGeometry args={[0.18, 0.18, 0.12]} />
+              <meshBasicMaterial color="#d7a85e" />
+            </mesh>
+          </Fragment>
+        );
+      })}
+      {[-0.2, 0.22].map((offset, index) => (
+        <mesh key={`horizontal-grain-${index}`} position={[0, offset * height, z + 0.04]} castShadow={false}>
+          <boxGeometry args={[length * 0.86, 0.08, 0.08]} />
+          <meshBasicMaterial color={darkColor} transparent opacity={index === 0 ? 0.72 : 0.46} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function MountainHutWallDetails({
+  width,
+  depth,
+  height,
+  floorY,
+  frontZ,
+  backZ,
+  doorWidth,
+  doorHeight,
+  compact = false,
+}: {
+  width: number;
+  depth: number;
+  height: number;
+  floorY: number;
+  frontZ: number;
+  backZ: number;
+  doorWidth: number;
+  doorHeight: number;
+  compact?: boolean;
+}) {
+  const frontPlankCount = compact ? 5 : 7;
+  const sidePlankCount = compact ? 4 : 5;
+  const lowerBandY = floorY + 1.2;
+  const upperBandY = floorY + height - 1.2;
+
+  return (
+    <>
+      {Array.from({ length: frontPlankCount }, (_, index) => {
+        const x = -width / 2 + ((index + 1) * width) / (frontPlankCount + 1);
+        if (Math.abs(x) < doorWidth / 2 + 0.55) return null;
+
+        return (
+          <mesh key={`front-plank-seam-${index}`} position={[x, floorY + height / 2, frontZ + 0.2]} castShadow={false}>
+            <boxGeometry args={[0.12, height * 0.78, 0.14]} />
+            <meshBasicMaterial color="#21160f" transparent opacity={0.72} />
+          </mesh>
+        );
+      })}
+      {[-1, 1].map((side) => (
+        <Fragment key={`side-wall-detail-${side}`}>
+          {Array.from({ length: sidePlankCount }, (_, index) => {
+            const z = -depth / 2 + ((index + 1) * depth) / (sidePlankCount + 1);
+
+            return (
+              <mesh key={`side-plank-${index}`} position={[side * (width / 2 + 0.08), floorY + height / 2, z]} castShadow={false}>
+                <boxGeometry args={[0.12, height * 0.72, 0.1]} />
+                <meshBasicMaterial color={index % 2 === 0 ? "#241810" : "#7b5332"} transparent opacity={0.62} />
+              </mesh>
+            );
+          })}
+        </Fragment>
+      ))}
+      {[lowerBandY, upperBandY].map((y, index) => (
+        <Fragment key={`wall-band-${index}`}>
+          <mesh position={[0, y, frontZ + 0.24]} castShadow={false}>
+            <boxGeometry args={[width + 0.58, 0.32, 0.2]} />
+            <meshBasicMaterial color={index === 0 ? "#2b1c12" : "#805832"} />
+          </mesh>
+          <mesh position={[0, y, backZ - 0.18]} castShadow={false}>
+            <boxGeometry args={[width + 0.28, 0.24, 0.18]} />
+            <meshBasicMaterial color="#2b1c12" />
+          </mesh>
+        </Fragment>
+      ))}
+      {Array.from({ length: 3 }, (_, index) => {
+        const x = -doorWidth * 0.25 + index * doorWidth * 0.25;
+
+        return (
+          <mesh key={`door-plank-${index}`} position={[x, floorY + doorHeight / 2, frontZ + 0.32]} castShadow={false}>
+            <boxGeometry args={[0.1, doorHeight * 0.68, 0.12]} />
+            <meshBasicMaterial color={index === 1 ? "#7c5534" : "#11100d"} transparent opacity={0.86} />
+          </mesh>
+        );
+      })}
+      <mesh position={[doorWidth * 0.22, floorY + doorHeight * 0.48, frontZ + 0.42]} castShadow={false}>
+        <boxGeometry args={[0.34, 0.34, 0.2]} />
+        <meshBasicMaterial color="#d0a05d" />
+      </mesh>
+    </>
+  );
+}
+
+function MountainHutRoofDetails({
+  width,
+  depth,
+  roofBaseY,
+  roofHeight,
+  compact = false,
+}: {
+  width: number;
+  depth: number;
+  roofBaseY: number;
+  roofHeight: number;
+  compact?: boolean;
+}) {
+  const rowCount = compact ? 3 : 4;
+  const frontZ = depth * 0.44;
+  const sideX = width * 0.44;
+
+  return (
+    <>
+      {Array.from({ length: rowCount }, (_, index) => {
+        const t = (index + 1) / (rowCount + 1);
+        const y = roofBaseY + t * roofHeight;
+        const widthScale = lerpNumber(width * 0.84, width * 0.32, t);
+        const depthScale = lerpNumber(depth * 0.84, depth * 0.32, t);
+
+        return (
+          <Fragment key={`roof-shingle-row-${index}`}>
+            <mesh position={[0, y, frontZ - t * depth * 0.2]} castShadow={false}>
+              <boxGeometry args={[widthScale, 0.16, 0.24]} />
+              <meshBasicMaterial color={index % 2 === 0 ? "#311f15" : "#8f6338"} />
+            </mesh>
+            <mesh position={[0, y + 0.06, -frontZ + t * depth * 0.2]} castShadow={false}>
+              <boxGeometry args={[widthScale * 0.86, 0.14, 0.2]} />
+              <meshBasicMaterial color="#2a1b12" />
+            </mesh>
+            <mesh position={[sideX - t * width * 0.22, y + 0.02, 0]} castShadow={false}>
+              <boxGeometry args={[0.2, 0.14, depthScale]} />
+              <meshBasicMaterial color="#7b5332" />
+            </mesh>
+            <mesh position={[-sideX + t * width * 0.22, y + 0.02, 0]} castShadow={false}>
+              <boxGeometry args={[0.2, 0.14, depthScale]} />
+              <meshBasicMaterial color="#2a1b12" />
+            </mesh>
+          </Fragment>
+        );
+      })}
+      <mesh position={[-width * 0.24, roofBaseY + roofHeight * 0.66, depth * 0.2]} castShadow={false}>
+        <boxGeometry args={[width * 0.28, 0.2, 0.42]} />
+        <meshBasicMaterial color="#f7fcff" transparent opacity={0.82} />
+      </mesh>
+      <mesh position={[width * 0.18, roofBaseY + roofHeight * 0.5, -depth * 0.28]} castShadow={false}>
+        <boxGeometry args={[width * 0.22, 0.18, 0.36]} />
+        <meshBasicMaterial color="#cdeafa" transparent opacity={0.7} />
+      </mesh>
+    </>
+  );
+}
+
+function RetroWindowDetails({ x, y, z, width, height }: { x: number; y: number; z: number; width: number; height: number }) {
+  return (
+    <group position={[x, y, z]}>
+      <mesh castShadow={false}>
+        <boxGeometry args={[width + 0.32, height + 0.32, 0.12]} />
+        <meshBasicMaterial color="#18100a" transparent opacity={0.54} />
+      </mesh>
+      <mesh position={[0, 0, 0.1]} castShadow={false}>
+        <boxGeometry args={[0.18, height + 0.42, 0.14]} />
+        <meshBasicMaterial color="#2b1c12" />
+      </mesh>
+      <mesh position={[0, 0, 0.12]} castShadow={false}>
+        <boxGeometry args={[width + 0.42, 0.18, 0.14]} />
+        <meshBasicMaterial color="#2b1c12" />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={`window-glint-${side}`} position={[side * width * 0.24, height * 0.18, 0.16]} castShadow={false}>
+          <boxGeometry args={[0.28, 0.34, 0.1]} />
+          <meshBasicMaterial color="#fff1a9" transparent opacity={0.58} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function MountainVillageTrail({ layout, showDetails }: { layout: MountainVillageLayout; showDetails: boolean }) {
   const segments = layout.trailSegments;
 
@@ -9298,20 +9560,31 @@ function MountainVillageTrail({ layout, showDetails }: { layout: MountainVillage
             <boxGeometry args={[2.15, support.height, 2.15]} />
             <meshBasicMaterial color="#2f2117" />
           </mesh>
+          <RetroVerticalTimberDetails height={support.height} width={2.15} depth={2.15} bandColor="#8e6137" />
           <mesh position={[0, -support.height / 2 - 0.08, 0]} castShadow={false}>
             <boxGeometry args={[5.6, 0.62, 5.6]} />
             <meshBasicMaterial color="#4b3524" />
           </mesh>
+          <mesh position={[0, -support.height / 2 + 0.28, 2.92]} castShadow={false}>
+            <boxGeometry args={[4.6, 0.18, 0.16]} />
+            <meshBasicMaterial color="#9a7045" />
+          </mesh>
           {support.height > 4.2 && (
             <>
-              <mesh position={[support.side * 0.98, -support.height * 0.08, 0]} rotation={[0, 0, -support.side * 0.24]} castShadow={false}>
-                <boxGeometry args={[0.9, support.height * 0.86, 0.9]} />
-                <meshBasicMaterial color="#3f2d1f" />
-              </mesh>
-              <mesh position={[-support.side * 0.9, -support.height * 0.14, 0]} rotation={[0, 0, support.side * 0.18]} castShadow={false}>
-                <boxGeometry args={[0.72, support.height * 0.7, 0.72]} />
-                <meshBasicMaterial color="#5b4029" />
-              </mesh>
+              <group position={[support.side * 0.98, -support.height * 0.08, 0]} rotation={[0, 0, -support.side * 0.24]}>
+                <mesh castShadow={false}>
+                  <boxGeometry args={[0.9, support.height * 0.86, 0.9]} />
+                  <meshBasicMaterial color="#3f2d1f" />
+                </mesh>
+                <RetroVerticalTimberDetails height={support.height * 0.86} width={0.9} depth={0.9} bandColor="#6d4a2e" />
+              </group>
+              <group position={[-support.side * 0.9, -support.height * 0.14, 0]} rotation={[0, 0, support.side * 0.18]}>
+                <mesh castShadow={false}>
+                  <boxGeometry args={[0.72, support.height * 0.7, 0.72]} />
+                  <meshBasicMaterial color="#5b4029" />
+                </mesh>
+                <RetroVerticalTimberDetails height={support.height * 0.7} width={0.72} depth={0.72} bandColor="#a67642" />
+              </group>
             </>
           )}
         </group>
@@ -9381,14 +9654,27 @@ function MountainCabin({ cabin, summitY, showDetails }: { cabin: MountainVillage
       </mesh>
       {showDetails && (
         <>
+          <MountainHutWallDetails
+            width={cabin.width}
+            depth={cabin.depth}
+            height={cabin.height}
+            floorY={0}
+            frontZ={cabin.depth / 2 + 0.08}
+            backZ={-cabin.depth / 2 - 0.08}
+            doorWidth={doorWidth}
+            doorHeight={doorHeight}
+          />
+          <MountainHutRoofDetails width={cabin.width} depth={cabin.depth} roofBaseY={cabin.height + 0.35} roofHeight={7.8} />
           <mesh position={[-cabin.width * 0.27, 5.9, cabin.depth / 2 + 0.16]} castShadow={false}>
             <boxGeometry args={[3.4, 2.8, 0.36]} />
             <meshBasicMaterial color={cabin.accentColor} transparent opacity={0.88} />
           </mesh>
+          <RetroWindowDetails x={-cabin.width * 0.27} y={5.9} z={cabin.depth / 2 + 0.4} width={3.1} height={2.5} />
           <mesh position={[cabin.width * 0.27, 5.9, cabin.depth / 2 + 0.16]} castShadow={false}>
             <boxGeometry args={[3.4, 2.8, 0.36]} />
             <meshBasicMaterial color={cabin.accentColor} transparent opacity={0.88} />
           </mesh>
+          <RetroWindowDetails x={cabin.width * 0.27} y={5.9} z={cabin.depth / 2 + 0.4} width={3.1} height={2.5} />
           <mesh position={[0, cabin.height + 2.4, cabin.depth * 0.18]} castShadow={false}>
             <boxGeometry args={[2.2, 5.4, 2.2]} />
             <meshBasicMaterial color="#3b2b1d" />
@@ -9562,10 +9848,13 @@ function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainM
         </Fragment>
       ))}
       {[-1, 1].map((side) => (
-        <mesh key={`platform-support-${side}`} position={[side * hut.platformWidth * 0.38, -2.0, platformZ - hut.platformDepth * 0.1]} rotation={[0, 0, side * 0.28]} castShadow={false}>
-          <boxGeometry args={[0.58, 4.8, 0.58]} />
-          <meshBasicMaterial color="#2d1e14" />
-        </mesh>
+        <group key={`platform-support-${side}`} position={[side * hut.platformWidth * 0.38, -2.0, platformZ - hut.platformDepth * 0.1]} rotation={[0, 0, side * 0.28]}>
+          <mesh castShadow={false}>
+            <boxGeometry args={[0.58, 4.8, 0.58]} />
+            <meshBasicMaterial color="#2d1e14" />
+          </mesh>
+          {showDetails && <RetroVerticalTimberDetails height={4.8} width={0.58} depth={0.58} bandColor="#8a5b34" />}
+        </group>
       ))}
       {showDetails && (
         <>
@@ -9618,14 +9907,28 @@ function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainM
       </mesh>
       {showDetails && (
         <>
+          <MountainHutWallDetails
+            width={hut.width}
+            depth={hut.depth}
+            height={hut.height}
+            floorY={floorY}
+            frontZ={hut.depth / 2 + 0.08}
+            backZ={-hut.depth / 2 - 0.08}
+            doorWidth={doorWidth}
+            doorHeight={doorHeight}
+            compact
+          />
+          <MountainHutRoofDetails width={hut.width} depth={hut.depth} roofBaseY={hut.height + floorY + 0.25} roofHeight={5.2} compact />
           <mesh position={[-hut.width * 0.28, 4.6 + floorY, frontZ + 0.18]} castShadow={false}>
             <boxGeometry args={[2.0, 1.8, 0.26]} />
             <meshBasicMaterial color={hut.accentColor} transparent opacity={0.9} />
           </mesh>
+          <RetroWindowDetails x={-hut.width * 0.28} y={4.6 + floorY} z={frontZ + 0.34} width={1.75} height={1.55} />
           <mesh position={[hut.width * 0.28, 4.6 + floorY, frontZ + 0.18]} castShadow={false}>
             <boxGeometry args={[2.0, 1.8, 0.26]} />
             <meshBasicMaterial color={hut.accentColor} transparent opacity={0.9} />
           </mesh>
+          <RetroWindowDetails x={hut.width * 0.28} y={4.6 + floorY} z={frontZ + 0.34} width={1.75} height={1.55} />
           <mesh position={[0, 2.8, platformZ + hut.platformDepth * 0.28]} castShadow={false}>
             <sphereGeometry args={[0.78, 8, 5]} />
             <meshBasicMaterial color="#ffd47a" transparent opacity={0.86} />
@@ -9883,14 +10186,20 @@ function MountainMineshaftTopExitBridge({ ladder, summitY, showDetails }: { ladd
       ))}
       {showDetails && (
         <>
-          <mesh position={[0, -1.12, -bridge.length * 0.26]} rotation={[0, 0, 0.22]} castShadow={false}>
-            <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76, 0.42, 0.6]} />
-            <meshBasicMaterial color="#3a2719" />
-          </mesh>
-          <mesh position={[0, -1.12, bridge.length * 0.26]} rotation={[0, 0, -0.22]} castShadow={false}>
-            <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76, 0.42, 0.6]} />
-            <meshBasicMaterial color="#3a2719" />
-          </mesh>
+          <group position={[0, -1.12, -bridge.length * 0.26]} rotation={[0, 0, 0.22]}>
+            <mesh castShadow={false}>
+              <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76, 0.42, 0.6]} />
+              <meshBasicMaterial color="#3a2719" />
+            </mesh>
+            <RetroHorizontalTimberDetails length={MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76} height={0.42} depth={0.6} bandColor="#8a5b34" />
+          </group>
+          <group position={[0, -1.12, bridge.length * 0.26]} rotation={[0, 0, -0.22]}>
+            <mesh castShadow={false}>
+              <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76, 0.42, 0.6]} />
+              <meshBasicMaterial color="#3a2719" />
+            </mesh>
+            <RetroHorizontalTimberDetails length={MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76} height={0.42} depth={0.6} bandColor="#8a5b34" />
+          </group>
           <RetroMineshaftLantern position={[0, 1.4, bridge.length / 2 - 3.0]} scale={0.7} withLight />
         </>
       )}
@@ -9950,10 +10259,26 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
         const x = Math.sin(angle) * ((MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS) / 2);
         const z = Math.cos(angle) * ((MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS) / 2);
         return (
-          <mesh key={`mine-rim-beam-${index}`} position={[x, summitY + 1.02, z]} rotation={[0, angle + Math.PI / 2, 0]} castShadow={false}>
-            <boxGeometry args={[3.4, 0.9, 9.5]} />
-            <meshBasicMaterial color={index % 2 === 0 ? "#4b3421" : "#5e442d"} />
-          </mesh>
+          <group key={`mine-rim-beam-${index}`} position={[x, summitY + 1.02, z]} rotation={[0, angle + Math.PI / 2, 0]}>
+            <mesh castShadow={false}>
+              <boxGeometry args={[3.4, 0.9, 9.5]} />
+              <meshBasicMaterial color={index % 2 === 0 ? "#4b3421" : "#5e442d"} />
+            </mesh>
+            {showDetails && (
+              <>
+                {[-2.9, 0, 2.9].map((beamZ, bandIndex) => (
+                  <mesh key={`rim-beam-band-${bandIndex}`} position={[0, 0.12, beamZ]} castShadow={false}>
+                    <boxGeometry args={[3.76, 0.16, 0.24]} />
+                    <meshBasicMaterial color={bandIndex === 1 ? "#a67642" : "#24170f"} />
+                  </mesh>
+                ))}
+                <mesh position={[0, 0.54, 0]} castShadow={false}>
+                  <boxGeometry args={[0.22, 0.12, 8.2]} />
+                  <meshBasicMaterial color="#d2a46a" transparent opacity={0.52} />
+                </mesh>
+              </>
+            )}
+          </group>
         );
       })}
       {exitLadder && <MountainMineshaftTopExitBridge ladder={exitLadder} summitY={summitY} showDetails={showDetails} />}
@@ -9961,18 +10286,33 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
         const angle = index * Math.PI / 2 + Math.PI / 4;
         return (
           <group key={`mine-support-${index}`} rotation={[0, angle, 0]}>
-            <mesh position={[-12, summitY + 8.2, 29]} rotation={[0, 0, -0.12]} castShadow={false}>
-              <boxGeometry args={[2.3, 15.5, 2.3]} />
-              <meshBasicMaterial color="#392719" />
-            </mesh>
-            <mesh position={[12, summitY + 8.2, 29]} rotation={[0, 0, 0.12]} castShadow={false}>
-              <boxGeometry args={[2.3, 15.5, 2.3]} />
-              <meshBasicMaterial color="#392719" />
-            </mesh>
-            <mesh position={[0, summitY + 16.2, 29]} castShadow={false}>
-              <boxGeometry args={[27.5, 2.4, 2.6]} />
-              <meshBasicMaterial color="#513821" />
-            </mesh>
+            <group position={[-12, summitY + 8.2, 29]} rotation={[0, 0, -0.12]}>
+              <mesh castShadow={false}>
+                <boxGeometry args={[2.3, 15.5, 2.3]} />
+                <meshBasicMaterial color="#392719" />
+              </mesh>
+              <RetroVerticalTimberDetails height={15.5} width={2.3} depth={2.3} bandColor="#a67642" lightColor="#8a5b34" />
+            </group>
+            <group position={[12, summitY + 8.2, 29]} rotation={[0, 0, 0.12]}>
+              <mesh castShadow={false}>
+                <boxGeometry args={[2.3, 15.5, 2.3]} />
+                <meshBasicMaterial color="#392719" />
+              </mesh>
+              <RetroVerticalTimberDetails height={15.5} width={2.3} depth={2.3} bandColor="#a67642" lightColor="#8a5b34" />
+            </group>
+            <group position={[0, summitY + 16.2, 29]}>
+              <mesh castShadow={false}>
+                <boxGeometry args={[27.5, 2.4, 2.6]} />
+                <meshBasicMaterial color="#513821" />
+              </mesh>
+              <RetroHorizontalTimberDetails length={27.5} height={2.4} depth={2.6} bandColor="#be8a4c" />
+              {[-1, 1].map((side) => (
+                <mesh key={`support-snow-cap-${side}`} position={[side * 8.7, 1.32, 0]} castShadow={false}>
+                  <boxGeometry args={[5.1, 0.22, 1.88]} />
+                  <meshBasicMaterial color="#e8f8ff" transparent opacity={0.7} />
+                </mesh>
+              ))}
+            </group>
           </group>
         );
       })}
