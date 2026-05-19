@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Physics, RigidBody, CuboidCollider, CylinderCollider } from "@react-three/rapier";
+import { Physics, RigidBody, CuboidCollider } from "@react-three/rapier";
 import { Sky, Environment } from "@react-three/drei";
 import { PlayerController } from "./PlayerController";
 import { NetworkManager } from "./NetworkManager";
@@ -8979,8 +8979,8 @@ function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number)
     interiorWidth: cabin.width,
     interiorDepth: cabin.depth,
     interiorHeight: cabin.height,
-    villagerBackOffset: -Math.max(cabin.depth * 0.42, 7.5),
-    villagerSideOffset: (index % 2 === 0 ? -1 : 1) * 1.25,
+    villagerBackOffset: Math.max(2.5, cabin.depth / 2 - 2.45),
+    villagerSideOffset: (index % 2 === 0 ? -1 : 1) * Math.min(0.9, cabin.width * 0.05),
     villagerYOffset: 0.95,
     villagerTheme: "village",
   }));
@@ -9038,6 +9038,16 @@ function MountainCliffBreakup({ patches, showDetails }: { patches: MountainVilla
       ))}
     </group>
   );
+}
+
+function getMountainCabinDoorMetrics(cabin: MountainVillageCabin) {
+  const wallThickness = Math.min(1.05, cabin.width * 0.12, cabin.depth * 0.12);
+  const doorWidth = Math.min(6.2, cabin.width - wallThickness * 4);
+  const doorHeight = Math.min(7.4, cabin.height - 1.15);
+  const frontWallWidth = Math.max(1.05, (cabin.width - doorWidth) / 2);
+  const lintelHeight = Math.max(0.75, cabin.height - doorHeight);
+
+  return { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight };
 }
 
 function MountainVillageTrail({ layout, showDetails }: { layout: MountainVillageLayout; showDetails: boolean }) {
@@ -9124,10 +9134,38 @@ function MountainVillageTrail({ layout, showDetails }: { layout: MountainVillage
 }
 
 function MountainCabin({ cabin, summitY, showDetails }: { cabin: MountainVillageCabin; summitY: number; showDetails: boolean }) {
+  const { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight } = getMountainCabinDoorMetrics(cabin);
+  const frontZ = cabin.depth / 2 - wallThickness / 2;
+  const backZ = -cabin.depth / 2 + wallThickness / 2;
+
   return (
     <group position={[cabin.localX, summitY, cabin.localZ]} rotation={[0, cabin.rotation, 0]}>
-      <mesh position={[0, cabin.height / 2, 0]} castShadow={false} receiveShadow>
-        <boxGeometry args={[cabin.width, cabin.height, cabin.depth]} />
+      <mesh position={[0, 0.18, 0]} castShadow={false} receiveShadow>
+        <boxGeometry args={[cabin.width + 0.8, 0.36, cabin.depth + 0.8]} />
+        <meshBasicMaterial color="#4b3826" />
+      </mesh>
+      <mesh position={[-cabin.width / 2 + wallThickness / 2, cabin.height / 2, 0]} castShadow={false} receiveShadow>
+        <boxGeometry args={[wallThickness, cabin.height, cabin.depth]} />
+        <meshBasicMaterial color={cabin.bodyColor} />
+      </mesh>
+      <mesh position={[cabin.width / 2 - wallThickness / 2, cabin.height / 2, 0]} castShadow={false} receiveShadow>
+        <boxGeometry args={[wallThickness, cabin.height, cabin.depth]} />
+        <meshBasicMaterial color={cabin.bodyColor} />
+      </mesh>
+      <mesh position={[0, cabin.height / 2, backZ]} castShadow={false} receiveShadow>
+        <boxGeometry args={[cabin.width, cabin.height, wallThickness]} />
+        <meshBasicMaterial color={cabin.bodyColor} />
+      </mesh>
+      <mesh position={[-doorWidth / 2 - frontWallWidth / 2, cabin.height / 2, frontZ]} castShadow={false} receiveShadow>
+        <boxGeometry args={[frontWallWidth, cabin.height, wallThickness]} />
+        <meshBasicMaterial color={cabin.bodyColor} />
+      </mesh>
+      <mesh position={[doorWidth / 2 + frontWallWidth / 2, cabin.height / 2, frontZ]} castShadow={false} receiveShadow>
+        <boxGeometry args={[frontWallWidth, cabin.height, wallThickness]} />
+        <meshBasicMaterial color={cabin.bodyColor} />
+      </mesh>
+      <mesh position={[0, doorHeight + lintelHeight / 2, frontZ]} castShadow={false} receiveShadow>
+        <boxGeometry args={[doorWidth, lintelHeight, wallThickness]} />
         <meshBasicMaterial color={cabin.bodyColor} />
       </mesh>
       <mesh position={[0, cabin.height + 4.2, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false} receiveShadow>
@@ -9138,8 +9176,20 @@ function MountainCabin({ cabin, summitY, showDetails }: { cabin: MountainVillage
         <coneGeometry args={[Math.max(cabin.width, cabin.depth) * 0.34, 3.4, 4]} />
         <meshBasicMaterial color="#f8fdff" />
       </mesh>
-      <mesh position={[0, 3.1, cabin.depth / 2 + 0.12]} castShadow={false}>
-        <boxGeometry args={[4.8, 6.2, 0.45]} />
+      <mesh position={[-doorWidth / 2 - 0.28, doorHeight / 2, cabin.depth / 2 + 0.12]} castShadow={false}>
+        <boxGeometry args={[0.56, doorHeight, 0.62]} />
+        <meshBasicMaterial color="#251a12" />
+      </mesh>
+      <mesh position={[doorWidth / 2 + 0.28, doorHeight / 2, cabin.depth / 2 + 0.12]} castShadow={false}>
+        <boxGeometry args={[0.56, doorHeight, 0.62]} />
+        <meshBasicMaterial color="#251a12" />
+      </mesh>
+      <mesh position={[0, doorHeight + 0.28, cabin.depth / 2 + 0.12]} castShadow={false}>
+        <boxGeometry args={[doorWidth + 1.1, 0.56, 0.62]} />
+        <meshBasicMaterial color="#251a12" />
+      </mesh>
+      <mesh position={[0, 3.25, backZ + 0.08]} castShadow={false}>
+        <boxGeometry args={[doorWidth * 0.86, 5.1, 0.22]} />
         <meshBasicMaterial color="#251a12" />
       </mesh>
       {showDetails && (
@@ -9170,24 +9220,24 @@ function MountainMineshaftOpening({ summitY, showDetails }: { summitY: number; s
   return (
     <group name="mountain-village-mineshaft">
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.34, 0]} renderOrder={4}>
-        <circleGeometry args={[28, 32]} />
+        <circleGeometry args={[24, 40]} />
         <meshBasicMaterial color="#050505" />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.42, 0]} renderOrder={5}>
-        <ringGeometry args={[28, 37, 32]} />
+        <ringGeometry args={[24, 33, 40]} />
         <meshBasicMaterial color="#3a281a" />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, summitY + 0.5, 0]} renderOrder={6}>
-        <ringGeometry args={[37, 43, 32]} />
-        <meshBasicMaterial color="#7a6750" />
+        <ringGeometry args={[33, 40, 40]} />
+        <meshBasicMaterial color="#796650" />
       </mesh>
-      {Array.from({ length: 8 }, (_, index) => {
-        const angle = (Math.PI * 2 * index) / 8;
-        const x = Math.sin(angle) * 35;
-        const z = Math.cos(angle) * 35;
+      {Array.from({ length: 12 }, (_, index) => {
+        const angle = (Math.PI * 2 * index) / 12;
+        const x = Math.sin(angle) * 36;
+        const z = Math.cos(angle) * 36;
         return (
-          <mesh key={`mine-rim-beam-${index}`} position={[x, summitY + 1.15, z]} rotation={[0, angle, 0]} castShadow={false}>
-            <boxGeometry args={[4.2, 1.2, 14]} />
+          <mesh key={`mine-rim-beam-${index}`} position={[x, summitY + 1.02, z]} rotation={[0, angle + Math.PI / 2, 0]} castShadow={false}>
+            <boxGeometry args={[3.4, 0.9, 9.5]} />
             <meshBasicMaterial color={index % 2 === 0 ? "#4b3421" : "#5e442d"} />
           </mesh>
         );
@@ -9301,13 +9351,22 @@ function MountainVillageColliders({
         </mesh>
       </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.72} restitution={0} position={[chunk.x, 0, chunk.z]}>
-        {layout.cabins.map((cabin) => (
-          <CylinderCollider
-            key={`${cabin.key}-collider`}
-            args={[cabin.height / 2, Math.max(5.25, Math.min(cabin.width, cabin.depth) * 0.38)]}
-            position={[cabin.localX, layout.summitY + cabin.height / 2, cabin.localZ]}
-          />
-        ))}
+        {layout.cabins.map((cabin) => {
+          const { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight } = getMountainCabinDoorMetrics(cabin);
+          const frontZ = cabin.depth / 2 - wallThickness / 2;
+          const backZ = -cabin.depth / 2 + wallThickness / 2;
+
+          return (
+            <group key={`${cabin.key}-colliders`} position={[cabin.localX, layout.summitY, cabin.localZ]} rotation={[0, cabin.rotation, 0]}>
+              <CuboidCollider args={[wallThickness / 2, cabin.height / 2, cabin.depth / 2]} position={[-cabin.width / 2 + wallThickness / 2, cabin.height / 2, 0]} />
+              <CuboidCollider args={[wallThickness / 2, cabin.height / 2, cabin.depth / 2]} position={[cabin.width / 2 - wallThickness / 2, cabin.height / 2, 0]} />
+              <CuboidCollider args={[cabin.width / 2, cabin.height / 2, wallThickness / 2]} position={[0, cabin.height / 2, backZ]} />
+              <CuboidCollider args={[frontWallWidth / 2, cabin.height / 2, wallThickness / 2]} position={[-doorWidth / 2 - frontWallWidth / 2, cabin.height / 2, frontZ]} />
+              <CuboidCollider args={[frontWallWidth / 2, cabin.height / 2, wallThickness / 2]} position={[doorWidth / 2 + frontWallWidth / 2, cabin.height / 2, frontZ]} />
+              <CuboidCollider args={[doorWidth / 2, lintelHeight / 2, wallThickness / 2]} position={[0, doorHeight + lintelHeight / 2, frontZ]} />
+            </group>
+          );
+        })}
       </RigidBody>
     </>
   );
