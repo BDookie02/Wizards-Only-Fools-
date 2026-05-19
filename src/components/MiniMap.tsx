@@ -1,6 +1,18 @@
-import { startTransition, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useGameStore } from "../store/gameStore";
 import { isMobilePerformanceMode } from "../game/performanceMode";
+
+type LiveMapPosition = {
+  x: number;
+  z: number;
+  angle: number;
+};
+
+function isEditableMapTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName.toLowerCase();
+  return target.isContentEditable || tag === "input" || tag === "textarea" || tag === "select";
+}
 
 export function MiniMap() {
   const isExpanded = useGameStore(s => s.isMapExpanded);
@@ -12,24 +24,23 @@ export function MiniMap() {
   const smallMapInset = 'var(--live-minimap-inset, clamp(8px, 2vmin, 16px))';
   
   // Refs to avoid re-renders at 60fps
-  const mapContainerRef = useRef<HTMLDivElement>(null);
   const playerIconRef = useRef<HTMLDivElement>(null);
   const expandedPlayerIconRef = useRef<HTMLDivElement>(null);
   const mobilePerformanceMode = useRef(isMobilePerformanceMode());
-  const pendingMoveRef = useRef<{ x: number; z: number; angle: number } | null>(null);
+  const pendingMoveRef = useRef<LiveMapPosition | null>(null);
   const moveRafRef = useRef<number | null>(null);
   const lastDomMoveUpdate = useRef(0);
   const lastMapToggleRef = useRef(0);
 
-  const [displayCoords, setDisplayCoords] = useState({ x: 0, y: 0 });
+  const [displayCoords, setDisplayCoords] = useState({ x: 0, z: 0 });
   const lastUpdate = useRef(0);
 
-  const requestMapToggle = () => {
+  const requestMapToggle = useCallback(() => {
     const now = performance.now();
     if (now - lastMapToggleRef.current < 180) return;
     lastMapToggleRef.current = now;
     startTransition(toggleMap);
-  };
+  }, [toggleMap]);
 
   useEffect(() => {
     const applyPlayerMove = () => {
@@ -42,18 +53,12 @@ export function MiniMap() {
       const now = Date.now();
       if (now - lastUpdate.current > 100) {
         lastUpdate.current = now;
-        setDisplayCoords({ x: Math.round(x), y: Math.round(z) });
+        setDisplayCoords({ x: Math.round(x), z: Math.round(z) });
       }
 
       const domNow = performance.now();
       if (mobilePerformanceMode.current && domNow - lastDomMoveUpdate.current < 1000 / 15) return;
       lastDomMoveUpdate.current = domNow;
-
-      // Update small map transforms (avoids re-rendering by using refs)
-      if (mapContainerRef.current) {
-        const scale = 3;
-        mapContainerRef.current.style.transform = `translate(${-x * scale}px, ${-z * scale}px)`;
-      }
       
       const playerIcon = playerIconRef.current;
       if (playerIcon) {
@@ -83,6 +88,7 @@ export function MiniMap() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat || isEditableMapTarget(e.target)) return;
       if (e.key === 'm' || e.key === 'M') {
         const state = useGameStore.getState();
         if (state.isSpellMenuOpen || state.isPauseMenuOpen || state.isScoreboardOpen) return;
@@ -92,7 +98,7 @@ export function MiniMap() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [toggleMap]);
+  }, [requestMapToggle]);
 
   const openMapFromMiniMap = (e: ReactPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -155,7 +161,7 @@ export function MiniMap() {
            
            <div className="minimap-coords absolute -bottom-2 left-1/2 -translate-x-1/2 text-center w-full flex justify-center z-10">
              <span className="bg-black/80 text-[10px] text-white px-2 py-0.5 rounded-full font-mono tracking-wider drop-shadow-[2px_2px_0_theme(colors.black)]">
-               X:{displayCoords.x} Y:{displayCoords.y}
+               X:{displayCoords.x} Z:{displayCoords.z}
              </span>
            </div>
 
@@ -173,35 +179,56 @@ export function MiniMap() {
       {/* Expanded Large Map Modal (DOOM Full Screen Map Style) */}
       {isExpanded && !isSpellMenuOpen && (
         <div className="absolute inset-0 z-[45] flex items-center justify-center pointer-events-none">
-           <div className="absolute top-[20px] left-[20px] flex items-start gap-4">
-            <div className="text-white text-3xl drop-shadow-[2px_2px_0_theme(colors.black)] font-mono tracking-widest uppercase">
-              Press 'M' To Close
+           <div className="absolute left-[clamp(12px,3cqw,24px)] top-[clamp(12px,3cqh,24px)] flex flex-col gap-1 font-mono uppercase drop-shadow-[2px_2px_0_theme(colors.black)]">
+            <div className="text-[clamp(1rem,3.1cqw,2rem)] tracking-[0.16em] text-white">
+              Live Map
+            </div>
+            <div className="text-[clamp(0.6rem,1.4cqw,0.85rem)] tracking-[0.18em] text-cyan-100">
+              X:{displayCoords.x} Z:{displayCoords.z}
             </div>
            </div>
            <button 
-             className="absolute top-[20px] right-[20px] bg-[#555] hover:bg-[#666] text-white px-6 py-2 text-xl font-mono tracking-wider border-4 border-[#888] border-b-[#222] border-r-[#222] pointer-events-auto"
+             className="absolute right-[clamp(12px,3cqw,24px)] top-[clamp(12px,3cqh,24px)] border-4 border-[#888] border-b-[#222] border-r-[#222] bg-[#555] px-4 py-1.5 font-mono text-[clamp(0.75rem,1.9cqw,1.25rem)] tracking-wider text-white hover:bg-[#666] pointer-events-auto"
              onClick={() => requestMapToggle()}
            >
              CLOSE
            </button>
-           
-           {/* Crosshair indicator for Expanded Map player position */}
-           <div className="absolute filter drop-shadow-[0_2px_4px_black]"
-             id="minimap-expanded-player-icon"
-             ref={expandedPlayerIconRef}
-             style={{
-                left: `calc(50% + ${(displayCoords.x / 520) * Math.min(window.innerWidth * 0.8, window.innerHeight * 0.8, 800)}px)`,
-                top: `calc(50% + ${(displayCoords.y / 520) * Math.min(window.innerWidth * 0.8, window.innerHeight * 0.8, 800)}px)`,
-                width: '32px',
-                height: '32px',
-                transformOrigin: '50% 50%',
-                transform: `translate(-50%, -50%)`
-             }}>
-             <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
-               <path d="M16 2L28 28L16 22L4 28L16 2Z" fill="#00e5ff" stroke="black" strokeWidth="2" strokeLinejoin="round"/>
-             </svg>
+           <div
+             className="absolute left-1/2 top-1/2 h-[min(80cqw,80cqh,800px)] w-[min(80cqw,80cqh,800px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden border-4 border-[#6d517d] shadow-[0_0_0_4px_#18101f,0_0_32px_rgba(0,0,0,0.85)]"
+             aria-label="Expanded live map"
+           >
+             <div className="absolute inset-0 border border-cyan-200/20" />
+             <div
+               className="absolute inset-0 opacity-40"
+               style={{
+                 backgroundImage: "linear-gradient(rgba(210,238,255,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(210,238,255,0.16) 1px, transparent 1px)",
+                 backgroundSize: "12.5% 12.5%",
+               }}
+             />
+             <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-cyan-100/25" />
+             <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-cyan-100/25" />
+             <div className="absolute left-1/2 top-2 -translate-x-1/2 font-serif text-[clamp(0.8rem,1.8cqw,1.2rem)] font-bold text-amber-400 drop-shadow-[0_2px_2px_black]">N</div>
+             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 font-serif text-[clamp(0.8rem,1.8cqw,1.2rem)] font-bold text-amber-400 drop-shadow-[0_2px_2px_black]">S</div>
+             <div className="absolute right-2 top-1/2 -translate-y-1/2 font-serif text-[clamp(0.8rem,1.8cqw,1.2rem)] font-bold text-amber-400 drop-shadow-[0_2px_2px_black]">E</div>
+             <div className="absolute left-2 top-1/2 -translate-y-1/2 font-serif text-[clamp(0.8rem,1.8cqw,1.2rem)] font-bold text-amber-400 drop-shadow-[0_2px_2px_black]">W</div>
+             <div
+               className="absolute left-1/2 top-1/2 z-10 h-10 w-10 filter drop-shadow-[0_2px_4px_black]"
+               id="minimap-expanded-player-icon"
+               ref={expandedPlayerIconRef}
+               style={{
+                  transformOrigin: '50% 50%',
+                  transform: `translate(-50%, -50%)`
+               }}
+             >
+               <svg width="100%" height="100%" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+                 <path d="M20 3L34 35L20 27L6 35L20 3Z" fill="#00e5ff" stroke="black" strokeWidth="3" strokeLinejoin="round"/>
+                 <path d="M20 8L25 25L20 22L15 25L20 8Z" fill="#fff7a8" />
+               </svg>
+             </div>
+             <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap border-2 border-[#76628a] bg-black/80 px-3 py-1 font-mono text-[clamp(0.6rem,1.5cqw,0.9rem)] tracking-[0.16em] text-cyan-100 shadow-[3px_3px_0_#120a18]">
+               LIVE X:{displayCoords.x} Z:{displayCoords.z}
+             </div>
            </div>
-           
         </div>
       )}
     </>

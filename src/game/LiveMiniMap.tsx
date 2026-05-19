@@ -68,6 +68,7 @@ export function LiveMiniMap() {
     const fn = (e: any) => {
        playerPos.current.x = e.detail.x;
        playerPos.current.z = e.detail.z;
+       playerPos.current.angle = e.detail.angle ?? playerPos.current.angle;
     };
     window.addEventListener('player-moved', fn);
     return () => window.removeEventListener('player-moved', fn);
@@ -96,9 +97,7 @@ export function LiveMiniMap() {
     if (now - lastRenderTime.current < renderInterval) return;
     lastRenderTime.current = now;
 
-    // Large map camera covers the entire terrain (approx -256 to 256)
-    // Small map camera just covers 80 units around player
-    const viewSize = isExpanded ? 260 : 80;
+    const viewSize = isExpanded ? (mobilePerformanceMode ? 260 : 360) : 80;
     const aspect = 1; // Always square
     
     mapCamera.left = -viewSize * aspect;
@@ -106,13 +105,9 @@ export function LiveMiniMap() {
     mapCamera.top = viewSize;
     mapCamera.bottom = -viewSize;
     
-    if (isExpanded) {
-      // Stationary camera centered on world
-      mapCamera.position.set(0, 200, 0);
-    } else {
-      // Follow player camera strictly (no clamping)
-      mapCamera.position.set(playerPos.current.x, 200, playerPos.current.z);
-    }
+    // Follow the player for both the small minimap and the expanded M-map so
+    // survival villages far from world zero still show live local terrain.
+    mapCamera.position.set(playerPos.current.x, 200, playerPos.current.z);
     
     mapCamera.updateProjectionMatrix();
     mapCamera.updateMatrixWorld();
