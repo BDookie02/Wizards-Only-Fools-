@@ -8433,11 +8433,19 @@ const MOUNTAIN_VILLAGE_RADIUS = SURVIVAL_BLOCK_SIZE * 0.49;
 const MOUNTAIN_VILLAGE_EDGE_BLEND_START = SURVIVAL_BLOCK_SIZE * 0.43;
 const MOUNTAIN_VILLAGE_HEIGHT = 214;
 const MOUNTAIN_VILLAGE_PLATEAU_RADIUS = 92;
-const MOUNTAIN_VILLAGE_TRAIL_TURNS = 0.72;
-const MOUNTAIN_VILLAGE_TRAIL_START_RADIUS = SURVIVAL_BLOCK_SIZE * 0.405;
-const MOUNTAIN_VILLAGE_TRAIL_END_RADIUS = 64;
-const MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET = 9.2;
+const MOUNTAIN_VILLAGE_TRAIL_TURNS = 0.42;
+const MOUNTAIN_VILLAGE_TRAIL_START_RADIUS = SURVIVAL_BLOCK_SIZE * 0.385;
+const MOUNTAIN_VILLAGE_TRAIL_END_RADIUS = 76;
+const MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET = 7.4;
 const MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS = MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 20;
+
+type MountainVillageTrailPoint = {
+  localX: number;
+  localZ: number;
+  y: number;
+  width: number;
+  t: number;
+};
 
 type MountainVillageTrailSupport = {
   key: string;
@@ -8489,7 +8497,11 @@ type MountainVillageWaterfall = {
 type MountainVillageLayout = {
   baseHeight: number;
   summitY: number;
+  trailPoints: MountainVillageTrailPoint[];
   trailSegments: MountainVillageTrailSegment[];
+  trailDeckGeometry: THREE.BufferGeometry;
+  trailTopGeometry: THREE.BufferGeometry;
+  trailColliderGeometry: THREE.BufferGeometry;
   cabins: MountainVillageCabin[];
   hutInfos: HutInfo[];
   waterfall: MountainVillageWaterfall;
@@ -8535,7 +8547,7 @@ function getMountainVillageTrailSurfaceMask(chunk: SurvivalChunkInfo, localX: nu
 
   const trailT = Math.pow(radialProgress, 1 / 0.86);
   const angleOffset = getMountainVillageTrailAngleOffset(chunk);
-  const trailAngle = angleOffset + Math.pow(trailT, 1.28) * MOUNTAIN_VILLAGE_TRAIL_TURNS * Math.PI * 2;
+  const trailAngle = angleOffset + Math.pow(trailT, 1.16) * MOUNTAIN_VILLAGE_TRAIL_TURNS * Math.PI * 2;
   const pointAngle = Math.atan2(localX, localZ);
   const arcDistance = Math.abs(Math.atan2(Math.sin(pointAngle - trailAngle), Math.cos(pointAngle - trailAngle))) * radius;
   const widthMask = 1 - smoothstepRange(10, 25, arcDistance);
@@ -8582,6 +8594,10 @@ function getMountainVillageTerrainColor(chunk: SurvivalChunkInfo, localX: number
   return color.lerp(naturalColor, edgeBlend * (1 - trailMask * 0.7));
 }
 
+function getMountainVillageTrailWidth(t: number) {
+  return lerpNumber(19.5, 13.5, smoothstep01(t));
+}
+
 function makeMountainVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
   const segments = chunk.lod === "near" ? 54 : 30;
   const baseHeight = getSurvivalVillageBaseHeight(chunk);
@@ -8608,22 +8624,29 @@ function getMountainVillageTrailPoint(chunk: SurvivalChunkInfo, baseHeight: numb
   const eased = Math.pow(smoothstep01(t), 0.86);
   const radius = lerpNumber(MOUNTAIN_VILLAGE_TRAIL_START_RADIUS, MOUNTAIN_VILLAGE_TRAIL_END_RADIUS, eased);
   const angleOffset = getMountainVillageTrailAngleOffset(chunk);
-  const angle = angleOffset + Math.pow(t, 1.28) * MOUNTAIN_VILLAGE_TRAIL_TURNS * Math.PI * 2;
+  const angle = angleOffset + Math.pow(t, 1.16) * MOUNTAIN_VILLAGE_TRAIL_TURNS * Math.PI * 2;
   const localX = Math.sin(angle) * radius;
   const localZ = Math.cos(angle) * radius;
-  const stiltLift = smoothstepRange(0.02, 0.18, t) * (1 - smoothstepRange(0.86, 0.98, t));
-  const lift = lerpNumber(2.3, MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET, stiltLift) + Math.sin(t * Math.PI) * 1.35;
+  const stiltLift = smoothstepRange(0.02, 0.16, t) * (1 - smoothstepRange(0.84, 0.98, t));
+  const lift = lerpNumber(2.1, MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET, stiltLift) + Math.sin(t * Math.PI) * 1.1;
   const y = getMountainVillageHeight(chunk, localX, localZ, baseHeight) + lift;
 
-  return { localX, localZ, y };
+  return { localX, localZ, y, width: getMountainVillageTrailWidth(t), t };
 }
 
-function makeMountainVillageTrailSegments(chunk: SurvivalChunkInfo, baseHeight: number): MountainVillageTrailSegment[] {
-  const segmentCount = chunk.lod === "near" ? 38 : 24;
-  const points = Array.from({ length: segmentCount + 1 }, (_, index) => (
-    getMountainVillageTrailPoint(chunk, baseHeight, index / segmentCount)
+function makeMountainVillageTrailPoints(chunk: SurvivalChunkInfo, baseHeight: number): MountainVillageTrailPoint[] {
+  const pointCount = chunk.lod === "near" ? 30 : 20;
+  return Array.from({ length: pointCount + 1 }, (_, index) => (
+    getMountainVillageTrailPoint(chunk, baseHeight, index / pointCount)
   ));
+}
 
+function makeMountainVillageTrailSegments(
+  chunk: SurvivalChunkInfo,
+  baseHeight: number,
+  points: MountainVillageTrailPoint[]
+): MountainVillageTrailSegment[] {
+  const segmentCount = points.length - 1;
   return points.slice(0, -1).map((point, index) => {
     const next = points[index + 1];
     const dx = next.localX - point.localX;
@@ -8637,7 +8660,7 @@ function makeMountainVillageTrailSegments(chunk: SurvivalChunkInfo, baseHeight: 
     };
     const progress = index / segmentCount;
     const yaw = Math.atan2(dx, dz);
-    const width = lerpNumber(21.5, 14.25, progress);
+    const width = getMountainVillageTrailWidth(progress);
     const rightX = Math.cos(yaw);
     const rightZ = -Math.sin(yaw);
     const supportOffset = width / 2 - 1.12;
@@ -8665,15 +8688,127 @@ function makeMountainVillageTrailSegments(chunk: SurvivalChunkInfo, baseHeight: 
       yaw,
       slope: Math.atan2(dy, horizontalLength),
       width,
-      length: horizontalLength * 1.66,
+      length: horizontalLength * 1.08,
       index,
       supports,
     };
   });
 }
 
+function getMountainVillageTrailFrame(points: MountainVillageTrailPoint[], index: number) {
+  const previous = points[Math.max(0, index - 1)];
+  const next = points[Math.min(points.length - 1, index + 1)];
+  const dx = next.localX - previous.localX;
+  const dz = next.localZ - previous.localZ;
+  const yaw = Math.atan2(dx, dz);
+
+  return {
+    rightX: Math.cos(yaw),
+    rightZ: -Math.sin(yaw),
+  };
+}
+
+function makeMountainVillageTrailSurfaceGeometry(
+  points: MountainVillageTrailPoint[],
+  widthScale: number,
+  yOffset: number
+) {
+  const vertices: number[] = [];
+  const indices: number[] = [];
+
+  points.forEach((point, index) => {
+    const { rightX, rightZ } = getMountainVillageTrailFrame(points, index);
+    const halfWidth = point.width * widthScale * 0.5;
+    const y = point.y + yOffset;
+
+    vertices.push(
+      point.localX - rightX * halfWidth, y, point.localZ - rightZ * halfWidth,
+      point.localX + rightX * halfWidth, y, point.localZ + rightZ * halfWidth,
+    );
+  });
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const left = index * 2;
+    const right = left + 1;
+    const nextLeft = left + 2;
+    const nextRight = left + 3;
+
+    indices.push(left, nextLeft, right, right, nextLeft, nextRight);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function makeMountainVillageTrailDeckGeometry(points: MountainVillageTrailPoint[]) {
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const topOffset = 0.46;
+  const bottomOffset = -0.42;
+
+  points.forEach((point, index) => {
+    const { rightX, rightZ } = getMountainVillageTrailFrame(points, index);
+    const halfWidth = point.width * 0.5;
+    const leftX = point.localX - rightX * halfWidth;
+    const leftZ = point.localZ - rightZ * halfWidth;
+    const rightXPos = point.localX + rightX * halfWidth;
+    const rightZPos = point.localZ + rightZ * halfWidth;
+
+    vertices.push(
+      leftX, point.y + topOffset, leftZ,
+      rightXPos, point.y + topOffset, rightZPos,
+      leftX, point.y + bottomOffset, leftZ,
+      rightXPos, point.y + bottomOffset, rightZPos,
+    );
+  });
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const base = index * 4;
+    const nextBase = base + 4;
+    const topLeft = base;
+    const topRight = base + 1;
+    const bottomLeft = base + 2;
+    const bottomRight = base + 3;
+    const nextTopLeft = nextBase;
+    const nextTopRight = nextBase + 1;
+    const nextBottomLeft = nextBase + 2;
+    const nextBottomRight = nextBase + 3;
+
+    indices.push(
+      topLeft, nextTopLeft, topRight,
+      topRight, nextTopLeft, nextTopRight,
+      bottomLeft, bottomRight, nextBottomLeft,
+      bottomRight, nextBottomRight, nextBottomLeft,
+      topLeft, bottomLeft, nextTopLeft,
+      bottomLeft, nextBottomLeft, nextTopLeft,
+      topRight, nextTopRight, bottomRight,
+      bottomRight, nextTopRight, nextBottomRight,
+    );
+  }
+
+  const first = 0;
+  const last = (points.length - 1) * 4;
+  indices.push(
+    first, first + 1, first + 2,
+    first + 1, first + 3, first + 2,
+    last, last + 2, last + 1,
+    last + 1, last + 2, last + 3,
+  );
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number): MountainVillageLayout {
   const summitY = getMountainVillageHeight(chunk, 0, 0, baseHeight) + 0.18;
+  const trailPoints = makeMountainVillageTrailPoints(chunk, baseHeight);
+  const trailSegments = makeMountainVillageTrailSegments(chunk, baseHeight, trailPoints);
   const cabinCount = chunk.lod === "near" ? 8 : 5;
   const bodyColors = ["#584633", "#64513d", "#4f4538", "#6b573f"];
   const roofColors = ["#dceefa", "#cfe4f3", "#edf7ff", "#b9d3e8"];
@@ -8738,16 +8873,28 @@ function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number)
   return {
     baseHeight,
     summitY,
-    trailSegments: makeMountainVillageTrailSegments(chunk, baseHeight),
+    trailPoints,
+    trailSegments,
+    trailDeckGeometry: makeMountainVillageTrailDeckGeometry(trailPoints),
+    trailTopGeometry: makeMountainVillageTrailSurfaceGeometry(trailPoints, 0.72, 0.53),
+    trailColliderGeometry: makeMountainVillageTrailSurfaceGeometry(trailPoints, 0.82, 0.55),
     cabins,
     hutInfos,
     waterfall,
   };
 }
 
-function MountainVillageTrail({ segments, showDetails }: { segments: MountainVillageTrailSegment[]; showDetails: boolean }) {
+function MountainVillageTrail({ layout, showDetails }: { layout: MountainVillageLayout; showDetails: boolean }) {
+  const segments = layout.trailSegments;
+
   return (
     <group name="mountain-village-wrapping-trail">
+      <mesh geometry={layout.trailDeckGeometry} castShadow={false} receiveShadow dispose={null}>
+        <meshBasicMaterial color="#6f5032" side={THREE.DoubleSide} />
+      </mesh>
+      <mesh geometry={layout.trailTopGeometry} castShadow={false} receiveShadow dispose={null} renderOrder={2}>
+        <meshBasicMaterial color="#b28d59" side={THREE.DoubleSide} />
+      </mesh>
       {segments.map((segment) => {
         const hasLanding = showDetails && (segment.index === 0 || segment.index === segments.length - 1);
         const landingLength = Math.min(22, segment.length * 0.72);
@@ -8755,24 +8902,6 @@ function MountainVillageTrail({ segments, showDetails }: { segments: MountainVil
 
         return (
           <group key={segment.key} position={[segment.localX, segment.y, segment.localZ]} rotation={[segment.slope, segment.yaw, 0]}>
-            <mesh position={[0, -0.72, 0]} castShadow={false}>
-              <boxGeometry args={[segment.width * 1.08, 0.22, segment.length * 1.08]} />
-              <meshBasicMaterial color="#24170f" transparent opacity={0.72} />
-            </mesh>
-            <mesh position={[0, -0.18, 0]} castShadow={false} receiveShadow>
-              <boxGeometry args={[segment.width, 0.82, segment.length]} />
-              <meshBasicMaterial color={segment.index % 2 === 0 ? "#5c432d" : "#4f3927"} />
-            </mesh>
-            <mesh position={[0, 0.32, 0]} castShadow={false}>
-              <boxGeometry args={[segment.width * 0.86, 0.18, segment.length * 0.96]} />
-              <meshBasicMaterial color="#a88659" />
-            </mesh>
-            {hasLanding && (
-              <mesh position={[0, 0.62, landingZ]} castShadow={false} receiveShadow>
-                <boxGeometry args={[segment.width * 1.32, 0.36, landingLength]} />
-                <meshBasicMaterial color={segment.index === 0 ? "#8b673e" : "#b08c5c"} />
-              </mesh>
-            )}
             {hasLanding && (
               <>
                 {[-1, 1].map((side) => (
@@ -8794,22 +8923,19 @@ function MountainVillageTrail({ segments, showDetails }: { segments: MountainVil
               </>
             )}
             <mesh position={[-segment.width / 2 + 0.88, 0.56, 0]} castShadow={false}>
-              <boxGeometry args={[1.72, 0.92, segment.length * 1.06]} />
+              <boxGeometry args={[1.42, 0.82, segment.length * 1.02]} />
               <meshBasicMaterial color="#2f2117" />
             </mesh>
             <mesh position={[segment.width / 2 - 0.88, 0.56, 0]} castShadow={false}>
-              <boxGeometry args={[1.72, 0.92, segment.length * 1.06]} />
+              <boxGeometry args={[1.42, 0.82, segment.length * 1.02]} />
               <meshBasicMaterial color="#2f2117" />
             </mesh>
-            {showDetails && Array.from({ length: 4 }, (_, plankIndex) => {
-              const plankZ = (plankIndex - 1.5) * segment.length * 0.21;
-              return (
-                <mesh key={`${segment.key}-plank-${plankIndex}`} position={[0, 0.57, plankZ]} castShadow={false}>
-                  <boxGeometry args={[segment.width * 0.78, 0.18, Math.min(2.65, segment.length * 0.13)]} />
-                  <meshBasicMaterial color={plankIndex % 2 === 0 ? "#b5905e" : "#8f704b"} />
-                </mesh>
-              );
-            })}
+            {showDetails && segment.index % 3 === 1 && (
+              <mesh position={[0, 0.63, 0]} castShadow={false}>
+                <boxGeometry args={[segment.width * 0.74, 0.16, 1.15]} />
+                <meshBasicMaterial color="#d0aa72" />
+              </mesh>
+            )}
             {showDetails && (
               <>
                 {[-1, 1].map((side) => (
@@ -8833,11 +8959,11 @@ function MountainVillageTrail({ segments, showDetails }: { segments: MountainVil
                   </Fragment>
                 ))}
                 <mesh position={[0, -1.02, -segment.length * 0.34]} castShadow={false}>
-                  <boxGeometry args={[segment.width + 2.4, 0.58, 1.12]} />
+                  <boxGeometry args={[segment.width + 1.6, 0.5, 0.9]} />
                   <meshBasicMaterial color="#3a2719" />
                 </mesh>
                 <mesh position={[0, -1.02, segment.length * 0.34]} castShadow={false}>
-                  <boxGeometry args={[segment.width + 2.4, 0.58, 1.12]} />
+                  <boxGeometry args={[segment.width + 1.6, 0.5, 0.9]} />
                   <meshBasicMaterial color="#3a2719" />
                 </mesh>
                 <mesh position={[0, -1.3, 0]} rotation={[0, 0, 0.24]} castShadow={false}>
@@ -9052,29 +9178,12 @@ function MountainVillageColliders({
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       </RigidBody>
+      <RigidBody type="fixed" colliders="trimesh" friction={0.82} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        <mesh geometry={layout.trailColliderGeometry} dispose={null}>
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.72} restitution={0} position={[chunk.x, 0, chunk.z]}>
-        {layout.trailSegments.map((segment) => {
-          const hasLanding = segment.index === 0 || segment.index === layout.trailSegments.length - 1;
-          const landingLength = Math.min(22, segment.length * 0.72);
-          const landingZ = segment.index === 0 ? -segment.length * 0.28 : segment.length * 0.28;
-
-          return (
-            <group key={`${segment.key}-collider`} position={[segment.localX, 0, segment.localZ]} rotation={[0, segment.yaw, 0]}>
-              <group position={[0, segment.y, 0]} rotation={[segment.slope, 0, 0]}>
-                <CuboidCollider
-                  args={[segment.width * 0.43, 0.22, segment.length * 0.49]}
-                  position={[0, 0.2, 0]}
-                />
-                {hasLanding && (
-                  <CuboidCollider
-                    args={[segment.width * 0.66, 0.2, landingLength / 2]}
-                    position={[0, 0.62, landingZ]}
-                  />
-                )}
-              </group>
-            </group>
-          );
-        })}
         <CylinderCollider
           args={[0.3, MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS]}
           position={[0, layout.summitY + 0.12, 0]}
@@ -9107,7 +9216,7 @@ function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
           <meshBasicMaterial map={terrainTexture} vertexColors side={THREE.DoubleSide} />
         </mesh>
         <MountainSnowCap summitY={layout.summitY} />
-        <MountainVillageTrail segments={layout.trailSegments} showDetails={showDetails} />
+        <MountainVillageTrail layout={layout} showDetails={showDetails} />
         <MountainWaterfall waterfall={layout.waterfall} summitY={layout.summitY} />
         <MountainMineshaftOpening summitY={layout.summitY} showDetails={showDetails} />
         {layout.cabins.map((cabin) => (
