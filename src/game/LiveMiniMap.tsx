@@ -9,6 +9,10 @@ function shouldHideForMiniMap(object: THREE.Object3D) {
   return object.name === "horizon-cylinder" || object.name.startsWith("survival-sky-");
 }
 
+const COMPACT_MINIMAP_VIEW_SIZE = 80;
+const EXPANDED_MAP_VIEW_SIZE = 720;
+const EXPANDED_MAP_VIEW_SIZE_MOBILE = 520;
+
 export function LiveMiniMap() {
   const isExpanded = useGameStore(s => s.isMapExpanded);
   const isSpellMenuOpen = useGameStore(s => s.isSpellMenuOpen);
@@ -97,7 +101,9 @@ export function LiveMiniMap() {
     if (now - lastRenderTime.current < renderInterval) return;
     lastRenderTime.current = now;
 
-    const viewSize = isExpanded ? (mobilePerformanceMode ? 260 : 360) : 80;
+    const viewSize = isExpanded
+      ? (mobilePerformanceMode ? EXPANDED_MAP_VIEW_SIZE_MOBILE : EXPANDED_MAP_VIEW_SIZE)
+      : COMPACT_MINIMAP_VIEW_SIZE;
     const aspect = 1; // Always square
     
     mapCamera.left = -viewSize * aspect;
