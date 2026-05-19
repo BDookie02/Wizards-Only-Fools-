@@ -9208,12 +9208,12 @@ function ChapelPew({ z, side }: { z: number; side: -1 | 1 }) {
           <meshBasicMaterial color={index % 2 === 0 ? "#9a6132" : "#2b160b"} transparent opacity={0.68} />
         </mesh>
       ))}
-      <mesh position={[0, 2.9, -1.35]} rotation={[0.14, 0, 0]} castShadow={false}>
-        <boxGeometry args={[18.4, 3.8, 0.9]} />
+      <mesh position={[0, 2.32, -1.35]} rotation={[0.14, 0, 0]} castShadow={false}>
+        <boxGeometry args={[18.4, 2.05, 0.9]} />
         <meshBasicMaterial color="#3a2115" />
       </mesh>
       {[-6.5, 0, 6.5].map((grainX) => (
-        <mesh key={`chapel-pew-back-grain-${grainX}`} position={[grainX, 3.2, -1.95]} rotation={[0.14, 0, 0]} castShadow={false}>
+        <mesh key={`chapel-pew-back-grain-${grainX}`} position={[grainX, 2.64, -1.95]} rotation={[0.14, 0, 0]} castShadow={false}>
           <boxGeometry args={[4.2, 0.18, 0.16]} />
           <meshBasicMaterial color="#8d552c" transparent opacity={0.58} />
         </mesh>
@@ -9230,6 +9230,162 @@ function ChapelPew({ z, side }: { z: number; side: -1 | 1 }) {
           </mesh>
         </Fragment>
       ))}
+    </group>
+  );
+}
+
+type ChapelPersonPalette = {
+  robe: string;
+  trim: string;
+  skin: string;
+  hair: string;
+  hat?: string;
+};
+
+function ChapelSeatedNpc({
+  position,
+  rotation = [0, 0, 0],
+  palette,
+}: {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  palette: ChapelPersonPalette;
+}) {
+  return (
+    <group position={position} rotation={rotation} scale={[1.02, 1.02, 1.02]} name="chapel-pew-npc">
+      <mesh position={[-0.32, 0.36, 0.4]} rotation={[0.9, 0, 0]} castShadow={false}>
+        <boxGeometry args={[0.34, 0.96, 0.32]} />
+        <meshBasicMaterial color="#242126" />
+      </mesh>
+      <mesh position={[0.32, 0.36, 0.4]} rotation={[0.9, 0, 0]} castShadow={false}>
+        <boxGeometry args={[0.34, 0.96, 0.32]} />
+        <meshBasicMaterial color="#242126" />
+      </mesh>
+      <mesh position={[0, 1.06, 0]} castShadow={false}>
+        <boxGeometry args={[1.08, 1.28, 0.56]} />
+        <meshBasicMaterial color={palette.robe} />
+      </mesh>
+      <mesh position={[0, 1.34, -0.34]} castShadow={false}>
+        <boxGeometry args={[0.78, 0.18, 0.1]} />
+        <meshBasicMaterial color={palette.trim} />
+      </mesh>
+      <mesh position={[-0.76, 1.04, 0.02]} rotation={[0, 0, -0.18]} castShadow={false}>
+        <boxGeometry args={[0.26, 1.02, 0.26]} />
+        <meshBasicMaterial color={palette.skin} />
+      </mesh>
+      <mesh position={[0.76, 1.04, 0.02]} rotation={[0, 0, 0.18]} castShadow={false}>
+        <boxGeometry args={[0.26, 1.02, 0.26]} />
+        <meshBasicMaterial color={palette.skin} />
+      </mesh>
+      <mesh position={[0, 2.04, -0.02]} castShadow={false}>
+        <boxGeometry args={[0.86, 0.78, 0.66]} />
+        <meshBasicMaterial color={palette.skin} />
+      </mesh>
+      <mesh position={[0, 2.47, 0]} castShadow={false}>
+        <boxGeometry args={[0.96, 0.28, 0.7]} />
+        <meshBasicMaterial color={palette.hat ?? palette.hair} />
+      </mesh>
+      <mesh position={[-0.18, 2.08, -0.38]} castShadow={false}>
+        <boxGeometry args={[0.11, 0.11, 0.08]} />
+        <meshBasicMaterial color="#08070a" />
+      </mesh>
+      <mesh position={[0.18, 2.08, -0.38]} castShadow={false}>
+        <boxGeometry args={[0.11, 0.11, 0.08]} />
+        <meshBasicMaterial color="#08070a" />
+      </mesh>
+    </group>
+  );
+}
+
+function ChapelPewNpcs() {
+  const palettes: ChapelPersonPalette[] = [
+    { robe: "#5b2f2a", trim: "#b98945", skin: "#c68a5c", hair: "#2b160d" },
+    { robe: "#2e4a63", trim: "#8bb8c6", skin: "#8f5f3f", hair: "#1b130d" },
+    { robe: "#4f5830", trim: "#c0a760", skin: "#d39a6b", hair: "#4a2b18" },
+    { robe: "#51365f", trim: "#d2bc79", skin: "#b97850", hair: "#24160f" },
+    { robe: "#6a4a30", trim: "#d09c55", skin: "#e0aa79", hair: "#5d351e" },
+    { robe: "#273f35", trim: "#88a06c", skin: "#9f6d4b", hair: "#19110b" },
+  ];
+  const rows = [-32, -20, -8, 4, 16];
+  const aisleSeatOffsets = [7.4, 3.8];
+
+  return (
+    <group name="chapel-pew-npcs">
+      {rows.flatMap((z, rowIndex) => (
+        [-1, 1].flatMap((side) => (
+          aisleSeatOffsets.map((offset, seatIndex) => {
+            const palette = palettes[(rowIndex * 4 + (side > 0 ? 2 : 0) + seatIndex) % palettes.length];
+            const lean = (rowIndex + seatIndex + (side > 0 ? 1 : 0)) % 2 === 0 ? -0.04 : 0.04;
+            return (
+              <ChapelSeatedNpc
+                key={`chapel-pew-npc-${rowIndex}-${side}-${seatIndex}`}
+                position={[side * (17.2 - offset), 1.78, z + 0.46]}
+                rotation={[0, lean, 0]}
+                palette={palette}
+              />
+            );
+          })
+        ))
+      ))}
+    </group>
+  );
+}
+
+function ChapelPopeAtPulpit() {
+  return (
+    <group name="chapel-pope-at-pulpit" position={[18, 1.35, -37.25]} rotation={[0, Math.PI, 0]} scale={[1.34, 1.34, 1.34]}>
+      <mesh position={[-0.36, 0.68, 0]} castShadow={false}>
+        <boxGeometry args={[0.34, 1.34, 0.34]} />
+        <meshBasicMaterial color="#f5f0dc" />
+      </mesh>
+      <mesh position={[0.36, 0.68, 0]} castShadow={false}>
+        <boxGeometry args={[0.34, 1.34, 0.34]} />
+        <meshBasicMaterial color="#f5f0dc" />
+      </mesh>
+      <mesh position={[0, 1.76, 0]} castShadow={false}>
+        <boxGeometry args={[1.26, 1.82, 0.72]} />
+        <meshBasicMaterial color="#fff8e7" />
+      </mesh>
+      <mesh position={[0, 1.9, -0.43]} castShadow={false}>
+        <boxGeometry args={[0.18, 1.62, 0.12]} />
+        <meshBasicMaterial color="#d4af37" />
+      </mesh>
+      <mesh position={[0, 2.22, -0.48]} castShadow={false}>
+        <boxGeometry args={[0.72, 0.18, 0.1]} />
+        <meshBasicMaterial color="#d4af37" />
+      </mesh>
+      <mesh position={[-0.88, 1.74, 0.02]} rotation={[0, 0, -0.2]} castShadow={false}>
+        <boxGeometry args={[0.28, 1.32, 0.28]} />
+        <meshBasicMaterial color="#f5d0a8" />
+      </mesh>
+      <mesh position={[0.88, 1.74, 0.02]} rotation={[0, 0, 0.2]} castShadow={false}>
+        <boxGeometry args={[0.28, 1.32, 0.28]} />
+        <meshBasicMaterial color="#f5d0a8" />
+      </mesh>
+      <mesh position={[0, 3.04, -0.02]} castShadow={false}>
+        <boxGeometry args={[0.94, 0.84, 0.68]} />
+        <meshBasicMaterial color="#f5d0a8" />
+      </mesh>
+      <mesh position={[0, 3.56, 0]} castShadow={false}>
+        <boxGeometry args={[1.04, 0.28, 0.72]} />
+        <meshBasicMaterial color="#f4f1e8" />
+      </mesh>
+      <mesh position={[0, 4.02, 0]} castShadow={false}>
+        <coneGeometry args={[0.68, 1.22, 4]} />
+        <meshBasicMaterial color="#f4f1e8" />
+      </mesh>
+      <mesh position={[0, 4.18, -0.22]} castShadow={false}>
+        <boxGeometry args={[0.18, 0.74, 0.1]} />
+        <meshBasicMaterial color="#d4af37" />
+      </mesh>
+      <mesh position={[-0.2, 3.08, -0.39]} castShadow={false}>
+        <boxGeometry args={[0.1, 0.1, 0.08]} />
+        <meshBasicMaterial color="#08070a" />
+      </mesh>
+      <mesh position={[0.2, 3.08, -0.39]} castShadow={false}>
+        <boxGeometry args={[0.1, 0.1, 0.08]} />
+        <meshBasicMaterial color="#08070a" />
+      </mesh>
     </group>
   );
 }
@@ -9390,6 +9546,8 @@ function ChapelInterior({ showDetails }: { showDetails: boolean }) {
       </group>
       {showDetails && (
         <>
+          <ChapelPewNpcs />
+          <ChapelPopeAtPulpit />
           {candleSpots.map((position, index) => (
             <ChapelCandle key={`chapel-candle-${index}`} position={position} scale={index > 7 ? 1.28 : 1} light={index % 2 === 0} />
           ))}
