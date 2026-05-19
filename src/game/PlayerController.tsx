@@ -186,6 +186,9 @@ type QaSurvivalSpawn = {
 const TEMP_MOUNTAIN_VILLAGE_SPAWN_CHUNK: [number, number] = [3, 0];
 const TEMP_MOUNTAIN_VILLAGE_SPAWN_Y = 270;
 const TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_Z = 62;
+const TEMP_GRAVEYARD_VILLAGE_SPAWN_CHUNK: [number, number] = [4, 0];
+const TEMP_GRAVEYARD_VILLAGE_SPAWN_Y = 92;
+const TEMP_GRAVEYARD_VILLAGE_SPAWN_LOCAL_Z = 132;
 const DEFAULT_PLAYER_SPAWN_POSITION: [number, number, number] = [0, 5, 30];
 const DEFAULT_FALL_RECOVERY_SPAWN_POSITION: [number, number, number] = [0, 15, 30];
 
@@ -237,13 +240,7 @@ function getTemporaryMountainVillageSpawn(): QaSurvivalSpawn | null {
     || params.get("disableSwampSpawn") === "1"
   ) return null;
 
-  const gameMode = useGameStore.getState().gameMode;
-  const shouldSpawnAtMountainVillage = (
-    params.get("qaSurvival") === "1"
-    || params.get("spawnMountain") === "1"
-    || gameMode === "solo-survival"
-    || gameMode === "multiplayer-survival"
-  );
+  const shouldSpawnAtMountainVillage = params.get("spawnMountain") === "1";
   if (!shouldSpawnAtMountainVillage) return null;
 
   const [cx, cz] = TEMP_MOUNTAIN_VILLAGE_SPAWN_CHUNK;
@@ -253,8 +250,30 @@ function getTemporaryMountainVillageSpawn(): QaSurvivalSpawn | null {
   });
 }
 
+function getTemporaryGraveyardVillageSpawn(): QaSurvivalSpawn | null {
+  if (typeof window === "undefined") return null;
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("disableGraveyardSpawn") === "1") return null;
+
+  const gameMode = useGameStore.getState().gameMode;
+  const shouldSpawnAtGraveyardVillage = (
+    params.get("qaSurvival") === "1"
+    || params.get("spawnGraveyard") === "1"
+    || gameMode === "solo-survival"
+    || gameMode === "multiplayer-survival"
+  );
+  if (!shouldSpawnAtGraveyardVillage) return null;
+
+  const [cx, cz] = TEMP_GRAVEYARD_VILLAGE_SPAWN_CHUNK;
+  return getSurvivalChunkSpawn(cx, cz, "temp-graveyard-village", {
+    y: TEMP_GRAVEYARD_VILLAGE_SPAWN_Y,
+    localZ: TEMP_GRAVEYARD_VILLAGE_SPAWN_LOCAL_Z,
+  });
+}
+
 function getPlayerSpawnOverride(): QaSurvivalSpawn | null {
-  return getTemporaryMountainVillageSpawn() ?? getQaSurvivalSpawnFromUrl();
+  return getTemporaryMountainVillageSpawn() ?? getTemporaryGraveyardVillageSpawn() ?? getQaSurvivalSpawnFromUrl();
 }
 
 function getPlayerSpawnPosition(fallbackPosition = DEFAULT_PLAYER_SPAWN_POSITION): [number, number, number] {

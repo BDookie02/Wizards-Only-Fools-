@@ -710,7 +710,7 @@ type SurvivalChunkInfo = {
   lod: "near" | "mid" | "far";
 };
 
-type SurvivalVillageKind = "desert" | "swamp" | "chicago" | "mountain";
+type SurvivalVillageKind = "desert" | "swamp" | "chicago" | "mountain" | "graveyard";
 
 const SURVIVAL_RENDER_RADIUS = 2;
 const SURVIVAL_NEAR_RADIUS = 1;
@@ -1254,6 +1254,7 @@ function getSurvivalBiome(cx: number, cz: number): SurvivalBiome {
 }
 
 function hasSurvivalVillage(cx: number, cz: number) {
+  if (isGraveyardChunk(cx, cz)) return true;
   if (cx === 0 && cz === 0) return false;
   const absCx = Math.abs(cx);
   const absCz = Math.abs(cz);
@@ -1272,7 +1273,12 @@ function isChicagoChunk(cx: number, cz: number) {
   return cx === -3 && cz === -3;
 }
 
+function isGraveyardChunk(cx: number, cz: number) {
+  return cx === 4 && cz === 0;
+}
+
 function getSurvivalVillageKindForChunk(biome: SurvivalBiome, cx: number, cz: number): SurvivalVillageKind | null {
+  if (isGraveyardChunk(cx, cz)) return "graveyard";
   if (!hasSurvivalVillage(cx, cz)) return null;
   if (isChicagoChunk(cx, cz)) return "chicago";
   if (biome === "desert") return "desert";
@@ -8429,6 +8435,666 @@ function SurvivalSwampVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
   );
 }
 
+type GraveyardTomb = {
+  key: string;
+  localX: number;
+  localY: number;
+  localZ: number;
+  rotation: number;
+  name: string;
+  joke: string;
+  variant: number;
+};
+
+type GraveyardFenceSegment = {
+  key: string;
+  localX: number;
+  localY: number;
+  localZ: number;
+  rotation: number;
+  length: number;
+};
+
+type GraveyardPathStone = {
+  key: string;
+  localX: number;
+  localY: number;
+  localZ: number;
+  rotation: number;
+  width: number;
+  depth: number;
+  color: string;
+};
+
+type GraveyardLayout = {
+  baseHeight: number;
+  tombs: GraveyardTomb[];
+  fenceSegments: GraveyardFenceSegment[];
+  pathStones: GraveyardPathStone[];
+};
+
+const GRAVEYARD_VILLAGE_RADIUS = 238;
+const GRAVEYARD_PAD_FLAT_RADIUS = 246;
+const GRAVEYARD_PATH_WIDTH = 35;
+const GRAVEYARD_RING_PATH_RADIUS = 88;
+const GRAVEYARD_RING_PATH_WIDTH = 20;
+const GRAVEYARD_FENCE_RADIUS = 242;
+const GRAVEYARD_FENCE_SEGMENT_COUNT = 92;
+const GRAVEYARD_FENCE_GATE_HALF_WIDTH = 34;
+const GRAVEYARD_TOMB_NAMES = [
+  "BARRY D. ALIVE",
+  "ANITA NAP",
+  "WILL B. BACK",
+  "RESTIN PEAS",
+  "IZZY GONE",
+  "DUSTY BONES",
+  "MANNY TOMBS",
+  "SUE VENEER",
+  "AL B. QUIET",
+  "GRANT D. WISH",
+  "MAY B. LATER",
+  "RUSTY GATE",
+  "MIRA SHADOW",
+  "NED A. MAP",
+  "TARA FIRMA",
+  "PHIL D. HOLE",
+  "OLLIE NIGHT",
+  "DORA BELL",
+  "PERCY VEER",
+  "LANA TORCH",
+  "FAY D. BLACK",
+  "HUGH MIST",
+  "CLARA VELL",
+  "ARTIE FACT",
+  "GENE POOL",
+  "MILES TOGO",
+  "PAIGE TURNER",
+  "NORA MOR",
+  "VIC TORY",
+  "ELLA VATOR",
+  "LEN D. HAND",
+  "RITA STONE",
+  "CORA NER",
+  "MAX TENSION",
+  "IVY COVER",
+  "WANDA RING",
+  "BEN D. ROAD",
+  "MOLLY CUE",
+  "OTTO MATIC",
+  "PEARL GATES",
+  "ROSE MARY",
+  "BLAIR WITCH",
+  "CY RUS",
+  "DINA MITE",
+  "ED ITOR",
+  "FELIX LUCK",
+  "GAIL FORCE",
+  "HAL LOWEEN",
+  "IRA MOUND",
+  "JUNE BUGG",
+  "KIP NAPLEY",
+  "LOU MINOUS",
+  "MOE MENT",
+  "NIA REST",
+  "OPAL EYES",
+  "PETE SAKES",
+  "QUINN TESS",
+  "RAY N. CLOUD",
+  "SAGE ADVICE",
+  "TESS TAMENT",
+  "UNA ROUND",
+  "VERN AL",
+  "WADE IN",
+  "XENA MARK",
+  "YARA KNOT",
+  "ZED MOR",
+  "ABBY NORMAL",
+  "BEA HIND",
+  "CAL CULUS",
+  "DREW BLOOD",
+  "EMMA NENT",
+  "FIN ISH",
+  "GUS TAVO",
+  "HANK ERIN",
+  "ISLA CRYPT",
+  "JAY WALKER",
+  "KARA VANN",
+  "LEO LANTERN",
+  "MARA BELL",
+  "NOEL ESCAPE",
+  "OSCAR GROUCH",
+  "PIP SQUEAK",
+  "ROCCO WALL",
+  "SAL T. EARTH",
+] as const;
+
+const GRAVEYARD_TOMB_JOKES = [
+  "Forgot to quicksave.",
+  "Still waiting on patch notes.",
+  "Asked for one more quest.",
+  "BRB became permanent.",
+  "Looted a cursed sandwich.",
+  "Trusted the tutorial chest.",
+  "Said the boss looked easy.",
+  "Missed the jump by one pixel.",
+  "Paused for dramatic effect.",
+  "Tried speedrunning stairs.",
+  "Ignored the spooky sign.",
+  "Found the floor trap.",
+  "Took a nap in hard mode.",
+  "Challenged gravity twice.",
+  "Equipped the wrong shoes.",
+  "Asked if it was haunted.",
+] as const;
+
+const graveyardTombTextureCache = new Map<string, THREE.Texture>();
+
+function getGraveyardPathMask(localX: number, localZ: number) {
+  const absX = Math.abs(localX);
+  const absZ = Math.abs(localZ);
+  const radius = Math.hypot(localX, localZ);
+  const crossPath = Math.max(
+    1 - smoothstepRange(GRAVEYARD_PATH_WIDTH * 0.5, GRAVEYARD_PATH_WIDTH * 0.78, absX),
+    1 - smoothstepRange(GRAVEYARD_PATH_WIDTH * 0.5, GRAVEYARD_PATH_WIDTH * 0.78, absZ),
+  );
+  const ringPath = 1 - smoothstepRange(GRAVEYARD_RING_PATH_WIDTH * 0.42, GRAVEYARD_RING_PATH_WIDTH * 0.78, Math.abs(radius - GRAVEYARD_RING_PATH_RADIUS));
+  return Math.max(crossPath, ringPath);
+}
+
+function getGraveyardChapelMask(localX: number, localZ: number) {
+  const xMask = 1 - smoothstepRange(46, 76, Math.abs(localX));
+  const zMask = 1 - smoothstepRange(72, 108, Math.abs(localZ));
+  return Math.min(xMask, zMask);
+}
+
+function getGraveyardVillageHeight(chunk: SurvivalChunkInfo, localX: number, localZ: number, baseHeight = getSurvivalVillageBaseHeight(chunk)) {
+  const naturalHeight = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+  const radius = Math.hypot(localX, localZ);
+  const edgeBlend = smoothstepRange(GRAVEYARD_PAD_FLAT_RADIUS, SURVIVAL_BLOCK_SIZE / 2, Math.max(Math.abs(localX), Math.abs(localZ)));
+  const hillA = Math.sin(localX * 0.035 + chunk.cx * 1.7) * Math.cos(localZ * 0.028 - chunk.cz * 1.3);
+  const hillB = Math.sin((localX + localZ) * 0.023 + 2.4) * 0.58;
+  const moundRing = Math.pow(smoothstepRange(42, GRAVEYARD_VILLAGE_RADIUS, radius) * (1 - smoothstepRange(GRAVEYARD_VILLAGE_RADIUS - 34, GRAVEYARD_VILLAGE_RADIUS, radius)), 0.9);
+  const pathMask = getGraveyardPathMask(localX, localZ);
+  const chapelMask = getGraveyardChapelMask(localX, localZ);
+  const hills = (hillA * 4.6 + hillB * 2.8 + moundRing * 5.8) * (1 - pathMask * 0.78) * (1 - chapelMask * 0.92);
+  const graveyardHeight = baseHeight + hills - pathMask * 0.38;
+  return lerpNumber(graveyardHeight, naturalHeight, edgeBlend);
+}
+
+function getGraveyardGroundColor(localX: number, localZ: number, height: number, baseHeight: number) {
+  const pathMask = getGraveyardPathMask(localX, localZ);
+  const chapelMask = getGraveyardChapelMask(localX, localZ);
+  const grassA = new THREE.Color("#26301f");
+  const grassB = new THREE.Color("#38422b");
+  const grassC = new THREE.Color("#1b2118");
+  const pathA = new THREE.Color("#4a4741");
+  const pathB = new THREE.Color("#6a6255");
+  const chapelGround = new THREE.Color("#504b46");
+  const noise = survivalHash01(Math.floor(localX * 0.21), Math.floor(localZ * 0.21), 12050);
+  const slopeTint = clamp01((height - baseHeight + 3) / 12);
+  const grass = grassA.clone().lerp(noise > 0.62 ? grassB : grassC, noise > 0.62 ? 0.5 : 0.34).lerp(new THREE.Color("#111511"), slopeTint * 0.22);
+  const path = pathA.clone().lerp(pathB, noise * 0.5);
+  return grass.lerp(path, pathMask).lerp(chapelGround, chapelMask * 0.92);
+}
+
+function makeGraveyardVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
+  const segments = 44;
+  const baseHeight = getSurvivalVillageBaseHeight(chunk);
+  const geo = new THREE.PlaneGeometry(SURVIVAL_BLOCK_SIZE, SURVIVAL_BLOCK_SIZE, segments, segments);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const colors: number[] = [];
+
+  for (let i = 0; i < pos.count; i += 1) {
+    const localX = pos.getX(i);
+    const localZ = pos.getZ(i);
+    const height = getGraveyardVillageHeight(chunk, localX, localZ, baseHeight);
+    const color = getGraveyardGroundColor(localX, localZ, height, baseHeight);
+    pos.setY(i, height);
+    colors.push(color.r, color.g, color.b);
+  }
+
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function makeGraveyardTombTextTexture(name: string, joke: string, variant: number) {
+  const cacheKey = `${name}|${joke}|${variant}`;
+  const cached = graveyardTombTextureCache.get(cacheKey);
+  if (cached) return cached;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 160;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return configurePixelSpriteTexture(new THREE.CanvasTexture(canvas));
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = variant % 2 === 0 ? "#cfc8b8" : "#b9b2a3";
+  ctx.fillRect(10, 14, 236, 132);
+  ctx.fillStyle = "#81796d";
+  ctx.fillRect(10, 138, 236, 8);
+  ctx.fillRect(238, 22, 8, 124);
+  ctx.fillStyle = "#f1ead9";
+  ctx.fillRect(18, 22, 214, 6);
+  ctx.fillStyle = "#171512";
+  ctx.font = "bold 18px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(name, 128, 50);
+  ctx.fillStyle = "#2b2720";
+  ctx.font = "bold 14px monospace";
+  const words = joke.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  words.forEach((word) => {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > 22 && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  });
+  if (current) lines.push(current);
+  lines.slice(0, 3).forEach((line, index) => {
+    ctx.fillText(line, 128, 86 + index * 19);
+  });
+
+  const texture = configurePixelSpriteTexture(new THREE.CanvasTexture(canvas));
+  graveyardTombTextureCache.set(cacheKey, texture);
+  return texture;
+}
+
+function makeGraveyardTombs(chunk: SurvivalChunkInfo, baseHeight: number): GraveyardTomb[] {
+  const tombs: GraveyardTomb[] = [];
+  const xPositions = [-210, -174, -138, -102, -66, 66, 102, 138, 174, 210];
+  const zRows = [-204, -172, -140, -108, 108, 140, 172, 204];
+  const nameOffset = Math.floor(survivalHash01(chunk.cx, chunk.cz, 12210) * GRAVEYARD_TOMB_NAMES.length);
+
+  zRows.forEach((rowZ, rowIndex) => {
+    xPositions.forEach((baseX, colIndex) => {
+      const index = tombs.length;
+      if (index >= GRAVEYARD_TOMB_NAMES.length) return;
+
+      const localX = baseX + (survivalHash01(chunk.cx + rowIndex, chunk.cz + colIndex, 12220) - 0.5) * 8;
+      const localZ = rowZ + (survivalHash01(chunk.cx - rowIndex, chunk.cz + colIndex, 12230) - 0.5) * 6;
+      const variant = survivalHash01(chunk.cx + index, chunk.cz - index, 12240);
+      const name = GRAVEYARD_TOMB_NAMES[(nameOffset + index * 37) % GRAVEYARD_TOMB_NAMES.length];
+      const joke = GRAVEYARD_TOMB_JOKES[Math.floor(survivalHash01(chunk.cx - index, chunk.cz + index, 12250) * GRAVEYARD_TOMB_JOKES.length) % GRAVEYARD_TOMB_JOKES.length];
+      const localY = getGraveyardVillageHeight(chunk, localX, localZ, baseHeight);
+      const facingCenter = localZ < 0 ? 0 : Math.PI;
+
+      tombs.push({
+        key: `${chunk.key}-grave-${index}`,
+        localX,
+        localY,
+        localZ,
+        rotation: facingCenter + (variant - 0.5) * 0.16,
+        name,
+        joke,
+        variant,
+      });
+    });
+  });
+
+  return tombs;
+}
+
+function makeGraveyardFenceSegments(chunk: SurvivalChunkInfo, baseHeight: number): GraveyardFenceSegment[] {
+  const segmentLength = (Math.PI * 2 * GRAVEYARD_FENCE_RADIUS / GRAVEYARD_FENCE_SEGMENT_COUNT) * 0.86;
+
+  return Array.from({ length: GRAVEYARD_FENCE_SEGMENT_COUNT }, (_, index) => {
+    const angle = (Math.PI * 2 * index) / GRAVEYARD_FENCE_SEGMENT_COUNT;
+    const localX = Math.sin(angle) * GRAVEYARD_FENCE_RADIUS;
+    const localZ = Math.cos(angle) * GRAVEYARD_FENCE_RADIUS;
+    const northSouthGate = Math.abs(localX) < GRAVEYARD_FENCE_GATE_HALF_WIDTH && Math.abs(Math.cos(angle)) > 0.9;
+    const eastWestGate = Math.abs(localZ) < GRAVEYARD_FENCE_GATE_HALF_WIDTH && Math.abs(Math.sin(angle)) > 0.9;
+    if (northSouthGate || eastWestGate) return null;
+
+    return {
+      key: `${chunk.key}-grave-fence-${index}`,
+      localX,
+      localY: getGraveyardVillageHeight(chunk, localX, localZ, baseHeight),
+      localZ,
+      rotation: angle,
+      length: segmentLength,
+    };
+  }).filter(Boolean) as GraveyardFenceSegment[];
+}
+
+function makeGraveyardPathStones(chunk: SurvivalChunkInfo, baseHeight: number): GraveyardPathStone[] {
+  const stones: GraveyardPathStone[] = [];
+  const colors = ["#615a50", "#49443e", "#756b5e", "#373430"];
+
+  for (let index = 0; index < 132; index += 1) {
+    const ring = index >= 72;
+    const t = ring ? (index - 72) / 60 : index / 72;
+    const angle = t * Math.PI * 2 + survivalHash01(chunk.cx, chunk.cz, 12300 + index) * 0.12;
+    const localX = ring
+      ? Math.sin(angle) * (GRAVEYARD_RING_PATH_RADIUS + (survivalHash01(chunk.cx, chunk.cz, 12310 + index) - 0.5) * 13)
+      : (index % 2 === 0 ? (t - 0.5) * 450 : (survivalHash01(chunk.cx, chunk.cz, 12320 + index) - 0.5) * 20);
+    const localZ = ring
+      ? Math.cos(angle) * (GRAVEYARD_RING_PATH_RADIUS + (survivalHash01(chunk.cx, chunk.cz, 12330 + index) - 0.5) * 13)
+      : (index % 2 === 0 ? (survivalHash01(chunk.cx, chunk.cz, 12340 + index) - 0.5) * 20 : (t - 0.5) * 450);
+
+    stones.push({
+      key: `${chunk.key}-grave-path-stone-${index}`,
+      localX,
+      localY: getGraveyardVillageHeight(chunk, localX, localZ, baseHeight) + 0.08,
+      localZ,
+      rotation: ring ? angle : survivalHash01(chunk.cx, chunk.cz, 12350 + index) * Math.PI,
+      width: 2.8 + survivalHash01(chunk.cx, chunk.cz, 12360 + index) * 3.4,
+      depth: 1.7 + survivalHash01(chunk.cx, chunk.cz, 12370 + index) * 2.6,
+      color: colors[index % colors.length],
+    });
+  }
+
+  return stones;
+}
+
+function makeGraveyardLayout(chunk: SurvivalChunkInfo, baseHeight: number): GraveyardLayout {
+  return {
+    baseHeight,
+    tombs: makeGraveyardTombs(chunk, baseHeight),
+    fenceSegments: makeGraveyardFenceSegments(chunk, baseHeight),
+    pathStones: makeGraveyardPathStones(chunk, baseHeight),
+  };
+}
+
+function GraveyardSpikedFence({ segments, showDetails }: { segments: GraveyardFenceSegment[]; showDetails: boolean }) {
+  return (
+    <group name="graveyard-black-spiked-fence">
+      {segments.map((segment) => (
+        <group key={segment.key} position={[segment.localX, segment.localY, segment.localZ]} rotation={[0, segment.rotation, 0]}>
+          <mesh position={[0, 3.7, 0]} castShadow={false}>
+            <boxGeometry args={[segment.length, 0.34, 0.28]} />
+            <meshBasicMaterial color="#050505" />
+          </mesh>
+          <mesh position={[0, 1.8, 0]} castShadow={false}>
+            <boxGeometry args={[segment.length, 0.28, 0.24]} />
+            <meshBasicMaterial color="#111111" />
+          </mesh>
+          {[-0.48, 0.48].map((offset) => (
+            <mesh key={`post-${offset}`} position={[offset * segment.length, 2.45, 0]} castShadow={false}>
+              <boxGeometry args={[0.72, 4.9, 0.72]} />
+              <meshBasicMaterial color="#080808" />
+            </mesh>
+          ))}
+          {showDetails && Array.from({ length: 4 }, (_, index) => {
+            const x = -segment.length * 0.34 + index * (segment.length * 0.68 / 3);
+            return (
+              <Fragment key={`spike-${index}`}>
+                <mesh position={[x, 2.36, 0]} castShadow={false}>
+                  <boxGeometry args={[0.34, 4.2, 0.34]} />
+                  <meshBasicMaterial color="#0c0c0c" />
+                </mesh>
+                <mesh position={[x, 4.86, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
+                  <coneGeometry args={[0.48, 1.34, 4]} />
+                  <meshBasicMaterial color="#030303" />
+                </mesh>
+                <mesh position={[x + 0.08, 4.35, -0.18]} castShadow={false}>
+                  <boxGeometry args={[0.12, 0.8, 0.08]} />
+                  <meshBasicMaterial color="#333333" />
+                </mesh>
+              </Fragment>
+            );
+          })}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function GraveyardPathStones({ stones, showDetails }: { stones: GraveyardPathStone[]; showDetails: boolean }) {
+  if (!showDetails) return null;
+
+  return (
+    <group name="graveyard-path-stones">
+      {stones.map((stone) => (
+        <mesh key={stone.key} position={[stone.localX, stone.localY, stone.localZ]} rotation={[-Math.PI / 2, 0, stone.rotation]} castShadow={false} renderOrder={2}>
+          <boxGeometry args={[stone.width, stone.depth, 0.12]} />
+          <meshBasicMaterial color={stone.color} transparent opacity={0.72} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function GraveyardTombstone({ tomb }: { tomb: GraveyardTomb }) {
+  const labelTexture = useMemo(() => makeGraveyardTombTextTexture(tomb.name, tomb.joke, Math.floor(tomb.variant * 9)), [tomb.joke, tomb.name, tomb.variant]);
+  const stoneColor = tomb.variant > 0.66 ? "#9a9488" : tomb.variant > 0.33 ? "#b2ab9e" : "#7d7972";
+  const darkStone = tomb.variant > 0.5 ? "#4a4640" : "#36332f";
+  const width = 7.4 + tomb.variant * 2.2;
+  const height = 9.2 + survivalHash01(tomb.localX, tomb.localZ, 12400) * 2.6;
+
+  return (
+    <group name="graveyard-joke-tomb" position={[tomb.localX, tomb.localY + 0.08, tomb.localZ]} rotation={[0, tomb.rotation, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 1.4]} castShadow={false} renderOrder={1} scale={[1.6, 1, 1]}>
+        <circleGeometry args={[5.6, 10]} />
+        <meshBasicMaterial color="#202519" transparent opacity={0.82} />
+      </mesh>
+      <mesh position={[0, 0.68, 0.48]} castShadow={false} receiveShadow>
+        <boxGeometry args={[width + 2.2, 1.36, 3.1]} />
+        <meshBasicMaterial color={darkStone} />
+      </mesh>
+      <mesh position={[0, height * 0.46 + 0.9, 0]} castShadow={false} receiveShadow>
+        <boxGeometry args={[width, height, 1.24]} />
+        <meshBasicMaterial color={stoneColor} />
+      </mesh>
+      <mesh position={[0, height + 1.0, 0]} castShadow={false}>
+        <boxGeometry args={[width * 0.78, 1.2, 1.28]} />
+        <meshBasicMaterial color={stoneColor} />
+      </mesh>
+      {tomb.variant > 0.55 ? (
+        <>
+          <mesh position={[0, height * 0.62 + 1.2, -0.72]} castShadow={false}>
+            <boxGeometry args={[0.7, 3.3, 0.24]} />
+            <meshBasicMaterial color="#2d2a27" />
+          </mesh>
+          <mesh position={[0, height * 0.72 + 1.2, -0.76]} castShadow={false}>
+            <boxGeometry args={[2.7, 0.58, 0.22]} />
+            <meshBasicMaterial color="#2d2a27" />
+          </mesh>
+        </>
+      ) : (
+        <mesh position={[0, height * 0.72 + 1.2, -0.72]} castShadow={false}>
+          <boxGeometry args={[width * 0.58, 0.42, 0.2]} />
+          <meshBasicMaterial color="#2d2a27" />
+        </mesh>
+      )}
+      <sprite position={[0, height * 0.48 + 1.05, -0.82]} scale={[width * 0.96, height * 0.56, 1]} frustumCulled={false}>
+        <spriteMaterial map={labelTexture} transparent depthWrite={false} />
+      </sprite>
+    </group>
+  );
+}
+
+function GraveyardTombs({ tombs, showDetails }: { tombs: GraveyardTomb[]; showDetails: boolean }) {
+  const visibleTombs = showDetails ? tombs : tombs.filter((_, index) => index % 3 === 0);
+
+  return (
+    <group name="graveyard-joke-tombs">
+      {visibleTombs.map((tomb) => (
+        <GraveyardTombstone key={tomb.key} tomb={tomb} />
+      ))}
+    </group>
+  );
+}
+
+function ChapelStainedWindow({ position, rotation = [0, 0, 0], scale = 1 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number }) {
+  return (
+    <group position={position} rotation={rotation} scale={[scale, scale, scale]}>
+      <mesh castShadow={false}>
+        <boxGeometry args={[6.2, 10.4, 0.22]} />
+        <meshBasicMaterial color="#0b0b10" />
+      </mesh>
+      <mesh position={[0, 0, -0.14]} castShadow={false}>
+        <boxGeometry args={[5.2, 8.8, 0.16]} />
+        <meshBasicMaterial color="#1d4ed8" transparent opacity={0.82} />
+      </mesh>
+      <mesh position={[-1.35, 0, -0.24]} castShadow={false}>
+        <boxGeometry args={[1.1, 8.2, 0.12]} />
+        <meshBasicMaterial color="#7e22ce" transparent opacity={0.82} />
+      </mesh>
+      <mesh position={[1.35, 0, -0.26]} castShadow={false}>
+        <boxGeometry args={[1.1, 8.2, 0.12]} />
+        <meshBasicMaterial color="#dc2626" transparent opacity={0.76} />
+      </mesh>
+      <mesh position={[0, 2.25, -0.3]} castShadow={false}>
+        <boxGeometry args={[5.0, 0.42, 0.1]} />
+        <meshBasicMaterial color="#facc15" transparent opacity={0.88} />
+      </mesh>
+      <mesh position={[0, -2.25, -0.3]} castShadow={false}>
+        <boxGeometry args={[5.0, 0.42, 0.1]} />
+        <meshBasicMaterial color="#facc15" transparent opacity={0.88} />
+      </mesh>
+    </group>
+  );
+}
+
+function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: number; showDetails: boolean }) {
+  const stone = "#48464d";
+  const darkStone = "#25242a";
+  const roof = "#171319";
+  const trim = "#77716b";
+
+  return (
+    <group name="giant-catholic-chapel" position={[0, baseHeight, 0]}>
+      <mesh position={[0, 0.48, 0]} castShadow={false} receiveShadow>
+        <boxGeometry args={[82, 0.96, 122]} />
+        <meshBasicMaterial color="#2d2b29" />
+      </mesh>
+      <mesh position={[0, 17.4, -8]} castShadow={false} receiveShadow>
+        <boxGeometry args={[68, 34.8, 96]} />
+        <meshBasicMaterial color={stone} />
+      </mesh>
+      <mesh position={[0, 37.8, -8]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
+        <coneGeometry args={[54, 19, 4]} />
+        <meshBasicMaterial color={roof} />
+      </mesh>
+      <mesh position={[0, 33.2, 43]} castShadow={false} receiveShadow>
+        <boxGeometry args={[31, 66.4, 28]} />
+        <meshBasicMaterial color="#3b3940" />
+      </mesh>
+      <mesh position={[0, 72.5, 43]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
+        <coneGeometry args={[22, 34, 4]} />
+        <meshBasicMaterial color="#0e0b10" />
+      </mesh>
+      <mesh position={[0, 96.2, 43]} castShadow={false}>
+        <boxGeometry args={[2.4, 22, 2.4]} />
+        <meshBasicMaterial color="#050505" />
+      </mesh>
+      <mesh position={[0, 100.8, 43]} castShadow={false}>
+        <boxGeometry args={[13.5, 2.4, 2.4]} />
+        <meshBasicMaterial color="#050505" />
+      </mesh>
+      <mesh position={[0, 12.4, 57.4]} castShadow={false}>
+        <boxGeometry args={[16, 24, 1.2]} />
+        <meshBasicMaterial color="#11100e" />
+      </mesh>
+      <mesh position={[0, 25.1, 58.1]} castShadow={false}>
+        <boxGeometry args={[18, 2.2, 1.4]} />
+        <meshBasicMaterial color={trim} />
+      </mesh>
+      <ChapelStainedWindow position={[0, 45.5, 58.2]} scale={1.08} />
+      <mesh position={[0, 54.8, 58.36]} castShadow={false}>
+        <circleGeometry args={[7.4, 16]} />
+        <meshBasicMaterial color="#0f172a" />
+      </mesh>
+      <mesh position={[0, 54.8, 58.18]} castShadow={false}>
+        <circleGeometry args={[5.6, 16]} />
+        <meshBasicMaterial color="#a855f7" transparent opacity={0.84} />
+      </mesh>
+      <mesh position={[0, 54.8, 57.94]} castShadow={false}>
+        <boxGeometry args={[10.2, 0.62, 0.14]} />
+        <meshBasicMaterial color="#fde68a" />
+      </mesh>
+      <mesh position={[0, 54.8, 57.9]} castShadow={false}>
+        <boxGeometry args={[0.62, 10.2, 0.14]} />
+        <meshBasicMaterial color="#fde68a" />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <Fragment key={`chapel-side-${side}`}>
+          {[-34, -8, 18].map((z, index) => (
+            <ChapelStainedWindow key={`chapel-window-${side}-${index}`} position={[side * 34.3, 21.5, z]} rotation={[0, side * Math.PI / 2, 0]} scale={0.9} />
+          ))}
+          {[-44, -20, 4, 28].map((z) => (
+            <mesh key={`chapel-buttress-${side}-${z}`} position={[side * 38.2, 12.8, z]} castShadow={false}>
+              <boxGeometry args={[4.2, 25.6, 6.2]} />
+              <meshBasicMaterial color={darkStone} />
+            </mesh>
+          ))}
+        </Fragment>
+      ))}
+      {showDetails && (
+        <>
+          {Array.from({ length: 7 }, (_, index) => (
+            <mesh key={`chapel-pixel-highlight-${index}`} position={[-28 + index * 9.4, 31.5 + (index % 2) * 2.6, 40.4]} castShadow={false}>
+              <boxGeometry args={[5.2, 0.5, 0.42]} />
+              <meshBasicMaterial color="#8e877e" transparent opacity={0.62} />
+            </mesh>
+          ))}
+          <pointLight color="#f8d477" intensity={3.5} distance={48} decay={2} position={[0, 18, 59]} />
+        </>
+      )}
+    </group>
+  );
+}
+
+function GraveyardVillageColliders({
+  chunk,
+  baseHeight,
+  groundGeometry,
+}: {
+  chunk: SurvivalChunkInfo;
+  baseHeight: number;
+  groundGeometry: THREE.BufferGeometry;
+}) {
+  if (chunk.distance !== 0) return null;
+
+  return (
+    <>
+      <RigidBody type="fixed" colliders="trimesh" friction={0.5} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        <mesh geometry={groundGeometry} dispose={null}>
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+      </RigidBody>
+      <RigidBody type="fixed" colliders={false} friction={0.55} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        <CuboidCollider args={[41, 0.5, 61]} position={[0, baseHeight + 0.45, 0]} />
+        <CuboidCollider args={[34, 17.4, 48]} position={[0, baseHeight + 17.4, -8]} />
+        <CuboidCollider args={[15.5, 33.2, 14]} position={[0, baseHeight + 33.2, 43]} />
+      </RigidBody>
+    </>
+  );
+}
+
+function SurvivalGraveyardVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
+  const baseHeight = useMemo(() => getSurvivalVillageBaseHeight(chunk), [chunk]);
+  const terrainGeometry = useMemo(() => makeGraveyardVillageTerrainGeometry(chunk), [chunk]);
+  const terrainColliderGeometry = useMemo(() => makeGraveyardVillageTerrainGeometry(chunk), [chunk]);
+  const layout = useMemo(() => makeGraveyardLayout(chunk, baseHeight), [chunk, baseHeight]);
+  const terrainDetailTexture = useMemo(() => getSurvivalTerrainDetailTexture(), []);
+  const showDetails = chunk.distance === 0;
+
+  return (
+    <>
+      <GraveyardVillageColliders chunk={chunk} baseHeight={baseHeight} groundGeometry={terrainColliderGeometry} />
+      <group name={`survival-graveyard-village-${chunk.key}`} position={[chunk.x, 0, chunk.z]}>
+        <mesh geometry={terrainGeometry} dispose={null} receiveShadow={showDetails}>
+          <meshStandardMaterial vertexColors map={terrainDetailTexture} roughness={1} metalness={0} />
+        </mesh>
+        <GraveyardPathStones stones={layout.pathStones} showDetails={showDetails} />
+        <GraveyardSpikedFence segments={layout.fenceSegments} showDetails={showDetails} />
+        <GraveyardTombs tombs={layout.tombs} showDetails={showDetails} />
+        <GraveyardCatholicChapel baseHeight={baseHeight} showDetails={showDetails} />
+      </group>
+    </>
+  );
+}
+
 const MOUNTAIN_VILLAGE_RADIUS = SURVIVAL_BLOCK_SIZE * 0.49;
 const MOUNTAIN_VILLAGE_EDGE_BLEND_START = SURVIVAL_BLOCK_SIZE * 0.43;
 const MOUNTAIN_VILLAGE_HEIGHT = 214;
@@ -11527,6 +12193,9 @@ function SurvivalChunk({ chunk }: { chunk: SurvivalChunkInfo }) {
     }
     if (chunk.villageKind === "swamp") {
       return <SurvivalSwampVillage chunk={chunk} />;
+    }
+    if (chunk.villageKind === "graveyard") {
+      return <SurvivalGraveyardVillage chunk={chunk} />;
     }
     if (chunk.villageKind === "mountain") {
       return <SurvivalMountainVillage chunk={chunk} />;
