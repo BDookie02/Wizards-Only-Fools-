@@ -482,13 +482,15 @@ export function Huts() {
 
   // --- Lantern & Pole Geometries & Materials ---
   const ironMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#222222", roughness: 0.8 }), []);
-  const glowMat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#ffb84d" }), []);
+  const glowMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#ffbf55", emissive: "#ff8a2a", emissiveIntensity: 2.2, roughness: 0.35 }), []);
+  const glowHaloMat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#ff9d36", transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), []);
 
   const lanternBaseGeo = useMemo(() => new THREE.BoxGeometry(1.6, 0.4, 1.6), []);
   const lanternTopGeo1 = useMemo(() => new THREE.BoxGeometry(1.6, 0.4, 1.6), []);
   const lanternTopGeo2 = useMemo(() => new THREE.BoxGeometry(1.0, 0.4, 1.0), []);
   const lanternGlassGeo = useMemo(() => new THREE.BoxGeometry(1.1, 1.6, 1.1), []);
   const lanternFrameGeo = useMemo(() => new THREE.BoxGeometry(0.2, 1.6, 0.2), []);
+  const lanternGlowGeo = useMemo(() => new THREE.SphereGeometry(1.55, 8, 6), []);
   const chainGeo = useMemo(() => new THREE.BoxGeometry(0.2, 2, 0.2), []);
 
   const poleVertGeo = useMemo(() => new THREE.BoxGeometry(0.8, 16, 0.8), []);
@@ -510,6 +512,7 @@ export function Huts() {
       <mesh geometry={lanternTopGeo2} material={ironMat} position={[0, 1.0, 0]} castShadow />
       <mesh geometry={lanternTopGeo1} material={ironMat} position={[0, 0.6, 0]} castShadow />
       
+      <mesh geometry={lanternGlowGeo} material={glowHaloMat} position={[0, -0.4, 0]} renderOrder={5} />
       <mesh geometry={lanternGlassGeo} material={glowMat} position={[0, -0.4, 0]} />
       
       <mesh geometry={lanternFrameGeo} material={ironMat} position={[-0.7, -0.4, -0.7]} castShadow />

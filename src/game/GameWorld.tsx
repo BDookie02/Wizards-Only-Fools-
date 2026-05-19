@@ -8587,6 +8587,14 @@ function getMountainVillageRadialLift(radius: number) {
   return shoulder * MOUNTAIN_VILLAGE_HEIGHT;
 }
 
+function getMountainVillageSummitFloorHeight(baseHeight: number) {
+  return baseHeight + MOUNTAIN_VILLAGE_HEIGHT;
+}
+
+function getMountainVillageSummitFlatMask(radius: number) {
+  return 1 - smoothstepRange(MOUNTAIN_VILLAGE_PLATEAU_RADIUS - 20, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 4, radius);
+}
+
 function getMountainVillageHeight(chunk: SurvivalChunkInfo, localX: number, localZ: number, baseHeight = getSurvivalVillageBaseHeight(chunk)) {
   const naturalHeight = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
   const radius = Math.hypot(localX, localZ);
@@ -8603,8 +8611,10 @@ function getMountainVillageHeight(chunk: SurvivalChunkInfo, localX: number, loca
     : 0;
   const mountainHeight = baseHeight + lift + roughness + plateauNoise;
   const edgeBlend = smoothstepRange(MOUNTAIN_VILLAGE_EDGE_BLEND_START, SURVIVAL_BLOCK_SIZE / 2, radius);
+  const summitFlatMask = getMountainVillageSummitFlatMask(radius);
+  const summitHeight = getMountainVillageSummitFloorHeight(baseHeight);
 
-  return lerpNumber(mountainHeight, naturalHeight, edgeBlend);
+  return lerpNumber(lerpNumber(mountainHeight, summitHeight, summitFlatMask), naturalHeight, edgeBlend);
 }
 
 function getMountainVillageColliderHeight(chunk: SurvivalChunkInfo, localX: number, localZ: number, baseHeight = getSurvivalVillageBaseHeight(chunk)) {
@@ -8621,7 +8631,7 @@ function getMountainVillageColliderHeight(chunk: SurvivalChunkInfo, localX: numb
   const mountainHeight = baseHeight + shoulder * MOUNTAIN_VILLAGE_HEIGHT + roughness;
   const edgeBlend = smoothstepRange(MOUNTAIN_VILLAGE_EDGE_BLEND_START, SURVIVAL_BLOCK_SIZE / 2, radius);
   const plateauCutout = 1 - smoothstepRange(MOUNTAIN_VILLAGE_PLATEAU_RADIUS - 7, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 7, radius);
-  const hiddenUnderSummit = baseHeight + MOUNTAIN_VILLAGE_HEIGHT - 1.25;
+  const hiddenUnderSummit = getMountainVillageSummitFloorHeight(baseHeight) - 0.08;
 
   return lerpNumber(lerpNumber(mountainHeight, naturalHeight, edgeBlend), hiddenUnderSummit, plateauCutout);
 }
@@ -8787,7 +8797,7 @@ function makeMountainVillageCliffPatches(chunk: SurvivalChunkInfo, baseHeight: n
 }
 
 function makeMountainVillageTerrainColliderGeometry(chunk: SurvivalChunkInfo) {
-  const segments = chunk.lod === "near" ? 34 : 24;
+  const segments = chunk.lod === "near" ? 64 : 28;
   const baseHeight = getSurvivalVillageBaseHeight(chunk);
   const geo = new THREE.PlaneGeometry(SURVIVAL_BLOCK_SIZE, SURVIVAL_BLOCK_SIZE, segments, segments);
   geo.rotateX(-Math.PI / 2);
@@ -9938,7 +9948,7 @@ function getMountainMineshaftPlatformPieces(width: number, gapCenterX: number | 
 function RetroMineshaftLantern({
   position,
   scale = 1,
-  withLight = false,
+  withLight = true,
 }: {
   position: [number, number, number];
   scale?: number;
@@ -9946,17 +9956,29 @@ function RetroMineshaftLantern({
 }) {
   return (
     <group position={position} scale={[scale, scale, scale]}>
+      <mesh position={[0, 0.78, 0.07]} castShadow={false} renderOrder={6}>
+        <sphereGeometry args={[1.28, 8, 6]} />
+        <meshBasicMaterial color="#ff9d36" transparent opacity={0.22} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 0.78, 0.12]} castShadow={false} renderOrder={7}>
+        <sphereGeometry args={[0.74, 8, 6]} />
+        <meshBasicMaterial color="#ffd56f" transparent opacity={0.3} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+      </mesh>
       <mesh position={[0, 0.78, 0]} castShadow={false}>
         <boxGeometry args={[0.82, 0.92, 0.82]} />
         <meshBasicMaterial color="#2a1b12" />
       </mesh>
       <mesh position={[0, 0.78, 0.04]} castShadow={false}>
         <boxGeometry args={[0.52, 0.62, 0.64]} />
-        <meshBasicMaterial color="#ffba55" transparent opacity={0.9} />
+        <meshBasicMaterial color="#ffc15d" transparent opacity={0.96} toneMapped={false} />
       </mesh>
       <mesh position={[0, 0.78, 0.08]} castShadow={false}>
         <boxGeometry args={[0.2, 0.72, 0.72]} />
-        <meshBasicMaterial color="#fff0b2" transparent opacity={0.52} />
+        <meshBasicMaterial color="#fff0b2" transparent opacity={0.72} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 0.78, 0.42]} castShadow={false} renderOrder={8}>
+        <boxGeometry args={[0.82, 0.92, 0.04]} />
+        <meshBasicMaterial color="#ffcb62" transparent opacity={0.24} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
       </mesh>
       <mesh position={[0, 1.34, 0]} castShadow={false}>
         <boxGeometry args={[1.02, 0.22, 1.02]} />
@@ -9970,7 +9992,7 @@ function RetroMineshaftLantern({
         <boxGeometry args={[0.18, 0.42, 0.18]} />
         <meshBasicMaterial color="#1b120c" />
       </mesh>
-      {withLight && <pointLight color="#ffb65b" intensity={2.2} distance={13} decay={2.1} position={[0, 0.84, 0]} />}
+      {withLight && <pointLight color="#ffb65b" intensity={4.8} distance={22} decay={1.85} position={[0, 0.84, 0]} />}
     </group>
   );
 }
@@ -10685,21 +10707,21 @@ function MountainSnowCap({ summitY }: { summitY: number }) {
     <group name="mountain-village-snow-cap">
       {Array.from({ length: 28 }, (_, index) => {
         const angle = (index * Math.PI * 2) / 28 + Math.sin(index * 1.83) * 0.14;
-        const radius = 26 + (index % 6) * 9 + Math.sin(index * 2.4) * 3.5;
+        const radius = MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS + 9 + (index % 5) * 7.2 + Math.sin(index * 2.4) * 2.1;
         return (
-          <mesh key={`summit-snow-drift-${index}`} rotation={[-Math.PI / 2, 0, angle]} position={[Math.sin(angle) * radius, summitY + 0.31, Math.cos(angle) * radius]} scale={[5.8 + (index % 4) * 2.7, 2.7 + (index % 3) * 1.25, 1]} renderOrder={2}>
+          <mesh key={`summit-snow-drift-${index}`} rotation={[-Math.PI / 2, 0, angle]} position={[Math.sin(angle) * radius, summitY + 0.28, Math.cos(angle) * radius]} scale={[4.4 + (index % 4) * 1.7, 1.9 + (index % 3) * 0.85, 1]} renderOrder={2}>
             <circleGeometry args={[1, 12]} />
-            <meshBasicMaterial color={index % 2 === 0 ? "#f8fdff" : "#cdeafa"} transparent opacity={0.66} depthWrite={false} />
+            <meshBasicMaterial color={index % 2 === 0 ? "#f8fdff" : "#cdeafa"} transparent opacity={0.5} depthWrite={false} />
           </mesh>
         );
       })}
       {Array.from({ length: 18 }, (_, index) => {
         const angle = (index * Math.PI * 2) / 18 + Math.cos(index * 1.37) * 0.12;
-        const radius = 30 + (index % 5) * 11;
+        const radius = MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS + 12 + (index % 4) * 8.4;
         return (
-          <mesh key={`summit-snow-shadow-${index}`} rotation={[-Math.PI / 2, 0, angle]} position={[Math.sin(angle) * radius, summitY + 0.32, Math.cos(angle) * radius]} scale={[4.2 + (index % 3) * 2.3, 0.56, 1]} renderOrder={3}>
+          <mesh key={`summit-snow-shadow-${index}`} rotation={[-Math.PI / 2, 0, angle]} position={[Math.sin(angle) * radius, summitY + 0.29, Math.cos(angle) * radius]} scale={[3.5 + (index % 3) * 1.45, 0.42, 1]} renderOrder={3}>
             <circleGeometry args={[1, 8]} />
-            <meshBasicMaterial color="#4f6472" transparent opacity={0.2} depthWrite={false} />
+            <meshBasicMaterial color="#4f6472" transparent opacity={0.16} depthWrite={false} />
           </mesh>
         );
       })}
