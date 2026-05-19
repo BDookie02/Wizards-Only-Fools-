@@ -8444,6 +8444,8 @@ const MOUNTAIN_VILLAGE_MINESHAFT_RIM_MID_RADIUS = 41;
 const MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS = 48;
 const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET = 3.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS = 28.5;
+const MOUNTAIN_VILLAGE_MINESHAFT_HUT_RADIUS = 24.2;
+const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_WIDTH = 4.2;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -8489,6 +8491,34 @@ type MountainVillageCabin = {
   accentColor: string;
 };
 
+type MountainMineshaftHut = {
+  key: string;
+  angle: number;
+  localX: number;
+  localZ: number;
+  y: number;
+  rotation: number;
+  width: number;
+  depth: number;
+  height: number;
+  platformWidth: number;
+  platformDepth: number;
+  bodyColor: string;
+  roofColor: string;
+  accentColor: string;
+};
+
+type MountainMineshaftLadder = {
+  key: string;
+  angle: number;
+  localX: number;
+  localZ: number;
+  startY: number;
+  endY: number;
+  rotation: number;
+  width: number;
+};
+
 type MountainVillageWaterfall = {
   angle: number;
   topX: number;
@@ -8525,6 +8555,8 @@ type MountainVillageLayout = {
   summitColliderGeometry: THREE.BufferGeometry;
   cliffPatches: MountainVillageCliffPatch[];
   cabins: MountainVillageCabin[];
+  interiorHuts: MountainMineshaftHut[];
+  interiorLadders: MountainMineshaftLadder[];
   hutInfos: HutInfo[];
   waterfall: MountainVillageWaterfall;
 };
@@ -8971,6 +9003,70 @@ function makeMountainVillageSummitColliderGeometry(summitY: number) {
   return geometry;
 }
 
+function makeMountainMineshaftHuts(chunk: SurvivalChunkInfo, baseHeight: number, summitY: number): MountainMineshaftHut[] {
+  const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET;
+  const availableHeight = Math.max(96, summitY - bottomY - 30);
+  const levelFractions = chunk.lod === "near"
+    ? [0.13, 0.27, 0.41, 0.56, 0.72, 0.87]
+    : [0.18, 0.38, 0.58, 0.78];
+  const bodyColors = ["#514331", "#5d4b35", "#423b32", "#664f35"];
+  const roofColors = ["#6f5131", "#805d39", "#5c4028", "#8a6a42"];
+  const accentColors = ["#86d9ff", "#f1cf82", "#c7eaff", "#d7b46c"];
+  const angleBase = 0.72 + survivalHash01(chunk.cx, chunk.cz, 5200) * 0.38;
+
+  return levelFractions.map((fraction, index) => {
+    const angle = angleBase + index * 1.19 + (survivalHash01(chunk.cx, chunk.cz, 5220 + index) - 0.5) * 0.16;
+    const width = 9.8 + survivalHash01(chunk.cx, chunk.cz, 5250 + index) * 2.8;
+    const depth = 8.2 + survivalHash01(chunk.cx, chunk.cz, 5280 + index) * 2.4;
+    const height = 6.6 + survivalHash01(chunk.cx, chunk.cz, 5310 + index) * 1.8;
+
+    return {
+      key: `${chunk.key}-mineshaft-hut-${index}`,
+      angle,
+      localX: Math.sin(angle) * MOUNTAIN_VILLAGE_MINESHAFT_HUT_RADIUS,
+      localZ: Math.cos(angle) * MOUNTAIN_VILLAGE_MINESHAFT_HUT_RADIUS,
+      y: bottomY + 12 + availableHeight * fraction,
+      rotation: angle + Math.PI,
+      width,
+      depth,
+      height,
+      platformWidth: width + 5.8,
+      platformDepth: depth * 0.72 + 7.8,
+      bodyColor: bodyColors[index % bodyColors.length],
+      roofColor: roofColors[index % roofColors.length],
+      accentColor: accentColors[index % accentColors.length],
+    };
+  });
+}
+
+function makeMountainMineshaftLadders(
+  chunk: SurvivalChunkInfo,
+  baseHeight: number,
+  huts: MountainMineshaftHut[],
+): MountainMineshaftLadder[] {
+  const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET + 0.72;
+
+  return huts.map((hut, index) => {
+    const landingSide = index % 2 === 0 ? -1 : 1;
+    const landingLocalX = landingSide * Math.min(hut.platformWidth * 0.28, 4.8);
+    const landingLocalZ = hut.depth / 2 + hut.platformDepth - 4.4;
+    const yaw = hut.rotation;
+    const cos = Math.cos(yaw);
+    const sin = Math.sin(yaw);
+
+    return {
+      key: `${chunk.key}-mineshaft-ladder-${index}`,
+      angle: hut.angle,
+      localX: hut.localX + cos * landingLocalX + sin * landingLocalZ,
+      localZ: hut.localZ - sin * landingLocalX + cos * landingLocalZ,
+      startY: bottomY,
+      endY: hut.y + 1.35,
+      rotation: hut.rotation,
+      width: MOUNTAIN_VILLAGE_MINESHAFT_LADDER_WIDTH,
+    };
+  });
+}
+
 function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number): MountainVillageLayout {
   const summitY = getMountainVillageHeight(chunk, 0, 0, baseHeight) + 0.18;
   const trailPoints = makeMountainVillageTrailPoints(chunk, baseHeight);
@@ -9000,7 +9096,9 @@ function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number)
       accentColor: accentColors[index % accentColors.length],
     };
   });
-  const hutInfos: HutInfo[] = cabins.map((cabin, index) => ({
+  const interiorHuts = makeMountainMineshaftHuts(chunk, baseHeight, summitY);
+  const interiorLadders = makeMountainMineshaftLadders(chunk, baseHeight, interiorHuts);
+  const cabinHutInfos: HutInfo[] = cabins.map((cabin, index) => ({
     id: `${chunk.key}-mountain-hut-${index}`,
     x: chunk.x + cabin.localX,
     y: summitY,
@@ -9019,6 +9117,26 @@ function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number)
     villagerYOffset: 0.95,
     villagerTheme: "village",
   }));
+  const interiorHutInfos: HutInfo[] = interiorHuts.map((hut, index) => ({
+    id: `${chunk.key}-mountain-interior-hut-${index}`,
+    x: chunk.x + hut.localX,
+    y: hut.y + 0.48,
+    z: chunk.z + hut.localZ,
+    hutType: 2,
+    colorIndex: (index + 1) % 4,
+    rotation: hut.rotation,
+    hasPath: true,
+    pathRot: hut.rotation,
+    isMushroom: false,
+    interiorWidth: hut.width,
+    interiorDepth: hut.depth,
+    interiorHeight: hut.height,
+    villagerBackOffset: Math.max(2.2, hut.depth / 2 + 1.4),
+    villagerSideOffset: (index % 2 === 0 ? -1 : 1) * 0.55,
+    villagerYOffset: 0.95,
+    villagerTheme: "village",
+  }));
+  const hutInfos = [...cabinHutInfos, ...interiorHutInfos];
   const waterfallAngle = -Math.PI * 0.28 + survivalHash01(chunk.cx, chunk.cz, 4700) * 0.52;
   const topRadius = 112;
   const bottomRadius = MOUNTAIN_VILLAGE_TRAIL_START_RADIUS + 8;
@@ -9048,6 +9166,8 @@ function makeMountainVillageLayout(chunk: SurvivalChunkInfo, baseHeight: number)
     summitColliderGeometry: makeMountainVillageSummitColliderGeometry(summitY),
     cliffPatches,
     cabins,
+    interiorHuts,
+    interiorLadders,
     hutInfos,
     waterfall,
   };
@@ -9251,6 +9371,144 @@ function MountainCabin({ cabin, summitY, showDetails }: { cabin: MountainVillage
   );
 }
 
+function MountainMineshaftMiniHut({ hut, showDetails }: { hut: MountainMineshaftHut; showDetails: boolean }) {
+  const { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight } = getMountainCabinDoorMetrics(hut);
+  const frontZ = hut.depth / 2 - wallThickness / 2;
+  const backZ = -hut.depth / 2 + wallThickness / 2;
+  const platformZ = hut.depth / 2 + hut.platformDepth / 2 - 1.1;
+  const floorY = 0.48;
+
+  return (
+    <group position={[hut.localX, hut.y, hut.localZ]} rotation={[0, hut.rotation, 0]}>
+      <mesh position={[0, 0.18, platformZ]} castShadow={false} receiveShadow>
+        <boxGeometry args={[hut.platformWidth, 0.52, hut.platformDepth]} />
+        <meshBasicMaterial color="#3f2b1c" />
+      </mesh>
+      <mesh position={[0, 0.56, platformZ]} castShadow={false} receiveShadow>
+        <boxGeometry args={[hut.platformWidth * 0.94, 0.22, hut.platformDepth * 0.88]} />
+        <meshBasicMaterial color="#6d4a2e" />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <Fragment key={`platform-rail-${side}`}>
+          <mesh position={[side * hut.platformWidth * 0.48, 1.42, platformZ]} castShadow={false}>
+            <boxGeometry args={[0.42, 1.4, hut.platformDepth * 0.88]} />
+            <meshBasicMaterial color="#23170f" />
+          </mesh>
+          <mesh position={[side * hut.platformWidth * 0.38, -2.0, platformZ - hut.platformDepth * 0.1]} rotation={[0, 0, side * 0.28]} castShadow={false}>
+            <boxGeometry args={[0.58, 4.8, 0.58]} />
+            <meshBasicMaterial color="#2d1e14" />
+          </mesh>
+        </Fragment>
+      ))}
+      <mesh position={[0, hut.height / 2 + floorY, backZ - 0.42]} castShadow={false}>
+        <boxGeometry args={[hut.width + 1.6, hut.height + 1.1, 0.7]} />
+        <meshBasicMaterial color="#16100c" transparent opacity={0.88} />
+      </mesh>
+      <mesh position={[-hut.width / 2 + wallThickness / 2, hut.height / 2 + floorY, 0]} castShadow={false} receiveShadow>
+        <boxGeometry args={[wallThickness, hut.height, hut.depth]} />
+        <meshBasicMaterial color={hut.bodyColor} />
+      </mesh>
+      <mesh position={[hut.width / 2 - wallThickness / 2, hut.height / 2 + floorY, 0]} castShadow={false} receiveShadow>
+        <boxGeometry args={[wallThickness, hut.height, hut.depth]} />
+        <meshBasicMaterial color={hut.bodyColor} />
+      </mesh>
+      <mesh position={[0, hut.height / 2 + floorY, backZ]} castShadow={false} receiveShadow>
+        <boxGeometry args={[hut.width, hut.height, wallThickness]} />
+        <meshBasicMaterial color={hut.bodyColor} />
+      </mesh>
+      <mesh position={[-doorWidth / 2 - frontWallWidth / 2, hut.height / 2 + floorY, frontZ]} castShadow={false} receiveShadow>
+        <boxGeometry args={[frontWallWidth, hut.height, wallThickness]} />
+        <meshBasicMaterial color={hut.bodyColor} />
+      </mesh>
+      <mesh position={[doorWidth / 2 + frontWallWidth / 2, hut.height / 2 + floorY, frontZ]} castShadow={false} receiveShadow>
+        <boxGeometry args={[frontWallWidth, hut.height, wallThickness]} />
+        <meshBasicMaterial color={hut.bodyColor} />
+      </mesh>
+      <mesh position={[0, doorHeight + lintelHeight / 2 + floorY, frontZ]} castShadow={false} receiveShadow>
+        <boxGeometry args={[doorWidth, lintelHeight, wallThickness]} />
+        <meshBasicMaterial color={hut.bodyColor} />
+      </mesh>
+      <mesh position={[0, hut.height + 2.8 + floorY, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false} receiveShadow>
+        <coneGeometry args={[Math.max(hut.width, hut.depth) * 0.76, 6.2, 4]} />
+        <meshBasicMaterial color={hut.roofColor} />
+      </mesh>
+      <mesh position={[0, hut.height + 6.0 + floorY, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
+        <coneGeometry args={[Math.max(hut.width, hut.depth) * 0.3, 2.3, 4]} />
+        <meshBasicMaterial color="#cfe6f3" />
+      </mesh>
+      <mesh position={[0, doorHeight / 2 + floorY, frontZ + 0.16]} castShadow={false}>
+        <boxGeometry args={[doorWidth * 0.76, doorHeight * 0.78, 0.24]} />
+        <meshBasicMaterial color="#1c130d" />
+      </mesh>
+      {showDetails && (
+        <>
+          <mesh position={[-hut.width * 0.28, 4.6 + floorY, frontZ + 0.18]} castShadow={false}>
+            <boxGeometry args={[2.0, 1.8, 0.26]} />
+            <meshBasicMaterial color={hut.accentColor} transparent opacity={0.9} />
+          </mesh>
+          <mesh position={[hut.width * 0.28, 4.6 + floorY, frontZ + 0.18]} castShadow={false}>
+            <boxGeometry args={[2.0, 1.8, 0.26]} />
+            <meshBasicMaterial color={hut.accentColor} transparent opacity={0.9} />
+          </mesh>
+          <mesh position={[0, 2.8, platformZ + hut.platformDepth * 0.28]} castShadow={false}>
+            <sphereGeometry args={[0.78, 8, 5]} />
+            <meshBasicMaterial color="#ffd47a" transparent opacity={0.86} />
+          </mesh>
+        </>
+      )}
+    </group>
+  );
+}
+
+function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMineshaftLadder; showDetails: boolean }) {
+  const height = Math.max(4, ladder.endY - ladder.startY);
+  const rungCount = Math.max(8, Math.min(48, Math.floor(height / 3.6)));
+
+  return (
+    <group position={[ladder.localX, ladder.startY, ladder.localZ]} rotation={[0, ladder.rotation, 0]}>
+      <mesh position={[-ladder.width / 2, height / 2, 0]} castShadow={false}>
+        <boxGeometry args={[0.34, height, 0.28]} />
+        <meshBasicMaterial color="#26180f" />
+      </mesh>
+      <mesh position={[ladder.width / 2, height / 2, 0]} castShadow={false}>
+        <boxGeometry args={[0.34, height, 0.28]} />
+        <meshBasicMaterial color="#26180f" />
+      </mesh>
+      {Array.from({ length: rungCount }, (_, index) => (
+        <mesh key={`rung-${index}`} position={[0, 1.2 + index * ((height - 2.4) / Math.max(1, rungCount - 1)), 0.14]} castShadow={false}>
+          <boxGeometry args={[ladder.width + 0.55, 0.24, 0.32]} />
+          <meshBasicMaterial color={index % 2 === 0 ? "#4b3120" : "#5d4028"} />
+        </mesh>
+      ))}
+      {showDetails && (
+        <>
+          <mesh position={[0, height + 0.34, 0]} castShadow={false}>
+            <boxGeometry args={[ladder.width + 1.2, 0.46, 0.46]} />
+            <meshBasicMaterial color="#6f5131" />
+          </mesh>
+          <mesh position={[0, 0.34, 0]} castShadow={false}>
+            <boxGeometry args={[ladder.width + 1.2, 0.46, 0.46]} />
+            <meshBasicMaterial color="#6f5131" />
+          </mesh>
+        </>
+      )}
+    </group>
+  );
+}
+
+function MountainMineshaftInterior({ layout, showDetails }: { layout: MountainVillageLayout; showDetails: boolean }) {
+  return (
+    <group name="mountain-village-mineshaft-wall-huts">
+      {layout.interiorHuts.map((hut) => (
+        <MountainMineshaftMiniHut key={hut.key} hut={hut} showDetails={showDetails} />
+      ))}
+      {layout.interiorLadders.map((ladder) => (
+        <MountainMineshaftLadder key={ladder.key} ladder={ladder} showDetails={showDetails} />
+      ))}
+    </group>
+  );
+}
+
 function MountainMineshaftOpening({ baseHeight, summitY, showDetails }: { baseHeight: number; summitY: number; showDetails: boolean }) {
   const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET;
   const shaftWallHeight = Math.max(32, summitY - bottomY + 1.2);
@@ -9398,6 +9656,12 @@ function MountainVillageColliders({
 }) {
   if (chunk.distance !== 0) return null;
 
+  const dispatchLadderZone = (eventName: "wof-ladder-zone-enter" | "wof-ladder-zone-exit", id: string, event: any) => {
+    if (event.other?.rigidBodyObject?.name !== "player") return;
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent(eventName, { detail: { id } }));
+  };
+
   return (
     <>
       <RigidBody type="fixed" colliders="trimesh" friction={0.38} restitution={0} position={[chunk.x, 0, chunk.z]}>
@@ -9425,6 +9689,45 @@ function MountainVillageColliders({
           position={[0, layout.baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET - 0.42, 0]}
         />
       </RigidBody>
+      <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        {layout.interiorHuts.map((hut) => {
+          const { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight } = getMountainCabinDoorMetrics(hut);
+          const frontZ = hut.depth / 2 - wallThickness / 2;
+          const backZ = -hut.depth / 2 + wallThickness / 2;
+          const platformZ = hut.depth / 2 + hut.platformDepth / 2 - 1.1;
+          const floorY = 0.48;
+
+          return (
+            <group key={`${hut.key}-colliders`} position={[hut.localX, hut.y, hut.localZ]} rotation={[0, hut.rotation, 0]}>
+              <CuboidCollider args={[hut.platformWidth / 2, 0.45, hut.platformDepth / 2]} position={[0, 0, platformZ]} />
+              <CuboidCollider args={[wallThickness / 2, hut.height / 2, hut.depth / 2]} position={[-hut.width / 2 + wallThickness / 2, hut.height / 2 + floorY, 0]} />
+              <CuboidCollider args={[wallThickness / 2, hut.height / 2, hut.depth / 2]} position={[hut.width / 2 - wallThickness / 2, hut.height / 2 + floorY, 0]} />
+              <CuboidCollider args={[hut.width / 2, hut.height / 2, wallThickness / 2]} position={[0, hut.height / 2 + floorY, backZ]} />
+              <CuboidCollider args={[frontWallWidth / 2, hut.height / 2, wallThickness / 2]} position={[-doorWidth / 2 - frontWallWidth / 2, hut.height / 2 + floorY, frontZ]} />
+              <CuboidCollider args={[frontWallWidth / 2, hut.height / 2, wallThickness / 2]} position={[doorWidth / 2 + frontWallWidth / 2, hut.height / 2 + floorY, frontZ]} />
+              <CuboidCollider args={[doorWidth / 2, lintelHeight / 2, wallThickness / 2]} position={[0, doorHeight + lintelHeight / 2 + floorY, frontZ]} />
+            </group>
+          );
+        })}
+      </RigidBody>
+      {layout.interiorLadders.map((ladder) => {
+        const height = Math.max(4, ladder.endY - ladder.startY);
+        return (
+          <RigidBody
+            key={`${ladder.key}-sensor`}
+            type="fixed"
+            sensor
+            colliders={false}
+            name={`${ladder.key}-climb-zone`}
+            position={[chunk.x + ladder.localX, ladder.startY + height / 2, chunk.z + ladder.localZ]}
+            rotation={[0, ladder.rotation, 0]}
+            onIntersectionEnter={(event) => dispatchLadderZone("wof-ladder-zone-enter", ladder.key, event)}
+            onIntersectionExit={(event) => dispatchLadderZone("wof-ladder-zone-exit", ladder.key, event)}
+          >
+            <CuboidCollider args={[ladder.width / 2 + 0.9, height / 2, 1.35]} />
+          </RigidBody>
+        );
+      })}
       <RigidBody type="fixed" colliders={false} friction={0.72} restitution={0} position={[chunk.x, 0, chunk.z]}>
         {layout.cabins.map((cabin) => {
           const { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight } = getMountainCabinDoorMetrics(cabin);
@@ -9467,6 +9770,7 @@ function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
         <MountainVillageTrail layout={layout} showDetails={showDetails} />
         <MountainWaterfall waterfall={layout.waterfall} summitY={layout.summitY} />
         <MountainMineshaftOpening baseHeight={layout.baseHeight} summitY={layout.summitY} showDetails={showDetails} />
+        <MountainMineshaftInterior layout={layout} showDetails={showDetails} />
         {layout.cabins.map((cabin) => (
           <MountainCabin key={cabin.key} cabin={cabin} summitY={layout.summitY} showDetails={showDetails} />
         ))}

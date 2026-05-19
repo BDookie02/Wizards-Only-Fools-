@@ -28,6 +28,8 @@ const DIRECT_STATUS_TARGET_RANGE = 48;
 const DIRECT_STATUS_TARGET_RADIUS = 1.85;
 const VCLIP_VERTICAL_SPEED = 10;
 const VCLIP_SPRINT_MULTIPLIER = 3.2;
+const LADDER_CLIMB_SPEED = 8.4;
+const LADDER_IDLE_HOLD_SPEED = 0;
 const CONTROLLER_ARM_BUTTON_THRESHOLD = 0.35;
 const ASTRAL_EXIT_HOLD_MS = 5000;
 const PLAYER_MEDITATION_CAMERA_HEIGHT = 0.58;
@@ -286,6 +288,7 @@ export function PlayerController() {
   const qaWalkLastDecisionAt = useRef(0);
   const qaWalkLastProgressAt = useRef(0);
   const qaWalkLastProgressPos = useRef(new THREE.Vector3());
+  const activeLadderZones = useRef(new Set<string>());
 
   const [jumps, setJumps] = useState(0);
   const [isSliding, setIsSliding] = useState(false);
@@ -343,6 +346,25 @@ export function PlayerController() {
       socket.emit("clearStatusEffect", { targetId: socket.id, effects: ["poison", "acid"] });
     }
   };
+
+  useEffect(() => {
+    const handleLadderEnter = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (id) activeLadderZones.current.add(id);
+    };
+    const handleLadderExit = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
+      if (id) activeLadderZones.current.delete(id);
+    };
+
+    window.addEventListener("wof-ladder-zone-enter", handleLadderEnter);
+    window.addEventListener("wof-ladder-zone-exit", handleLadderExit);
+    return () => {
+      window.removeEventListener("wof-ladder-zone-enter", handleLadderEnter);
+      window.removeEventListener("wof-ladder-zone-exit", handleLadderExit);
+      activeLadderZones.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     const cameraEuler = new THREE.Euler(0, 0, 0, "YXZ");
@@ -1606,12 +1628,17 @@ export function PlayerController() {
     const descendHeld = keys.KeyC || controllerSlideHeld || touchSlideHeld;
     const slideHeld = !vclipActive && descendHeld;
     const verticalInput = vclipActive ? (jumpHeld ? 1 : 0) - (descendHeld ? 1 : 0) : 0;
+    const forwardInput = THREE.MathUtils.clamp((keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - controllerMoveZ - touchMoveZ + (qaWalkActive ? 1 : 0), -1, 1);
+    const ladderActive = !vclipActive && !sleepActive && activeLadderZones.current.size > 0;
+    const ladderVerticalInput = ladderActive
+      ? THREE.MathUtils.clamp(forwardInput + (jumpHeld ? 1 : 0) - (descendHeld ? 1 : 0), -1, 1)
+      : 0;
 
     frontVector.set(0, 0, (keys.KeyS ? 1 : 0) - (keys.KeyW ? 1 : 0) + controllerMoveZ + touchMoveZ - (qaWalkActive ? 1 : 0));
     sideVector.set((keys.KeyA ? 1 : 0) - (keys.KeyD ? 1 : 0) - controllerMoveX - touchMoveX, 0, 0);
     direction.subVectors(frontVector, sideVector);
     const hasPlanarMovementInput = direction.lengthSq() > 0;
-    const hasMovementInput = !sleepActive && (hasPlanarMovementInput || verticalInput !== 0);
+    const hasMovementInput = !sleepActive && (hasPlanarMovementInput || verticalInput !== 0 || ladderVerticalInput !== 0);
     if (!hasMovementInput) {
       controllerSprintLatched.current = false;
       touchSprintLatched.current = false;
@@ -1640,6 +1667,11 @@ export function PlayerController() {
       if (isSliding) setIsSliding(false);
       direction.y += verticalInput * VCLIP_VERTICAL_SPEED * (isSprinting ? VCLIP_SPRINT_MULTIPLIER : 1);
     }
+
+    if (ladderActive && ladderVerticalInput !== 0) {
+      direction.x *= 0.22;
+      direction.z *= 0.22;
+    }
     
     if (pullFrames.current > 0) {
       direction.x += pullVelocity.current.x;
@@ -1656,6 +1688,8 @@ export function PlayerController() {
       // @ts-ignore
       : world.castRay(ray, 0.25, true, undefined, undefined, undefined, undefined, (collider) => collider.parent()?.handle !== rigidBody.current?.handle);
     const grounded = !vclipActive && hit !== null && hit.timeOfImpact < 0.2;
+    const climbingLadder = ladderActive && !vclipActive;
+    const effectiveGrounded = grounded || climbingLadder;
     
     // Dispatch player state for HUD animations
     window.dispatchEvent(new CustomEvent('player-state', { 
@@ -1663,13 +1697,13 @@ export function PlayerController() {
         isMoving: hasMovementInput, 
         isSprinting: isSprinting, 
         isSliding: isSliding,
-        isGrounded: grounded,
+        isGrounded: effectiveGrounded,
         isMeditating: false
       } 
     }));
 
     // Dispatch position for UI and Ripples
-    window.dispatchEvent(new CustomEvent('player-moved', { detail: { x: pos.x, y: pos.y, z: pos.z, angle: yaw, isMoving: hasMovementInput, grounded } }));
+    window.dispatchEvent(new CustomEvent('player-moved', { detail: { x: pos.x, y: pos.y, z: pos.z, angle: yaw, isMoving: hasMovementInput, grounded: effectiveGrounded } }));
 
     const navAimDir = new THREE.Vector3();
     camera.getWorldDirection(navAimDir);
@@ -1688,7 +1722,7 @@ export function PlayerController() {
         vclip: vclipActive,
       },
       state: {
-        grounded,
+        grounded: effectiveGrounded,
         moving: hasMovementInput,
         sliding: isSliding,
         sprinting: isSprinting,
@@ -1696,7 +1730,7 @@ export function PlayerController() {
       },
     });
 
-    if (!vclipActive && grounded && velocity.y <= 0.1) {
+    if (!vclipActive && effectiveGrounded && velocity.y <= 0.1) {
       setJumps(0);
       if (slideHeld && !isSliding && velocity.x * velocity.x + velocity.z * velocity.z > 2) {
         if (Date.now() - lastSlideTime.current >= 2000) {
@@ -1715,9 +1749,10 @@ export function PlayerController() {
     }
 
     // Applying x/z movement
+    const ladderVelocityY = ladderVerticalInput === 0 ? LADDER_IDLE_HOLD_SPEED : ladderVerticalInput * LADDER_CLIMB_SPEED;
     rigidBody.current.setLinvel({
       x: direction.x,
-      y: vclipActive ? direction.y : velocity.y,
+      y: vclipActive ? direction.y : climbingLadder ? ladderVelocityY : velocity.y,
       z: direction.z
     }, true);
 
@@ -1729,7 +1764,7 @@ export function PlayerController() {
     }
 
     // Jump & Thruster logic
-    if (!vclipActive && !sleepActive && jumpHeld) {
+    if (!vclipActive && !sleepActive && !climbingLadder && jumpHeld) {
       if (grounded && velocity.y <= 0.1) {
         if (jumpRequested) {
           rigidBody.current.setLinvel({ x: velocity.x, y: JUMP_FORCE * (jumpBoostActive ? JUMP_BOOST_MULTIPLIER : 1), z: velocity.z }, true);
@@ -1747,7 +1782,7 @@ export function PlayerController() {
       }
     }
 
-    if (!vclipActive && grounded) {
+    if (!vclipActive && effectiveGrounded) {
       if (newFuel < 1.0) {
         newFuel = Math.min(1.0, newFuel + delta * 0.4); // 2.5 seconds to recharge fully
       }
@@ -1784,7 +1819,9 @@ export function PlayerController() {
         ? "sleep"
         : isSliding
           ? "slide"
-          : (velocity.y < -1 || velocity.y > 1 || !grounded)
+          : climbingLadder
+            ? (hasMovementInput ? "walk" : "holding")
+          : (velocity.y < -1 || velocity.y > 1 || !effectiveGrounded)
             ? "jump"
             : isCasting
               ? "casting"
