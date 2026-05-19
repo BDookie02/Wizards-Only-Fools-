@@ -563,6 +563,7 @@ import { LiveMiniMap } from "./LiveMiniMap";
 import { Huts, type HutInfo } from "./Huts";
 import { Runes } from "./Runes";
 import { Villagers } from "./Villagers";
+import { AvatarBillboard } from "./PixelAvatar";
 import { WaterRipples } from "./WaterRipples";
 import { Projectiles } from "./Projectiles";
 import { isMobilePerformanceMode } from "./performanceMode";
@@ -9137,6 +9138,90 @@ function ChapelMuralWindow({ position, rotation = [0, 0, 0], scale = 1, variant 
   );
 }
 
+type ChapelStoneBrickTextureOptions = {
+  base: string;
+  mid: string;
+  light: string;
+  mortar: string;
+  highlight: string;
+  shadow: string;
+  chip: string;
+  repeatX: number;
+  repeatY: number;
+};
+
+function createChapelStoneBrickTexture({
+  base,
+  mid,
+  light,
+  mortar,
+  highlight,
+  shadow,
+  chip,
+  repeatX,
+  repeatY,
+}: ChapelStoneBrickTextureOptions) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+
+  if (ctx) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = mortar;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const brickHeights = [54, 58, 50, 62];
+    const brickWidths = [124, 152, 108, 176, 136, 164];
+    let y = -8;
+
+    for (let row = 0; y < canvas.height + 64; row++) {
+      const brickHeight = brickHeights[row % brickHeights.length];
+      let x = row % 2 === 0 ? -34 : -108;
+      let col = 0;
+
+      while (x < canvas.width + 190) {
+        const brickWidth = brickWidths[(row + col) % brickWidths.length];
+        const inset = 5;
+        const shade = row % 3 === 0 ? base : row % 3 === 1 ? mid : light;
+
+        ctx.fillStyle = shade;
+        ctx.fillRect(x + inset, y + inset, brickWidth - inset * 2, brickHeight - inset * 2);
+        ctx.fillStyle = highlight;
+        ctx.fillRect(x + inset + 4, y + inset + 4, brickWidth - inset * 2 - 12, 5);
+        ctx.fillRect(x + inset + 4, y + inset + 12, 6, brickHeight - inset * 2 - 20);
+        ctx.fillStyle = shadow;
+        ctx.fillRect(x + inset + 5, y + brickHeight - inset - 8, brickWidth - inset * 2 - 10, 7);
+        ctx.fillRect(x + brickWidth - inset - 9, y + inset + 9, 6, brickHeight - inset * 2 - 18);
+
+        if ((row + col) % 2 === 0) {
+          ctx.fillStyle = chip;
+          ctx.fillRect(x + brickWidth * 0.42, y + brickHeight * 0.35, 16, 7);
+          ctx.fillRect(x + brickWidth * 0.66, y + brickHeight * 0.66, 10, 5);
+        } else {
+          ctx.fillStyle = shadow;
+          ctx.fillRect(x + brickWidth * 0.24, y + brickHeight * 0.56, 13, 5);
+        }
+
+        x += brickWidth;
+        col++;
+      }
+
+      y += brickHeight;
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function ChapelBrickPattern({ wall, z = 0, x = 0 }: { wall: "front" | "back" | "left" | "right" | "tower"; z?: number; x?: number }) {
   const rotation: [number, number, number] = wall === "left" ? [0, Math.PI / 2, 0] : wall === "right" ? [0, -Math.PI / 2, 0] : [0, 0, 0];
   const position: [number, number, number] = wall === "left"
@@ -9144,21 +9229,34 @@ function ChapelBrickPattern({ wall, z = 0, x = 0 }: { wall: "front" | "back" | "
     : wall === "right"
       ? [35.45, 0, z]
       : [x, 0, wall === "back" ? -58.05 : wall === "tower" ? 58.72 : 41.98];
-  const courseWidth = wall === "left" || wall === "right" ? 30 : wall === "tower" ? 7.2 : 16;
-  const widths = wall === "left" || wall === "right" ? [20, 16, 22, 14] : wall === "tower" ? [3.6, 4.6, 2.8, 5.2] : [12, 16, 9, 18];
+  const courseWidth = wall === "left" || wall === "right" ? 92 : wall === "tower" ? 20 : wall === "back" ? 64 : 18;
+  const rowCount = wall === "tower" ? 14 : 10;
+  const verticalJoinCount = wall === "tower" ? 3 : wall === "front" ? 4 : 7;
 
   return (
     <group position={position} rotation={rotation}>
-      {Array.from({ length: 8 }, (_, row) => (
-        <mesh key={`brick-course-${row}`} position={[0, 7.4 + row * 3.05, -0.14]} castShadow={false}>
-          <boxGeometry args={[courseWidth, 0.22, 0.18]} />
-          <meshBasicMaterial color="#2e2c31" transparent opacity={0.5} />
+      {Array.from({ length: rowCount }, (_, row) => (
+        <mesh key={`brick-course-${row}`} position={[0, 5.4 + row * 3.45, -0.18]} castShadow={false}>
+          <boxGeometry args={[courseWidth, 0.34, 0.2]} />
+          <meshBasicMaterial color="#17161b" transparent opacity={0.72} />
         </mesh>
       ))}
-      {Array.from({ length: 12 }, (_, index) => (
-        <mesh key={`brick-short-${index}`} position={[wall === "tower" ? -2.2 + (index % 2) * 4.4 : -12 + (index % 4) * 8 + ((index + wall.length) % 2) * 2.4, 9.1 + Math.floor(index / 4) * 8.8, -0.2]} castShadow={false}>
-          <boxGeometry args={[widths[index % widths.length], 0.18, 0.16]} />
-          <meshBasicMaterial color="#8c8580" transparent opacity={0.34} />
+      {Array.from({ length: rowCount * verticalJoinCount }, (_, index) => {
+        const row = Math.floor(index / verticalJoinCount);
+        const column = index % verticalJoinCount;
+        const spacing = courseWidth / verticalJoinCount;
+        const stagger = row % 2 === 0 ? spacing * 0.5 : 0;
+        return (
+          <mesh key={`brick-join-${index}`} position={[-courseWidth * 0.5 + spacing * (column + 1) + stagger, 7.05 + row * 3.45, -0.22]} castShadow={false}>
+            <boxGeometry args={[0.28, 2.65, 0.18]} />
+            <meshBasicMaterial color="#17161b" transparent opacity={0.66} />
+          </mesh>
+        );
+      })}
+      {Array.from({ length: wall === "tower" ? 18 : 28 }, (_, index) => (
+        <mesh key={`brick-highlight-${index}`} position={[-courseWidth * 0.42 + (index % 5) * (courseWidth / 5.2), 6.45 + Math.floor(index / 5) * 5.8, -0.26]} castShadow={false}>
+          <boxGeometry args={[courseWidth / (wall === "tower" ? 6.8 : 11.5), 0.22, 0.14]} />
+          <meshBasicMaterial color="#9a948d" transparent opacity={0.44} />
         </mesh>
       ))}
     </group>
@@ -9306,12 +9404,12 @@ function ChapelPew({ z, side }: { z: number; side: -1 | 1 }) {
           <meshBasicMaterial color={index % 2 === 0 ? "#9a6132" : "#2b160b"} transparent opacity={0.68} />
         </mesh>
       ))}
-      <mesh position={[0, 2.32, -1.35]} rotation={[0.14, 0, 0]} castShadow={false}>
+      <mesh position={[0, 2.32, 1.35]} rotation={[-0.14, 0, 0]} castShadow={false}>
         <boxGeometry args={[18.4, 2.05, 0.9]} />
         <meshBasicMaterial color="#3a2115" />
       </mesh>
       {[-6.5, 0, 6.5].map((grainX) => (
-        <mesh key={`chapel-pew-back-grain-${grainX}`} position={[grainX, 2.64, -1.95]} rotation={[0.14, 0, 0]} castShadow={false}>
+        <mesh key={`chapel-pew-back-grain-${grainX}`} position={[grainX, 2.64, 1.95]} rotation={[-0.14, 0, 0]} castShadow={false}>
           <boxGeometry args={[4.2, 0.18, 0.16]} />
           <meshBasicMaterial color="#8d552c" transparent opacity={0.58} />
         </mesh>
@@ -9332,78 +9430,148 @@ function ChapelPew({ z, side }: { z: number; side: -1 | 1 }) {
   );
 }
 
-type ChapelPersonPalette = {
-  robe: string;
-  trim: string;
-  skin: string;
-  hair: string;
-  hat?: string;
+const CHAPEL_NPC_CHARACTERS: CharacterCustomization[] = [
+  {
+    skinColor: "#c68a5c",
+    topColor: "#5b2f2a",
+    pantsColor: "#242126",
+    shoesColor: "#2c2116",
+    hatColor: "#5b2f2a",
+    hairColor: "#2b160d",
+    facialHairColor: "#2b160d",
+    topStyle: "tunic",
+    pantsStyle: "pants",
+    shoesStyle: "boots",
+    hatStyle: "none",
+    hairStyle: "short",
+    facialHairStyle: "none",
+    eyeStyle: "calm",
+    mouthStyle: "neutral",
+  },
+  {
+    skinColor: "#8f5f3f",
+    topColor: "#2e4a63",
+    pantsColor: "#334155",
+    shoesColor: "#1f2937",
+    hatColor: "#2e4a63",
+    hairColor: "#1b130d",
+    facialHairColor: "#1b130d",
+    topStyle: "vest",
+    pantsStyle: "skirt",
+    shoesStyle: "shoes",
+    hatStyle: "none",
+    hairStyle: "bob",
+    facialHairStyle: "none",
+    eyeStyle: "content",
+    mouthStyle: "smile",
+  },
+  {
+    skinColor: "#d39a6b",
+    topColor: "#4f5830",
+    pantsColor: "#3f3f2b",
+    shoesColor: "#2a1f16",
+    hatColor: "#4f5830",
+    hairColor: "#4a2b18",
+    facialHairColor: "#4a2b18",
+    topStyle: "simple",
+    pantsStyle: "pants",
+    shoesStyle: "boots",
+    hatStyle: "none",
+    hairStyle: "long",
+    facialHairStyle: "mustache",
+    eyeStyle: "dull",
+    mouthStyle: "neutral",
+  },
+  {
+    skinColor: "#b97850",
+    topColor: "#51365f",
+    pantsColor: "#312e42",
+    shoesColor: "#27212f",
+    hatColor: "#51365f",
+    hairColor: "#24160f",
+    facialHairColor: "#24160f",
+    topStyle: "tunic",
+    pantsStyle: "robe",
+    shoesStyle: "sandals",
+    hatStyle: "none",
+    hairStyle: "spikes",
+    facialHairStyle: "goatee",
+    eyeStyle: "sus",
+    mouthStyle: "frown",
+  },
+  {
+    skinColor: "#e0aa79",
+    topColor: "#6a4a30",
+    pantsColor: "#4b3b24",
+    shoesColor: "#2c2116",
+    hatColor: "#6a4a30",
+    hairColor: "#5d351e",
+    facialHairColor: "#5d351e",
+    topStyle: "vest",
+    pantsStyle: "shorts",
+    shoesStyle: "boots",
+    hatStyle: "none",
+    hairStyle: "short",
+    facialHairStyle: "beard",
+    eyeStyle: "happy",
+    mouthStyle: "smile",
+  },
+  {
+    skinColor: "#9f6d4b",
+    topColor: "#273f35",
+    pantsColor: "#1f2f25",
+    shoesColor: "#161d18",
+    hatColor: "#273f35",
+    hairColor: "#19110b",
+    facialHairColor: "#19110b",
+    topStyle: "simple",
+    pantsStyle: "skirt",
+    shoesStyle: "barefoot",
+    hatStyle: "none",
+    hairStyle: "bob",
+    facialHairStyle: "none",
+    eyeStyle: "nervous",
+    mouthStyle: "neutral",
+  },
+];
+
+const CHAPEL_POPE_CHARACTER: CharacterCustomization = {
+  skinColor: "#f5d0a8",
+  topColor: "#fff8e7",
+  pantsColor: "#f5f0dc",
+  shoesColor: "#d4af37",
+  hatColor: "#f4f1e8",
+  hairColor: "#f8fafc",
+  facialHairColor: "#f8fafc",
+  topStyle: "robe",
+  pantsStyle: "robe",
+  shoesStyle: "shoes",
+  hatStyle: "none",
+  hairStyle: "short",
+  facialHairStyle: "none",
+  eyeStyle: "calm",
+  mouthStyle: "neutral",
 };
 
 function ChapelSeatedNpc({
   position,
-  rotation = [0, 0, 0],
-  palette,
+  yaw,
+  character,
+  scale = 0.78,
 }: {
   position: [number, number, number];
-  rotation?: [number, number, number];
-  palette: ChapelPersonPalette;
+  yaw: number;
+  character: CharacterCustomization;
+  scale?: number;
 }) {
   return (
-    <group position={position} rotation={rotation} scale={[1.02, 1.02, 1.02]} name="chapel-pew-npc">
-      <mesh position={[-0.32, 0.36, 0.4]} rotation={[0.9, 0, 0]} castShadow={false}>
-        <boxGeometry args={[0.34, 0.96, 0.32]} />
-        <meshBasicMaterial color="#242126" />
-      </mesh>
-      <mesh position={[0.32, 0.36, 0.4]} rotation={[0.9, 0, 0]} castShadow={false}>
-        <boxGeometry args={[0.34, 0.96, 0.32]} />
-        <meshBasicMaterial color="#242126" />
-      </mesh>
-      <mesh position={[0, 1.06, 0]} castShadow={false}>
-        <boxGeometry args={[1.08, 1.28, 0.56]} />
-        <meshBasicMaterial color={palette.robe} />
-      </mesh>
-      <mesh position={[0, 1.34, -0.34]} castShadow={false}>
-        <boxGeometry args={[0.78, 0.18, 0.1]} />
-        <meshBasicMaterial color={palette.trim} />
-      </mesh>
-      <mesh position={[-0.76, 1.04, 0.02]} rotation={[0, 0, -0.18]} castShadow={false}>
-        <boxGeometry args={[0.26, 1.02, 0.26]} />
-        <meshBasicMaterial color={palette.skin} />
-      </mesh>
-      <mesh position={[0.76, 1.04, 0.02]} rotation={[0, 0, 0.18]} castShadow={false}>
-        <boxGeometry args={[0.26, 1.02, 0.26]} />
-        <meshBasicMaterial color={palette.skin} />
-      </mesh>
-      <mesh position={[0, 2.04, -0.02]} castShadow={false}>
-        <boxGeometry args={[0.86, 0.78, 0.66]} />
-        <meshBasicMaterial color={palette.skin} />
-      </mesh>
-      <mesh position={[0, 2.47, 0]} castShadow={false}>
-        <boxGeometry args={[0.96, 0.28, 0.7]} />
-        <meshBasicMaterial color={palette.hat ?? palette.hair} />
-      </mesh>
-      <mesh position={[-0.18, 2.08, -0.38]} castShadow={false}>
-        <boxGeometry args={[0.11, 0.11, 0.08]} />
-        <meshBasicMaterial color="#08070a" />
-      </mesh>
-      <mesh position={[0.18, 2.08, -0.38]} castShadow={false}>
-        <boxGeometry args={[0.11, 0.11, 0.08]} />
-        <meshBasicMaterial color="#08070a" />
-      </mesh>
+    <group position={position} scale={[scale, scale, scale]} name="chapel-pew-npc">
+      <AvatarBillboard character={character} animation="idle" yaw={yaw} health={100} />
     </group>
   );
 }
 
 function ChapelPewNpcs() {
-  const palettes: ChapelPersonPalette[] = [
-    { robe: "#5b2f2a", trim: "#b98945", skin: "#c68a5c", hair: "#2b160d" },
-    { robe: "#2e4a63", trim: "#8bb8c6", skin: "#8f5f3f", hair: "#1b130d" },
-    { robe: "#4f5830", trim: "#c0a760", skin: "#d39a6b", hair: "#4a2b18" },
-    { robe: "#51365f", trim: "#d2bc79", skin: "#b97850", hair: "#24160f" },
-    { robe: "#6a4a30", trim: "#d09c55", skin: "#e0aa79", hair: "#5d351e" },
-    { robe: "#273f35", trim: "#88a06c", skin: "#9f6d4b", hair: "#19110b" },
-  ];
   const rows = [-32, -20, -8, 4, 16];
   const aisleSeatOffsets = [7.4, 3.8];
 
@@ -9411,15 +9579,15 @@ function ChapelPewNpcs() {
     <group name="chapel-pew-npcs">
       {rows.flatMap((z, rowIndex) => (
         [-1, 1].flatMap((side) => (
-          aisleSeatOffsets.map((offset, seatIndex) => {
-            const palette = palettes[(rowIndex * 4 + (side > 0 ? 2 : 0) + seatIndex) % palettes.length];
-            const lean = (rowIndex + seatIndex + (side > 0 ? 1 : 0)) % 2 === 0 ? -0.04 : 0.04;
+          aisleSeatOffsets.map((_offset, seatIndex) => {
+            const character = CHAPEL_NPC_CHARACTERS[(rowIndex * 4 + (side > 0 ? 2 : 0) + seatIndex) % CHAPEL_NPC_CHARACTERS.length];
             return (
               <ChapelSeatedNpc
                 key={`chapel-pew-npc-${rowIndex}-${side}-${seatIndex}`}
-                position={[side * (17.2 - offset), 1.78, z + 0.46]}
-                rotation={[0, lean, 0]}
-                palette={palette}
+                position={[side * (6.2 + seatIndex * 3.4), 3.05, z - 1.1 + seatIndex * 0.8]}
+                yaw={0}
+                character={character}
+                scale={0.98 - seatIndex * 0.05}
               />
             );
           })
@@ -9431,58 +9599,19 @@ function ChapelPewNpcs() {
 
 function ChapelPopeAtPulpit() {
   return (
-    <group name="chapel-pope-at-pulpit" position={[18, 1.35, -37.25]} rotation={[0, Math.PI, 0]} scale={[1.34, 1.34, 1.34]}>
-      <mesh position={[-0.36, 0.68, 0]} castShadow={false}>
-        <boxGeometry args={[0.34, 1.34, 0.34]} />
-        <meshBasicMaterial color="#f5f0dc" />
-      </mesh>
-      <mesh position={[0.36, 0.68, 0]} castShadow={false}>
-        <boxGeometry args={[0.34, 1.34, 0.34]} />
-        <meshBasicMaterial color="#f5f0dc" />
-      </mesh>
-      <mesh position={[0, 1.76, 0]} castShadow={false}>
-        <boxGeometry args={[1.26, 1.82, 0.72]} />
-        <meshBasicMaterial color="#fff8e7" />
-      </mesh>
-      <mesh position={[0, 1.9, -0.43]} castShadow={false}>
-        <boxGeometry args={[0.18, 1.62, 0.12]} />
-        <meshBasicMaterial color="#d4af37" />
-      </mesh>
-      <mesh position={[0, 2.22, -0.48]} castShadow={false}>
-        <boxGeometry args={[0.72, 0.18, 0.1]} />
-        <meshBasicMaterial color="#d4af37" />
-      </mesh>
-      <mesh position={[-0.88, 1.74, 0.02]} rotation={[0, 0, -0.2]} castShadow={false}>
-        <boxGeometry args={[0.28, 1.32, 0.28]} />
-        <meshBasicMaterial color="#f5d0a8" />
-      </mesh>
-      <mesh position={[0.88, 1.74, 0.02]} rotation={[0, 0, 0.2]} castShadow={false}>
-        <boxGeometry args={[0.28, 1.32, 0.28]} />
-        <meshBasicMaterial color="#f5d0a8" />
-      </mesh>
-      <mesh position={[0, 3.04, -0.02]} castShadow={false}>
-        <boxGeometry args={[0.94, 0.84, 0.68]} />
-        <meshBasicMaterial color="#f5d0a8" />
-      </mesh>
-      <mesh position={[0, 3.56, 0]} castShadow={false}>
-        <boxGeometry args={[1.04, 0.28, 0.72]} />
+    <group name="chapel-pope-at-pulpit" position={[18, 3.08, -37.25]} scale={[1.18, 1.18, 1.18]}>
+      <AvatarBillboard character={CHAPEL_POPE_CHARACTER} animation="idle" yaw={Math.PI} health={100} />
+      <mesh position={[0, 2.74, 0]} castShadow={false}>
+        <coneGeometry args={[0.5, 1.06, 4]} />
         <meshBasicMaterial color="#f4f1e8" />
       </mesh>
-      <mesh position={[0, 4.02, 0]} castShadow={false}>
-        <coneGeometry args={[0.68, 1.22, 4]} />
-        <meshBasicMaterial color="#f4f1e8" />
-      </mesh>
-      <mesh position={[0, 4.18, -0.22]} castShadow={false}>
-        <boxGeometry args={[0.18, 0.74, 0.1]} />
+      <mesh position={[0, 2.88, 0.09]} castShadow={false}>
+        <boxGeometry args={[0.12, 0.58, 0.08]} />
         <meshBasicMaterial color="#d4af37" />
       </mesh>
-      <mesh position={[-0.2, 3.08, -0.39]} castShadow={false}>
-        <boxGeometry args={[0.1, 0.1, 0.08]} />
-        <meshBasicMaterial color="#08070a" />
-      </mesh>
-      <mesh position={[0.2, 3.08, -0.39]} castShadow={false}>
-        <boxGeometry args={[0.1, 0.1, 0.08]} />
-        <meshBasicMaterial color="#08070a" />
+      <mesh position={[0, 3.05, 0.12]} castShadow={false}>
+        <boxGeometry args={[0.54, 0.12, 0.08]} />
+        <meshBasicMaterial color="#d4af37" />
       </mesh>
     </group>
   );
@@ -9658,32 +9787,77 @@ function ChapelInterior({ showDetails }: { showDetails: boolean }) {
 }
 
 function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: number; showDetails: boolean }) {
-  const stone = "#48464d";
-  const darkStone = "#25242a";
   const roof = "#171319";
-  const trim = "#77716b";
+  const chapelStoneTexture = useMemo(
+    () => createChapelStoneBrickTexture({
+      base: "#46454d",
+      mid: "#535159",
+      light: "#5d5a63",
+      mortar: "#1b1a20",
+      highlight: "#8d8780",
+      shadow: "#2b2a30",
+      chip: "#706b67",
+      repeatX: 3,
+      repeatY: 2,
+    }),
+    [],
+  );
+  const chapelDarkStoneTexture = useMemo(
+    () => createChapelStoneBrickTexture({
+      base: "#292830",
+      mid: "#33323a",
+      light: "#3b3942",
+      mortar: "#0f0e13",
+      highlight: "#625e5a",
+      shadow: "#16151b",
+      chip: "#4a4744",
+      repeatX: 2,
+      repeatY: 3,
+    }),
+    [],
+  );
+  const chapelTrimStoneTexture = useMemo(
+    () => createChapelStoneBrickTexture({
+      base: "#6f6961",
+      mid: "#7b746b",
+      light: "#898175",
+      mortar: "#25221f",
+      highlight: "#b2aa9f",
+      shadow: "#504a43",
+      chip: "#d0c5b6",
+      repeatX: 2,
+      repeatY: 1,
+    }),
+    [],
+  );
+
+  useEffect(() => () => {
+    chapelStoneTexture.dispose();
+    chapelDarkStoneTexture.dispose();
+    chapelTrimStoneTexture.dispose();
+  }, [chapelDarkStoneTexture, chapelStoneTexture, chapelTrimStoneTexture]);
 
   return (
     <group name="giant-catholic-chapel" position={[0, baseHeight, 0]}>
       <mesh position={[0, 0.48, 0]} castShadow={false} receiveShadow>
         <boxGeometry args={[82, 0.96, 122]} />
-        <meshBasicMaterial color="#2d2b29" />
+        <meshBasicMaterial map={chapelDarkStoneTexture} />
       </mesh>
       <ChapelInterior showDetails={showDetails} />
       {[-1, 1].map((side) => (
         <mesh key={`chapel-nave-wall-${side}`} position={[side * 34.2, 17.4, -8]} castShadow={false} receiveShadow>
           <boxGeometry args={[2.8, 34.8, 96]} />
-          <meshBasicMaterial color={stone} />
+          <meshBasicMaterial map={chapelStoneTexture} />
         </mesh>
       ))}
       <mesh position={[0, 17.4, -56.6]} castShadow={false} receiveShadow>
         <boxGeometry args={[68, 34.8, 2.8]} />
-        <meshBasicMaterial color={stone} />
+        <meshBasicMaterial map={chapelStoneTexture} />
       </mesh>
       {[-1, 1].map((side) => (
         <mesh key={`chapel-front-wing-${side}`} position={[side * 25.1, 17.4, 40.6]} castShadow={false} receiveShadow>
           <boxGeometry args={[18.2, 34.8, 2.8]} />
-          <meshBasicMaterial color={stone} />
+          <meshBasicMaterial map={chapelStoneTexture} />
         </mesh>
       ))}
       <mesh position={[0, 37.8, -8]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
@@ -9694,27 +9868,27 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         <Fragment key={`chapel-tower-side-${side}`}>
           <mesh position={[side * 17.3, 33.2, 43]} castShadow={false} receiveShadow>
             <boxGeometry args={[2.6, 66.4, 28]} />
-            <meshBasicMaterial color="#3b3940" />
+            <meshBasicMaterial map={chapelDarkStoneTexture} />
           </mesh>
           <mesh position={[side * 13.7, 33.2, 57.4]} castShadow={false} receiveShadow>
             <boxGeometry args={[5.4, 66.4, 2.6]} />
-            <meshBasicMaterial color="#3b3940" />
+            <meshBasicMaterial map={chapelDarkStoneTexture} />
           </mesh>
         </Fragment>
       ))}
       <mesh position={[0, 46.4, 57.4]} castShadow={false} receiveShadow>
         <boxGeometry args={[22, 40, 2.6]} />
-        <meshBasicMaterial color="#3b3940" />
+        <meshBasicMaterial map={chapelDarkStoneTexture} />
       </mesh>
       {[-1, 1].map((side) => (
         <mesh key={`chapel-tower-rear-pier-${side}`} position={[side * 13.7, 33.2, 29.2]} castShadow={false} receiveShadow>
           <boxGeometry args={[5.4, 66.4, 2.4]} />
-          <meshBasicMaterial color="#333139" />
+          <meshBasicMaterial map={chapelDarkStoneTexture} />
         </mesh>
       ))}
       <mesh position={[0, 46.4, 29.2]} castShadow={false} receiveShadow>
         <boxGeometry args={[22, 40, 2.4]} />
-        <meshBasicMaterial color="#333139" />
+        <meshBasicMaterial map={chapelDarkStoneTexture} />
       </mesh>
       <mesh position={[0, 72.5, 43]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
         <coneGeometry args={[22, 34, 4]} />
@@ -9734,7 +9908,7 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
       </mesh>
       <mesh position={[0, 25.1, 58.1]} castShadow={false}>
         <boxGeometry args={[22.6, 2.2, 1.4]} />
-        <meshBasicMaterial color={trim} />
+        <meshBasicMaterial map={chapelTrimStoneTexture} />
       </mesh>
       <mesh position={[0, 0.98, 59.2]} castShadow={false}>
         <boxGeometry args={[21.5, 0.28, 4.2]} />
@@ -9770,7 +9944,7 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
           {[-44, -20, 4, 28].map((z) => (
             <mesh key={`chapel-buttress-${side}-${z}`} position={[side * 38.2, 12.8, z]} castShadow={false}>
               <boxGeometry args={[4.2, 25.6, 6.2]} />
-              <meshBasicMaterial color={darkStone} />
+              <meshBasicMaterial map={chapelDarkStoneTexture} />
             </mesh>
           ))}
         </Fragment>
