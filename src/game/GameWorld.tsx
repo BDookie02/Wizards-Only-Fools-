@@ -8445,6 +8445,10 @@ const MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS = 48;
 const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET = 3.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS = 28.5;
 const MOUNTAIN_VILLAGE_MINESHAFT_HUT_RADIUS = 24.2;
+const MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS = 13.2;
+const MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS = 22.6;
+const MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS = 16;
+const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS = 17.4;
 const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_WIDTH = 4.2;
 
 type MountainVillageTrailPoint = {
@@ -9047,21 +9051,17 @@ function makeMountainMineshaftLadders(
   const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET + 0.72;
 
   return huts.map((hut, index) => {
-    const landingSide = index % 2 === 0 ? -1 : 1;
-    const landingLocalX = landingSide * Math.min(hut.platformWidth * 0.28, 4.8);
-    const landingLocalZ = hut.depth / 2 + hut.platformDepth - 4.4;
-    const yaw = hut.rotation;
-    const cos = Math.cos(yaw);
-    const sin = Math.sin(yaw);
+    const ladderAngle = hut.angle + (index % 2 === 0 ? -0.46 : 0.46) + index * 0.08;
+    const startY = index === 0 ? bottomY : huts[index - 1].y + 1.35;
 
     return {
       key: `${chunk.key}-mineshaft-ladder-${index}`,
-      angle: hut.angle,
-      localX: hut.localX + cos * landingLocalX + sin * landingLocalZ,
-      localZ: hut.localZ - sin * landingLocalX + cos * landingLocalZ,
-      startY: bottomY,
+      angle: ladderAngle,
+      localX: Math.sin(ladderAngle) * MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS,
+      localZ: Math.cos(ladderAngle) * MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS,
+      startY,
       endY: hut.y + 1.35,
-      rotation: hut.rotation,
+      rotation: ladderAngle + Math.PI,
       width: MOUNTAIN_VILLAGE_MINESHAFT_LADDER_WIDTH,
     };
   });
@@ -9496,9 +9496,44 @@ function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMine
   );
 }
 
+function MountainMineshaftCatwalkRing({ hut, showDetails }: { hut: MountainMineshaftHut; showDetails: boolean }) {
+  const plankRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
+
+  return (
+    <group name={`${hut.key}-catwalk`} position={[0, hut.y + 0.08, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} castShadow={false} receiveShadow>
+        <ringGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS, 64]} />
+        <meshBasicMaterial color="#47311f" side={THREE.DoubleSide} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, hut.angle]} position={[0, 0.05, 0]} castShadow={false} receiveShadow>
+        <ringGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 1.1, MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS - 1.2, 64]} />
+        <meshBasicMaterial color="#6b4a2d" side={THREE.DoubleSide} />
+      </mesh>
+      {showDetails && Array.from({ length: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS }, (_, index) => {
+        const angle = ((index + 0.5) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
+        return (
+          <mesh key={`catwalk-plank-${index}`} position={[Math.sin(angle) * plankRadius, 0.22, Math.cos(angle) * plankRadius]} rotation={[0, angle, 0]} castShadow={false}>
+            <boxGeometry args={[1.15, 0.24, MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS - MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 0.8]} />
+            <meshBasicMaterial color={index % 2 === 0 ? "#7a5635" : "#5d3f28"} />
+          </mesh>
+        );
+      })}
+      {showDetails && [MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS].map((radius, railIndex) => (
+        <mesh key={`catwalk-rail-${railIndex}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 1.05, 0]} castShadow={false}>
+          <ringGeometry args={[radius - 0.14, radius + 0.14, 64]} />
+          <meshBasicMaterial color="#24170f" side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function MountainMineshaftInterior({ layout, showDetails }: { layout: MountainVillageLayout; showDetails: boolean }) {
   return (
     <group name="mountain-village-mineshaft-wall-huts">
+      {layout.interiorHuts.map((hut) => (
+        <MountainMineshaftCatwalkRing key={`${hut.key}-catwalk-ring`} hut={hut} showDetails={showDetails} />
+      ))}
       {layout.interiorHuts.map((hut) => (
         <MountainMineshaftMiniHut key={hut.key} hut={hut} showDetails={showDetails} />
       ))}
@@ -9688,6 +9723,26 @@ function MountainVillageColliders({
           ]}
           position={[0, layout.baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET - 0.42, 0]}
         />
+      </RigidBody>
+      <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        {layout.interiorHuts.flatMap((hut) => {
+          const midRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
+          const radialHalfWidth = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS - MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS) / 2;
+          const arcHalfLength = ((Math.PI * 2 * midRadius) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * 0.56;
+
+          return Array.from({ length: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS }, (_, segmentIndex) => {
+            const angle = ((segmentIndex + 0.5) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
+
+            return (
+              <CuboidCollider
+                key={`${hut.key}-catwalk-collider-${segmentIndex}`}
+                args={[arcHalfLength, 0.32, radialHalfWidth]}
+                position={[Math.sin(angle) * midRadius, hut.y, Math.cos(angle) * midRadius]}
+                rotation={[0, angle, 0]}
+              />
+            );
+          });
+        })}
       </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
         {layout.interiorHuts.map((hut) => {
