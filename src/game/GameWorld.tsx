@@ -8448,8 +8448,11 @@ const MOUNTAIN_VILLAGE_MINESHAFT_HUT_RADIUS = 24.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS = 13.2;
 const MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS = 22.6;
 const MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS = 16;
-const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS = 17.4;
+const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS - 1.25;
 const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_WIDTH = 4.2;
+const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_START_CLEARANCE = 0.78;
+const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_EXIT_CLEARANCE = 1.85;
+const MOUNTAIN_VILLAGE_MINESHAFT_LADDER_SENSOR_DEPTH = 2.1;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -9048,11 +9051,11 @@ function makeMountainMineshaftLadders(
   baseHeight: number,
   huts: MountainMineshaftHut[],
 ): MountainMineshaftLadder[] {
-  const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET + 0.72;
+  const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET + MOUNTAIN_VILLAGE_MINESHAFT_LADDER_START_CLEARANCE;
 
   return huts.map((hut, index) => {
     const ladderAngle = hut.angle + (index % 2 === 0 ? -0.46 : 0.46) + index * 0.08;
-    const startY = index === 0 ? bottomY : huts[index - 1].y + 1.35;
+    const startY = index === 0 ? bottomY : huts[index - 1].y + MOUNTAIN_VILLAGE_MINESHAFT_LADDER_START_CLEARANCE;
 
     return {
       key: `${chunk.key}-mineshaft-ladder-${index}`,
@@ -9060,7 +9063,7 @@ function makeMountainMineshaftLadders(
       localX: Math.sin(ladderAngle) * MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS,
       localZ: Math.cos(ladderAngle) * MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS,
       startY,
-      endY: hut.y + 1.35,
+      endY: hut.y + MOUNTAIN_VILLAGE_MINESHAFT_LADDER_EXIT_CLEARANCE,
       rotation: ladderAngle + Math.PI,
       width: MOUNTAIN_VILLAGE_MINESHAFT_LADDER_WIDTH,
     };
@@ -9779,7 +9782,7 @@ function MountainVillageColliders({
             onIntersectionEnter={(event) => dispatchLadderZone("wof-ladder-zone-enter", ladder.key, event)}
             onIntersectionExit={(event) => dispatchLadderZone("wof-ladder-zone-exit", ladder.key, event)}
           >
-            <CuboidCollider args={[ladder.width / 2 + 0.9, height / 2, 1.35]} />
+            <CuboidCollider args={[ladder.width / 2 + 0.9, height / 2, MOUNTAIN_VILLAGE_MINESHAFT_LADDER_SENSOR_DEPTH]} />
           </RigidBody>
         );
       })}
