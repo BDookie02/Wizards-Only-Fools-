@@ -9133,6 +9133,10 @@ function GraveyardSpikedFence({ segments, showDetails }: { segments: GraveyardFe
     <group name="graveyard-black-spiked-fence">
       {segments.map((segment) => (
         <group key={segment.key} position={[segment.localX, segment.localY, segment.localZ]} rotation={[0, segment.rotation, 0]}>
+          <mesh position={[0, -0.46, 0]} castShadow={false} receiveShadow>
+            <boxGeometry args={[segment.length + 2.1, 1.08, 1.28]} />
+            <meshBasicMaterial color="#050505" />
+          </mesh>
           <mesh position={[0, 0.38, 0]} castShadow={false}>
             <boxGeometry args={[segment.length + 1.4, 0.76, 1.05]} />
             <meshBasicMaterial color="#020202" />
@@ -9206,14 +9210,19 @@ function GraveyardTombstone({ tomb }: { tomb: GraveyardTomb }) {
   const depth = 1.85 + tomb.variant * 0.72;
   const baseWidth = width + (styleIndex === 3 ? 5.8 : 4.1);
   const baseDepth = depth + 2.45;
+  const foundationColor = tomb.variant > 0.5 ? "#1d241b" : "#252c21";
   const labelY = styleIndex === 1 ? height * 0.42 + 1.25 : styleIndex === 3 ? height * 0.39 + 1.15 : height * 0.48 + 1.05;
   const labelHeight = styleIndex === 1 ? height * 0.42 : styleIndex === 4 ? height * 0.48 : height * 0.52;
   const labelWidth = styleIndex === 3 ? width * 0.43 : width * 0.78;
   const frontZ = -depth / 2 - 0.035;
 
   return (
-    <group name="graveyard-joke-tomb" position={[tomb.localX, tomb.localY + 0.08, tomb.localZ]} rotation={[0, tomb.rotation, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 2.0]} castShadow={false} renderOrder={1} scale={[1.9, 1.18, 1]}>
+    <group name="graveyard-joke-tomb" position={[tomb.localX, tomb.localY, tomb.localZ]} rotation={[0, tomb.rotation, 0]}>
+      <mesh position={[0, -0.88, 0.62]} castShadow={false} receiveShadow>
+        <boxGeometry args={[baseWidth * 1.08, 1.76, baseDepth * 1.16]} />
+        <meshBasicMaterial color={foundationColor} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 2.0]} castShadow={false} renderOrder={1} scale={[1.9, 1.18, 1]}>
         <circleGeometry args={[7.4 + tomb.variant * 2.2, 12]} />
         <meshBasicMaterial color="#202519" transparent opacity={0.82} />
       </mesh>
