@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Physics, RigidBody, CuboidCollider } from "@react-three/rapier";
+import { Physics, RigidBody, CuboidCollider, CylinderCollider } from "@react-three/rapier";
 import { Sky, Environment } from "@react-three/drei";
 import { PlayerController } from "./PlayerController";
 import { NetworkManager } from "./NetworkManager";
@@ -8437,6 +8437,7 @@ const MOUNTAIN_VILLAGE_TRAIL_TURNS = 0.72;
 const MOUNTAIN_VILLAGE_TRAIL_START_RADIUS = SURVIVAL_BLOCK_SIZE * 0.405;
 const MOUNTAIN_VILLAGE_TRAIL_END_RADIUS = 64;
 const MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET = 9.2;
+const MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS = MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 20;
 
 type MountainVillageTrailSupport = {
   key: string;
@@ -9051,17 +9052,33 @@ function MountainVillageColliders({
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       </RigidBody>
-      <RigidBody type="fixed" colliders={false} friction={0.48} restitution={0} position={[chunk.x, 0, chunk.z]}>
-        {layout.trailSegments.map((segment) => (
-          <group key={`${segment.key}-collider`} position={[segment.localX, 0, segment.localZ]} rotation={[0, segment.yaw, 0]}>
-            <CuboidCollider
-              args={[segment.width / 2, 0.54, segment.length / 2]}
-              position={[0, segment.y, 0]}
-              rotation={[segment.slope, 0, 0]}
-            />
-          </group>
-        ))}
-        <CuboidCollider args={[MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 6, 0.42, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 6]} position={[0, layout.summitY + 0.06, 0]} />
+      <RigidBody type="fixed" colliders={false} friction={0.72} restitution={0} position={[chunk.x, 0, chunk.z]}>
+        {layout.trailSegments.map((segment) => {
+          const hasLanding = segment.index === 0 || segment.index === layout.trailSegments.length - 1;
+          const landingLength = Math.min(22, segment.length * 0.72);
+          const landingZ = segment.index === 0 ? -segment.length * 0.28 : segment.length * 0.28;
+
+          return (
+            <group key={`${segment.key}-collider`} position={[segment.localX, 0, segment.localZ]} rotation={[0, segment.yaw, 0]}>
+              <group position={[0, segment.y, 0]} rotation={[segment.slope, 0, 0]}>
+                <CuboidCollider
+                  args={[segment.width * 0.43, 0.22, segment.length * 0.49]}
+                  position={[0, 0.2, 0]}
+                />
+                {hasLanding && (
+                  <CuboidCollider
+                    args={[segment.width * 0.66, 0.2, landingLength / 2]}
+                    position={[0, 0.62, landingZ]}
+                  />
+                )}
+              </group>
+            </group>
+          );
+        })}
+        <CylinderCollider
+          args={[0.3, MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS]}
+          position={[0, layout.summitY + 0.12, 0]}
+        />
         {layout.cabins.map((cabin) => (
           <CuboidCollider
             key={`${cabin.key}-collider`}
