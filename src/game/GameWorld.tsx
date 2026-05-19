@@ -8993,6 +8993,249 @@ function ChapelStainedWindow({ position, rotation = [0, 0, 0], scale = 1 }: { po
   );
 }
 
+function ChapelMuralWindow({ position, rotation = [0, 0, 0], scale = 1, variant = 0 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number; variant?: number }) {
+  const robes = variant % 2 === 0 ? "#7c3aed" : "#b91c1c";
+  const halo = variant % 2 === 0 ? "#facc15" : "#f59e0b";
+
+  return (
+    <group position={position} rotation={rotation} scale={[scale, scale, scale]}>
+      <mesh castShadow={false}>
+        <boxGeometry args={[10.4, 20.6, 0.3]} />
+        <meshBasicMaterial color="#08090d" />
+      </mesh>
+      <mesh position={[0, 0, -0.2]} castShadow={false}>
+        <boxGeometry args={[8.8, 18.5, 0.16]} />
+        <meshBasicMaterial color="#1e3a8a" transparent opacity={0.82} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[-2.9, 0, -0.34]} castShadow={false}>
+        <boxGeometry args={[1.55, 17.2, 0.14]} />
+        <meshBasicMaterial color="#06b6d4" transparent opacity={0.78} />
+      </mesh>
+      <mesh position={[2.9, 0, -0.36]} castShadow={false}>
+        <boxGeometry args={[1.55, 17.2, 0.14]} />
+        <meshBasicMaterial color="#dc2626" transparent opacity={0.76} />
+      </mesh>
+      <mesh position={[0, 3.2, -0.45]} castShadow={false}>
+        <circleGeometry args={[2.25, 12]} />
+        <meshBasicMaterial color={halo} transparent opacity={0.88} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, -2.9, -0.5]} castShadow={false}>
+        <boxGeometry args={[3.3, 8.6, 0.12]} />
+        <meshBasicMaterial color={robes} transparent opacity={0.82} />
+      </mesh>
+      <mesh position={[0, 0.5, -0.58]} castShadow={false}>
+        <boxGeometry args={[7.6, 0.54, 0.1]} />
+        <meshBasicMaterial color="#fde68a" transparent opacity={0.92} />
+      </mesh>
+      <mesh position={[0, -5.8, -0.58]} castShadow={false}>
+        <boxGeometry args={[7.6, 0.54, 0.1]} />
+        <meshBasicMaterial color="#fde68a" transparent opacity={0.92} />
+      </mesh>
+      <mesh position={[0, 0, -0.6]} castShadow={false}>
+        <boxGeometry args={[0.54, 17.4, 0.1]} />
+        <meshBasicMaterial color="#fde68a" transparent opacity={0.92} />
+      </mesh>
+    </group>
+  );
+}
+
+function ChapelBrickPattern({ wall, z = 0, x = 0 }: { wall: "front" | "back" | "left" | "right" | "tower"; z?: number; x?: number }) {
+  const rotation: [number, number, number] = wall === "left" ? [0, Math.PI / 2, 0] : wall === "right" ? [0, -Math.PI / 2, 0] : [0, 0, 0];
+  const position: [number, number, number] = wall === "left"
+    ? [-35.45, 0, z]
+    : wall === "right"
+      ? [35.45, 0, z]
+      : [x, 0, wall === "back" ? -58.05 : wall === "tower" ? 58.72 : 41.98];
+  const courseWidth = wall === "left" || wall === "right" ? 30 : wall === "tower" ? 7.2 : 16;
+  const widths = wall === "left" || wall === "right" ? [20, 16, 22, 14] : wall === "tower" ? [3.6, 4.6, 2.8, 5.2] : [12, 16, 9, 18];
+
+  return (
+    <group position={position} rotation={rotation}>
+      {Array.from({ length: 8 }, (_, row) => (
+        <mesh key={`brick-course-${row}`} position={[0, 7.4 + row * 3.05, -0.14]} castShadow={false}>
+          <boxGeometry args={[courseWidth, 0.22, 0.18]} />
+          <meshBasicMaterial color="#2e2c31" transparent opacity={0.5} />
+        </mesh>
+      ))}
+      {Array.from({ length: 12 }, (_, index) => (
+        <mesh key={`brick-short-${index}`} position={[wall === "tower" ? -2.2 + (index % 2) * 4.4 : -12 + (index % 4) * 8 + ((index + wall.length) % 2) * 2.4, 9.1 + Math.floor(index / 4) * 8.8, -0.2]} castShadow={false}>
+          <boxGeometry args={[widths[index % widths.length], 0.18, 0.16]} />
+          <meshBasicMaterial color="#8c8580" transparent opacity={0.34} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function ChapelCrack({ position, rotation = [0, 0, 0], scale = 1 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number }) {
+  return (
+    <group position={position} rotation={rotation} scale={[scale, scale, scale]}>
+      <mesh position={[0, 0, 0]} rotation={[0, 0, 0.62]} castShadow={false}>
+        <boxGeometry args={[0.34, 5.6, 0.18]} />
+        <meshBasicMaterial color="#151319" />
+      </mesh>
+      <mesh position={[1.1, -1.7, -0.04]} rotation={[0, 0, -0.9]} castShadow={false}>
+        <boxGeometry args={[0.28, 3.2, 0.16]} />
+        <meshBasicMaterial color="#17151b" />
+      </mesh>
+      <mesh position={[-0.9, 1.9, -0.04]} rotation={[0, 0, -0.72]} castShadow={false}>
+        <boxGeometry args={[0.26, 2.7, 0.16]} />
+        <meshBasicMaterial color="#17151b" />
+      </mesh>
+    </group>
+  );
+}
+
+function ChapelPew({ z, side }: { z: number; side: -1 | 1 }) {
+  const x = side * 17.2;
+  return (
+    <group position={[x, 0.96, z]}>
+      <mesh position={[0, 1.15, 0]} castShadow={false}>
+        <boxGeometry args={[18, 1.2, 3.8]} />
+        <meshBasicMaterial color="#5a321c" />
+      </mesh>
+      <mesh position={[0, 2.9, -1.35]} rotation={[0.14, 0, 0]} castShadow={false}>
+        <boxGeometry args={[18.4, 3.8, 0.9]} />
+        <meshBasicMaterial color="#3a2115" />
+      </mesh>
+      {[-7.2, 7.2].map((legX) => (
+        <Fragment key={`pew-leg-${legX}`}>
+          <mesh position={[legX, 0.55, -1.1]} castShadow={false}>
+            <boxGeometry args={[0.78, 1.1, 0.78]} />
+            <meshBasicMaterial color="#2a160d" />
+          </mesh>
+          <mesh position={[legX, 0.55, 1.1]} castShadow={false}>
+            <boxGeometry args={[0.78, 1.1, 0.78]} />
+            <meshBasicMaterial color="#2a160d" />
+          </mesh>
+        </Fragment>
+      ))}
+    </group>
+  );
+}
+
+function ChapelCandle({ position, scale = 1, light = false }: { position: [number, number, number]; scale?: number; light?: boolean }) {
+  return (
+    <group position={position} scale={[scale, scale, scale]}>
+      <mesh position={[0, 0.75, 0]} castShadow={false}>
+        <cylinderGeometry args={[0.34, 0.38, 1.5, 6]} />
+        <meshBasicMaterial color="#eadfc2" />
+      </mesh>
+      <mesh position={[0, 1.72, 0]} castShadow={false}>
+        <coneGeometry args={[0.38, 0.86, 6]} />
+        <meshBasicMaterial color="#ffb020" />
+      </mesh>
+      <mesh position={[0, 1.92, 0]} castShadow={false}>
+        <coneGeometry args={[0.18, 0.48, 5]} />
+        <meshBasicMaterial color="#fff6b0" transparent opacity={0.88} />
+      </mesh>
+      {light && <pointLight color="#ffd27a" intensity={2.2} distance={26} decay={2} position={[0, 2.1, 0]} />}
+    </group>
+  );
+}
+
+function ChapelChandelier({ z }: { z: number }) {
+  const candlePositions = Array.from({ length: 8 }, (_, index) => {
+    const angle = (index / 8) * Math.PI * 2;
+    return [Math.cos(angle) * 6.2, 0, Math.sin(angle) * 6.2] as [number, number, number];
+  });
+
+  return (
+    <group position={[0, 29.5, z]}>
+      <mesh position={[0, 5.2, 0]} castShadow={false}>
+        <cylinderGeometry args={[0.16, 0.16, 10.4, 5]} />
+        <meshBasicMaterial color="#15110c" />
+      </mesh>
+      <mesh rotation={[Math.PI / 2, 0, 0]} castShadow={false}>
+        <torusGeometry args={[6.2, 0.24, 6, 24]} />
+        <meshBasicMaterial color="#24180c" />
+      </mesh>
+      {candlePositions.map(([x, y, zOffset], index) => (
+        <Fragment key={`chapel-chandelier-candle-${index}`}>
+          <mesh position={[x * 0.5, 0, zOffset * 0.5]} rotation={[0, 0, Math.atan2(zOffset, x)]} castShadow={false}>
+            <boxGeometry args={[6.2, 0.16, 0.16]} />
+            <meshBasicMaterial color="#2f1e0f" />
+          </mesh>
+          <ChapelCandle position={[x, y - 0.15, zOffset]} scale={0.86} light={index % 2 === 0} />
+        </Fragment>
+      ))}
+      <pointLight color="#ffd27a" intensity={3.8} distance={58} decay={2} position={[0, 1.4, 0]} />
+    </group>
+  );
+}
+
+function ChapelInterior({ showDetails }: { showDetails: boolean }) {
+  const candleSpots: Array<[number, number, number]> = [
+    [-28, 0.9, 30], [28, 0.9, 30], [-28, 0.9, 8], [28, 0.9, 8],
+    [-28, 0.9, -18], [28, 0.9, -18], [-18, 0.9, -46], [18, 0.9, -46],
+    [-6, 1.3, -43], [6, 1.3, -43],
+  ];
+
+  return (
+    <group name="graveyard-chapel-interior">
+      <mesh position={[0, 1.02, -7]} castShadow={false} receiveShadow>
+        <boxGeometry args={[58, 0.18, 104]} />
+        <meshBasicMaterial color="#242019" />
+      </mesh>
+      <mesh position={[0, 1.16, 0]} castShadow={false}>
+        <boxGeometry args={[10.5, 0.18, 92]} />
+        <meshBasicMaterial color="#3d3328" />
+      </mesh>
+      {[-32, -20, -8, 4, 16].map((z) => (
+        <Fragment key={`chapel-pews-${z}`}>
+          <ChapelPew side={-1} z={z} />
+          <ChapelPew side={1} z={z} />
+        </Fragment>
+      ))}
+      <group position={[0, 1, -45]}>
+        <mesh position={[0, 2.1, 0]} castShadow={false}>
+          <boxGeometry args={[18, 3.2, 7.5]} />
+          <meshBasicMaterial color="#5b351f" />
+        </mesh>
+        <mesh position={[0, 4, -0.2]} castShadow={false}>
+          <boxGeometry args={[21, 1.2, 8.6]} />
+          <meshBasicMaterial color="#7a4928" />
+        </mesh>
+        <mesh position={[0, 5.15, 2.2]} rotation={[-0.28, 0, 0]} castShadow={false}>
+          <boxGeometry args={[11.5, 0.7, 5.2]} />
+          <meshBasicMaterial color="#3c2416" />
+        </mesh>
+        <mesh position={[0, 6.1, 2.7]} castShadow={false}>
+          <boxGeometry args={[0.48, 4.7, 0.38]} />
+          <meshBasicMaterial color="#d7b46a" />
+        </mesh>
+        <mesh position={[0, 7.35, 2.7]} castShadow={false}>
+          <boxGeometry args={[3.4, 0.48, 0.38]} />
+          <meshBasicMaterial color="#d7b46a" />
+        </mesh>
+      </group>
+      <group position={[18, 1, -34]}>
+        <mesh position={[0, 2.0, 0]} castShadow={false}>
+          <boxGeometry args={[7.4, 4, 6.4]} />
+          <meshBasicMaterial color="#4b2c1a" />
+        </mesh>
+        <mesh position={[0, 4.5, -0.6]} rotation={[-0.35, 0, 0]} castShadow={false}>
+          <boxGeometry args={[8.2, 1, 5.6]} />
+          <meshBasicMaterial color="#724526" />
+        </mesh>
+        <mesh position={[0, 5.25, 1.9]} castShadow={false}>
+          <boxGeometry args={[4.2, 0.42, 2.4]} />
+          <meshBasicMaterial color="#d6c28a" />
+        </mesh>
+      </group>
+      {showDetails && (
+        <>
+          {candleSpots.map((position, index) => (
+            <ChapelCandle key={`chapel-candle-${index}`} position={position} scale={index > 7 ? 1.28 : 1} light={index % 2 === 0} />
+          ))}
+          <ChapelChandelier z={-25} />
+          <ChapelChandelier z={16} />
+        </>
+      )}
+    </group>
+  );
+}
+
 function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: number; showDetails: boolean }) {
   const stone = "#48464d";
   const darkStone = "#25242a";
@@ -9005,17 +9248,52 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         <boxGeometry args={[82, 0.96, 122]} />
         <meshBasicMaterial color="#2d2b29" />
       </mesh>
-      <mesh position={[0, 17.4, -8]} castShadow={false} receiveShadow>
-        <boxGeometry args={[68, 34.8, 96]} />
+      <ChapelInterior showDetails={showDetails} />
+      {[-1, 1].map((side) => (
+        <mesh key={`chapel-nave-wall-${side}`} position={[side * 34.2, 17.4, -8]} castShadow={false} receiveShadow>
+          <boxGeometry args={[2.8, 34.8, 96]} />
+          <meshBasicMaterial color={stone} />
+        </mesh>
+      ))}
+      <mesh position={[0, 17.4, -56.6]} castShadow={false} receiveShadow>
+        <boxGeometry args={[68, 34.8, 2.8]} />
         <meshBasicMaterial color={stone} />
       </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={`chapel-front-wing-${side}`} position={[side * 25.1, 17.4, 40.6]} castShadow={false} receiveShadow>
+          <boxGeometry args={[18.2, 34.8, 2.8]} />
+          <meshBasicMaterial color={stone} />
+        </mesh>
+      ))}
       <mesh position={[0, 37.8, -8]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
         <coneGeometry args={[54, 19, 4]} />
         <meshBasicMaterial color={roof} />
       </mesh>
-      <mesh position={[0, 33.2, 43]} castShadow={false} receiveShadow>
-        <boxGeometry args={[31, 66.4, 28]} />
+      {[-1, 1].map((side) => (
+        <Fragment key={`chapel-tower-side-${side}`}>
+          <mesh position={[side * 15.4, 33.2, 43]} castShadow={false} receiveShadow>
+            <boxGeometry args={[2.6, 66.4, 28]} />
+            <meshBasicMaterial color="#3b3940" />
+          </mesh>
+          <mesh position={[side * 11.8, 33.2, 57.4]} castShadow={false} receiveShadow>
+            <boxGeometry args={[7.6, 66.4, 2.6]} />
+            <meshBasicMaterial color="#3b3940" />
+          </mesh>
+        </Fragment>
+      ))}
+      <mesh position={[0, 46.4, 57.4]} castShadow={false} receiveShadow>
+        <boxGeometry args={[16.4, 40, 2.6]} />
         <meshBasicMaterial color="#3b3940" />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={`chapel-tower-rear-pier-${side}`} position={[side * 11.8, 33.2, 29.2]} castShadow={false} receiveShadow>
+          <boxGeometry args={[7.6, 66.4, 2.4]} />
+          <meshBasicMaterial color="#333139" />
+        </mesh>
+      ))}
+      <mesh position={[0, 46.4, 29.2]} castShadow={false} receiveShadow>
+        <boxGeometry args={[16.4, 40, 2.4]} />
+        <meshBasicMaterial color="#333139" />
       </mesh>
       <mesh position={[0, 72.5, 43]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
         <coneGeometry args={[22, 34, 4]} />
@@ -9029,13 +9307,17 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         <boxGeometry args={[13.5, 2.4, 2.4]} />
         <meshBasicMaterial color="#050505" />
       </mesh>
-      <mesh position={[0, 12.4, 57.4]} castShadow={false}>
-        <boxGeometry args={[16, 24, 1.2]} />
-        <meshBasicMaterial color="#11100e" />
+      <mesh position={[0, 12.4, 58.05]} castShadow={false} renderOrder={2}>
+        <boxGeometry args={[15.8, 24, 0.36]} />
+        <meshBasicMaterial color="#050403" transparent opacity={0.24} depthWrite={false} />
       </mesh>
       <mesh position={[0, 25.1, 58.1]} castShadow={false}>
         <boxGeometry args={[18, 2.2, 1.4]} />
         <meshBasicMaterial color={trim} />
+      </mesh>
+      <mesh position={[0, 1.3, 59.2]} castShadow={false}>
+        <boxGeometry args={[20.5, 1.1, 4.2]} />
+        <meshBasicMaterial color="#1d1711" />
       </mesh>
       <ChapelStainedWindow position={[0, 45.5, 58.2]} scale={1.08} />
       <mesh position={[0, 54.8, 58.36]} castShadow={false}>
@@ -9054,10 +9336,14 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         <boxGeometry args={[0.62, 10.2, 0.14]} />
         <meshBasicMaterial color="#fde68a" />
       </mesh>
+      <ChapelMuralWindow position={[0, 21.6, -58.35]} rotation={[0, Math.PI, 0]} scale={1.35} variant={2} />
       {[-1, 1].map((side) => (
         <Fragment key={`chapel-side-${side}`}>
-          {[-34, -8, 18].map((z, index) => (
-            <ChapelStainedWindow key={`chapel-window-${side}-${index}`} position={[side * 34.3, 21.5, z]} rotation={[0, side * Math.PI / 2, 0]} scale={0.9} />
+          {[-26, 12].map((z, index) => (
+            <ChapelMuralWindow key={`chapel-mural-window-${side}-${index}`} position={[side * 35.72, 22.2, z]} rotation={[0, side * Math.PI / 2, 0]} scale={1.12} variant={index + (side > 0 ? 1 : 0)} />
+          ))}
+          {[29].map((z, index) => (
+            <ChapelStainedWindow key={`chapel-window-${side}-${index}`} position={[side * 35.7, 21.5, z]} rotation={[0, side * Math.PI / 2, 0]} scale={0.95} />
           ))}
           {[-44, -20, 4, 28].map((z) => (
             <mesh key={`chapel-buttress-${side}-${z}`} position={[side * 38.2, 12.8, z]} castShadow={false}>
@@ -9069,13 +9355,25 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
       ))}
       {showDetails && (
         <>
+          <ChapelBrickPattern wall="front" x={-25.1} />
+          <ChapelBrickPattern wall="front" x={25.1} />
+          <ChapelBrickPattern wall="tower" x={-11.8} />
+          <ChapelBrickPattern wall="tower" x={11.8} />
+          <ChapelBrickPattern wall="back" />
+          <ChapelBrickPattern wall="left" z={-22} />
+          <ChapelBrickPattern wall="right" z={-22} />
+          <ChapelCrack position={[-24, 24, 42.16]} scale={1.12} />
+          <ChapelCrack position={[23, 18, 58.92]} scale={0.86} />
+          <ChapelCrack position={[-35.82, 25, 7]} rotation={[0, Math.PI / 2, 0]} scale={0.95} />
+          <ChapelCrack position={[35.82, 16, -35]} rotation={[0, -Math.PI / 2, 0]} scale={1.18} />
           {Array.from({ length: 7 }, (_, index) => (
             <mesh key={`chapel-pixel-highlight-${index}`} position={[-28 + index * 9.4, 31.5 + (index % 2) * 2.6, 40.4]} castShadow={false}>
               <boxGeometry args={[5.2, 0.5, 0.42]} />
               <meshBasicMaterial color="#8e877e" transparent opacity={0.62} />
             </mesh>
           ))}
-          <pointLight color="#f8d477" intensity={3.5} distance={48} decay={2} position={[0, 18, 59]} />
+          <pointLight color="#f8d477" intensity={4.2} distance={54} decay={2} position={[0, 18, 59]} />
+          <pointLight color="#f9cf71" intensity={3.5} distance={72} decay={2} position={[0, 18, -28]} />
         </>
       )}
     </group>
@@ -9102,8 +9400,19 @@ function GraveyardVillageColliders({
       </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.55} restitution={0} position={[chunk.x, 0, chunk.z]}>
         <CuboidCollider args={[41, 0.5, 61]} position={[0, baseHeight + 0.45, 0]} />
-        <CuboidCollider args={[34, 17.4, 48]} position={[0, baseHeight + 17.4, -8]} />
-        <CuboidCollider args={[15.5, 33.2, 14]} position={[0, baseHeight + 33.2, 43]} />
+        <CuboidCollider args={[1.4, 17.4, 48]} position={[-34.2, baseHeight + 17.4, -8]} />
+        <CuboidCollider args={[1.4, 17.4, 48]} position={[34.2, baseHeight + 17.4, -8]} />
+        <CuboidCollider args={[34, 17.4, 1.4]} position={[0, baseHeight + 17.4, -56.6]} />
+        <CuboidCollider args={[9.1, 17.4, 1.4]} position={[-25.1, baseHeight + 17.4, 40.6]} />
+        <CuboidCollider args={[9.1, 17.4, 1.4]} position={[25.1, baseHeight + 17.4, 40.6]} />
+        <CuboidCollider args={[1.3, 33.2, 14]} position={[-15.4, baseHeight + 33.2, 43]} />
+        <CuboidCollider args={[1.3, 33.2, 14]} position={[15.4, baseHeight + 33.2, 43]} />
+        <CuboidCollider args={[3.8, 33.2, 1.3]} position={[-11.8, baseHeight + 33.2, 57.4]} />
+        <CuboidCollider args={[3.8, 33.2, 1.3]} position={[11.8, baseHeight + 33.2, 57.4]} />
+        <CuboidCollider args={[3.8, 33.2, 1.2]} position={[-11.8, baseHeight + 33.2, 29.2]} />
+        <CuboidCollider args={[3.8, 33.2, 1.2]} position={[11.8, baseHeight + 33.2, 29.2]} />
+        <CuboidCollider args={[8.2, 20, 1.3]} position={[0, baseHeight + 46.4, 57.4]} />
+        <CuboidCollider args={[8.2, 20, 1.2]} position={[0, baseHeight + 46.4, 29.2]} />
       </RigidBody>
     </>
   );
