@@ -3335,6 +3335,8 @@ const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_CANDIDATES = 3600;
 const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_CANDIDATES = 1400;
 const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS = 12.5;
 const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_MS = 7.25;
+const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH = 1400;
+const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH = 700;
 const SURVIVAL_TUTORIAL_GRASS_CELL_SIZE = 58;
 const SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS = 270;
 const SURVIVAL_TUTORIAL_GRASS_AIR_RADIUS = 430;
@@ -5925,6 +5927,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
   const flowerBellBloomRef = useRef<THREE.InstancedMesh>(null);
   const flowerPuffBloomRef = useRef<THREE.InstancedMesh>(null);
   const flowerCenterRef = useRef<THREE.InstancedMesh>(null);
+  const bladeUploadCountRef = useRef(0);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const normalScratch = useMemo(() => new THREE.Vector3(), []);
   const flowerColorScratch = useMemo(() => new THREE.Color(), []);
@@ -6067,40 +6070,86 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     if (!mesh) return;
 
     const count = Math.min(bladeInstances.length, bladeCapacity);
+    const batchSize = mobilePerformanceMode
+      ? SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH
+      : SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH;
+    let cancelled = false;
+    let frameId: number | null = null;
+    let uploadIndex = 0;
+    const uploadDummy = new THREE.Object3D();
+    const uploadNormal = new THREE.Vector3();
+    const uploadNormalQuaternion = new THREE.Quaternion();
+    const uploadYawQuaternion = new THREE.Quaternion();
+
+    if (count <= 0) {
+      mesh.count = 0;
+      bladeUploadCountRef.current = 0;
+      mesh.instanceMatrix.needsUpdate = true;
+      if (typeof document !== "undefined") {
+        document.documentElement.dataset.wofBotwGrassCenter = `${Math.round(center.x)},${Math.round(center.z)}`;
+        document.documentElement.dataset.wofBotwGrassInstances = "0";
+        document.documentElement.dataset.wofBotwGrassGroundTriangles = String(carpetGeometry?.index ? Math.floor(carpetGeometry.index.count / 3) : 0);
+      }
+      return;
+    }
+
     ensureSurvivalInstancedMeshColors(mesh, count);
-    for (let index = 0; index < count; index += 1) {
-      const instance = bladeInstances[index];
-      normalScratch.set(instance.normalX, instance.normalY, instance.normalZ).normalize();
-      normalQuaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normalScratch);
-      yawQuaternion.setFromAxisAngle(SURVIVAL_GRASS_BLADE_SOURCE_UP, instance.yaw);
-      dummy.position.set(instance.x, instance.y, instance.z);
-      dummy.quaternion.copy(normalQuaternion).multiply(yawQuaternion);
-      dummy.scale.set(instance.width, instance.height, instance.width);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(index, dummy.matrix);
-      mesh.setColorAt(index, instance.color);
+    if (bladeUploadCountRef.current <= 0 || bladeUploadCountRef.current > count) {
+      mesh.count = 0;
     }
 
-    mesh.count = count;
     mesh.frustumCulled = false;
-    mesh.instanceMatrix.needsUpdate = true;
-    finalizeSurvivalInstancedMeshColors(mesh);
 
-    if (typeof document !== "undefined") {
-      document.documentElement.dataset.wofBotwGrassCenter = `${Math.round(center.x)},${Math.round(center.z)}`;
-      document.documentElement.dataset.wofBotwGrassInstances = String(count);
-      document.documentElement.dataset.wofBotwGrassGroundTriangles = String(carpetGeometry?.index ? Math.floor(carpetGeometry.index.count / 3) : 0);
-    }
+    const uploadBatch = () => {
+      if (cancelled) return;
+      const end = Math.min(count, uploadIndex + batchSize);
+      for (let index = uploadIndex; index < end; index += 1) {
+        const instance = bladeInstances[index];
+        uploadNormal.set(instance.normalX, instance.normalY, instance.normalZ).normalize();
+        uploadNormalQuaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, uploadNormal);
+        uploadYawQuaternion.setFromAxisAngle(SURVIVAL_GRASS_BLADE_SOURCE_UP, instance.yaw);
+        uploadDummy.position.set(instance.x, instance.y, instance.z);
+        uploadDummy.quaternion.copy(uploadNormalQuaternion).multiply(uploadYawQuaternion);
+        uploadDummy.scale.set(instance.width, instance.height, instance.width);
+        uploadDummy.updateMatrix();
+        mesh.setMatrixAt(index, uploadDummy.matrix);
+        mesh.setColorAt(index, instance.color);
+      }
+
+      uploadIndex = end;
+      mesh.count = Math.max(mesh.count, uploadIndex);
+      mesh.instanceMatrix.needsUpdate = true;
+      finalizeSurvivalInstancedMeshColors(mesh);
+
+      if (typeof document !== "undefined") {
+        document.documentElement.dataset.wofBotwGrassCenter = `${Math.round(center.x)},${Math.round(center.z)}`;
+        document.documentElement.dataset.wofBotwGrassInstances = String(uploadIndex);
+        document.documentElement.dataset.wofBotwGrassGroundTriangles = String(carpetGeometry?.index ? Math.floor(carpetGeometry.index.count / 3) : 0);
+      }
+
+      if (uploadIndex < count) {
+        frameId = window.requestAnimationFrame(uploadBatch);
+        return;
+      }
+
+      bladeUploadCountRef.current = count;
+      if (typeof document !== "undefined") {
+        document.documentElement.dataset.wofBotwGrassInstances = String(count);
+      }
+    };
+
+    frameId = window.requestAnimationFrame(uploadBatch);
+    return () => {
+      cancelled = true;
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+    };
   }, [
     bladeCapacity,
     bladeInstances,
     carpetGeometry,
     center.x,
     center.z,
-    dummy,
-    normalQuaternion,
-    normalScratch,
-    yawQuaternion,
+    mobilePerformanceMode,
   ]);
 
   useEffect(() => {

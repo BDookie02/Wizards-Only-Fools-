@@ -112,9 +112,15 @@ const QA_SURVIVAL_CROSS_MAP_ROUTE: QaSurvivalRouteWaypoint[] = [
   { id: "meadow-start-loop", x: SURVIVAL_BLOCK_SIZE * 4 - 299, z: SURVIVAL_BLOCK_SIZE * -3 - 35 },
 ];
 const QA_SURVIVAL_LONG_HAUL_ROUTE: QaSurvivalRouteWaypoint[] = [
-  { id: "long-haul-point-b", x: SURVIVAL_BLOCK_SIZE * 8 + 180, z: SURVIVAL_BLOCK_SIZE * -6 - 160 },
+  { id: "long-haul-point-b", x: SURVIVAL_BLOCK_SIZE * 6 + 160, z: SURVIVAL_BLOCK_SIZE * -5 + 170 },
   { id: "long-haul-point-a", x: SURVIVAL_BLOCK_SIZE * 2 - 240, z: SURVIVAL_BLOCK_SIZE * -2 + 180 },
 ];
+const QA_SURVIVAL_BAD_LONG_HAUL_CHUNK = { cx: 8, cz: -6 };
+const QA_SURVIVAL_BAD_LONG_HAUL_LOCAL_MIN_X = 120;
+const QA_SURVIVAL_BAD_LONG_HAUL_LOCAL_MAX_Z = -120;
+const QA_SURVIVAL_RESCUE_LONG_HAUL_LOCAL_X = -180;
+const QA_SURVIVAL_RESCUE_LONG_HAUL_LOCAL_Z = 160;
+const QA_SURVIVAL_RESCUE_LONG_HAUL_Y = 80;
 const QA_BASE_VILLAGE_ROAD_HALF_WIDTH = 13.5;
 const QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT = 190;
 const QA_DARREL_GROVE_CLEARING_LOCAL_X = 86;
@@ -442,16 +448,30 @@ function getNumericSearchParam(params: URLSearchParams, key: string) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function getQaSurvivalUrlSpawnOptions(params: URLSearchParams) {
+function getQaSurvivalUrlSpawnOptions(params: URLSearchParams, cx?: number, cz?: number) {
   const options: { y?: number; localX?: number; localZ?: number; yaw?: number; pitch?: number } = {};
   const y = getNumericSearchParam(params, "qaSurvivalY");
   const localX = getNumericSearchParam(params, "qaSurvivalLocalX");
   const localZ = getNumericSearchParam(params, "qaSurvivalLocalZ");
   const yaw = getNumericSearchParam(params, "qaSurvivalYaw");
   const pitch = getNumericSearchParam(params, "qaSurvivalPitch");
+  const shouldRescueBadLongHaulEndpoint =
+    cx === QA_SURVIVAL_BAD_LONG_HAUL_CHUNK.cx &&
+    cz === QA_SURVIVAL_BAD_LONG_HAUL_CHUNK.cz &&
+    localX !== undefined &&
+    localZ !== undefined &&
+    localX >= QA_SURVIVAL_BAD_LONG_HAUL_LOCAL_MIN_X &&
+    localZ <= QA_SURVIVAL_BAD_LONG_HAUL_LOCAL_MAX_Z;
+
   if (y !== undefined) options.y = y;
-  if (localX !== undefined) options.localX = localX;
-  if (localZ !== undefined) options.localZ = localZ;
+  if (shouldRescueBadLongHaulEndpoint) {
+    options.y = Math.max(options.y ?? QA_SURVIVAL_RESCUE_LONG_HAUL_Y, QA_SURVIVAL_RESCUE_LONG_HAUL_Y);
+    options.localX = QA_SURVIVAL_RESCUE_LONG_HAUL_LOCAL_X;
+    options.localZ = QA_SURVIVAL_RESCUE_LONG_HAUL_LOCAL_Z;
+  } else {
+    if (localX !== undefined) options.localX = localX;
+    if (localZ !== undefined) options.localZ = localZ;
+  }
   if (yaw !== undefined) options.yaw = yaw;
   if (pitch !== undefined) options.pitch = pitch;
   return options;
@@ -670,7 +690,7 @@ function getQaSurvivalSpawnFromUrl(): QaSurvivalSpawn | null {
         }
         return getSurvivalChunkSpawn(cx, cz, `qa:${decodedChunkParam}:${runKey}`, {
           ...getQaSurvivalChunkSpawnOptions(cx, cz),
-          ...getQaSurvivalUrlSpawnOptions(params),
+          ...getQaSurvivalUrlSpawnOptions(params, cx, cz),
         });
       }
     }
