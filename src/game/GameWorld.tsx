@@ -835,7 +835,7 @@ const SURVIVAL_CHUNK_STREAM_STEP_MS = 2400;
 const SURVIVAL_CHUNK_STREAM_STEP_CURVE_MS = 1200;
 const SURVIVAL_CHUNK_MOUNT_INTERVAL_MS = 360;
 const SURVIVAL_CHUNK_MOBILE_MOUNT_INTERVAL_MS = 520;
-const SURVIVAL_CHUNK_CENTER_HYSTERESIS = SURVIVAL_BLOCK_SIZE * 0.62;
+const SURVIVAL_CHUNK_CENTER_HYSTERESIS = SURVIVAL_BLOCK_SIZE * 0.72;
 const SURVIVAL_CHUNK_STREAM_ROUNDING = 0.45;
 const BASE_VILLAGE_STREAM_DISTANCE = SURVIVAL_BLOCK_SIZE * 1.45;
 const SURVIVAL_BIOME_HEX_RADIUS = SURVIVAL_BLOCK_SIZE * 0.62;
@@ -3331,6 +3331,10 @@ const SURVIVAL_BOTW_FLOWER_NEAR_HEIGHT_LIMIT = 34;
 const SURVIVAL_BOTW_FLOWER_FAR_HEIGHT_LIMIT = 24;
 const SURVIVAL_BOTW_GRASS_FLOWER_DESKTOP_COUNT = 440;
 const SURVIVAL_BOTW_GRASS_FLOWER_MOBILE_COUNT = 210;
+const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_CANDIDATES = 3600;
+const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_CANDIDATES = 1400;
+const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS = 12.5;
+const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_MS = 7.25;
 const SURVIVAL_TUTORIAL_GRASS_CELL_SIZE = 58;
 const SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS = 270;
 const SURVIVAL_TUTORIAL_GRASS_AIR_RADIUS = 430;
@@ -4168,7 +4172,7 @@ function isSurvivalVillageGrassBlocked(chunk: SurvivalChunkInfo, localX: number,
 
   if (chunk.villageKind === "desert") {
     if (getSurvivalRestoredMeadowMask(chunk.x + localX, chunk.z + localZ) > 0.02) {
-      return isSurvivalDesertVillageBuildingGrassBlocked(chunk, localX, localZ);
+      return false;
     }
 
     const diagonalA = Math.abs((localX - localZ) / Math.SQRT2);
@@ -5050,6 +5054,7 @@ function getSurvivalLocalGrassViewerPosition(camera: THREE.Camera) {
 
 function shouldRenderSurvivalFullVillageChunk(chunk: SurvivalChunkInfo) {
   if (!chunk.hasVillage || chunk.lod === "far") return false;
+  if (chunk.villageKind === "desert" && getSurvivalRestoredMeadowMask(chunk.x, chunk.z) > 0.02) return false;
 
   const playerPosition = getBrowserLocalPlayerPosition() ?? getQaSurvivalUrlPlayerWorldPosition();
   if (!playerPosition) return chunk.distance === 0;
@@ -5351,8 +5356,12 @@ function getSurvivalBotwGrassPlacement(worldX: number, worldZ: number, minNormal
   const biome = getSurvivalGrassSurfaceBiome(chunk.biome, worldX, worldZ, terrainY);
   if (biome === "desert" && shouldKeepSurvivalBotwGrassBareForDesert(chunk, worldX, worldZ)) return null;
 
-  const normal = getSurvivalGrassSurfaceNormalForChunk(chunk, localX, localZ, 3.4);
   const restoredMeadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
+  if (restoredMeadowMask > 0.02 && minNormalY <= 0.42) {
+    return { chunk, localX, localZ, terrainY, biome: biome === "desert" ? "plains" : biome, normal: SURVIVAL_GRASS_BLADE_SOURCE_UP };
+  }
+
+  const normal = getSurvivalGrassSurfaceNormalForChunk(chunk, localX, localZ, 3.4);
   const effectiveMinNormalY = lerpNumber(minNormalY, 0.03, restoredMeadowMask);
   if (normal.y < effectiveMinNormalY) return null;
 
@@ -5388,6 +5397,40 @@ function getSurvivalBotwGrassFootprintStats(worldX: number, worldZ: number, radi
     baseY: centerY + 0.026,
     heightRange: maxY - minY,
   };
+}
+
+function getSurvivalBotwGrassFootprintStatsForPlacement(
+  worldX: number,
+  worldZ: number,
+  radius: number,
+  placement: NonNullable<ReturnType<typeof getSurvivalBotwGrassPlacement>>,
+) {
+  const restoredMeadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
+  if (restoredMeadowMask > 0.02 && placement.normal.y > 0.52) {
+    return {
+      baseY: placement.terrainY + 0.026,
+      heightRange: 0,
+    };
+  }
+
+  return getSurvivalBotwGrassFootprintStats(worldX, worldZ, radius);
+}
+
+function getSurvivalBotwFlowerFootprintStatsForPlacement(
+  worldX: number,
+  worldZ: number,
+  radius: number,
+  placement: NonNullable<ReturnType<typeof getSurvivalBotwGrassPlacement>>,
+) {
+  const restoredMeadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
+  if (restoredMeadowMask > 0.02 && placement.normal.y > 0.58) {
+    return {
+      baseY: placement.terrainY + 0.026,
+      heightRange: 0,
+    };
+  }
+
+  return getSurvivalBotwGrassFootprintStats(worldX, worldZ, radius);
 }
 
 function getSurvivalBotwGrassCarpetPlacement(worldX: number, worldZ: number) {
@@ -5513,7 +5556,7 @@ function makeSurvivalBotwFlowerInstances(
     const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, 0.38);
     if (!placement) continue;
 
-    const footprintStats = getSurvivalBotwGrassFootprintStats(worldX, worldZ, 0.36);
+    const footprintStats = getSurvivalBotwFlowerFootprintStatsForPlacement(worldX, worldZ, 0.36, placement);
     if (footprintStats.heightRange > 2.15) continue;
     const distanceFromCenter = Math.hypot(worldX - centerX, worldZ - centerZ);
     const heightLimit = lerpNumber(
@@ -5620,10 +5663,11 @@ function makeSurvivalBotwGrassBladeInstances(
     const routeCompression = lerpNumber(1, 0.78, smoothstepRange(0.28, 0.64, routeMask));
     const baseHeight = (1.02 + survivalHash01(centerSeedX + candidate * 31, centerSeedZ, 2500) * 0.3 + meadowMask * 0.08) * slopeCompression * routeCompression;
     const baseWidth = 1.18 + survivalHash01(centerSeedX, centerSeedZ + candidate * 37, 2700) * 0.38;
-    const footprintStats = getSurvivalBotwGrassFootprintStats(
+    const footprintStats = getSurvivalBotwGrassFootprintStatsForPlacement(
       worldX,
       worldZ,
       Math.min(1.05, baseWidth * SURVIVAL_BOTW_GRASS_FOOTPRINT_SCALE),
+      placement,
     );
     if (footprintStats.heightRange > SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE) continue;
     const distanceFromCenter = Math.hypot(worldX - centerX, worldZ - centerZ);
@@ -5656,6 +5700,216 @@ function makeSurvivalBotwGrassBladeInstances(
   }
 
   return instances;
+}
+
+type SurvivalBotwGrassBuildContext = {
+  centerX: number;
+  centerY: number;
+  centerZ: number;
+  radius: number;
+  maxInstances: number;
+  candidateCount: number;
+  centerSeedX: number;
+  centerSeedZ: number;
+  angleOffset: number;
+};
+
+type SurvivalBotwFlowerBuildContext = SurvivalBotwGrassBuildContext & {
+  maxFlowers: number;
+};
+
+function getSurvivalBotwGrassBuildContext(
+  centerX: number,
+  centerY: number,
+  centerZ: number,
+  mobilePerformanceMode: boolean,
+): SurvivalBotwGrassBuildContext {
+  const radius = mobilePerformanceMode ? SURVIVAL_BOTW_GRASS_RADIUS * 0.82 : SURVIVAL_BOTW_GRASS_RADIUS;
+  const maxInstances = mobilePerformanceMode ? SURVIVAL_BOTW_GRASS_MOBILE_COUNT : SURVIVAL_BOTW_GRASS_DESKTOP_COUNT;
+  const centerSeedX = Math.floor(centerX * 0.25);
+  const centerSeedZ = Math.floor(centerZ * 0.25);
+  return {
+    centerX,
+    centerY,
+    centerZ,
+    radius,
+    maxInstances,
+    candidateCount: Math.round(maxInstances * 2.35),
+    centerSeedX,
+    centerSeedZ,
+    angleOffset: survivalHash01(centerSeedX, centerSeedZ, 1850) * Math.PI * 2,
+  };
+}
+
+function getSurvivalBotwFlowerBuildContext(
+  centerX: number,
+  centerY: number,
+  centerZ: number,
+  mobilePerformanceMode: boolean,
+): SurvivalBotwFlowerBuildContext {
+  const radius = mobilePerformanceMode ? SURVIVAL_BOTW_GRASS_RADIUS * 0.74 : SURVIVAL_BOTW_GRASS_RADIUS * 0.9;
+  const maxFlowers = mobilePerformanceMode ? SURVIVAL_BOTW_GRASS_FLOWER_MOBILE_COUNT : SURVIVAL_BOTW_GRASS_FLOWER_DESKTOP_COUNT;
+  const centerSeedX = Math.floor(centerX * 0.25);
+  const centerSeedZ = Math.floor(centerZ * 0.25);
+  return {
+    centerX,
+    centerY,
+    centerZ,
+    radius,
+    maxInstances: maxFlowers,
+    maxFlowers,
+    candidateCount: Math.round(maxFlowers * 2.8),
+    centerSeedX,
+    centerSeedZ,
+    angleOffset: survivalHash01(centerSeedX, centerSeedZ, 4850) * Math.PI * 2,
+  };
+}
+
+function makeSurvivalBotwGrassBladeCandidate(
+  context: SurvivalBotwGrassBuildContext,
+  candidate: number,
+): SurvivalBotwGrassBladeInstance | null {
+  const radial = Math.sqrt((candidate + 0.5) / context.candidateCount);
+  const angle = context.angleOffset + candidate * 2.399963229728653;
+  const jitter = (survivalHash01(context.centerSeedX + candidate * 17, context.centerSeedZ - candidate * 11, 1900) - 0.5) * 0.56;
+  const worldX = context.centerX + Math.cos(angle) * (context.radius * radial + jitter);
+  const worldZ = context.centerZ + Math.sin(angle) * (context.radius * radial + jitter);
+  const routeMask = getSurvivalTownRouteMask(worldX, worldZ);
+  const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, 0.26);
+  if (!placement) return null;
+
+  const variant = survivalHash01(context.centerSeedX + candidate * 23, context.centerSeedZ - candidate * 29, 2300);
+  const color = getSurvivalBotwGrassInstanceColor(placement.biome, worldX, worldZ, placement.terrainY, variant);
+  const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
+  const slopeCompression = lerpNumber(1, 0.72, smoothstepRange(0.34, 0.78, 1 - placement.normal.y));
+  const routeCompression = lerpNumber(1, 0.78, smoothstepRange(0.28, 0.64, routeMask));
+  const baseHeight = (1.02 + survivalHash01(context.centerSeedX + candidate * 31, context.centerSeedZ, 2500) * 0.3 + meadowMask * 0.08) * slopeCompression * routeCompression;
+  const baseWidth = 1.18 + survivalHash01(context.centerSeedX, context.centerSeedZ + candidate * 37, 2700) * 0.38;
+  const footprintStats = getSurvivalBotwGrassFootprintStatsForPlacement(
+    worldX,
+    worldZ,
+    Math.min(1.05, baseWidth * SURVIVAL_BOTW_GRASS_FOOTPRINT_SCALE),
+    placement,
+  );
+  if (footprintStats.heightRange > SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE) return null;
+  const distanceFromCenter = Math.hypot(worldX - context.centerX, worldZ - context.centerZ);
+  const heightLimit = lerpNumber(
+    SURVIVAL_BOTW_GRASS_BLADE_NEAR_HEIGHT_LIMIT,
+    SURVIVAL_BOTW_GRASS_BLADE_FAR_HEIGHT_LIMIT,
+    smoothstepRange(36, context.radius, distanceFromCenter),
+  );
+  if (footprintStats.baseY - context.centerY > heightLimit) return null;
+  const footprintCompression = lerpNumber(
+    1,
+    0.68,
+    smoothstepRange(1.2, SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, footprintStats.heightRange),
+  );
+  const height = baseHeight * footprintCompression;
+  const width = baseWidth * lerpNumber(1, 0.82, smoothstepRange(1.2, SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, footprintStats.heightRange));
+
+  return {
+    x: worldX,
+    y: footprintStats.baseY,
+    z: worldZ,
+    normalX: placement.normal.x,
+    normalY: placement.normal.y,
+    normalZ: placement.normal.z,
+    yaw: survivalHash01(context.centerSeedX - candidate * 41, context.centerSeedZ + candidate * 43, 2900) * Math.PI * 2,
+    width,
+    height,
+    color,
+  };
+}
+
+function makeSurvivalBotwFlowerCandidate(
+  context: SurvivalBotwFlowerBuildContext,
+  candidate: number,
+): SurvivalBotwFlowerInstance | null {
+  const radial = Math.sqrt((candidate + 0.5) / context.candidateCount);
+  const angle = context.angleOffset + candidate * 2.399963229728653;
+  const jitter = (survivalHash01(context.centerSeedX + candidate * 13, context.centerSeedZ - candidate * 19, 4900) - 0.5) * 2.2;
+  const worldX = context.centerX + Math.cos(angle) * (context.radius * radial + jitter);
+  const worldZ = context.centerZ + Math.sin(angle) * (context.radius * radial + jitter);
+  if (getSurvivalTownRouteMask(worldX, worldZ) > 0.78) return null;
+
+  const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, 0.38);
+  if (!placement) return null;
+
+  const footprintStats = getSurvivalBotwFlowerFootprintStatsForPlacement(worldX, worldZ, 0.36, placement);
+  if (footprintStats.heightRange > 2.15) return null;
+  const distanceFromCenter = Math.hypot(worldX - context.centerX, worldZ - context.centerZ);
+  const heightLimit = lerpNumber(
+    SURVIVAL_BOTW_FLOWER_NEAR_HEIGHT_LIMIT,
+    SURVIVAL_BOTW_FLOWER_FAR_HEIGHT_LIMIT,
+    smoothstepRange(28, context.radius, distanceFromCenter),
+  );
+  if (footprintStats.baseY - context.centerY > heightLimit) return null;
+
+  const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
+  const biome = meadowMask > 0.08 && placement.biome !== "swamp"
+    ? "tallgrass"
+    : placement.biome;
+  const palette = biome === "tallgrass"
+    ? ["#fff9a6", "#fef08a", "#ffd23f", "#fb7185", "#ff4fa3", "#60a5fa", "#a78bfa", "#ffffff", "#fb923c"]
+    : biome === "swamp"
+      ? ["#d9f99d", "#86efac", "#5eead4", "#c084fc", "#fde047"]
+      : SURVIVAL_FLOWER_COLORS[biome];
+  const variant = survivalHash01(context.centerSeedX + candidate * 29, context.centerSeedZ - candidate * 31, 4940);
+  const typeRoll = survivalHash01(context.centerSeedX - candidate * 37, context.centerSeedZ + candidate * 41, 4980);
+  const bloomType: SurvivalBotwFlowerType = typeRoll > 0.86
+    ? "puff"
+    : typeRoll > 0.62
+      ? "star"
+      : typeRoll > 0.5
+        ? "bell"
+        : "round";
+  const bloomBase = lerpNumber(0.48, 0.66, meadowMask) + survivalHash01(context.centerSeedX, context.centerSeedZ + candidate * 43, 5020) * 0.18;
+  const widthRoll = survivalHash01(context.centerSeedX - candidate * 47, context.centerSeedZ, 5060);
+  const heightRoll = survivalHash01(context.centerSeedX, context.centerSeedZ - candidate * 53, 5100);
+  const bloomSize = bloomBase * (typeRoll > 0.91 ? 1.12 : 1);
+  const color = new THREE.Color(palette[Math.floor((variant + typeRoll * 0.23) * palette.length) % palette.length]);
+  color.multiplyScalar(1.02 + survivalHash01(context.centerSeedX + candidate, context.centerSeedZ - candidate, 5140) * 0.16);
+  color.r = clamp01(color.r);
+  color.g = clamp01(color.g);
+  color.b = clamp01(color.b);
+
+  return {
+    x: worldX,
+    y: footprintStats.baseY + 0.018,
+    z: worldZ,
+    normalX: placement.normal.x,
+    normalY: placement.normal.y,
+    normalZ: placement.normal.z,
+    yaw: survivalHash01(context.centerSeedX + candidate * 59, context.centerSeedZ - candidate * 61, 5180) * Math.PI * 2,
+    stemHeight: lerpNumber(1, 1.45, variant) + meadowMask * 0.18,
+    stemRadius: 0.018 + survivalHash01(context.centerSeedX - candidate * 67, context.centerSeedZ + candidate * 71, 5220) * 0.012,
+    bloomSize,
+    bloomType,
+    bloomWidth: bloomSize * (
+      bloomType === "bell" ? lerpNumber(0.34, 0.48, widthRoll)
+        : bloomType === "star" ? lerpNumber(0.78, 1.08, widthRoll)
+          : bloomType === "puff" ? lerpNumber(0.5, 0.72, widthRoll)
+            : lerpNumber(0.62, 0.86, widthRoll)
+    ),
+    bloomHeight: bloomSize * (
+      bloomType === "bell" ? lerpNumber(0.84, 1.12, heightRoll)
+        : bloomType === "star" ? lerpNumber(0.6, 0.82, heightRoll)
+          : bloomType === "puff" ? lerpNumber(0.5, 0.7, heightRoll)
+            : lerpNumber(0.46, 0.68, heightRoll)
+    ),
+    centerSize: bloomSize * (
+      bloomType === "round" ? 0.12
+        : bloomType === "star" ? 0.11
+          : bloomType === "bell" ? 0.06
+            : 0.08
+    ),
+    color,
+    centerColor: new THREE.Color(variant > 0.66 ? "#fff7ad" : variant > 0.38 ? "#facc15" : "#f59e0b"),
+  };
+}
+
+function getSurvivalBotwGrassBuildKey(center: SurvivalBotwGrassCenter, mobilePerformanceMode: boolean) {
+  return `${center.x}:${Math.round(center.y)}:${center.z}:${mobilePerformanceMode ? "m" : "d"}`;
 }
 
 function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
@@ -5700,25 +5954,113 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     verticalFadeEnd: { value: SURVIVAL_BOTW_GRASS_VERTICAL_FADE_END },
   }), [initialCenter.x, initialCenter.y, initialCenter.z]);
 
-  const bladeInstances = useMemo(
-    () => enabled ? makeSurvivalBotwGrassBladeInstances(center.x, center.y, center.z, mobilePerformanceMode) : [],
-    [center.x, center.y, center.z, enabled, mobilePerformanceMode],
-  );
+  const [bladeInstances, setBladeInstances] = useState<SurvivalBotwGrassBladeInstance[]>([]);
   const carpetGeometry = useMemo(
     () => enabled && SURVIVAL_BOTW_GRASS_CARPET_ENABLED
       ? makeSurvivalBotwGrassCarpetGeometry(center.x, center.z, mobilePerformanceMode)
       : null,
     [center.x, center.z, enabled, mobilePerformanceMode],
   );
-  const flowerInstances = useMemo(
-    () => enabled ? makeSurvivalBotwFlowerInstances(center.x, center.y, center.z, mobilePerformanceMode) : [],
-    [center.x, center.y, center.z, enabled, mobilePerformanceMode],
-  );
+  const [flowerInstances, setFlowerInstances] = useState<SurvivalBotwFlowerInstance[]>([]);
   const starFlowers = useMemo(() => flowerInstances.filter((flower) => flower.bloomType === "star"), [flowerInstances]);
   const roundFlowers = useMemo(() => flowerInstances.filter((flower) => flower.bloomType === "round"), [flowerInstances]);
   const bellFlowers = useMemo(() => flowerInstances.filter((flower) => flower.bloomType === "bell"), [flowerInstances]);
   const puffFlowers = useMemo(() => flowerInstances.filter((flower) => flower.bloomType === "puff"), [flowerInstances]);
   const bladeCapacity = mobilePerformanceMode ? SURVIVAL_BOTW_GRASS_MOBILE_COUNT : SURVIVAL_BOTW_GRASS_DESKTOP_COUNT;
+
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined") {
+      setBladeInstances([]);
+      setFlowerInstances([]);
+      return undefined;
+    }
+
+    let cancelled = false;
+    let timer: number | null = null;
+    const buildKey = getSurvivalBotwGrassBuildKey(center, mobilePerformanceMode);
+    const bladeContext = getSurvivalBotwGrassBuildContext(center.x, center.y, center.z, mobilePerformanceMode);
+    const flowerContext = getSurvivalBotwFlowerBuildContext(center.x, center.y, center.z, mobilePerformanceMode);
+    const nextBladeInstances: SurvivalBotwGrassBladeInstance[] = [];
+    const nextFlowerInstances: SurvivalBotwFlowerInstance[] = [];
+    const candidateSliceLimit = mobilePerformanceMode
+      ? SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_CANDIDATES
+      : SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_CANDIDATES;
+    const sliceBudgetMs = mobilePerformanceMode
+      ? SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_MS
+      : SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS;
+    const startedAt = performance.now();
+    let bladeCandidate = 0;
+    let flowerCandidate = 0;
+
+    const clearScheduledWork = () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    const publishBuild = () => {
+      if (cancelled) return;
+      startTransition(() => {
+        setBladeInstances(nextBladeInstances);
+        setFlowerInstances(nextFlowerInstances);
+      });
+      if (typeof document !== "undefined") {
+        document.documentElement.dataset.wofBotwGrassBuildKey = buildKey;
+        document.documentElement.dataset.wofBotwGrassBuildMs = String(Math.round(performance.now() - startedAt));
+      }
+    };
+
+    const runSlice = () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+      timer = null;
+      if (cancelled) return;
+
+      const sliceStartedAt = performance.now();
+      let workCount = 0;
+      while (
+        bladeCandidate < bladeContext.candidateCount &&
+        nextBladeInstances.length < bladeContext.maxInstances &&
+        workCount < candidateSliceLimit &&
+        performance.now() - sliceStartedAt < sliceBudgetMs
+      ) {
+        const instance = makeSurvivalBotwGrassBladeCandidate(bladeContext, bladeCandidate);
+        if (instance) nextBladeInstances.push(instance);
+        bladeCandidate += 1;
+        workCount += 1;
+      }
+
+      while (
+        flowerCandidate < flowerContext.candidateCount &&
+        nextFlowerInstances.length < flowerContext.maxFlowers &&
+        workCount < candidateSliceLimit &&
+        performance.now() - sliceStartedAt < sliceBudgetMs
+      ) {
+        const instance = makeSurvivalBotwFlowerCandidate(flowerContext, flowerCandidate);
+        if (instance) nextFlowerInstances.push(instance);
+        flowerCandidate += 1;
+        workCount += 1;
+      }
+
+      const doneBlades = bladeCandidate >= bladeContext.candidateCount || nextBladeInstances.length >= bladeContext.maxInstances;
+      const doneFlowers = flowerCandidate >= flowerContext.candidateCount || nextFlowerInstances.length >= flowerContext.maxFlowers;
+      if (doneBlades && doneFlowers) {
+        publishBuild();
+        return;
+      }
+
+      timer = window.setTimeout(runSlice, 8);
+    };
+
+    timer = window.setTimeout(runSlice, 0);
+
+    return () => {
+      cancelled = true;
+      clearScheduledWork();
+    };
+  }, [center.x, center.y, center.z, enabled, mobilePerformanceMode]);
 
   useEffect(() => {
     const mesh = bladeMeshRef.current;
