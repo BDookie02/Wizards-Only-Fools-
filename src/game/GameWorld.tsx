@@ -5953,31 +5953,48 @@ function getSurvivalBotwGrassBuildKey(center: SurvivalBotwGrassCenter, mobilePer
   return `${center.x}:${Math.round(center.y)}:${center.z}:${mobilePerformanceMode ? "m" : "d"}`;
 }
 
+type SurvivalBotwGrassUploadPriority = {
+  viewerX: number;
+  viewerZ: number;
+  leadX: number;
+  leadZ: number;
+};
+
 function getSurvivalBotwGrassUploadPrioritizedInstances(
   instances: SurvivalBotwGrassBladeInstance[],
-  priorityX: number,
-  priorityZ: number,
+  priority: SurvivalBotwGrassUploadPriority,
 ) {
   if (instances.length < 2) return instances;
 
   const nearRadiusSq = SURVIVAL_BOTW_GRASS_UPLOAD_NEAR_PRIORITY_RADIUS * SURVIVAL_BOTW_GRASS_UPLOAD_NEAR_PRIORITY_RADIUS;
   const midRadiusSq = SURVIVAL_BOTW_GRASS_UPLOAD_MID_PRIORITY_RADIUS * SURVIVAL_BOTW_GRASS_UPLOAD_MID_PRIORITY_RADIUS;
-  const near: SurvivalBotwGrassBladeInstance[] = [];
-  const mid: SurvivalBotwGrassBladeInstance[] = [];
+  const viewerNear: SurvivalBotwGrassBladeInstance[] = [];
+  const leadNear: SurvivalBotwGrassBladeInstance[] = [];
+  const viewerMid: SurvivalBotwGrassBladeInstance[] = [];
+  const leadMid: SurvivalBotwGrassBladeInstance[] = [];
   const far: SurvivalBotwGrassBladeInstance[] = [];
 
   instances.forEach((instance) => {
-    const distanceSq = (instance.x - priorityX) * (instance.x - priorityX) + (instance.z - priorityZ) * (instance.z - priorityZ);
-    if (distanceSq <= nearRadiusSq) {
-      near.push(instance);
-    } else if (distanceSq <= midRadiusSq) {
-      mid.push(instance);
+    const viewerDistanceSq =
+      (instance.x - priority.viewerX) * (instance.x - priority.viewerX) +
+      (instance.z - priority.viewerZ) * (instance.z - priority.viewerZ);
+    const leadDistanceSq =
+      (instance.x - priority.leadX) * (instance.x - priority.leadX) +
+      (instance.z - priority.leadZ) * (instance.z - priority.leadZ);
+    if (viewerDistanceSq <= nearRadiusSq) {
+      viewerNear.push(instance);
+    } else if (leadDistanceSq <= nearRadiusSq) {
+      leadNear.push(instance);
+    } else if (viewerDistanceSq <= midRadiusSq) {
+      viewerMid.push(instance);
+    } else if (leadDistanceSq <= midRadiusSq) {
+      leadMid.push(instance);
     } else {
       far.push(instance);
     }
   });
 
-  return near.concat(mid, far);
+  return viewerNear.concat(leadNear, viewerMid, leadMid, far);
 }
 
 function getSurvivalPendingChunkCount() {
@@ -5994,7 +6011,12 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
   const centerRef = useRef(center);
   const lastViewerRef = useRef<{ x: number; z: number; time: number } | null>(null);
   const hasPublishedGrassBuildRef = useRef(false);
-  const uploadPriorityRef = useRef({ x: initialCenter.x, z: initialCenter.z });
+  const uploadPriorityRef = useRef<SurvivalBotwGrassUploadPriority>({
+    viewerX: initialCenter.x,
+    viewerZ: initialCenter.z,
+    leadX: initialCenter.x,
+    leadZ: initialCenter.z,
+  });
   const bladeUploadProgressRef = useRef(0);
   const bladeMeshRef = useRef<THREE.InstancedMesh>(null);
   const flowerStemRef = useRef<THREE.InstancedMesh>(null);
@@ -6088,8 +6110,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       const uploadPriority = uploadPriorityRef.current;
       const prioritizedBladeInstances = getSurvivalBotwGrassUploadPrioritizedInstances(
         nextBladeInstances,
-        uploadPriority.x,
-        uploadPriority.z,
+        uploadPriority,
       );
       bladeInstancesRef.current = prioritizedBladeInstances;
       startTransition(() => {
@@ -6374,7 +6395,12 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       z: viewerPosition.z,
       time: clock.elapsedTime,
     };
-    uploadPriorityRef.current = { x: predictedX, z: predictedZ };
+    uploadPriorityRef.current = {
+      viewerX: viewerPosition.x,
+      viewerZ: viewerPosition.z,
+      leadX: predictedX,
+      leadZ: predictedZ,
+    };
     const viewerDistanceFromGrassCenter = Math.hypot(viewerPosition.x - currentCenter.x, viewerPosition.z - currentCenter.z);
     const targetDistanceFromGrassCenter = Math.hypot(predictedX - currentCenter.x, predictedZ - currentCenter.z);
     const chunkStreamingActive = getSurvivalPendingChunkCount() > 0;
