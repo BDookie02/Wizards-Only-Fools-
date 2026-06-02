@@ -833,8 +833,8 @@ const SURVIVAL_COLLISION_RADIUS = 2;
 const SURVIVAL_CHUNK_STREAM_INITIAL_RADIUS = SURVIVAL_NEAR_RADIUS;
 const SURVIVAL_CHUNK_STREAM_STEP_MS = 3200;
 const SURVIVAL_CHUNK_STREAM_STEP_CURVE_MS = 1700;
-const SURVIVAL_CHUNK_MOUNT_INTERVAL_MS = 560;
-const SURVIVAL_CHUNK_MOBILE_MOUNT_INTERVAL_MS = 760;
+const SURVIVAL_CHUNK_MOUNT_INTERVAL_MS = 700;
+const SURVIVAL_CHUNK_MOBILE_MOUNT_INTERVAL_MS = 920;
 const SURVIVAL_CHUNK_CENTER_HYSTERESIS = SURVIVAL_BLOCK_SIZE * 0.72;
 const SURVIVAL_CHUNK_STREAM_ROUNDING = 0.45;
 const BASE_VILLAGE_STREAM_DISTANCE = SURVIVAL_BLOCK_SIZE * 1.45;
@@ -875,6 +875,7 @@ const BASE_VILLAGE_APRON_DISTANCE = 172;
 const survivalTerrainGeometryCache = new Map<string, THREE.BufferGeometry>();
 const survivalTerrainSkirtGeometryCache = new Map<string, THREE.BufferGeometry>();
 const survivalTerrainCollisionGeometryCache = new Map<string, THREE.BufferGeometry>();
+const survivalRiverSurfaceGeometryCache = new Map<string, THREE.BufferGeometry | null>();
 const survivalChunkInfoCache = new Map<string, SurvivalChunkInfo>();
 
 const survivalBiomeStyle: Record<SurvivalBiome, { ground: string; accent: string; water: string }> = {
@@ -2420,6 +2421,13 @@ function makeSurvivalRiverSurfaceGeometry(chunk: SurvivalChunkInfo) {
     : chunk.lod === "mid"
       ? SURVIVAL_RIVER_SURFACE_MID_SEGMENTS
       : SURVIVAL_RIVER_SURFACE_FAR_SEGMENTS;
+  const cacheKey = `${chunk.key}:${chunk.lod}:river:${segments}`;
+  if (survivalRiverSurfaceGeometryCache.has(cacheKey)) {
+    const cached = survivalRiverSurfaceGeometryCache.get(cacheKey) ?? null;
+    survivalRiverSurfaceGeometryCache.delete(cacheKey);
+    survivalRiverSurfaceGeometryCache.set(cacheKey, cached);
+    return cached;
+  }
   const halfSize = SURVIVAL_BLOCK_SIZE * 0.54;
   const span = halfSize * 2;
   const positions: number[] = [];
@@ -2463,11 +2471,27 @@ function makeSurvivalRiverSurfaceGeometry(chunk: SurvivalChunkInfo) {
     }
   }
 
-  if (indices.length === 0) return null;
+  if (indices.length === 0) {
+    survivalRiverSurfaceGeometryCache.set(cacheKey, null);
+    while (survivalRiverSurfaceGeometryCache.size > SURVIVAL_TERRAIN_CACHE_LIMIT) {
+      const oldestKey = survivalRiverSurfaceGeometryCache.keys().next().value;
+      if (typeof oldestKey !== "string") break;
+      survivalRiverSurfaceGeometryCache.get(oldestKey)?.dispose();
+      survivalRiverSurfaceGeometryCache.delete(oldestKey);
+    }
+    return null;
+  }
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geo.setIndex(indices);
+  survivalRiverSurfaceGeometryCache.set(cacheKey, geo);
+  while (survivalRiverSurfaceGeometryCache.size > SURVIVAL_TERRAIN_CACHE_LIMIT) {
+    const oldestKey = survivalRiverSurfaceGeometryCache.keys().next().value;
+    if (typeof oldestKey !== "string") break;
+    survivalRiverSurfaceGeometryCache.get(oldestKey)?.dispose();
+    survivalRiverSurfaceGeometryCache.delete(oldestKey);
+  }
   return geo;
 }
 
@@ -2841,6 +2865,19 @@ function makeSurvivalTerrainCollisionGeometry(chunk: SurvivalChunkInfo) {
   }
 
   return geo;
+}
+
+function prewarmSurvivalChunkGeometry(chunk: SurvivalChunkInfo) {
+  makeSurvivalTerrainGeometry(chunk);
+  if (shouldBuildSurvivalChunkColliders(chunk)) {
+    makeSurvivalTerrainCollisionGeometry(chunk);
+  }
+  if (shouldRenderSurvivalChunkSkirt(chunk)) {
+    makeSurvivalTerrainSkirtGeometry(chunk, SURVIVAL_ALL_TERRAIN_SKIRT_EDGES);
+  }
+  if (chunk.hasRiver) {
+    makeSurvivalRiverSurfaceGeometry(chunk);
+  }
 }
 
 function SurvivalTerrain({
@@ -3313,24 +3350,24 @@ const SURVIVAL_BOTW_GRASS_AIR_RADIUS = 214;
 const SURVIVAL_BOTW_GRASS_EDGE_FADE = 34;
 const SURVIVAL_BOTW_GRASS_CENTER_STEP = 72;
 const SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE = 48;
-const SURVIVAL_BOTW_GRASS_LEAD_SECONDS = 2.15;
-const SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE = 58;
-const SURVIVAL_BOTW_GRASS_FAST_MIN_LEAD_DISTANCE = 94;
+const SURVIVAL_BOTW_GRASS_LEAD_SECONDS = 3.1;
+const SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE = 72;
+const SURVIVAL_BOTW_GRASS_FAST_MIN_LEAD_DISTANCE = 116;
 const SURVIVAL_BOTW_GRASS_FAST_LEAD_SPEED = 8;
 const SURVIVAL_BOTW_GRASS_LEAD_SMOOTHING = 8.5;
 const SURVIVAL_BOTW_GRASS_MIN_CENTER_TRAVEL_ALIGNMENT = -0.04;
-const SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE = 176;
+const SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE = 214;
 const SURVIVAL_BOTW_GRASS_PENDING_VIEWER_SAFE_DISTANCE = 70;
 const SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE = 88;
 const SURVIVAL_BOTW_GRASS_PREWARM_DISTANCE = 18;
-const SURVIVAL_BOTW_GRASS_PREWARM_AHEAD_STEPS = 2;
-const SURVIVAL_BOTW_GRASS_UPLOAD_NEAR_PRIORITY_RADIUS = 96;
-const SURVIVAL_BOTW_GRASS_UPLOAD_MID_PRIORITY_RADIUS = 148;
+const SURVIVAL_BOTW_GRASS_PREWARM_AHEAD_STEPS = 3;
+const SURVIVAL_BOTW_GRASS_UPLOAD_NEAR_PRIORITY_RADIUS = 126;
+const SURVIVAL_BOTW_GRASS_UPLOAD_MID_PRIORITY_RADIUS = 178;
 const SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_MIN_PROGRESS = 0.94;
 const SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE = SURVIVAL_BOTW_GRASS_RADIUS * 0.88;
 const SURVIVAL_BOTW_GRASS_RECENTER_MIN_INTERVAL_SECONDS = 0.48;
 const SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE = SURVIVAL_BOTW_GRASS_RADIUS * 0.68;
-const SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE = SURVIVAL_BOTW_GRASS_RADIUS * 0.86;
+const SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE = SURVIVAL_BOTW_GRASS_RADIUS * 0.88;
 const SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE_INCREASE = 42;
 const SURVIVAL_BOTW_GRASS_RECENTER_EMERGENCY_VIEWER_DISTANCE = SURVIVAL_BOTW_GRASS_RADIUS * 1.36;
 const SURVIVAL_BOTW_GRASS_DESKTOP_COUNT = 20000;
@@ -3359,11 +3396,11 @@ const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS = 4.2;
 const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_MS = 3;
 const SURVIVAL_BOTW_GRASS_BUILD_SLICE_DELAY_MS = 1;
 const SURVIVAL_BOTW_GRASS_MAX_PENDING_PREWARMS = 2;
-const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH = 720;
-const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH = 340;
-const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_INITIAL_BATCH = 3200;
-const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_INITIAL_BATCH = 1400;
-const SURVIVAL_BOTW_GRASS_BUILD_CACHE_LIMIT = 6;
+const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH = 1800;
+const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH = 720;
+const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_INITIAL_BATCH = 9000;
+const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_INITIAL_BATCH = 3600;
+const SURVIVAL_BOTW_GRASS_BUILD_CACHE_LIMIT = 18;
 const SURVIVAL_TUTORIAL_GRASS_CELL_SIZE = 58;
 const SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS = 270;
 const SURVIVAL_TUTORIAL_GRASS_AIR_RADIUS = 430;
@@ -5465,7 +5502,11 @@ function getSurvivalBotwGrassFootprintStatsForPlacement(
   placement: NonNullable<ReturnType<typeof getSurvivalBotwGrassPlacement>>,
 ) {
   const restoredMeadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
-  if (restoredMeadowMask > 0.02 && placement.normal.y > 0.52) {
+  const gentleGrasslandSurface =
+    placement.chunk.biome !== "desert" &&
+    placement.biome !== "swamp" &&
+    placement.normal.y > 0.66;
+  if ((restoredMeadowMask > 0.02 && placement.normal.y > 0.52) || gentleGrasslandSurface) {
     return {
       baseY: placement.terrainY + 0.026,
       heightRange: 0,
@@ -5482,7 +5523,11 @@ function getSurvivalBotwFlowerFootprintStatsForPlacement(
   placement: NonNullable<ReturnType<typeof getSurvivalBotwGrassPlacement>>,
 ) {
   const restoredMeadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
-  if (restoredMeadowMask > 0.02 && placement.normal.y > 0.58) {
+  const gentleGrasslandSurface =
+    placement.chunk.biome !== "desert" &&
+    placement.biome !== "swamp" &&
+    placement.normal.y > 0.74;
+  if ((restoredMeadowMask > 0.02 && placement.normal.y > 0.58) || gentleGrasslandSurface) {
     return {
       baseY: placement.terrainY + 0.026,
       heightRange: 0,
@@ -6631,7 +6676,15 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       bladeUploadProgressRef.current < SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_MIN_PROGRESS &&
       viewerDistanceFromGrassCenter < SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE;
     const timeSinceRecenter = clock.elapsedTime - lastGrassRecenterAtRef.current;
+    const viewerCenter = getSurvivalBotwGrassSnappedCenter(viewerPosition.x, viewerPosition.y, viewerPosition.z);
     const predictedCenter = getSurvivalBotwGrassSnappedCenter(predictedX, viewerPosition.y, predictedZ);
+    if (
+      viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE &&
+      !shouldDelayGrassRecenter &&
+      (viewerCenter.x !== currentCenter.x || viewerCenter.z !== currentCenter.z)
+    ) {
+      prewarmSurvivalBotwGrassBuild(viewerCenter, mobilePerformanceMode);
+    }
     if (
       targetDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_PREWARM_DISTANCE &&
       !shouldDelayGrassRecenter &&
@@ -6660,12 +6713,24 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       !uploadStillCatchingUp &&
       !coldBuildStillPublishing
     ) {
-      const nextCenter = predictedCenter;
-      if (nextCenter.x !== currentCenter.x || nextCenter.z !== currentCenter.z) {
+      const recenterEmergency = viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_EMERGENCY_VIEWER_DISTANCE;
+      const predictedViewerDistance = Math.hypot(
+        viewerPosition.x - predictedCenter.x,
+        viewerPosition.z - predictedCenter.z,
+      );
+      const prioritizeViewerCenter =
+        recenterEmergency ||
+        viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE ||
+        predictedViewerDistance >= SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE;
+      const candidateCenters = prioritizeViewerCenter
+        ? [viewerCenter, predictedCenter]
+        : [predictedCenter, viewerCenter];
+      for (const nextCenter of candidateCenters) {
+        if (nextCenter.x === currentCenter.x && nextCenter.z === currentCenter.z) continue;
         const nextBuildKey = getSurvivalBotwGrassBuildKey(nextCenter, mobilePerformanceMode);
         const nextBuildReady = hasCachedSurvivalBotwGrassBuild(nextBuildKey) ||
           publishedGrassBuildKeyRef.current === nextBuildKey;
-        const recenterEmergency = viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_EMERGENCY_VIEWER_DISTANCE;
+        if (!nextBuildReady) continue;
         const nextViewerDistance = Math.hypot(viewerPosition.x - nextCenter.x, viewerPosition.z - nextCenter.z);
         const nextTargetDistance = Math.hypot(predictedX - nextCenter.x, predictedZ - nextCenter.z);
         const centerMoveX = nextCenter.x - currentCenter.x;
@@ -6677,8 +6742,10 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
         const recenterIntervalReady =
           timeSinceRecenter >= SURVIVAL_BOTW_GRASS_RECENTER_MIN_INTERVAL_SECONDS ||
           viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE;
-        const nextCenterKeepsViewerCovered = nextViewerDistance < SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE;
+        const nextCenterKeepsViewerCovered = recenterEmergency ||
+          nextViewerDistance < SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE;
         const nextCenterKeepsTargetCovered = recenterEmergency ||
+          nextCenter === viewerCenter ||
           nextTargetDistance <= Math.max(
             SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE,
             targetDistanceFromGrassCenter + 12,
@@ -6688,10 +6755,10 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
           viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE;
         const nextCenterTracksTravel =
           recenterEmergency ||
+          nextCenter === viewerCenter ||
           centerTravelAlignment >= SURVIVAL_BOTW_GRASS_MIN_CENTER_TRAVEL_ALIGNMENT ||
           viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE;
         if (
-          nextBuildReady &&
           recenterIntervalReady &&
           nextCenterKeepsViewerCovered &&
           nextCenterKeepsTargetCovered &&
@@ -6706,6 +6773,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
             document.documentElement.dataset.wofBotwGrassBuildState = nextBuildReady ? "switching-ready" : "emergency";
           }
           startTransition(() => setCenter(nextCenter));
+          break;
         }
       }
     }
@@ -27856,14 +27924,26 @@ function SurvivalProceduralWorld({ showBaseVillage }: { showBaseVillage: boolean
       task = null;
       if (cancelled) return;
 
+      const grassUploadProgress = document.documentElement.dataset.wofBotwGrassUploadProgress;
+      if (
+        document.documentElement.dataset.wofBotwGrassBuildState === "building" &&
+        (!grassUploadProgress || grassUploadProgress === "0/0")
+      ) {
+        timer = window.setTimeout(() => {
+          timer = null;
+          task = scheduleSurvivalBackgroundTask(runPrewarmSlice, 900);
+        }, 260);
+        return;
+      }
+
       const startedAt = performance.now();
       let warmed = 0;
       while (
         index < prewarmChunks.length &&
-        warmed < 3 &&
+        warmed < 2 &&
         performance.now() - startedAt < 3
       ) {
-        makeSurvivalTerrainGeometry(prewarmChunks[index]);
+        prewarmSurvivalChunkGeometry(prewarmChunks[index]);
         index += 1;
         warmed += 1;
       }
