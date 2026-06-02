@@ -3021,11 +3021,12 @@ export function PlayerController() {
         && Math.sin(elapsed * 0.29 + pos.x * 0.0017) > -0.18;
       if (qaRouteActive) {
         targetYaw = desiredYaw;
-        forwardAmount = 0.7;
+        forwardAmount = 0.92;
         strafeAmount = 0;
-        sprint = forwardClearance > QA_SURVIVAL_WALK_PROBE_DISTANCE * 0.74 &&
-          forwardLookAhead > QA_SURVIVAL_WALK_SOFT_LOOKAHEAD &&
-          viewClearance > QA_SURVIVAL_VIEW_SOFT_CLEARANCE * 0.78;
+        sprint = forwardClearance > QA_SURVIVAL_WALK_BLOCKED_CLEARANCE * 1.35 &&
+          forwardLookAhead > QA_SURVIVAL_WALK_SOFT_LOOKAHEAD * 0.82 &&
+          viewClearance > QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE * 1.35 &&
+          overheadClearance > QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE;
       }
       if (lilyCoilTubeTravelYaw !== null) {
         const tubeDirection = qaWalkLilyTubeDirection.current >= 0 ? 1 : -1;
@@ -3035,13 +3036,21 @@ export function PlayerController() {
         sprint = true;
       }
 
-      const needsDecision = !lilyCoilTubeQaActive && (
-        forwardClearance < QA_SURVIVAL_WALK_PROBE_DISTANCE * 0.72 ||
-        forwardLookAhead < QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE * 0.48 ||
-        viewClearance < QA_SURVIVAL_VIEW_SOFT_CLEARANCE * 0.68 ||
-        overheadClearance < QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE ||
-        elapsed >= qaWalkNextDecisionAt.current ||
-        elapsed - qaWalkLastDecisionAt.current > QA_SURVIVAL_WALK_DECISION_MAX_SECONDS
+      const needsDecision = !lilyCoilTubeQaActive && (qaRouteActive
+        ? (
+          forwardClearance < QA_SURVIVAL_WALK_BLOCKED_CLEARANCE ||
+          forwardLookAhead < QA_SURVIVAL_WALK_SOFT_LOOKAHEAD * 0.72 ||
+          viewClearance < QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE ||
+          overheadClearance < QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE
+        )
+        : (
+          forwardClearance < QA_SURVIVAL_WALK_PROBE_DISTANCE * 0.72 ||
+          forwardLookAhead < QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE * 0.48 ||
+          viewClearance < QA_SURVIVAL_VIEW_SOFT_CLEARANCE * 0.68 ||
+          overheadClearance < QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE ||
+          elapsed >= qaWalkNextDecisionAt.current ||
+          elapsed - qaWalkLastDecisionAt.current > QA_SURVIVAL_WALK_DECISION_MAX_SECONDS
+        )
       );
 
       if (needsDecision) {
@@ -3515,15 +3524,30 @@ export function PlayerController() {
         forwardAmount = qaSpellDummyRunActive ? 0 : 0.06;
         strafeAmount = Math.sin(elapsed * 3.1) * (qaSpellDummyRunActive ? 0.035 : 0.1);
         sprint = false;
-      } else if (mode === "travel" || mode === "route") {
+      } else if (mode === "route") {
+        if (
+          forwardClearance < QA_SURVIVAL_WALK_BLOCKED_CLEARANCE ||
+          viewClearance < QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE ||
+          overheadClearance < QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE
+        ) {
+          forwardAmount = Math.min(forwardAmount, 0.22);
+          sprint = false;
+        } else if (
+          forwardClearance < QA_SURVIVAL_WALK_SOFT_CLEARANCE ||
+          forwardLookAhead < QA_SURVIVAL_WALK_SOFT_LOOKAHEAD
+        ) {
+          forwardAmount = Math.min(forwardAmount, 0.72);
+          sprint = false;
+        }
+      } else if (mode === "travel") {
         const clearanceEase = THREE.MathUtils.clamp(
           (forwardClearance - QA_SURVIVAL_WALK_BLOCKED_CLEARANCE) / Math.max(1, QA_SURVIVAL_WALK_SOFT_CLEARANCE - QA_SURVIVAL_WALK_BLOCKED_CLEARANCE),
-          mode === "route" ? 0.44 : 0.32,
+          0.32,
           1,
         );
         const lookAheadEase = THREE.MathUtils.clamp(
           (forwardLookAhead - QA_SURVIVAL_WALK_SOFT_LOOKAHEAD) / Math.max(1, QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE - QA_SURVIVAL_WALK_SOFT_LOOKAHEAD),
-          mode === "route" ? 0.58 : 0.38,
+          0.38,
           1,
         );
         const humanThrottle = Math.min(clearanceEase, lookAheadEase);

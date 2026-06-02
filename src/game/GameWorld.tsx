@@ -831,10 +831,10 @@ const SURVIVAL_RENDER_RADIUS = 3;
 const SURVIVAL_NEAR_RADIUS = 1;
 const SURVIVAL_COLLISION_RADIUS = 2;
 const SURVIVAL_CHUNK_STREAM_INITIAL_RADIUS = SURVIVAL_NEAR_RADIUS;
-const SURVIVAL_CHUNK_STREAM_STEP_MS = 2400;
-const SURVIVAL_CHUNK_STREAM_STEP_CURVE_MS = 1200;
-const SURVIVAL_CHUNK_MOUNT_INTERVAL_MS = 360;
-const SURVIVAL_CHUNK_MOBILE_MOUNT_INTERVAL_MS = 520;
+const SURVIVAL_CHUNK_STREAM_STEP_MS = 3200;
+const SURVIVAL_CHUNK_STREAM_STEP_CURVE_MS = 1700;
+const SURVIVAL_CHUNK_MOUNT_INTERVAL_MS = 560;
+const SURVIVAL_CHUNK_MOBILE_MOUNT_INTERVAL_MS = 760;
 const SURVIVAL_CHUNK_CENTER_HYSTERESIS = SURVIVAL_BLOCK_SIZE * 0.72;
 const SURVIVAL_CHUNK_STREAM_ROUNDING = 0.45;
 const BASE_VILLAGE_STREAM_DISTANCE = SURVIVAL_BLOCK_SIZE * 1.45;
@@ -842,8 +842,8 @@ const SURVIVAL_BIOME_HEX_RADIUS = SURVIVAL_BLOCK_SIZE * 0.62;
 const SURVIVAL_TERRAIN_NEAR_SEGMENTS = 24;
 const SURVIVAL_TERRAIN_MID_SEGMENTS = 10;
 const SURVIVAL_TERRAIN_FAR_SEGMENTS = 3;
-const SURVIVAL_TERRAIN_CENTER_COLLISION_SEGMENTS = 36;
-const SURVIVAL_TERRAIN_NEAR_COLLISION_SEGMENTS = 22;
+const SURVIVAL_TERRAIN_CENTER_COLLISION_SEGMENTS = SURVIVAL_TERRAIN_NEAR_SEGMENTS;
+const SURVIVAL_TERRAIN_NEAR_COLLISION_SEGMENTS = 18;
 const SURVIVAL_VILLAGE_PAD_SEGMENTS = 18;
 const SURVIVAL_TERRAIN_SKIRT_DEPTH = 44;
 const SURVIVAL_TERRAIN_CACHE_LIMIT = 512;
@@ -3313,6 +3313,7 @@ const SURVIVAL_BOTW_GRASS_AIR_RADIUS = 214;
 const SURVIVAL_BOTW_GRASS_EDGE_FADE = 34;
 const SURVIVAL_BOTW_GRASS_CENTER_STEP = 72;
 const SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE = 62;
+const SURVIVAL_BOTW_GRASS_PENDING_CHUNK_RECENTER_DISTANCE = 228;
 const SURVIVAL_BOTW_GRASS_DESKTOP_COUNT = 20000;
 const SURVIVAL_BOTW_GRASS_MOBILE_COUNT = 9200;
 const SURVIVAL_BOTW_GRASS_CARPET_RADIUS = 384;
@@ -3331,12 +3332,12 @@ const SURVIVAL_BOTW_FLOWER_NEAR_HEIGHT_LIMIT = 34;
 const SURVIVAL_BOTW_FLOWER_FAR_HEIGHT_LIMIT = 24;
 const SURVIVAL_BOTW_GRASS_FLOWER_DESKTOP_COUNT = 440;
 const SURVIVAL_BOTW_GRASS_FLOWER_MOBILE_COUNT = 210;
-const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_CANDIDATES = 3600;
-const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_CANDIDATES = 1400;
-const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS = 12.5;
-const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_MS = 7.25;
-const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH = 1400;
-const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH = 700;
+const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_CANDIDATES = 1200;
+const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_CANDIDATES = 560;
+const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS = 5;
+const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_MS = 3.5;
+const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH = 180;
+const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH = 120;
 const SURVIVAL_TUTORIAL_GRASS_CELL_SIZE = 58;
 const SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS = 270;
 const SURVIVAL_TUTORIAL_GRASS_AIR_RADIUS = 430;
@@ -3855,6 +3856,36 @@ function finalizeSurvivalInstancedMeshColors(mesh: THREE.InstancedMesh) {
   materials.forEach((material) => {
     material.needsUpdate = true;
   });
+}
+
+function markSurvivalInstancedAttributeRange(
+  attribute: THREE.BufferAttribute | THREE.InstancedBufferAttribute,
+  offset: number,
+  count: number,
+) {
+  const rangedAttribute = attribute as THREE.BufferAttribute & {
+    addUpdateRange?: (start: number, count: number) => void;
+    updateRange?: { offset: number; count: number };
+  };
+  const safeOffset = Math.max(0, Math.floor(offset));
+  const safeCount = Math.max(0, Math.floor(count));
+  if (safeCount <= 0) return;
+
+  if (typeof rangedAttribute.addUpdateRange === "function") {
+    rangedAttribute.addUpdateRange(safeOffset, safeCount);
+  } else if (rangedAttribute.updateRange) {
+    rangedAttribute.updateRange.offset = safeOffset;
+    rangedAttribute.updateRange.count = safeCount;
+  }
+  rangedAttribute.needsUpdate = true;
+}
+
+function markSurvivalInstancedMeshRange(mesh: THREE.InstancedMesh, startIndex: number, count: number) {
+  if (count <= 0) return;
+  markSurvivalInstancedAttributeRange(mesh.instanceMatrix, startIndex * 16, count * 16);
+  if (mesh.instanceColor) {
+    markSurvivalInstancedAttributeRange(mesh.instanceColor, startIndex * 3, count * 3);
+  }
 }
 
 function createSurvivalVertexColoredPlaneGeometry(
@@ -5914,6 +5945,12 @@ function getSurvivalBotwGrassBuildKey(center: SurvivalBotwGrassCenter, mobilePer
   return `${center.x}:${Math.round(center.y)}:${center.z}:${mobilePerformanceMode ? "m" : "d"}`;
 }
 
+function getSurvivalPendingChunkCount() {
+  if (typeof document === "undefined") return 0;
+  const pendingChunks = Number(document.documentElement.dataset.wofSurvivalPendingChunks || 0);
+  return Number.isFinite(pendingChunks) ? pendingChunks : 0;
+}
+
 function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
   const enabled = SURVIVAL_GRASS_SYSTEM_ENABLED && !disabled;
   const initialCenter = useMemo(() => getInitialSurvivalBotwGrassCenter(), []);
@@ -5957,7 +5994,8 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     verticalFadeEnd: { value: SURVIVAL_BOTW_GRASS_VERTICAL_FADE_END },
   }), [initialCenter.x, initialCenter.y, initialCenter.z]);
 
-  const [bladeInstances, setBladeInstances] = useState<SurvivalBotwGrassBladeInstance[]>([]);
+  const bladeInstancesRef = useRef<SurvivalBotwGrassBladeInstance[]>([]);
+  const [bladeUploadVersion, setBladeUploadVersion] = useState(0);
   const carpetGeometry = useMemo(
     () => enabled && SURVIVAL_BOTW_GRASS_CARPET_ENABLED
       ? makeSurvivalBotwGrassCarpetGeometry(center.x, center.z, mobilePerformanceMode)
@@ -5973,7 +6011,8 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") {
-      setBladeInstances([]);
+      bladeInstancesRef.current = [];
+      setBladeUploadVersion((version) => version + 1);
       setFlowerInstances([]);
       return undefined;
     }
@@ -6004,8 +6043,9 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
 
     const publishBuild = () => {
       if (cancelled) return;
+      bladeInstancesRef.current = nextBladeInstances;
       startTransition(() => {
-        setBladeInstances(nextBladeInstances);
+        setBladeUploadVersion((version) => version + 1);
         setFlowerInstances(nextFlowerInstances);
       });
       if (typeof document !== "undefined") {
@@ -6069,6 +6109,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     const mesh = bladeMeshRef.current;
     if (!mesh) return;
 
+    const bladeInstances = bladeInstancesRef.current;
     const count = Math.min(bladeInstances.length, bladeCapacity);
     const batchSize = mobilePerformanceMode
       ? SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH
@@ -6088,6 +6129,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       if (typeof document !== "undefined") {
         document.documentElement.dataset.wofBotwGrassCenter = `${Math.round(center.x)},${Math.round(center.z)}`;
         document.documentElement.dataset.wofBotwGrassInstances = "0";
+        document.documentElement.dataset.wofBotwGrassUploadProgress = "0/0";
         document.documentElement.dataset.wofBotwGrassGroundTriangles = String(carpetGeometry?.index ? Math.floor(carpetGeometry.index.count / 3) : 0);
       }
       return;
@@ -6116,14 +6158,16 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
         mesh.setColorAt(index, instance.color);
       }
 
+      const batchStart = uploadIndex;
       uploadIndex = end;
       mesh.count = Math.max(mesh.count, uploadIndex);
-      mesh.instanceMatrix.needsUpdate = true;
-      finalizeSurvivalInstancedMeshColors(mesh);
+      markSurvivalInstancedMeshRange(mesh, batchStart, end - batchStart);
 
       if (typeof document !== "undefined") {
+        const visibleGrassCount = Math.max(mesh.count, uploadIndex);
         document.documentElement.dataset.wofBotwGrassCenter = `${Math.round(center.x)},${Math.round(center.z)}`;
-        document.documentElement.dataset.wofBotwGrassInstances = String(uploadIndex);
+        document.documentElement.dataset.wofBotwGrassInstances = String(visibleGrassCount);
+        document.documentElement.dataset.wofBotwGrassUploadProgress = `${uploadIndex}/${count}`;
         document.documentElement.dataset.wofBotwGrassGroundTriangles = String(carpetGeometry?.index ? Math.floor(carpetGeometry.index.count / 3) : 0);
       }
 
@@ -6135,6 +6179,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       bladeUploadCountRef.current = count;
       if (typeof document !== "undefined") {
         document.documentElement.dataset.wofBotwGrassInstances = String(count);
+        document.documentElement.dataset.wofBotwGrassUploadProgress = `${count}/${count}`;
       }
     };
 
@@ -6145,7 +6190,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     };
   }, [
     bladeCapacity,
-    bladeInstances,
+    bladeUploadVersion,
     carpetGeometry,
     center.x,
     center.z,
@@ -6252,7 +6297,12 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     windUniform.value = clock.elapsedTime;
     const viewerPosition = getSurvivalLocalGrassViewerPosition(camera);
     const currentCenter = centerRef.current;
-    if (Math.hypot(viewerPosition.x - currentCenter.x, viewerPosition.z - currentCenter.z) > SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE) {
+    const distanceFromGrassCenter = Math.hypot(viewerPosition.x - currentCenter.x, viewerPosition.z - currentCenter.z);
+    const chunkStreamingActive = getSurvivalPendingChunkCount() > 0;
+    const shouldDelayGrassRecenter =
+      chunkStreamingActive &&
+      distanceFromGrassCenter < SURVIVAL_BOTW_GRASS_PENDING_CHUNK_RECENTER_DISTANCE;
+    if (distanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE && !shouldDelayGrassRecenter) {
       const nextCenter = getSurvivalBotwGrassSnappedCenter(viewerPosition.x, viewerPosition.y, viewerPosition.z);
       if (nextCenter.x !== currentCenter.x || nextCenter.z !== currentCenter.z) {
         centerRef.current = nextCenter;
@@ -12271,12 +12321,12 @@ type ChunkLoadStageProfile = {
 };
 
 const TREE_LOAD_STAGE_PROFILE: ChunkLoadStageProfile = {
-  desktopDelays: [80, 260, 560, 940, 1320],
-  mobileDelays: [140, 420, 780, 1220, 1720],
-  desktopDistanceDelay: 150,
-  mobileDistanceDelay: 260,
-  desktopJitter: 220,
-  mobileJitter: 360,
+  desktopDelays: [180, 560, 1320, 2280, 3600],
+  mobileDelays: [280, 820, 1860, 3160, 4760],
+  desktopDistanceDelay: 280,
+  mobileDistanceDelay: 460,
+  desktopJitter: 520,
+  mobileJitter: 760,
   salt: 9011,
 };
 
@@ -12335,6 +12385,22 @@ function scheduleSurvivalBackgroundTask(callback: () => void, timeout = 900): Su
   return { cancel: () => window.clearTimeout(handle) };
 }
 
+let survivalDecorationHeavyStageNextAt = 0;
+
+function reserveSurvivalDecorationHeavyStageDelay(stage: number) {
+  if (stage < 3 || typeof performance === "undefined") return 0;
+
+  const now = performance.now();
+  const spacing = stage >= 5
+    ? 520
+    : stage >= 4
+      ? 360
+      : 240;
+  const scheduledAt = Math.max(now, survivalDecorationHeavyStageNextAt);
+  survivalDecorationHeavyStageNextAt = scheduledAt + spacing;
+  return Math.max(0, scheduledAt - now);
+}
+
 function useChunkDecorationLoadStage(chunk: SurvivalChunkInfo, profile: ChunkLoadStageProfile, resetOnDistance = true) {
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const maxStage = Math.max(profile.desktopDelays.length, profile.mobileDelays.length);
@@ -12352,16 +12418,34 @@ function useChunkDecorationLoadStage(chunk: SurvivalChunkInfo, profile: ChunkLoa
       + chunkJitter * (mobilePerformanceMode ? profile.mobileJitter : profile.desktopJitter);
     const stageDelays = mobilePerformanceMode ? profile.mobileDelays : profile.desktopDelays;
     const backgroundTasks: SurvivalScheduledBackgroundTask[] = [];
+    const timers: number[] = [];
 
-    const timers = stageDelays.map((delay, index) => window.setTimeout(() => {
+    const requestStageUpdate = (stage: number) => {
       if (!cancelled) {
         backgroundTasks.push(scheduleSurvivalBackgroundTask(() => {
           if (!cancelled) {
-            setStage((currentStage) => Math.max(currentStage, index + 1));
+            setStage((currentStage) => Math.max(currentStage, stage));
           }
-        }, 850));
+        }, stage >= 3 ? 1300 : 850));
       }
-    }, baseDelay + delay));
+    };
+
+    stageDelays.forEach((delay, index) => {
+      const stage = index + 1;
+      const timer = window.setTimeout(() => {
+        if (cancelled) return;
+
+        const queueDelay = reserveSurvivalDecorationHeavyStageDelay(stage);
+        if (queueDelay > 0) {
+          const queuedTimer = window.setTimeout(() => requestStageUpdate(stage), queueDelay);
+          timers.push(queuedTimer);
+          return;
+        }
+
+        requestStageUpdate(stage);
+      }, baseDelay + delay);
+      timers.push(timer);
+    });
 
     return () => {
       cancelled = true;
@@ -12393,6 +12477,8 @@ function SurvivalScatterProps({ chunk }: { chunk: SurvivalChunkInfo }) {
   const showDenseSolidTrees = treeLoadStage >= 4;
   const showDetailTrees = treeLoadStage >= 5 && chunk.distance === 0 && !mobilePerformanceMode;
   const showAmbientLife = treeLoadStage >= 1;
+  const showRockOutcrops = treeLoadStage >= 1;
+  const showLandmarks = treeLoadStage >= 2;
   const showBirds = treeLoadStage >= 2 && chunk.distance <= 2 && !mobilePerformanceMode;
   const props = useMemo(() => {
     if (!showDetailTrees) return [];
@@ -12451,8 +12537,8 @@ function SurvivalScatterProps({ chunk }: { chunk: SurvivalChunkInfo }) {
       {showAmbientLife && <SurvivalAmbientInsects chunk={chunk} />}
       {showBushes && <SurvivalFernClusters chunk={chunk} />}
       {showBushes && <SurvivalBushClusters chunk={chunk} />}
-      <SurvivalRockOutcrops chunk={chunk} />
-      <DesertLandmarks chunk={chunk} />
+      {showRockOutcrops && <SurvivalRockOutcrops chunk={chunk} />}
+      {showLandmarks && <DesertLandmarks chunk={chunk} />}
       {showBirds && <SurvivalBirdFlock chunk={chunk} />}
       {props.map((prop) => {
         if (chunk.biome === "desert") {
@@ -27272,7 +27358,7 @@ function SurvivalProceduralWorld({ showBaseVillage }: { showBaseVillage: boolean
     const previousCenter = previousStreamCenterRef.current;
     const centerChanged = previousCenter.cx !== centerChunk.cx || previousCenter.cz !== centerChunk.cz;
     previousStreamCenterRef.current = centerChunk;
-    const baseRadius = centerChanged ? SURVIVAL_COLLISION_RADIUS : SURVIVAL_CHUNK_STREAM_INITIAL_RADIUS;
+    const baseRadius = centerChanged ? SURVIVAL_RENDER_RADIUS : SURVIVAL_CHUNK_STREAM_INITIAL_RADIUS;
 
     startTransition(() => {
       setChunkStreamRadius(baseRadius);
