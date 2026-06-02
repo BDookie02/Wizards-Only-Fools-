@@ -3313,7 +3313,11 @@ const SURVIVAL_BOTW_GRASS_AIR_RADIUS = 214;
 const SURVIVAL_BOTW_GRASS_EDGE_FADE = 34;
 const SURVIVAL_BOTW_GRASS_CENTER_STEP = 72;
 const SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE = 62;
-const SURVIVAL_BOTW_GRASS_PENDING_CHUNK_RECENTER_DISTANCE = 228;
+const SURVIVAL_BOTW_GRASS_LEAD_SECONDS = 1.35;
+const SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE = 48;
+const SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE = 118;
+const SURVIVAL_BOTW_GRASS_PENDING_VIEWER_SAFE_DISTANCE = 70;
+const SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE = 88;
 const SURVIVAL_BOTW_GRASS_DESKTOP_COUNT = 20000;
 const SURVIVAL_BOTW_GRASS_MOBILE_COUNT = 9200;
 const SURVIVAL_BOTW_GRASS_CARPET_RADIUS = 384;
@@ -5957,6 +5961,8 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const [center, setCenter] = useState(initialCenter);
   const centerRef = useRef(center);
+  const lastViewerRef = useRef<{ x: number; z: number; time: number } | null>(null);
+  const hasPublishedGrassBuildRef = useRef(false);
   const bladeMeshRef = useRef<THREE.InstancedMesh>(null);
   const flowerStemRef = useRef<THREE.InstancedMesh>(null);
   const flowerStarBloomRef = useRef<THREE.InstancedMesh>(null);
@@ -6012,6 +6018,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
   useEffect(() => {
     if (!enabled || typeof window === "undefined") {
       bladeInstancesRef.current = [];
+      hasPublishedGrassBuildRef.current = false;
       setBladeUploadVersion((version) => version + 1);
       setFlowerInstances([]);
       return undefined;
@@ -6043,6 +6050,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
 
     const publishBuild = () => {
       if (cancelled) return;
+      hasPublishedGrassBuildRef.current = true;
       bladeInstancesRef.current = nextBladeInstances;
       startTransition(() => {
         setBladeUploadVersion((version) => version + 1);
@@ -6297,17 +6305,54 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     windUniform.value = clock.elapsedTime;
     const viewerPosition = getSurvivalLocalGrassViewerPosition(camera);
     const currentCenter = centerRef.current;
-    const distanceFromGrassCenter = Math.hypot(viewerPosition.x - currentCenter.x, viewerPosition.z - currentCenter.z);
+    const lastViewer = lastViewerRef.current;
+    let predictedX = viewerPosition.x;
+    let predictedZ = viewerPosition.z;
+    let leadDistance = 0;
+    if (lastViewer) {
+      const deltaTime = Math.max(0.016, clock.elapsedTime - lastViewer.time);
+      const deltaX = viewerPosition.x - lastViewer.x;
+      const deltaZ = viewerPosition.z - lastViewer.z;
+      const travelDistance = Math.hypot(deltaX, deltaZ);
+      const speed = travelDistance / deltaTime;
+      if (speed > 0.7 && travelDistance > 0.001) {
+        leadDistance = THREE.MathUtils.clamp(
+          speed * SURVIVAL_BOTW_GRASS_LEAD_SECONDS,
+          SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE,
+          SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE,
+        );
+        predictedX += (deltaX / travelDistance) * leadDistance;
+        predictedZ += (deltaZ / travelDistance) * leadDistance;
+      }
+    }
+    lastViewerRef.current = {
+      x: viewerPosition.x,
+      z: viewerPosition.z,
+      time: clock.elapsedTime,
+    };
+    const viewerDistanceFromGrassCenter = Math.hypot(viewerPosition.x - currentCenter.x, viewerPosition.z - currentCenter.z);
+    const targetDistanceFromGrassCenter = Math.hypot(predictedX - currentCenter.x, predictedZ - currentCenter.z);
     const chunkStreamingActive = getSurvivalPendingChunkCount() > 0;
     const shouldDelayGrassRecenter =
       chunkStreamingActive &&
-      distanceFromGrassCenter < SURVIVAL_BOTW_GRASS_PENDING_CHUNK_RECENTER_DISTANCE;
-    if (distanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE && !shouldDelayGrassRecenter) {
-      const nextCenter = getSurvivalBotwGrassSnappedCenter(viewerPosition.x, viewerPosition.y, viewerPosition.z);
+      viewerDistanceFromGrassCenter < SURVIVAL_BOTW_GRASS_PENDING_VIEWER_SAFE_DISTANCE &&
+      targetDistanceFromGrassCenter < SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE;
+    const coldBuildStillPublishing = !hasPublishedGrassBuildRef.current;
+    const coldBuildTooFarFromViewer = viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RADIUS * 1.15;
+    if (
+      targetDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE &&
+      !shouldDelayGrassRecenter &&
+      (!coldBuildStillPublishing || coldBuildTooFarFromViewer)
+    ) {
+      const nextCenter = getSurvivalBotwGrassSnappedCenter(predictedX, viewerPosition.y, predictedZ);
       if (nextCenter.x !== currentCenter.x || nextCenter.z !== currentCenter.z) {
         centerRef.current = nextCenter;
         startTransition(() => setCenter(nextCenter));
       }
+    }
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.wofBotwGrassLead = String(Math.round(leadDistance));
+      document.documentElement.dataset.wofBotwGrassTargetDistance = String(Math.round(targetDistanceFromGrassCenter));
     }
 
     const groundY = getSurvivalGrassSurfaceHeightAtWorld(viewerPosition.x, viewerPosition.z);
@@ -27315,11 +27360,26 @@ function SurvivalProceduralWorld({ showBaseVillage }: { showBaseVillage: boolean
   });
   const [chunkStreamRadius, setChunkStreamRadius] = useState(SURVIVAL_CHUNK_STREAM_INITIAL_RADIUS);
   const previousStreamCenterRef = useRef(centerChunk);
+  const lastPlayerMoveRef = useRef<{ x: number; z: number } | null>(null);
+  const playerTravelDirectionRef = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
 
   useEffect(() => {
     const handlePlayerMove = (event: Event) => {
       const detail = (event as CustomEvent<{ x: number; z: number }>).detail;
       if (!detail) return;
+      const previousMove = lastPlayerMoveRef.current;
+      if (previousMove) {
+        const deltaX = detail.x - previousMove.x;
+        const deltaZ = detail.z - previousMove.z;
+        const distance = Math.hypot(deltaX, deltaZ);
+        if (distance > 0.25) {
+          playerTravelDirectionRef.current = {
+            x: deltaX / distance,
+            z: deltaZ / distance,
+          };
+        }
+      }
+      lastPlayerMoveRef.current = { x: detail.x, z: detail.z };
 
       startTransition(() => {
         setCenterChunk((current) => {
@@ -27382,6 +27442,66 @@ function SurvivalProceduralWorld({ showBaseVillage }: { showBaseVillage: boolean
     () => makeSurvivalChunks(centerChunk.cx, centerChunk.cz, !showBaseVillage, chunkStreamRadius),
     [centerChunk, showBaseVillage, chunkStreamRadius],
   );
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const direction = playerTravelDirectionRef.current;
+    const stepCx = Math.abs(direction.x) > 0.28 ? Math.sign(direction.x) : 0;
+    const stepCz = Math.abs(direction.z) > 0.28 ? Math.sign(direction.z) : 0;
+    const targets = [
+      stepCx || stepCz ? { cx: centerChunk.cx + stepCx, cz: centerChunk.cz + stepCz } : null,
+      stepCx ? { cx: centerChunk.cx + stepCx, cz: centerChunk.cz } : null,
+      stepCz ? { cx: centerChunk.cx, cz: centerChunk.cz + stepCz } : null,
+    ].filter((target): target is { cx: number; cz: number } => Boolean(target));
+    if (targets.length === 0) return undefined;
+
+    const prewarmByKey = new Map<string, SurvivalChunkInfo>();
+    targets.forEach((target) => {
+      makeSurvivalChunks(target.cx, target.cz, !showBaseVillage, SURVIVAL_RENDER_RADIUS)
+        .forEach((chunk) => {
+          const key = `${chunk.key}:${chunk.lod}`;
+          if (!prewarmByKey.has(key)) prewarmByKey.set(key, chunk);
+        });
+    });
+
+    const prewarmChunks = Array.from(prewarmByKey.values());
+    let cancelled = false;
+    let task: SurvivalScheduledBackgroundTask | null = null;
+    let timer: number | null = null;
+    let index = 0;
+
+    const runPrewarmSlice = () => {
+      task = null;
+      if (cancelled) return;
+
+      const startedAt = performance.now();
+      let warmed = 0;
+      while (
+        index < prewarmChunks.length &&
+        warmed < 3 &&
+        performance.now() - startedAt < 3
+      ) {
+        makeSurvivalTerrainGeometry(prewarmChunks[index]);
+        index += 1;
+        warmed += 1;
+      }
+
+      if (index < prewarmChunks.length) {
+        timer = window.setTimeout(() => {
+          timer = null;
+          task = scheduleSurvivalBackgroundTask(runPrewarmSlice, 1400);
+        }, 120);
+      }
+    };
+
+    task = scheduleSurvivalBackgroundTask(runPrewarmSlice, 1600);
+
+    return () => {
+      cancelled = true;
+      task?.cancel();
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [centerChunk.cx, centerChunk.cz, showBaseVillage]);
   const [visibleChunks, setVisibleChunks] = useState<SurvivalChunkInfo[]>(() => getInitialSurvivalVisibleChunks(chunks));
   const visibleChunkKeys = useMemo(
     () => new Set(visibleChunks.map((chunk) => chunk.key)),
