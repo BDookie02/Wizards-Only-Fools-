@@ -3313,15 +3313,19 @@ const SURVIVAL_BOTW_GRASS_AIR_RADIUS = 214;
 const SURVIVAL_BOTW_GRASS_EDGE_FADE = 34;
 const SURVIVAL_BOTW_GRASS_CENTER_STEP = 72;
 const SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE = 62;
-const SURVIVAL_BOTW_GRASS_LEAD_SECONDS = 1.55;
-const SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE = 68;
-const SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE = 150;
+const SURVIVAL_BOTW_GRASS_LEAD_SECONDS = 1.35;
+const SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE = 52;
+const SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE = 124;
 const SURVIVAL_BOTW_GRASS_PENDING_VIEWER_SAFE_DISTANCE = 70;
 const SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE = 88;
 const SURVIVAL_BOTW_GRASS_UPLOAD_NEAR_PRIORITY_RADIUS = 96;
 const SURVIVAL_BOTW_GRASS_UPLOAD_MID_PRIORITY_RADIUS = 148;
 const SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_MIN_PROGRESS = 0.94;
 const SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE = SURVIVAL_BOTW_GRASS_RADIUS * 0.88;
+const SURVIVAL_BOTW_GRASS_RECENTER_MIN_INTERVAL_SECONDS = 0.75;
+const SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE = SURVIVAL_BOTW_GRASS_RADIUS * 0.68;
+const SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE = SURVIVAL_BOTW_GRASS_RADIUS * 0.86;
+const SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE_INCREASE = 42;
 const SURVIVAL_BOTW_GRASS_DESKTOP_COUNT = 20000;
 const SURVIVAL_BOTW_GRASS_MOBILE_COUNT = 9200;
 const SURVIVAL_BOTW_GRASS_CARPET_RADIUS = 384;
@@ -6010,6 +6014,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
   const [center, setCenter] = useState(initialCenter);
   const centerRef = useRef(center);
   const lastViewerRef = useRef<{ x: number; z: number; time: number } | null>(null);
+  const lastGrassRecenterAtRef = useRef(0);
   const hasPublishedGrassBuildRef = useRef(false);
   const uploadPriorityRef = useRef<SurvivalBotwGrassUploadPriority>({
     viewerX: initialCenter.x,
@@ -6413,6 +6418,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     const uploadStillCatchingUp =
       bladeUploadProgressRef.current < SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_MIN_PROGRESS &&
       viewerDistanceFromGrassCenter < SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE;
+    const timeSinceRecenter = clock.elapsedTime - lastGrassRecenterAtRef.current;
     if (
       targetDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE &&
       !shouldDelayGrassRecenter &&
@@ -6421,13 +6427,25 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     ) {
       const nextCenter = getSurvivalBotwGrassSnappedCenter(predictedX, viewerPosition.y, predictedZ);
       if (nextCenter.x !== currentCenter.x || nextCenter.z !== currentCenter.z) {
-        centerRef.current = nextCenter;
-        startTransition(() => setCenter(nextCenter));
+        const nextViewerDistance = Math.hypot(viewerPosition.x - nextCenter.x, viewerPosition.z - nextCenter.z);
+        const recenterIntervalReady =
+          timeSinceRecenter >= SURVIVAL_BOTW_GRASS_RECENTER_MIN_INTERVAL_SECONDS ||
+          viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE;
+        const nextCenterKeepsViewerCovered = nextViewerDistance < SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE;
+        const nextCenterDoesNotOverleadViewer =
+          nextViewerDistance <= viewerDistanceFromGrassCenter + SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE_INCREASE ||
+          viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE;
+        if (recenterIntervalReady && nextCenterKeepsViewerCovered && nextCenterDoesNotOverleadViewer) {
+          centerRef.current = nextCenter;
+          lastGrassRecenterAtRef.current = clock.elapsedTime;
+          startTransition(() => setCenter(nextCenter));
+        }
       }
     }
     if (typeof document !== "undefined") {
       document.documentElement.dataset.wofBotwGrassLead = String(Math.round(leadDistance));
       document.documentElement.dataset.wofBotwGrassTargetDistance = String(Math.round(targetDistanceFromGrassCenter));
+      document.documentElement.dataset.wofBotwGrassViewerDistance = String(Math.round(viewerDistanceFromGrassCenter));
       document.documentElement.dataset.wofBotwGrassUploadRatio = bladeUploadProgressRef.current.toFixed(2);
     }
 
