@@ -12901,6 +12901,7 @@ function SurvivalScatterProps({ chunk }: { chunk: SurvivalChunkInfo }) {
   const showChunkWildflowers = showAmbientLife && !SURVIVAL_GRASS_SYSTEM_ENABLED && !localGrassOwnsMeadowDetail;
   const showAmbientInsects = showAmbientLife && !localGrassOwnsMeadowDetail;
   const showFernClusters = showBushes && !localGrassOwnsMeadowDetail;
+  const showBushClusters = showBushes && !localGrassOwnsMeadowDetail;
   const showBirds = false;
   const props = useMemo(() => {
     if (!showDetailTrees) return [];
@@ -12958,7 +12959,7 @@ function SurvivalScatterProps({ chunk }: { chunk: SurvivalChunkInfo }) {
       {showChunkWildflowers && <SurvivalWildflowers chunk={chunk} />}
       {showAmbientInsects && <SurvivalAmbientInsects chunk={chunk} />}
       {showFernClusters && <SurvivalFernClusters chunk={chunk} />}
-      {showBushes && <SurvivalBushClusters chunk={chunk} />}
+      {showBushClusters && <SurvivalBushClusters chunk={chunk} />}
       {showRockOutcrops && <SurvivalRockOutcrops chunk={chunk} />}
       {showLandmarks && <DesertLandmarks chunk={chunk} />}
       {showBirds && <SurvivalBirdFlock chunk={chunk} />}
