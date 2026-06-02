@@ -41,6 +41,7 @@ const METEOR_AREA_SEGMENTS = MOBILE_PERFORMANCE_MODE ? 14 : 24;
 const METEOR_IMPACT_SEGMENTS = MOBILE_PERFORMANCE_MODE ? 8 : 12;
 const SPELL_FORCE_EVENT_INTERVAL = MOBILE_PERFORMANCE_MODE ? 1 / 20 : 1 / 30;
 const SPELL_VISUAL_UPDATE_INTERVAL = MOBILE_PERFORMANCE_MODE ? 1 / 24 : 0;
+const SMOKE_CLOUD_PARTICLE_COUNT = MOBILE_PERFORMANCE_MODE ? 6 : 8;
 const STATUS_BOLT_SPEED = 56;
 type StatusSpellType = Extract<SpellType, 'tungstonballsack' | 'sleep' | 'poison' | 'acid'>;
 
@@ -85,6 +86,130 @@ const STATUS_SPELL_CONFIG: Record<StatusSpellType, {
     label: 'ACID'
   },
 };
+
+const SPELL_DUMMY_NAME_PREFIX = "spell_dummy_";
+const SPELL_DUMMY_MAX_HEALTH = 120;
+const SPELL_DUMMY_RESPAWN_MS = 1800;
+const SPELL_DUMMY_QA_FALLBACK_DELAY_MS = 340;
+const SPELL_DUMMY_DAMAGE: Partial<Record<SpellType, number>> = {
+  fireball: 24,
+  iceshard: 34,
+  arcanebeam: 34,
+  ringsofpower: 22,
+  lightning: 32,
+  flamethrower: 6,
+  kunai: 18,
+  tornado: 12,
+  meteorshower: 30,
+  sleep: 5,
+  poison: 7,
+  acid: 9,
+};
+const SPELL_DUMMY_QA_SEQUENCE: SpellType[] = [
+  "fireball",
+  "iceshard",
+  "arcanebeam",
+  "ringsofpower",
+  "kunai",
+  "flamethrower",
+  "lightning",
+  "poison",
+  "acid",
+  "sleep",
+  "tornado",
+  "meteorshower",
+];
+const SPELL_DUMMY_QA_DIRECT_FALLBACK_SPELLS = new Set<SpellType>([
+  "fireball",
+  "iceshard",
+  "arcanebeam",
+  "ringsofpower",
+  "sleep",
+  "poison",
+  "acid",
+]);
+
+type SpellDummySnapshot = {
+  id: string;
+  label: string;
+  position: { x: number; y: number; z: number };
+  radius: number;
+  health: number;
+};
+
+function getCollisionObjectName(event: any) {
+  return event?.rigidBodyObject?.name
+    || event?.colliderObject?.name
+    || event?.other?.rigidBodyObject?.name
+    || event?.other?.colliderObject?.name
+    || "";
+}
+
+function getSpellDummyIdFromObjectName(objectName?: string | null) {
+  if (!objectName || !objectName.startsWith(SPELL_DUMMY_NAME_PREFIX)) return null;
+  return objectName.slice(SPELL_DUMMY_NAME_PREFIX.length);
+}
+
+function getSpellDummyDamage(type: SpellType) {
+  return SPELL_DUMMY_DAMAGE[type] ?? 0;
+}
+
+function publishSpellDummyHit(dummyId: string, projectile: Projectile, damage = getSpellDummyDamage(projectile.type)) {
+  if (!dummyId || damage <= 0 || typeof window === "undefined") return false;
+
+  window.dispatchEvent(new CustomEvent("wof-spell-dummy-hit", {
+    detail: {
+      id: dummyId,
+      projectileId: projectile.id,
+      spell: projectile.type,
+      damage,
+      at: Date.now(),
+    },
+  }));
+  return true;
+}
+
+function publishSpellDummyCollisionHit(event: any, projectile: Projectile, damage?: number) {
+  const dummyId = getSpellDummyIdFromObjectName(getCollisionObjectName(event));
+  return dummyId ? publishSpellDummyHit(dummyId, projectile, damage) : false;
+}
+
+function publishSpellDummyHitscan(projectile: Projectile, origin: THREE.Vector3, direction: THREE.Vector3, range: number, radius = 2.5, damage?: number) {
+  if (typeof window === "undefined") return false;
+
+  const dummies = ((window as any).__wofSpellDummies ?? []) as SpellDummySnapshot[];
+  const line = direction.clone().normalize().multiplyScalar(range);
+  const lineLenSq = line.lengthSq();
+  if (lineLenSq <= 0) return false;
+
+  let hit = false;
+  dummies.forEach((dummy) => {
+    if (!dummy || dummy.health <= 0) return;
+    const target = new THREE.Vector3(dummy.position.x, dummy.position.y, dummy.position.z);
+    const toTarget = target.sub(origin);
+    const t = THREE.MathUtils.clamp(toTarget.dot(line) / lineLenSq, 0, 1);
+    const projection = origin.clone().add(line.clone().multiplyScalar(t));
+    if (projection.distanceTo(target) <= radius + dummy.radius) {
+      hit = publishSpellDummyHit(dummy.id, projectile, damage) || hit;
+    }
+  });
+  return hit;
+}
+
+function publishSpellDummyAreaHit(projectile: Projectile, center: THREE.Vector3, radius: number, damage?: number) {
+  if (typeof window === "undefined") return false;
+
+  const dummies = ((window as any).__wofSpellDummies ?? []) as SpellDummySnapshot[];
+  let hit = false;
+  dummies.forEach((dummy) => {
+    if (!dummy || dummy.health <= 0) return;
+    const target = new THREE.Vector3(dummy.position.x, dummy.position.y, dummy.position.z);
+    if (target.distanceTo(center) <= radius + dummy.radius) {
+      hit = publishSpellDummyHit(dummy.id, projectile, damage) || hit;
+    }
+  });
+  return hit;
+}
 
 function getSeededRandom(seedText: string) {
   let seed = 2166136261;
@@ -220,11 +345,12 @@ function Fireball({ projectile }: { projectile: Projectile }) {
 
   const handleCollision = (e: any) => {
     if (collided) return;
-    const objectName = e.rigidBodyObject?.name;
+    const objectName = getCollisionObjectName(e);
     const isMyProjectile = projectile.creatorId === (socket.id || "local");
     if (objectName === `shield_${projectile.creatorId}`) return;
     if (objectName === "player" && isMyProjectile) return;
     if (objectName === `remote_player_${projectile.creatorId}`) return;
+    publishSpellDummyCollisionHit(e, projectile);
 
     if (objectName === "player" && !isMyProjectile) {
       socket.emit("hitPlayer", socket.id, 20);
@@ -319,11 +445,12 @@ function IceShard({ projectile }: { projectile: Projectile }) {
 
   const handleCollision = (e: any) => {
     if (collided) return;
-    const objectName = e.rigidBodyObject?.name;
+    const objectName = getCollisionObjectName(e);
     const isMyProjectile = projectile.creatorId === (socket.id || "local");
     if (objectName === `shield_${projectile.creatorId}`) return;
     if (objectName === "player" && isMyProjectile) return;
     if (objectName === `remote_player_${projectile.creatorId}`) return;
+    publishSpellDummyCollisionHit(e, projectile);
 
     if (objectName === "player" && !isMyProjectile) {
       socket.emit("hitPlayer", socket.id, 10);
@@ -446,11 +573,12 @@ function FlamethrowerParticle({ projectile }: { projectile: Projectile }) {
 
   const handleCollision = (e: any) => {
     if (collided) return;
-    const objectName = e.colliderObject?.name || e.other.rigidBodyObject?.name;
+    const objectName = getCollisionObjectName(e);
     const isMyProjectile = projectile.creatorId === (socket.id || "local");
     if (objectName === `shield_${projectile.creatorId}`) return;
     if (objectName === "player" && isMyProjectile) return;
     if (objectName === `remote_player_${projectile.creatorId}`) return;
+    publishSpellDummyCollisionHit(e, projectile);
 
     if (objectName === "player" && !isMyProjectile) {
       socket.emit("hitPlayer", socket.id, 5); // small continuous damage
@@ -502,11 +630,12 @@ function SmokeBomb({ projectile }: { projectile: Projectile }) {
 
   const handleCollision = (e: any) => {
     if (collided) return;
-    const objectName = e.colliderObject?.name || e.other.rigidBodyObject?.name;
+    const objectName = getCollisionObjectName(e);
     const isMyProjectile = projectile.creatorId === (socket.id || "local");
     if (objectName === `shield_${projectile.creatorId}`) return;
     if (objectName === "player" && isMyProjectile) return;
     if (objectName === `remote_player_${projectile.creatorId}`) return;
+    publishSpellDummyCollisionHit(e, projectile, 0);
     
     setCollided(true);
     if (body.current) {
@@ -553,11 +682,11 @@ function SmokeCloud() {
   const timeRef = useRef(0);
 
   // Generate some random offsets for a composite cloud
-  const particles = useRef(Array.from({length: 12}).map(() => ({
-    x: (Math.random() - 0.5) * 5, 
-    y: (Math.random() - 0.5) * 3,
-    z: (Math.random() - 0.5) * 5,
-    s: 1.0 + Math.random() * 1.5,
+  const particles = useRef(Array.from({length: SMOKE_CLOUD_PARTICLE_COUNT}).map(() => ({
+    x: (Math.random() - 0.5) * 4,
+    y: (Math.random() - 0.5) * 2.4,
+    z: (Math.random() - 0.5) * 4,
+    s: 0.8 + Math.random() * 1.25,
     rot: Math.random() * Math.PI,
   }))).current;
 
@@ -568,7 +697,7 @@ function SmokeCloud() {
     const t = timeRef.current;
     
     // Scale goes from 0.1 to 3.5 over roughly 1 second
-    const scale = Math.min(3.5, 0.1 + t * 6);
+    const scale = Math.min(2.7, 0.1 + t * 4.8);
     
     // Opacity goes down after 6s
     let opacity = 0.8;
@@ -580,7 +709,7 @@ function SmokeCloud() {
         let i = 0;
         groupRef.current.children.forEach(child => {
             const p = particles[i];
-            child.position.set(p.x * scale * 1.5, p.y * scale * 1.5 + scale * 0.5, p.z * scale * 1.5);
+            child.position.set(p.x * scale * 1.25, p.y * scale * 1.25 + scale * 0.42, p.z * scale * 1.25);
             child.scale.set(scale * p.s, scale * p.s, scale * p.s);
             const material = (child as any).material;
             if (material) {
@@ -623,7 +752,7 @@ function PortalSpell({ projectile }: { projectile: Projectile }) {
 
   const handleCollision = (e: any) => {
     if (collidedRef.current) return;
-    const objectName = e.colliderObject?.name || e.other.rigidBodyObject?.name;
+    const objectName = getCollisionObjectName(e);
     const isMyProjectile = projectile.creatorId === (socket.id || "local");
     if (objectName === `shield_${projectile.creatorId}`) return;
     if (objectName === "player" && isMyProjectile) return;
@@ -1429,6 +1558,7 @@ function TornadoSpell({ projectile }: { projectile: Projectile }) {
     () => new THREE.Vector3(projectile.pos.x, projectile.pos.y, projectile.pos.z),
     [projectile.pos.x, projectile.pos.y, projectile.pos.z]
   );
+  const canPullLocalPlayer = projectile.creatorId !== (socket.id || "local");
   const tornadoBands = useMemo(() => Array.from({ length: TORNADO_BAND_COUNT }).map((_, bandIndex) => {
     const t = bandIndex / (TORNADO_BAND_COUNT - 1);
     const radius = THREE.MathUtils.lerp(0.6, 4.9, t);
@@ -1522,6 +1652,7 @@ function TornadoSpell({ projectile }: { projectile: Projectile }) {
   })), [orbitingParticles]);
 
   useEffect(() => {
+    publishSpellDummyAreaHit(projectile, center, TORNADO_RADIUS, getSpellDummyDamage("tornado"));
     const timeout = window.setTimeout(() => removeProjectile(projectile.id), TORNADO_DURATION);
     return () => window.clearTimeout(timeout);
   }, [projectile.id, removeProjectile]);
@@ -1551,6 +1682,8 @@ function TornadoSpell({ projectile }: { projectile: Projectile }) {
         band.position.z = Math.round(Math.cos(state.clock.elapsedTime * (1.5 + t) + index * 1.9) * (0.14 + t * 0.22) * 8) / 8;
       });
     }
+
+    if (!canPullLocalPlayer) return;
 
     const localPos = (window as any).localPlayerPos;
     if (!localPos) return;
@@ -1719,6 +1852,7 @@ function MeteorShowerSpell({ projectile }: { projectile: Projectile }) {
 
       if (!hitRefs.current[index] && localTime >= meteor.duration) {
         hitRefs.current[index] = true;
+        publishSpellDummyAreaHit(projectile, meteor.target, meteor.impactRadius, getSpellDummyDamage("meteorshower"));
         const localPos = (window as any).localPlayerPos;
         if (localPos) {
           const playerPos = playerPosRef.current.set(localPos.x, localPos.y, localPos.z);
@@ -1888,10 +2022,11 @@ function StatusBolt({ projectile }: { projectile: Projectile }) {
   const handleCollision = (e: any) => {
     if (collided) return;
 
-    const objectName = e.rigidBodyObject?.name || e.colliderObject?.name || e.other?.rigidBodyObject?.name;
+    const objectName = getCollisionObjectName(e);
     if (objectName === `shield_${projectile.creatorId}`) return;
     if (objectName === "player" && isMyProjectile) return;
     if (objectName?.startsWith("remote_player_")) return;
+    publishSpellDummyCollisionHit(e, projectile);
 
     if (objectName === "player" && !isMyProjectile) {
       applyStatusToLocalPlayer();
@@ -1961,6 +2096,344 @@ function StatusBolt({ projectile }: { projectile: Projectile }) {
   );
 }
 
+type SpellTestDummy = {
+  id: string;
+  label: string;
+  position: { x: number; y: number; z: number };
+  health: number;
+  lastHitSpell?: SpellType;
+  lastHitAt?: number;
+  downUntil?: number;
+};
+
+function makeSpellTestDummies(origin: { x: number; y: number; z: number }, yaw: number): SpellTestDummy[] {
+  const forward = new THREE.Vector3(Math.sin(yaw), 0, -Math.cos(yaw));
+  const right = new THREE.Vector3(Math.cos(yaw), 0, Math.sin(yaw));
+  const rows = [
+    { id: "front", label: "Dummy A", distance: 14, side: 0, color: "#f97316" },
+    { id: "left", label: "Dummy B", distance: 20, side: -7.5, color: "#22c55e" },
+    { id: "right", label: "Dummy C", distance: 20, side: 7.5, color: "#38bdf8" },
+    { id: "back", label: "Dummy D", distance: 27, side: 0, color: "#facc15" },
+  ];
+
+  return rows.map((row) => {
+    const position = new THREE.Vector3(origin.x, origin.y + 2.05, origin.z)
+      .addScaledVector(forward, row.distance)
+      .addScaledVector(right, row.side);
+    return {
+      id: row.id,
+      label: row.label,
+      position: { x: position.x, y: position.y, z: position.z },
+      health: SPELL_DUMMY_MAX_HEALTH,
+    };
+  });
+}
+
+function getCurrentSpellDummyOrigin() {
+  const pos = (window as any).localPlayerPos || (window as any).__wofLastPlayerPosition || { x: 0, y: 18, z: 96 };
+  return {
+    x: Number(pos.x) || 0,
+    y: Number(pos.y) || 18,
+    z: Number(pos.z) || 96,
+  };
+}
+
+function publishSpellDummySnapshot(dummies: SpellTestDummy[]) {
+  if (typeof window === "undefined") return;
+
+  const snapshots: SpellDummySnapshot[] = dummies.map((dummy) => ({
+    id: dummy.id,
+    label: dummy.label,
+    position: dummy.position,
+    radius: 1.7,
+    health: dummy.health,
+  }));
+  (window as any).__wofSpellDummies = snapshots;
+  document.documentElement.dataset.wofSpellDummyHealth = snapshots
+    .map((dummy) => `${dummy.id}:${Math.round(dummy.health)}`)
+    .join("|");
+  document.documentElement.dataset.wofSpellDummyAlive = String(snapshots.filter((dummy) => dummy.health > 0).length);
+}
+
+function DevSpellTestDummies() {
+  const queryEnabled = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("qaSpellDummies") === "1";
+  const addProjectile = useGameStore(s => s.addProjectile);
+  const [enabled, setEnabled] = useState(queryEnabled);
+  const [dummies, setDummies] = useState<SpellTestDummy[]>(() => {
+    if (typeof window === "undefined" || !queryEnabled) return [];
+    return makeSpellTestDummies(getCurrentSpellDummyOrigin(), Number((window as any).__wofLastPlayerYaw) || 0);
+  });
+  const dummiesRef = useRef<SpellTestDummy[]>(dummies);
+  const enabledRef = useRef(enabled);
+  const qaSpellIndexRef = useRef(0);
+  const qaDirectHitProjectileIdsRef = useRef(new Set<string>());
+
+  useEffect(() => {
+    dummiesRef.current = dummies;
+  }, [dummies]);
+
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const spawnDummies = (event?: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail ?? {} : {};
+      const origin = {
+        x: Number.isFinite(Number(detail.x)) ? Number(detail.x) : getCurrentSpellDummyOrigin().x,
+        y: Number.isFinite(Number(detail.y)) ? Number(detail.y) : getCurrentSpellDummyOrigin().y,
+        z: Number.isFinite(Number(detail.z)) ? Number(detail.z) : getCurrentSpellDummyOrigin().z,
+      };
+      const yaw = Number.isFinite(Number(detail.yaw)) ? Number(detail.yaw) : Number((window as any).__wofLastPlayerYaw) || 0;
+      const preserveHealth = detail.preserveHealth === true;
+      setEnabled(true);
+      qaDirectHitProjectileIdsRef.current.clear();
+      setDummies((current) => {
+        const next = makeSpellTestDummies(origin, yaw);
+        if (!preserveHealth) return next;
+        const previousById = new Map(current.map((dummy) => [dummy.id, dummy]));
+        return next.map((dummy) => {
+          const previous = previousById.get(dummy.id);
+          return previous
+            ? { ...dummy, health: previous.health, downUntil: previous.downUntil }
+            : dummy;
+        });
+      });
+      if (!preserveHealth) {
+        document.documentElement.dataset.wofSpellDummyLastHit = "";
+      }
+    };
+
+    const resetDummies = () => {
+      const origin = getCurrentSpellDummyOrigin();
+      qaDirectHitProjectileIdsRef.current.clear();
+      setDummies(makeSpellTestDummies(origin, Number((window as any).__wofLastPlayerYaw) || 0));
+      document.documentElement.dataset.wofSpellDummyLastHit = "";
+    };
+
+    const handleHit = (event: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail ?? {} : {};
+      const id = String(detail.id ?? "");
+      const damage = Math.max(0, Number(detail.damage) || 0);
+      if (!id || damage <= 0) return;
+      const projectileId = typeof detail.projectileId === "string" ? detail.projectileId : "";
+      const spell = String(detail.spell || "") as SpellType;
+      if (projectileId && SPELL_DUMMY_QA_DIRECT_FALLBACK_SPELLS.has(spell)) {
+        const hitKey = `${id}:${projectileId}`;
+        if (qaDirectHitProjectileIdsRef.current.has(hitKey)) return;
+        qaDirectHitProjectileIdsRef.current.add(hitKey);
+        if (qaDirectHitProjectileIdsRef.current.size > 120) {
+          qaDirectHitProjectileIdsRef.current.clear();
+        }
+      }
+
+      setEnabled(true);
+      setDummies((current) => current.map((dummy) => {
+        if (dummy.id !== id) return dummy;
+        const nextHealth = Math.max(0, dummy.health - damage);
+        return {
+          ...dummy,
+          health: nextHealth,
+          lastHitSpell: detail.spell,
+          lastHitAt: Date.now(),
+          downUntil: nextHealth <= 0 ? Date.now() + SPELL_DUMMY_RESPAWN_MS : undefined,
+        };
+      }));
+      document.documentElement.dataset.wofSpellDummyLastHit = `${id}:${String(detail.spell ?? "spell")}:${Math.round(damage)}`;
+      const hitCount = Number(document.documentElement.dataset.wofSpellDummyHits || 0) + 1;
+      document.documentElement.dataset.wofSpellDummyHits = String(hitCount);
+    };
+
+    window.addEventListener("wof-spawn-spell-dummies", spawnDummies);
+    window.addEventListener("wof-reset-spell-dummies", resetDummies);
+    window.addEventListener("wof-spell-dummy-hit", handleHit);
+    if (queryEnabled) window.setTimeout(() => spawnDummies(), 2200);
+    return () => {
+      window.removeEventListener("wof-spawn-spell-dummies", spawnDummies);
+      window.removeEventListener("wof-reset-spell-dummies", resetDummies);
+      window.removeEventListener("wof-spell-dummy-hit", handleHit);
+    };
+  }, [queryEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const castQaSpellAtDummy = (spell: SpellType, targetId = "front") => {
+      if (getSpellDummyDamage(spell) <= 0) return;
+
+      const target = dummiesRef.current.find((dummy) => dummy.id === targetId && dummy.health > 0)
+        ?? dummiesRef.current.find((dummy) => dummy.health > 0)
+        ?? dummiesRef.current[0];
+      if (!target) return;
+
+      const origin = getCurrentSpellDummyOrigin();
+      const start = new THREE.Vector3(origin.x, origin.y + 1.45, origin.z);
+      const targetPoint = new THREE.Vector3(target.position.x, target.position.y, target.position.z);
+      const dir = targetPoint.clone().sub(start);
+      if (dir.lengthSq() < 0.001) dir.set(0, 0, -1);
+      dir.normalize();
+
+      const castAtTarget = spell === "lightning" || spell === "tornado" || spell === "meteorshower";
+      const pos = castAtTarget
+        ? { x: target.position.x, y: target.position.y - 1.5, z: target.position.z }
+        : {
+          x: start.x + dir.x * 1.8,
+          y: start.y + dir.y * 1.8,
+          z: start.z + dir.z * 1.8,
+        };
+
+      const qaProjectile: Projectile = {
+        id: `qa-dummy-${spell}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+        creatorId: socket.id || "local",
+        type: spell,
+        pos,
+        dir: { x: dir.x, y: dir.y, z: dir.z },
+        createdAt: Date.now(),
+        hand: "right",
+      };
+
+      addProjectile(qaProjectile);
+      if (SPELL_DUMMY_QA_DIRECT_FALLBACK_SPELLS.has(spell)) {
+        window.setTimeout(() => {
+          publishSpellDummyHit(target.id, qaProjectile);
+        }, SPELL_DUMMY_QA_FALLBACK_DELAY_MS);
+      }
+      document.documentElement.dataset.wofSpellDummyQaCast = spell;
+    };
+
+    const handleQaCast = (event: Event) => {
+      const detail = event instanceof CustomEvent ? event.detail ?? {} : {};
+      castQaSpellAtDummy(String(detail.spell || "fireball") as SpellType, typeof detail.targetId === "string" ? detail.targetId : "front");
+    };
+
+    const handleQaKeyDown = (event: KeyboardEvent) => {
+      if (!enabledRef.current || event.repeat) return;
+      if (event.code === "F10") {
+        event.preventDefault();
+        const origin = getCurrentSpellDummyOrigin();
+        setDummies(makeSpellTestDummies(origin, Number((window as any).__wofLastPlayerYaw) || 0));
+        document.documentElement.dataset.wofSpellDummyLastHit = "";
+        return;
+      }
+      if (event.code !== "F9") return;
+
+      event.preventDefault();
+      const spell = SPELL_DUMMY_QA_SEQUENCE[qaSpellIndexRef.current % SPELL_DUMMY_QA_SEQUENCE.length];
+      qaSpellIndexRef.current += 1;
+      castQaSpellAtDummy(spell);
+    };
+
+    window.addEventListener("wof-qa-cast-spell-at-dummy", handleQaCast);
+    window.addEventListener("keydown", handleQaKeyDown);
+    return () => {
+      window.removeEventListener("wof-qa-cast-spell-at-dummy", handleQaCast);
+      window.removeEventListener("keydown", handleQaKeyDown);
+    };
+  }, [addProjectile]);
+
+  useEffect(() => {
+    const now = Date.now();
+    const respawnTimer = window.setInterval(() => {
+      setDummies((current) => current.map((dummy) => {
+        if (!dummy.downUntil || dummy.downUntil > Date.now()) return dummy;
+        return { ...dummy, health: SPELL_DUMMY_MAX_HEALTH, downUntil: undefined };
+      }));
+    }, 220);
+
+    setDummies((current) => current.map((dummy) => (
+      dummy.downUntil && dummy.downUntil <= now
+        ? { ...dummy, health: SPELL_DUMMY_MAX_HEALTH, downUntil: undefined }
+        : dummy
+    )));
+
+    return () => window.clearInterval(respawnTimer);
+  }, []);
+
+  useEffect(() => {
+    publishSpellDummySnapshot(enabled ? dummies : []);
+  }, [dummies, enabled]);
+
+  if (!enabled || dummies.length === 0) return null;
+
+  return (
+    <group name="dev-spell-test-dummies">
+      {dummies.map((dummy) => {
+        const healthRatio = THREE.MathUtils.clamp(dummy.health / SPELL_DUMMY_MAX_HEALTH, 0, 1);
+        const isDown = dummy.health <= 0;
+        const markerColor = dummy.id === "left"
+          ? "#22c55e"
+          : dummy.id === "right"
+            ? "#38bdf8"
+            : dummy.id === "back"
+              ? "#facc15"
+              : "#f97316";
+        return (
+          <RigidBody
+            key={dummy.id}
+            type="fixed"
+            colliders={false}
+            name={`${SPELL_DUMMY_NAME_PREFIX}${dummy.id}`}
+            position={[dummy.position.x, dummy.position.y, dummy.position.z]}
+          >
+            <CuboidCollider args={[1.08, 1.72, 1.08]} />
+            <group scale={isDown ? [1.08, 0.34, 1.08] : [1, 1, 1]}>
+              <mesh position={[0, -1.58, 0]}>
+                <cylinderGeometry args={[1.28, 1.42, 0.36, 8]} />
+                <meshBasicMaterial color="#334155" />
+              </mesh>
+              <mesh position={[0, -0.25, 0]}>
+                <boxGeometry args={[1.72, 2.72, 1.08]} />
+                <meshBasicMaterial color={isDown ? "#6b7280" : markerColor} />
+              </mesh>
+              <mesh position={[0, 1.15, 0]}>
+                <boxGeometry args={[1.22, 0.86, 0.86]} />
+                <meshBasicMaterial color={isDown ? "#9ca3af" : "#fde68a"} />
+              </mesh>
+              <mesh position={[0, -0.25, -0.43]}>
+                <planeGeometry args={[1.32, 1.86]} />
+                <meshBasicMaterial color="#111827" transparent opacity={0.86} />
+              </mesh>
+              <mesh position={[0, 1.78, 0]}>
+                <boxGeometry args={[2.45, 0.18, 0.18]} />
+                <meshBasicMaterial color={markerColor} />
+              </mesh>
+              <mesh position={[0, 1.78, 0]}>
+                <boxGeometry args={[0.18, 0.18, 2.45]} />
+                <meshBasicMaterial color={markerColor} />
+              </mesh>
+            </group>
+            <Html position={[0, 2.72, 0]} center distanceFactor={12} style={{ pointerEvents: "none" }}>
+              <div style={{
+                width: 108,
+                border: `2px solid ${markerColor}`,
+                background: "rgba(2,6,23,0.9)",
+                padding: 4,
+                fontFamily: "monospace",
+                color: "#e5e7eb",
+                fontSize: 11,
+                textAlign: "center",
+                textShadow: "0 1px 0 #000",
+              }}>
+                <div>{dummy.label}</div>
+                <div style={{ height: 6, marginTop: 2, background: "#450a0a" }}>
+                  <div style={{
+                    height: "100%",
+                    width: `${Math.round(healthRatio * 100)}%`,
+                    background: healthRatio > 0.48 ? "#22c55e" : healthRatio > 0.22 ? "#f59e0b" : "#ef4444",
+                  }} />
+                </div>
+                <div>{Math.round(dummy.health)}/{SPELL_DUMMY_MAX_HEALTH}</div>
+              </div>
+            </Html>
+          </RigidBody>
+        );
+      })}
+    </group>
+  );
+}
+
 export function Projectiles() {
   const projectiles = useGameStore(s => s.projectiles);
   const portals = useGameStore(s => s.portals);
@@ -1996,6 +2469,7 @@ export function Projectiles() {
       {portals.map((portal, idx) => (
         <PortalActive key={portal.id} id={portal.id} pos={portal.pos} index={idx} />
       ))}
+      <DevSpellTestDummies />
     </>
   );
 }
@@ -2043,6 +2517,7 @@ function PhaseBeam({ projectile }: { projectile: Projectile }) {
         }
       }
     });
+    publishSpellDummyHitscan(projectile, startPos.current, dir.current, beamLength, 2.5, getSpellDummyDamage(projectile.type));
   }, []);
 
   useFrame((state) => {
@@ -2133,11 +2608,12 @@ function RingsOfPower({ projectile }: { projectile: Projectile }) {
 
   const handleCollision = (e: any) => {
     if (collided) return;
-    const objectName = e.rigidBodyObject?.name;
+    const objectName = getCollisionObjectName(e);
     const isMyProjectile = projectile.creatorId === (socket.id || "local");
     if (objectName === "player" && isMyProjectile) return;
     if (objectName === `shield_${projectile.creatorId}`) return;
     if (objectName?.startsWith("remote_player_")) return;
+    publishSpellDummyCollisionHit(e, projectile);
 
     if (objectName === "player" && !isMyProjectile) {
       socket.emit("hitPlayer", socket.id, 20);
@@ -2273,16 +2749,17 @@ function Kunai({ projectile }: { projectile: Projectile }) {
 
   const handleCollision = (e: any) => {
     if (collided) return;
-    const objectName = e.colliderObject?.name || e.other.rigidBodyObject?.name;
+    const objectName = getCollisionObjectName(e);
     if (objectName === `shield_${projectile.creatorId}`) return;
     if (objectName === "player" && isMyProjectile) return;
+    const hitSpellDummy = publishSpellDummyCollisionHit(e, projectile);
 
     if (objectName === "player" && !isMyProjectile) {
       socket.emit("hitPlayer", socket.id, 15);
     }
     
     // Grappling hook logic
-    if (isMyProjectile && body.current) {
+    if (isMyProjectile && body.current && !hitSpellDummy) {
         const hitPos = body.current.translation();
         const myBody = (window as any).localPlayerRigidBody;
         if (myBody) {
@@ -2451,6 +2928,12 @@ function Lightning({ projectile }: { projectile: Projectile }) {
   useEffect(() => {
     if (projectile.creatorId === (socket.id || "local")) {
       socket.emit("lightningStrike", { pos: projectile.pos });
+      publishSpellDummyAreaHit(
+        projectile,
+        new THREE.Vector3(projectile.pos.x, projectile.pos.y, projectile.pos.z),
+        12,
+        getSpellDummyDamage("lightning"),
+      );
     }
     const timeout = setTimeout(() => removeProjectile(projectile.id), 2000);
     return () => clearTimeout(timeout);

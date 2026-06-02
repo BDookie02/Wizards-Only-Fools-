@@ -680,6 +680,8 @@ export function drawPixelAvatarFrame(ctx: CanvasRenderingContext2D, options: Ava
   const isSprinting = animation === "sprint";
   const isJumping = animation === "jump";
   const isSliding = animation === "slide";
+  const isCrouching = animation === "crouch" || animation === "crouchwalk";
+  const isCrouchWalking = animation === "crouchwalk";
   const isCasting = animation === "casting";
   const isStartled = animation === "startled";
   const isAngry = animation === "angry";
@@ -695,10 +697,12 @@ export function drawPixelAvatarFrame(ctx: CanvasRenderingContext2D, options: Ava
   const stride = isSprinting ? sprintStep : isWalking ? walkStep : 0;
   const jumpFloat = isJumping ? Math.sin((motionFrame / 4) * Math.PI * 2) : 0;
   const startleLift = isStartled ? -5 + (motionFrame % 2 === 0 ? -2 : 0) : 0;
-  const bodyLift = isMeditating ? 11 : isJumping ? -8 + jumpFloat * 2 : isSliding ? 9 : isSprinting ? (motionFrame % 2 === 0 ? -2 : 1) : isWalking ? (motionFrame % 2 === 1 ? -1 : 0) : startleLift;
+  const crouchBob = isCrouchWalking ? (motionFrame % 2 === 0 ? -1 : 1) : 0;
+  const bodyLift = isMeditating ? 11 : isJumping ? -8 + jumpFloat * 2 : isCrouching ? 12 + crouchBob : isSliding ? 9 : isSprinting ? (motionFrame % 2 === 0 ? -2 : 1) : isWalking ? (motionFrame % 2 === 1 ? -1 : 0) : startleLift;
   const sleepLean = isSleeping ? 4 : 0;
   const slideSign = sideSign || 1;
   const slideLean = isSliding ? slideSign * 6 : 0;
+  const crouchLean = isCrouching ? slideSign * 2 : 0;
   const walkLean = isWalking && isSide ? sideSign * (motionFrame < 2 ? 1 : -1) : 0;
   const sprintLean = isSprinting && !isSide ? (motionFrame < 2 ? 1 : -1) : 0;
 
@@ -711,6 +715,8 @@ export function drawPixelAvatarFrame(ctx: CanvasRenderingContext2D, options: Ava
     if (isSliding) {
       drawPixelEllipse(ctx, 8, 59, 48, 4, "rgba(0, 0, 0, 0.26)");
       drawSlideDust(ctx, frame, slideSign);
+    } else if (isCrouching) {
+      drawPixelEllipse(ctx, 7, 59, 50, 4, "rgba(0, 0, 0, 0.28)");
     } else if (isMeditating) {
       drawPixelEllipse(ctx, 9, 56, 46, 7, "rgba(168, 85, 247, 0.28)");
       drawPixelEllipse(ctx, 13, 58, 38, 4, "rgba(0, 0, 0, 0.2)");
@@ -724,10 +730,10 @@ export function drawPixelAvatarFrame(ctx: CanvasRenderingContext2D, options: Ava
     }
   }
 
-  const torsoX = 32 + sideSign * (isSide ? 1 : 0) + slideLean + sprintLean + walkLean;
+  const torsoX = 32 + sideSign * (isSide ? 1 : 0) + slideLean + crouchLean + sprintLean + walkLean;
   const torsoY = 32 + bodyLift + sleepLean;
-  const headX = 32 + sideSign * 2 + slideLean + (isSliding ? slideSign * 5 : 0);
-  const headY = 6 + bodyLift + sleepLean + (isSliding ? 8 : isJumping ? -1 : 0);
+  const headX = 32 + sideSign * 2 + slideLean + (isSliding ? slideSign * 5 : isCrouching ? slideSign * 4 : 0);
+  const headY = 6 + bodyLift + sleepLean + (isSliding ? 8 : isCrouching ? 8 : isJumping ? -1 : 0);
   const headWidth = 27;
   const headHeight = 27;
   const headLeft = headX - headWidth / 2;
@@ -745,6 +751,12 @@ export function drawPixelAvatarFrame(ctx: CanvasRenderingContext2D, options: Ava
     drawLeg(ctx, torsoX + 4, torsoY + 16, torsoX - 14, kneeY + 1, pantsColor, shadeColor(shoesColor, -0.08));
     drawBlock(ctx, torsoX + 11, kneeY + 1, 8, 3, shoesColor);
     drawBlock(ctx, torsoX - 19, kneeY + 2, 8, 3, shadeColor(shoesColor, -0.1));
+  } else if (isCrouching) {
+    const crawl = isCrouchWalking ? (motionFrame < 2 ? 2 : -2) : 0;
+    drawLeg(ctx, torsoX - 6, torsoY + 13, torsoX - 23 - crawl, 58, pantsShade, shadeColor(shoesColor, -0.1));
+    drawLeg(ctx, torsoX + 6, torsoY + 13, torsoX + 20 + crawl, 58, pantsColor, shoesColor);
+    drawBlock(ctx, torsoX - 29 - crawl, 58, 11, 3, shadeColor(shoesColor, -0.12));
+    drawBlock(ctx, torsoX + 16 + crawl, 58, 11, 3, shoesColor);
   } else if (isSliding) {
     drawLeg(ctx, torsoX - 5, torsoY + 15, torsoX - slideSign * 20, 57, pantsShade, shadeColor(shoesColor, -0.1));
     drawLeg(ctx, torsoX + 4, torsoY + 15, torsoX + slideSign * 12, 54, pantsColor, shoesColor);
@@ -790,6 +802,18 @@ export function drawPixelAvatarFrame(ctx: CanvasRenderingContext2D, options: Ava
   } else if (isSliding) {
     drawArm(ctx, leftShoulderX, shoulderY, torsoX - slideSign * 14, torsoY + 17, skinColor, sleeveColor);
     drawArm(ctx, rightShoulderX, shoulderY, torsoX + slideSign * 17, torsoY + 13, skinColor, sleeveColor);
+  } else if (isCrouching) {
+    const crawl = isCrouchWalking ? (motionFrame % 2 === 0 ? 2 : -2) : 0;
+    if (isSide) {
+      drawArm(ctx, leftShoulderX, shoulderY, torsoX + sideSign * (24 + crawl), 58, skinColor, sleeveColor);
+      drawArm(ctx, rightShoulderX, shoulderY, torsoX + sideSign * (12 - crawl), 57, skinColor, sleeveColor);
+      drawPixelEllipse(ctx, torsoX + sideSign * (24 + crawl) - 4, 57, 8, 5, skinColor);
+    } else {
+      drawArm(ctx, leftShoulderX, shoulderY, torsoX - 22 - crawl, 57, skinColor, sleeveColor);
+      drawArm(ctx, rightShoulderX, shoulderY, torsoX + 22 + crawl, 57, skinColor, sleeveColor);
+      drawPixelEllipse(ctx, torsoX - 26 - crawl, 56, 8, 5, skinColor);
+      drawPixelEllipse(ctx, torsoX + 18 + crawl, 56, 8, 5, skinColor);
+    }
   } else if (isStartled) {
     drawArm(ctx, leftShoulderX, shoulderY, torsoX - 18 - sideSign * 2, torsoY - 6 + (motionFrame % 2), skinColor, sleeveColor);
     drawArm(ctx, rightShoulderX, shoulderY, torsoX + 18 - sideSign * 2, torsoY - 7 - (motionFrame % 2), skinColor, sleeveColor);
@@ -895,7 +919,8 @@ export function drawPixelAvatarFrame(ctx: CanvasRenderingContext2D, options: Ava
   }
 
   if (isDamaged) {
-    drawBlock(ctx, 0, 0, AVATAR_BASE_SIZE, AVATAR_BASE_SIZE, "rgba(239, 68, 68, 0.22)");
+    drawBlock(ctx, headX - 18, headY - 4, 36, 34, "rgba(239, 68, 68, 0.18)");
+    drawBlock(ctx, torsoX - 5, torsoY - 2, 18, 22, "rgba(127, 29, 29, 0.16)");
     drawBlock(ctx, headX + 11, headY + 11, 5, 3, "#ef4444");
   }
 
@@ -924,12 +949,36 @@ function getAvatarDirection(playerYaw: number, worldPosition: THREE.Vector3, cam
 function getFrameDelay(animation: string, isSpeaking = false) {
   if (isSpeaking) return 110;
   if (animation === "sprint" || animation === "slide") return 70;
+  if (animation === "crouchwalk") return 135;
+  if (animation === "crouch") return 220;
   if (animation === "startled") return 85;
   if (animation === "jump") return 95;
   if (animation === "walk" || animation === "casting" || animation === "grabbed") return 120;
   if (animation === "meditate") return 520;
   if (animation === "sleep" || animation === "damaged") return 360;
   return 210;
+}
+
+const AVATAR_ALPHA_TEST = 0.12;
+const AVATAR_TEXTURE_CACHE_LIMIT = 384;
+const avatarTextureCache = new Map<string, THREE.CanvasTexture>();
+
+function getAvatarTextureKey(
+  character: Partial<CharacterCustomization> | undefined,
+  animation: string,
+  direction: number,
+  frame: number,
+  isSpeaking: boolean,
+  isBlinking: boolean,
+) {
+  return JSON.stringify([
+    character ?? null,
+    animation,
+    direction,
+    frame,
+    isSpeaking ? 1 : 0,
+    isBlinking ? 1 : 0,
+  ]);
 }
 
 function createAvatarTexture(
@@ -940,6 +989,10 @@ function createAvatarTexture(
   isSpeaking = false,
   isBlinking = false,
 ) {
+  const cacheKey = getAvatarTextureKey(character, animation, direction, frame, isSpeaking, isBlinking);
+  const cached = avatarTextureCache.get(cacheKey);
+  if (cached) return cached;
+
   const canvas = document.createElement("canvas");
   canvas.width = AVATAR_CANVAS_SIZE;
   canvas.height = AVATAR_CANVAS_SIZE;
@@ -961,8 +1014,17 @@ function createAvatarTexture(
   const texture = new THREE.CanvasTexture(canvas);
   texture.magFilter = THREE.NearestFilter;
   texture.minFilter = THREE.NearestFilter;
+  texture.generateMipmaps = false;
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.needsUpdate = true;
+  avatarTextureCache.set(cacheKey, texture);
+  if (avatarTextureCache.size > AVATAR_TEXTURE_CACHE_LIMIT) {
+    const oldestKey = avatarTextureCache.keys().next().value;
+    if (oldestKey) {
+      avatarTextureCache.get(oldestKey)?.dispose();
+      avatarTextureCache.delete(oldestKey);
+    }
+  }
   return texture;
 }
 
@@ -973,6 +1035,9 @@ export function AvatarBillboard({
   health = 100,
   isSpeaking = false,
   pose = "standing",
+  staticFrame = false,
+  directionUpdateMs = 90,
+  fixedDirection,
 }: {
   character?: Partial<CharacterCustomization>;
   animation?: string;
@@ -980,27 +1045,52 @@ export function AvatarBillboard({
   health?: number;
   isSpeaking?: boolean;
   pose?: "standing" | "floor";
+  staticFrame?: boolean;
+  directionUpdateMs?: number;
+  fixedDirection?: number;
 }) {
   const spriteRef = useRef<THREE.Sprite>(null);
   const [frame, setFrame] = useState(0);
-  const [direction, setDirection] = useState(0);
+  const [direction, setDirection] = useState(() => (
+    typeof fixedDirection === "number" ? THREE.MathUtils.euclideanModulo(Math.round(fixedDirection), 8) : 0
+  ));
   const [isBlinking, setIsBlinking] = useState(false);
   const worldPositionRef = useRef(new THREE.Vector3());
   const lastDirectionRef = useRef(0);
+  const lastDirectionCheckRef = useRef(0);
   const blinkStartTimeoutRef = useRef<number | null>(null);
   const blinkEndTimeoutRef = useRef<number | null>(null);
   const displayAnimation = health <= 0 ? "damaged" : animation;
   const normalizedCharacter = useMemo(() => normalizeCharacterCustomization(character), [character]);
 
   useEffect(() => {
+    if (typeof fixedDirection !== "number") return;
+    const normalizedDirection = THREE.MathUtils.euclideanModulo(Math.round(fixedDirection), 8);
+    if (normalizedDirection !== lastDirectionRef.current) {
+      lastDirectionRef.current = normalizedDirection;
+      setDirection(normalizedDirection);
+    }
+  }, [fixedDirection]);
+
+  useEffect(() => {
+    if (staticFrame) {
+      setFrame(0);
+      return undefined;
+    }
+
     const interval = window.setInterval(() => {
       setFrame((current) => (current + 1) % 4);
     }, getFrameDelay(displayAnimation, isSpeaking));
 
     return () => window.clearInterval(interval);
-  }, [displayAnimation, isSpeaking]);
+  }, [displayAnimation, isSpeaking, staticFrame]);
 
   useEffect(() => {
+    if (staticFrame) {
+      setIsBlinking(false);
+      return undefined;
+    }
+
     let cancelled = false;
     const clearBlinkTimers = () => {
       if (blinkStartTimeoutRef.current !== null) {
@@ -1029,11 +1119,17 @@ export function AvatarBillboard({
       cancelled = true;
       clearBlinkTimers();
     };
-  }, []);
+  }, [staticFrame]);
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, clock }) => {
     const sprite = spriteRef.current;
     if (!sprite) return;
+    if (typeof fixedDirection === "number") return;
+    if (directionUpdateMs > 0) {
+      const now = clock.elapsedTime * 1000;
+      if (now - lastDirectionCheckRef.current < directionUpdateMs) return;
+      lastDirectionCheckRef.current = now;
+    }
 
     sprite.getWorldPosition(worldPositionRef.current);
     const nextDirection = getAvatarDirection(yaw, worldPositionRef.current, camera);
@@ -1048,20 +1144,54 @@ export function AvatarBillboard({
     [direction, displayAnimation, frame, isBlinking, isSpeaking, normalizedCharacter, pose],
   );
 
-  useEffect(() => () => texture.dispose(), [texture]);
-
   if (pose === "floor") {
     return (
       <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[AVATAR_WORLD_WIDTH * 0.9, AVATAR_WORLD_HEIGHT * 0.9, 1]}>
         <planeGeometry args={[1, 1]} />
-        <meshBasicMaterial map={texture} transparent alphaTest={0.04} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+        <meshBasicMaterial map={texture} transparent alphaTest={AVATAR_ALPHA_TEST} depthWrite toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
     );
   }
 
   return (
     <sprite ref={spriteRef} position={[0, AVATAR_WORLD_CENTER_Y, 0]} scale={[AVATAR_WORLD_WIDTH, AVATAR_WORLD_HEIGHT, 1]}>
-      <spriteMaterial map={texture} transparent alphaTest={0.04} depthWrite={false} toneMapped={false} />
+      <spriteMaterial map={texture} transparent alphaTest={AVATAR_ALPHA_TEST} depthWrite toneMapped={false} />
     </sprite>
+  );
+}
+
+export function AvatarWorldFacingPlane({
+  character,
+  animation = "idle",
+  yaw = 0,
+  health = 100,
+}: {
+  character?: Partial<CharacterCustomization>;
+  animation?: string;
+  yaw?: number;
+  health?: number;
+}) {
+  const displayAnimation = health <= 0 ? "damaged" : animation;
+  const normalizedCharacter = useMemo(() => normalizeCharacterCustomization(character), [character]);
+  const frontTexture = useMemo(
+    () => createAvatarTexture(normalizedCharacter, displayAnimation, 0, 0),
+    [displayAnimation, normalizedCharacter],
+  );
+  const backTexture = useMemo(
+    () => createAvatarTexture(normalizedCharacter, displayAnimation, 4, 0),
+    [displayAnimation, normalizedCharacter],
+  );
+
+  return (
+    <group position={[0, AVATAR_WORLD_CENTER_Y, 0]} rotation={[0, Math.PI - yaw, 0]} scale={[AVATAR_WORLD_WIDTH, AVATAR_WORLD_HEIGHT, 1]}>
+      <mesh position={[0, 0, 0.012]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial map={frontTexture} transparent alphaTest={AVATAR_ALPHA_TEST} depthWrite toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 0, -0.012]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial map={backTexture} transparent alphaTest={AVATAR_ALPHA_TEST} depthWrite toneMapped={false} />
+      </mesh>
+    </group>
   );
 }

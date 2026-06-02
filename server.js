@@ -166,6 +166,10 @@ async function startServer() {
             .slice(0, 18);
         return cleaned || fallback;
     };
+    const sanitizeSurvivalLevel = (value) => {
+        const level = Number(value);
+        return Number.isFinite(level) ? Math.max(1, Math.min(999, Math.floor(level))) : 1;
+    };
     const getPlayerDisplayName = (player, fallbackId = "") => sanitizePlayerName(player?.playerName, `Wizard ${fallbackId.slice(0, 4).toUpperCase() || "????"}`);
     const clearRoomCleanup = (roomCode) => {
         const timer = emptyRoomCleanupTimers.get(roomCode);
@@ -233,6 +237,7 @@ async function startServer() {
         socket.on("join", (payload) => {
             const roomCode = sanitizeRoomCode(typeof payload === "object" && payload ? payload.roomCode : "");
             const playerName = sanitizePlayerName(typeof payload === "object" && payload ? payload.playerName : "", "");
+            const survivalLevel = sanitizeSurvivalLevel(typeof payload === "object" && payload ? payload.survivalLevel : 1);
             if (!roomCode || playerName.length < 2) {
                 socket.emit("joinRejected", {
                     reason: !roomCode ? "room-required" : "name-required",
@@ -262,6 +267,7 @@ async function startServer() {
                 acidUntil: 0,
                 playerColor,
                 playerName,
+                survivalLevel,
                 character: normalizePlayerCharacter({ topColor: playerColor }, playerColor),
                 isSpeaking: false
             };
@@ -280,6 +286,9 @@ async function startServer() {
                 const p = room.get(socket.id);
                 if (data?.character) {
                     data.character = normalizePlayerCharacter(data.character, p.playerColor);
+                }
+                if (data?.survivalLevel !== undefined) {
+                    data.survivalLevel = sanitizeSurvivalLevel(data.survivalLevel);
                 }
                 Object.assign(p, data);
                 socket.to(currentRoom).emit("playerMoved", { id: socket.id, ...data });

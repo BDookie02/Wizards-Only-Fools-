@@ -30,7 +30,9 @@ export function isMobileLikeDevice() {
 export function isMobilePerformanceMode() {
   if (typeof window !== "undefined") {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("perf") === "quality" || params.get("quality") === "1") return false;
     if (params.get("mobilePerf") === "1" || params.get("perf") === "mobile") return true;
+    if (window.localStorage?.getItem("wizards-quality-performance") === "1") return false;
     if (window.localStorage?.getItem("wizards-mobile-performance") === "1") return true;
   }
 

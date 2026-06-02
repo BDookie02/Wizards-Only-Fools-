@@ -369,9 +369,11 @@ export function NetworkManager() {
   const updatePlayer = useGameStore(s => s.updatePlayer);
   const setCharacterCustomization = useGameStore(s => s.setCharacterCustomization);
   const localPlayerName = useGameStore(s => s.localPlayerName);
+  const survivalLevel = useGameStore(s => s.survivalLevel);
   const addLobbyMessage = useGameStore(s => s.addLobbyMessage);
   const health = useGameStore(s => s.health);
   const setStatusEffect = useGameStore(s => s.setStatusEffect);
+  const respawnLocalPlayer = useGameStore(s => s.respawn);
 
   const [room, setRoom] = useState("");
   const [spells, setSpells] = useState<ActiveSpell[]>([]);
@@ -461,9 +463,20 @@ export function NetworkManager() {
 
     const handlePlayerRespawn = ({ id, pos }: { id: string; pos: [number, number, number] }) => {
       if (id === socket.id) {
-        // PlayerController will naturally warp if we force update? 
-        // Actually, PlayerController rigidly sets pos. We should handle client respawn correctly.
-        // For simplicity now, let's just let it be.
+        respawnLocalPlayer();
+        window.dispatchEvent(new CustomEvent("teleportPlayer", {
+          detail: { x: pos[0], y: pos[1], z: pos[2] },
+        }));
+      } else {
+        updatePlayer(id, {
+          pos,
+          health: 100,
+          armor: 0,
+          slowUntil: 0,
+          sleepUntil: 0,
+          poisonUntil: 0,
+          acidUntil: 0,
+        });
       }
     };
 
@@ -471,6 +484,11 @@ export function NetworkManager() {
       const player = id === socket.id
         ? { id, playerName }
         : useGameStore.getState().players[id] ?? { id, playerName: diedName };
+      if (id === socket.id) {
+        useGameStore.getState().setHealth(0);
+      } else {
+        updatePlayer(id, { health: 0 });
+      }
       addLobbyMessage(id === socket.id ? "You were defeated" : `${getPlayerDisplayName(player)} was defeated`, "death");
     };
 
@@ -532,7 +550,7 @@ export function NetworkManager() {
     socket.on("grabRelease", handleGrabRelease);
 
     socket.connect();
-    socket.emit("join", { roomCode: r, playerName });
+    socket.emit("join", { roomCode: r, playerName, survivalLevel });
 
     return () => {
       socket.off("roomState", handleRoomState);
@@ -552,7 +570,7 @@ export function NetworkManager() {
       socket.off("grabRelease", handleGrabRelease);
       socket.disconnect();
     };
-  }, [addLobbyMessage, addPlayer, localPlayerName, removePlayer, setCharacterCustomization, setPlayers, setStatusEffect, updatePlayer]);
+  }, [addLobbyMessage, addPlayer, localPlayerName, removePlayer, setCharacterCustomization, setPlayers, setStatusEffect, survivalLevel, updatePlayer]);
 
   return (
     <>

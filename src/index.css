@@ -86,6 +86,10 @@ canvas {
   touch-action: none;
 }
 
+canvas:focus {
+  outline: none;
+}
+
 .doom-panel {
   background-color: #555;
   border-top: 4px solid #888;
@@ -195,6 +199,46 @@ canvas {
 .menu-scroll-panel::-webkit-scrollbar {
   width: 0;
   height: 0;
+}
+
+.map-village-controls {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.map-village-controls::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@media (max-width: 560px) {
+  .map-expanded-title {
+    max-width: 96px;
+  }
+
+  .map-expanded-title > div:first-child {
+    font-size: clamp(0.72rem, 3.8cqw, 0.95rem) !important;
+  }
+
+  .map-expanded-title > div:nth-child(2) {
+    font-size: clamp(0.42rem, 2.1cqw, 0.56rem) !important;
+  }
+
+  .map-page-tabs {
+    top: clamp(12px, 3cqh, 24px) !important;
+    gap: 3px !important;
+  }
+
+  .map-page-tabs button {
+    padding: 4px 5px !important;
+    font-size: clamp(0.46rem, 2cqw, 0.6rem) !important;
+  }
+
+  .map-close-button {
+    padding: 4px 6px !important;
+    font-size: clamp(0.5rem, 2.2cqw, 0.68rem) !important;
+  }
 }
 
 .settings-panel {
@@ -1616,6 +1660,11 @@ html:not(.wizards-touch-layout) .minimap-label {
   right: var(--live-minimap-inset, clamp(8px, 2vmin, 16px)) !important;
 }
 
+.minimap-label {
+  width: var(--live-minimap-size, clamp(104px, 22vmin, 212px)) !important;
+  height: var(--live-minimap-size, clamp(104px, 22vmin, 212px)) !important;
+}
+
 html:not(.wizards-touch-layout) .minimap-coords {
   display: flex !important;
 }
@@ -1682,4 +1731,38 @@ html:not(.wizards-touch-layout) .magic-hands-ultrawide-offset {
 html.wizards-mouse-gameplay-active #play-button-overlay {
   display: none !important;
   pointer-events: none !important;
+}
+
+.mana-meter {
+  bottom: calc(var(--hud-status-height) + 4px) !important;
+  border-width: 0 !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  padding: 0 !important;
+  translate: none !important;
+  transform: translateX(-50%) !important;
+  transform-origin: bottom center !important;
+}
+
+.mana-meter-panel {
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  transform: scale(0.5) !important;
+  transform-origin: bottom center !important;
+}
+
+.mana-meter-bar {
+  border: 0 !important;
+  outline: 0 !important;
+}
+
+html:not(.wizards-touch-layout) .mana-meter {
+  bottom: calc(var(--hud-status-height) + 4px) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+  overflow: visible !important;
+  padding: 0 !important;
 }

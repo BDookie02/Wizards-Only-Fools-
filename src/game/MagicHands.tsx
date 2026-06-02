@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { clsx, type ClassValue } from "clsx";
@@ -20,16 +19,9 @@ function handSpriteSize(basePx: number, heightRatio = 0.27, minPx = Math.round(b
   return `clamp(${minPx}px, calc(var(--app-vh, 100dvh) * ${heightRatio}), ${basePx}px)`;
 }
 
-function spellbookSpriteSize(axis: "width" | "height") {
-  if (!MOBILE_PERFORMANCE_MODE) {
-    return axis === "width"
-      ? 'min(1360px, calc(var(--app-vw, 100dvw) * 1.54))'
-      : 'min(900px, calc(var(--app-vh, 100dvh) * 1.16))';
-  }
-
-  return axis === "width"
-    ? 'min(980px, calc(var(--app-vw, 100dvw) * 1.2), calc(var(--app-vh, 100dvh) * 1.85))'
-    : 'min(640px, calc(var(--app-vh, 100dvh) * 0.92), calc(var(--app-vw, 100dvw) * 1.05))';
+function heldSpellSpriteSize(basePx: number, heightRatio = 0.27, minPx = Math.round(basePx * 0.58)) {
+  const scale = 0.82;
+  return handSpriteSize(Math.round(basePx * scale), heightRatio * scale, Math.round(minPx * scale));
 }
 
 function processPixelFilter(ctx: CanvasRenderingContext2D, width: number, height: number) {
@@ -393,8 +385,8 @@ function IceShardCanvas({ isActive, isCharging }: { isActive: boolean, isChargin
           left: `${(PALM_X / 859) * 100}%`,
           bottom: `${((495 - PALM_Y) / 495) * 100}%`,
           opacity: equipScale,
-          width: handSpriteSize(160, 0.24, 92),
-          height: handSpriteSize(160, 0.24, 92),
+          width: heldSpellSpriteSize(160, 0.24, 92),
+          height: heldSpellSpriteSize(160, 0.24, 92),
           transform: `translate(-50%, 0) scale(${isCharging ? 1.3 : 1})`,
           overflow: 'hidden',
           clipPath: 'inset(3%)'
@@ -981,7 +973,7 @@ function BlinkGifCanvas({ isActive, isCharging }: { isActive: boolean, isChargin
 
   if (equipScale === 0) return null;
 
-  const scale = (isCharging ? 1.4 : 1.0) * equipScale;
+  const scale = (isCharging ? 1.1 : 0.82) * equipScale;
   const shakeX = isCharging ? (Math.random() - 0.5) * 4 : 0;
   const shakeY = isCharging ? (Math.random() - 0.5) * 4 : 0;
   
@@ -1056,10 +1048,10 @@ function SmokeBombGifCanvas({ isActive, isCharging }: { isActive: boolean, isCha
           style={{
             mixBlendMode: 'screen',
             imageRendering: 'pixelated',
-            opacity: 0.6,
-            filter: 'brightness(1.5) contrast(1.8) saturate(2.0)',
-            WebkitMaskImage: 'radial-gradient(circle at center, black 40%, transparent 65%)',
-            maskImage: 'radial-gradient(circle at center, black 40%, transparent 65%)'
+            opacity: 0.48,
+            filter: 'brightness(1.35) contrast(1.55) saturate(1.7)',
+            WebkitMaskImage: 'radial-gradient(circle at center, black 34%, transparent 60%)',
+            maskImage: 'radial-gradient(circle at center, black 34%, transparent 60%)'
           }}
         />
       </foreignObject>
@@ -1189,8 +1181,8 @@ function DiscShieldCanvas({ isActive, isCharging }: { isActive: boolean, isCharg
           left: `${(PALM_X / 859) * 100}%`,
           bottom: `${((495 - PALM_Y) / 495) * 100}%`,
           opacity: equipScale,
-          width: handSpriteSize(192, 0.28, 108),
-          height: handSpriteSize(192, 0.28, 108),
+          width: heldSpellSpriteSize(192, 0.28, 108),
+          height: heldSpellSpriteSize(192, 0.28, 108),
           transform: `translate(-50%, 0) scale(${isCharging ? 1.2 : 1})`
         }}
       >
@@ -1239,8 +1231,8 @@ function OrbShieldCanvas({ isActive, isCharging }: { isActive: boolean, isChargi
         left: `${(PALM_X / 859) * 100}%`,
         bottom: `${((495 - PALM_Y) / 495) * 100}%`,
         opacity: equipScale,
-        width: handSpriteSize(192, 0.28, 108),
-        height: handSpriteSize(192, 0.28, 108),
+        width: heldSpellSpriteSize(192, 0.28, 108),
+        height: heldSpellSpriteSize(192, 0.28, 108),
         transform: `translate(-50%, 0) scale(${isCharging ? 1.2 : 1})`,
         filter: 'drop-shadow(0 0 16px rgba(244,114,182,0.7))'
       }}
@@ -1343,7 +1335,7 @@ function KunaiCanvas({ isActive, isCharging }: { isActive: boolean, isCharging: 
   const isKunaiOut = useGameStore(s => s.projectiles.some(p => p.type === 'kunai' && p.creatorId === (socket.id || "local")));
   const pixelCanvasRef = useRef<HTMLCanvasElement>(null);
   const offscreenRef = useRef<HTMLCanvasElement | null>(null);
-  const kunaiSize = handSpriteSize(220, 0.3, 120);
+  const kunaiSize = heldSpellSpriteSize(220, 0.3, 120);
 
   useEffect(() => {
     let animInterval: any;
@@ -1646,8 +1638,8 @@ function MagicGlassOrbCanvas({ isActive, isCharging, align }: { isActive: boolea
         left: `${((PALM_X + 44) / 859) * 100}%`,
         bottom: `${((495 - PALM_Y - 96) / 495) * 100}%`,
         opacity: equipScale,
-        width: MOBILE_PERFORMANCE_MODE ? handSpriteSize(260, 0.3, 118) : 'clamp(190px, 18vh, 260px)',
-        height: MOBILE_PERFORMANCE_MODE ? handSpriteSize(260, 0.3, 118) : 'clamp(190px, 18vh, 260px)',
+        width: MOBILE_PERFORMANCE_MODE ? heldSpellSpriteSize(260, 0.3, 118) : 'clamp(156px, 15vh, 214px)',
+        height: MOBILE_PERFORMANCE_MODE ? heldSpellSpriteSize(260, 0.3, 118) : 'clamp(156px, 15vh, 214px)',
         transform: `translate(-50%, 0) scaleX(${align === 'right' ? -1 : 1}) scale(${isCharging ? 1.06 : 1}) translateY(${isCharging ? '-4px' : '0'})`,
         filter: 'drop-shadow(0 0 22px rgba(103,232,249,0.88)) drop-shadow(0 0 44px rgba(250,204,21,0.44))',
         borderRadius: '9999px',
@@ -1663,65 +1655,6 @@ function MagicGlassOrbCanvas({ isActive, isCharging, align }: { isActive: boolea
         <MagicGlassOrbModel signal={signal} isCharging={isCharging} />
       </Canvas>
     </div>
-  );
-}
-
-function PixelatedSpellbookImage({ src }: { src: string }) {
-  const [imageSrc, setImageSrc] = useState(src);
-
-  useEffect(() => {
-    setImageSrc(src);
-  }, [src]);
-
-  return (
-    <img
-      src={imageSrc}
-      alt="spellbook"
-      className="h-full w-full object-contain"
-      style={{
-        imageRendering: 'pixelated',
-        filter: 'brightness(1.22) contrast(1.18) saturate(1.08)',
-      }}
-      onError={() => {
-        const fallback = getSpriteUrl("/sprites/misc/spellbook_icon.png") || "/sprites/misc/spellbook_icon.png";
-        if (imageSrc !== fallback) setImageSrc(fallback);
-      }}
-    />
-  );
-}
-
-function SpellbookGifCanvas({ isActive }: { isActive: boolean }) {
-  const [equipScale, setEquipScale] = useState(0);
-
-  useEffect(() => {
-    let animInterval: any;
-    if (isActive) {
-      if (equipScale < 1) animInterval = setInterval(() => setEquipScale(p => +(Math.min(1, p + 0.2)).toFixed(1)), 30);
-    } else {
-      if (equipScale > 0) animInterval = setInterval(() => setEquipScale(p => +(Math.max(0, p - 0.2)).toFixed(1)), 30);
-    }
-    return () => clearInterval(animInterval);
-  }, [isActive, equipScale]);
-
-  if (equipScale === 0) return null;
-
-  return (
-    <>
-      <div
-        className="absolute pointer-events-none z-30 transition-all duration-100"
-        style={{
-          left: '50%',
-          bottom: '4%',
-          opacity: Math.min(1, equipScale * 1.05),
-          width: spellbookSpriteSize("width"),
-          height: spellbookSpriteSize("height"),
-          transform: `translate(-50%, 0) scale(${1 + equipScale * 0.2}) rotate(-1deg)`,
-          filter: 'drop-shadow(0 0 20px rgba(216,180,254,0.55)) drop-shadow(0 12px 18px rgba(0,0,0,0.45))',
-        }}
-      >
-        <PixelatedSpellbookImage src={getSpriteUrl("/sprites/misc/spellbook_optimized.gif") || "/sprites/misc/spellbook_optimized.gif"} />
-      </div>
-    </>
   );
 }
 
@@ -1763,8 +1696,8 @@ function HealingCrystalsCanvas({ isActive, isCharging }: { isActive: boolean, is
           left: `${(PALM_X / 859) * 100}%`,
           bottom: `${((495 - PALM_Y) / 495) * 100}%`,
           opacity: equipScale,
-          width: handSpriteSize(160, 0.24, 92),
-          height: handSpriteSize(160, 0.24, 92),
+          width: heldSpellSpriteSize(160, 0.24, 92),
+          height: heldSpellSpriteSize(160, 0.24, 92),
           transform: `translate(-50%, 0) scale(${isCharging ? 1.2 : 1})`,
           imageRendering: 'pixelated',
           filter: 'url(#remove-black)'
@@ -1803,8 +1736,8 @@ function GrabSpellCanvas({ isActive, isCharging }: { isActive: boolean, isChargi
         left: `${(PALM_X / 859) * 100}%`,
         bottom: `${((495 - PALM_Y + 4) / 495) * 100}%`,
         opacity: equipScale,
-        width: handSpriteSize(190, 0.28, 108),
-        height: handSpriteSize(190, 0.28, 108),
+        width: heldSpellSpriteSize(190, 0.28, 108),
+        height: heldSpellSpriteSize(190, 0.28, 108),
         transform: `translate(-50%, 0) scale(${isCharging ? 1.16 : 1}) rotate(${isCharging ? -5 : -2}deg)`,
         filter: 'drop-shadow(0 0 18px rgba(244,114,182,0.75)) drop-shadow(0 0 36px rgba(168,85,247,0.35))'
       }}
@@ -2016,8 +1949,8 @@ function TornadoSpellCanvas({ isActive, isCharging }: { isActive: boolean, isCha
         left: `${(PALM_X / 859) * 100}%`,
         bottom: `${((495 - PALM_Y + 2) / 495) * 100}%`,
         opacity: equipScale,
-        width: handSpriteSize(170, 0.25, 98),
-        height: handSpriteSize(170, 0.25, 98),
+        width: heldSpellSpriteSize(170, 0.25, 98),
+        height: heldSpellSpriteSize(170, 0.25, 98),
         transform: `translate(-50%, 0) scale(${isCharging ? 1.12 : 1}) translateY(${isCharging ? '-5px' : '0'})`,
         filter: 'drop-shadow(0 0 10px rgba(229,231,235,0.7)) drop-shadow(0 0 22px rgba(75,85,99,0.45))'
       }}
@@ -2119,8 +2052,8 @@ function MeteorShowerCanvas({ isActive, isCharging }: { isActive: boolean, isCha
         left: `${(PALM_X / 859) * 100}%`,
         bottom: `${((495 - PALM_Y + 6) / 495) * 100}%`,
         opacity: equipScale,
-        width: handSpriteSize(178, 0.26, 102),
-        height: handSpriteSize(178, 0.26, 102),
+        width: heldSpellSpriteSize(178, 0.26, 102),
+        height: heldSpellSpriteSize(178, 0.26, 102),
         transform: `translate(-50%, 0) scale(${isCharging ? 1.14 : 1}) translateY(${isCharging ? '-4px' : '0'})`,
         filter: 'drop-shadow(0 0 12px rgba(251,146,60,0.78)) drop-shadow(0 0 24px rgba(248,113,113,0.36))'
       }}
@@ -2449,8 +2382,8 @@ function BuffSpellCanvas({ isActive, isCharging, variant }: { isActive: boolean,
         left: `${(PALM_X / 859) * 100}%`,
         bottom: `${((495 - PALM_Y + 5) / 495) * 100}%`,
         opacity: equipScale,
-        width: handSpriteSize(165, 0.25, 96),
-        height: handSpriteSize(165, 0.25, 96),
+        width: heldSpellSpriteSize(165, 0.25, 96),
+        height: heldSpellSpriteSize(165, 0.25, 96),
         transform: `translate(-50%, 0) scale(${isCharging ? 1.14 : 1}) translateY(${isCharging ? '-5px' : '0'})`,
         filter: `drop-shadow(0 0 12px ${config.glow}) drop-shadow(0 0 24px ${config.shadow})`
       }}
@@ -2572,6 +2505,7 @@ function MagicHandsContent({
     <div className={cn(
       "absolute inset-0 pointer-events-none transition-transform duration-200",
       playerState.isSliding ? "translate-y-16" :
+      playerState.isCrouching ? "translate-y-10" :
       (playerState.isGrounded && playerState.isSprinting) ? "animate-bob-sprint" : 
       (playerState.isGrounded && playerState.isMoving) ? "animate-bob-walk" : ""
     )}>
@@ -2598,6 +2532,7 @@ export function MagicHands({ playerState, leftSpell, rightSpell }: { playerState
   const chargingHands = useGameStore(s => s.chargingHands);
   const aspectRatio = useGameStore(s => s.aspectRatio);
   const isSpellMenuOpen = useGameStore(s => s.isSpellMenuOpen);
+  const isMagicArmed = useGameStore(s => s.isMagicArmed);
   const leftRunePower = useGameStore(s => s.leftRunePower);
   const rightRunePower = useGameStore(s => s.rightRunePower);
   const [frame, setFrame] = useState(1);
@@ -2624,7 +2559,7 @@ export function MagicHands({ playerState, leftSpell, rightSpell }: { playerState
       leftFiringPoseTimeoutRef.current = null;
     }
 
-    if (isSpellMenuOpen || leftSpell === 'arcanebeam') {
+    if (!isMagicArmed || isSpellMenuOpen || leftSpell === 'arcanebeam') {
       setShowLeftFiringPose(false);
       return;
     }
@@ -2640,7 +2575,7 @@ export function MagicHands({ playerState, leftSpell, rightSpell }: { playerState
         leftFiringPoseTimeoutRef.current = null;
       }, 140);
     }
-  }, [leftSpell, isLeftCharging, isSpellMenuOpen, showLeftFiringPose]);
+  }, [isMagicArmed, leftSpell, isLeftCharging, isSpellMenuOpen, showLeftFiringPose]);
 
   useEffect(() => {
     if (rightFiringPoseTimeoutRef.current !== null) {
@@ -2648,7 +2583,7 @@ export function MagicHands({ playerState, leftSpell, rightSpell }: { playerState
       rightFiringPoseTimeoutRef.current = null;
     }
 
-    if (isSpellMenuOpen || rightSpell === 'arcanebeam') {
+    if (!isMagicArmed || isSpellMenuOpen || rightSpell === 'arcanebeam') {
       setShowRightFiringPose(false);
       return;
     }
@@ -2664,7 +2599,7 @@ export function MagicHands({ playerState, leftSpell, rightSpell }: { playerState
         rightFiringPoseTimeoutRef.current = null;
       }, 140);
     }
-  }, [rightSpell, isRightCharging, isSpellMenuOpen, showRightFiringPose]);
+  }, [isMagicArmed, rightSpell, isRightCharging, isSpellMenuOpen, showRightFiringPose]);
 
   useEffect(() => () => {
     if (leftFiringPoseTimeoutRef.current !== null) {
@@ -2675,10 +2610,10 @@ export function MagicHands({ playerState, leftSpell, rightSpell }: { playerState
     }
   }, []);
 
-  const leftFiringPoseActive = !isSpellMenuOpen && leftRuneReady && leftSpell !== 'arcanebeam' && (isLeftCharging || showLeftFiringPose);
-  const rightFiringPoseActive = !isSpellMenuOpen && rightRuneReady && rightSpell !== 'arcanebeam' && (isRightCharging || showRightFiringPose);
-  const leftUnpoweredPoseActive = !isSpellMenuOpen && !leftRuneReady;
-  const rightUnpoweredPoseActive = !isSpellMenuOpen && !rightRuneReady;
+  const leftFiringPoseActive = isMagicArmed && !isSpellMenuOpen && leftRuneReady && leftSpell !== 'arcanebeam' && (isLeftCharging || showLeftFiringPose);
+  const rightFiringPoseActive = isMagicArmed && !isSpellMenuOpen && rightRuneReady && rightSpell !== 'arcanebeam' && (isRightCharging || showRightFiringPose);
+  const leftUnpoweredPoseActive = isMagicArmed && !isSpellMenuOpen && !leftRuneReady;
+  const rightUnpoweredPoseActive = isMagicArmed && !isSpellMenuOpen && !rightRuneReady;
   const leftHandUsesFiringSprite = leftFiringPoseActive || leftUnpoweredPoseActive;
   const rightHandUsesFiringSprite = rightFiringPoseActive || rightUnpoweredPoseActive;
   const leftHandTranslate = leftHandUsesFiringSprite ? '-8%' : '-8.5%';
@@ -2688,7 +2623,7 @@ export function MagicHands({ playerState, leftSpell, rightSpell }: { playerState
     aspectRatio === '4/3' ? "magic-hands-classic-offset" :
     aspectRatio === 'Fill' ? "magic-hands-fill-offset" : "";
 
-  if (playerState.isMeditating && !isSpellMenuOpen) {
+  if ((playerState.isMeditating || !isMagicArmed) && !isSpellMenuOpen) {
     return null;
   }
 
@@ -2711,26 +2646,7 @@ export function MagicHands({ playerState, leftSpell, rightSpell }: { playerState
   );
 
   if (isSpellMenuOpen) {
-    return (
-      <>
-        <div className={cn("absolute inset-0 pointer-events-none transition-transform duration-200 z-[118]", aspectOffsetClass)}>
-          <SpellbookGifCanvas isActive={isSpellMenuOpen} />
-        </div>
-        {typeof document !== "undefined" && createPortal(
-          <div
-            data-testid="spellbook-hands-overlay"
-            className={cn("fixed inset-0 pointer-events-none z-[9999] transition-transform duration-200", aspectOffsetClass)}
-            style={{
-              width: "var(--app-vw, 100dvw)",
-              height: "var(--app-vh, 100dvh)",
-            }}
-          >
-            {handsLayer}
-          </div>,
-          document.body
-        )}
-      </>
-    );
+    return null;
   }
 
   return (

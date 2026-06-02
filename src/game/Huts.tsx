@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import * as THREE from "three";
-import { RigidBody, MeshCollider, CuboidCollider } from "@react-three/rapier";
+import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { Evaluator, Brush, SUBTRACTION } from "three-bvh-csg";
 import { getTerrainHeight } from "./GameWorld";
 
@@ -125,6 +125,58 @@ export const getHutList = (): HutInfo[] => {
   }
   return list;
 };
+
+function HutFloorCollider({ halfSize }: { halfSize: number }) {
+  return <CuboidCollider args={[halfSize, 0.12, halfSize]} position={[0, 0.12, 0]} />;
+}
+
+function MushroomHutColliders() {
+  const wallThickness = 1;
+  const height = 8;
+  const halfSize = 6;
+  const innerHalf = 5;
+  const doorWidth = 3;
+  const doorHeight = 4.2;
+  const frontSegmentWidth = (halfSize * 2 - doorWidth) / 2;
+  const lintelHeight = height - doorHeight;
+
+  return (
+    <>
+      <HutFloorCollider halfSize={5} />
+      <CuboidCollider args={[wallThickness / 2, height / 2, halfSize]} position={[-innerHalf - wallThickness / 2, height / 2, 0]} />
+      <CuboidCollider args={[wallThickness / 2, height / 2, halfSize]} position={[innerHalf + wallThickness / 2, height / 2, 0]} />
+      <CuboidCollider args={[halfSize, height / 2, wallThickness / 2]} position={[0, height / 2, -innerHalf - wallThickness / 2]} />
+      <CuboidCollider args={[frontSegmentWidth / 2, height / 2, wallThickness / 2]} position={[-doorWidth / 2 - frontSegmentWidth / 2, height / 2, innerHalf + wallThickness / 2]} />
+      <CuboidCollider args={[frontSegmentWidth / 2, height / 2, wallThickness / 2]} position={[doorWidth / 2 + frontSegmentWidth / 2, height / 2, innerHalf + wallThickness / 2]} />
+      <CuboidCollider args={[doorWidth / 2, lintelHeight / 2, wallThickness / 2]} position={[0, doorHeight + lintelHeight / 2, innerHalf + wallThickness / 2]} />
+      <CuboidCollider args={[9, 2.4, 9]} position={[0, 13, 0]} />
+    </>
+  );
+}
+
+function MoundHutColliders({ hasFlatRoof = false }: { hasFlatRoof?: boolean }) {
+  const wallThickness = 1;
+  const height = 12;
+  const halfSize = 9;
+  const innerHalf = 8;
+  const doorWidth = 3;
+  const doorHeight = 4.2;
+  const frontSegmentWidth = Math.max(1, (halfSize * 2 - doorWidth) / 2);
+  const lintelHeight = height - doorHeight;
+
+  return (
+    <>
+      <HutFloorCollider halfSize={8} />
+      <CuboidCollider args={[wallThickness / 2, height / 2, halfSize]} position={[-innerHalf - wallThickness / 2, height / 2, 0]} />
+      <CuboidCollider args={[wallThickness / 2, height / 2, halfSize]} position={[innerHalf + wallThickness / 2, height / 2, 0]} />
+      <CuboidCollider args={[halfSize, height / 2, wallThickness / 2]} position={[0, height / 2, -innerHalf - wallThickness / 2]} />
+      <CuboidCollider args={[frontSegmentWidth / 2, height / 2, wallThickness / 2]} position={[-doorWidth / 2 - frontSegmentWidth / 2, height / 2, innerHalf + wallThickness / 2]} />
+      <CuboidCollider args={[frontSegmentWidth / 2, height / 2, wallThickness / 2]} position={[doorWidth / 2 + frontSegmentWidth / 2, height / 2, innerHalf + wallThickness / 2]} />
+      <CuboidCollider args={[doorWidth / 2, lintelHeight / 2, wallThickness / 2]} position={[0, doorHeight + lintelHeight / 2, innerHalf + wallThickness / 2]} />
+      {hasFlatRoof && <CuboidCollider args={[4, 0.2, 4]} position={[0, 12, 0]} />}
+    </>
+  );
+}
 
 export function Huts() {
   // --- Textures ---
@@ -482,8 +534,9 @@ export function Huts() {
 
   // --- Lantern & Pole Geometries & Materials ---
   const ironMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#222222", roughness: 0.8 }), []);
-  const glowMat = useMemo(() => new THREE.MeshStandardMaterial({ color: "#ffbf55", emissive: "#ff8a2a", emissiveIntensity: 2.2, roughness: 0.35 }), []);
-  const glowHaloMat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#ff9d36", transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), []);
+  const glowMat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#ffd36f", transparent: true, opacity: 0.98, toneMapped: false }), []);
+  const glowHaloMat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#ff9d36", transparent: true, opacity: 0.34, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), []);
+  const glowOuterHaloMat = useMemo(() => new THREE.MeshBasicMaterial({ color: "#ffd56f", transparent: true, opacity: 0.13, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }), []);
 
   const lanternBaseGeo = useMemo(() => new THREE.BoxGeometry(1.6, 0.4, 1.6), []);
   const lanternTopGeo1 = useMemo(() => new THREE.BoxGeometry(1.6, 0.4, 1.6), []);
@@ -491,6 +544,7 @@ export function Huts() {
   const lanternGlassGeo = useMemo(() => new THREE.BoxGeometry(1.1, 1.6, 1.1), []);
   const lanternFrameGeo = useMemo(() => new THREE.BoxGeometry(0.2, 1.6, 0.2), []);
   const lanternGlowGeo = useMemo(() => new THREE.SphereGeometry(1.55, 8, 6), []);
+  const lanternOuterGlowGeo = useMemo(() => new THREE.SphereGeometry(2.35, 8, 6), []);
   const chainGeo = useMemo(() => new THREE.BoxGeometry(0.2, 2, 0.2), []);
 
   const poleVertGeo = useMemo(() => new THREE.BoxGeometry(0.8, 16, 0.8), []);
@@ -512,6 +566,7 @@ export function Huts() {
       <mesh geometry={lanternTopGeo2} material={ironMat} position={[0, 1.0, 0]} castShadow />
       <mesh geometry={lanternTopGeo1} material={ironMat} position={[0, 0.6, 0]} castShadow />
       
+      <mesh geometry={lanternOuterGlowGeo} material={glowOuterHaloMat} position={[0, -0.4, 0]} renderOrder={4} />
       <mesh geometry={lanternGlowGeo} material={glowHaloMat} position={[0, -0.4, 0]} renderOrder={5} />
       <mesh geometry={lanternGlassGeo} material={glowMat} position={[0, -0.4, 0]} />
       
@@ -541,11 +596,10 @@ export function Huts() {
           {hut.hutType === 0 && ( // Mushroom
             <group rotation={[0, hut.rotation, 0]}>
               <group>
-                <MeshCollider type="trimesh">
-                  <mesh geometry={floorGeo} material={woodPlankMat} scale={[10, 1, 10]} position={[0, 0.1, 0]} receiveShadow />
-                  <mesh geometry={hollowStemGeo} material={stemMat} position={[0, 4, 0]} castShadow receiveShadow />
-                  <mesh geometry={mushroomGeo} material={mushroomMats[hut.colorIndex]} position={[0, 13, 0]} castShadow receiveShadow />
-                </MeshCollider>
+                <MushroomHutColliders />
+                <mesh geometry={floorGeo} material={woodPlankMat} scale={[10, 1, 10]} position={[0, 0.1, 0]} receiveShadow />
+                <mesh geometry={hollowStemGeo} material={stemMat} position={[0, 4, 0]} castShadow receiveShadow />
+                <mesh geometry={mushroomGeo} material={mushroomMats[hut.colorIndex]} position={[0, 13, 0]} castShadow receiveShadow />
                 
                 <mesh geometry={doorGeo} material={doorMat} position={[0, 2, 6.01]} castShadow />
                 <mesh geometry={windowGeo} material={glassMat} position={[-3.5, 4.5, 6.01]} />
@@ -558,11 +612,10 @@ export function Huts() {
           {hut.hutType === 1 && ( // Grass Mound
             <group rotation={[0, hut.rotation, 0]}>
               <group>
-                <MeshCollider type="trimesh">
-                  <mesh geometry={floorGeo} material={woodPlankMat} scale={[16, 1, 16]} position={[0, 0.1, 0]} receiveShadow />
-                  <mesh geometry={hollowGrassMoundGeo} material={grassMat} position={[0, 6, 0]} castShadow receiveShadow />
-                  <mesh geometry={hollowEntranceGeo} material={stoneworkMat} position={[0, 3, 7.5]} castShadow receiveShadow />
-                </MeshCollider>
+                <MoundHutColliders />
+                <mesh geometry={floorGeo} material={woodPlankMat} scale={[16, 1, 16]} position={[0, 0.1, 0]} receiveShadow />
+                <mesh geometry={hollowGrassMoundGeo} material={grassMat} position={[0, 6, 0]} castShadow receiveShadow />
+                <mesh geometry={hollowEntranceGeo} material={stoneworkMat} position={[0, 3, 7.5]} castShadow receiveShadow />
                 
                 <mesh geometry={doorGeo} material={doorMat} position={[0, 2, 8.51]} />
                 
@@ -582,13 +635,12 @@ export function Huts() {
           {hut.hutType === 2 && ( // Log Hut
             <group rotation={[0, hut.rotation, 0]}>
               <group>
-                <MeshCollider type="trimesh">
-                  <mesh geometry={floorGeo} material={woodPlankMat} scale={[16, 1, 16]} position={[0, 0.1, 0]} receiveShadow />
-                  
-                  <mesh geometry={hollowGrassMoundGeo} material={logMat} position={[0, 6, 0]} castShadow receiveShadow />
-                  <mesh geometry={hollowEntranceGeo} material={logMat} position={[0, 3, 7.5]} castShadow receiveShadow />
-                  <mesh geometry={topRoofGeo} material={woodPlankMat} position={[0, 12, 0]} castShadow receiveShadow />
-                </MeshCollider>
+                <MoundHutColliders hasFlatRoof />
+                <mesh geometry={floorGeo} material={woodPlankMat} scale={[16, 1, 16]} position={[0, 0.1, 0]} receiveShadow />
+
+                <mesh geometry={hollowGrassMoundGeo} material={logMat} position={[0, 6, 0]} castShadow receiveShadow />
+                <mesh geometry={hollowEntranceGeo} material={logMat} position={[0, 3, 7.5]} castShadow receiveShadow />
+                <mesh geometry={topRoofGeo} material={woodPlankMat} position={[0, 12, 0]} castShadow receiveShadow />
                 
                 <mesh geometry={doorGeo} material={doorMat} position={[0, 2, 8.51]} />
                 
@@ -606,13 +658,12 @@ export function Huts() {
           {hut.hutType === 3 && ( // Dirt/Stone Hut with Grass Roof
             <group rotation={[0, hut.rotation, 0]}>
               <group>
-                <MeshCollider type="trimesh">
-                  <mesh geometry={floorGeo} material={woodPlankMat} scale={[16, 1, 16]} position={[0, 0.1, 0]} receiveShadow />
-                  
-                  <mesh geometry={hollowGrassMoundGeo} material={dirtGrassMat} position={[0, 6, 0]} castShadow receiveShadow />
-                  <mesh geometry={hollowEntranceGeo} material={stoneworkMat} position={[0, 3, 7.5]} castShadow receiveShadow />
-                  <mesh geometry={topRoofGeo} material={grassMat} position={[0, 12, 0]} castShadow receiveShadow />
-                </MeshCollider>
+                <MoundHutColliders hasFlatRoof />
+                <mesh geometry={floorGeo} material={woodPlankMat} scale={[16, 1, 16]} position={[0, 0.1, 0]} receiveShadow />
+
+                <mesh geometry={hollowGrassMoundGeo} material={dirtGrassMat} position={[0, 6, 0]} castShadow receiveShadow />
+                <mesh geometry={hollowEntranceGeo} material={stoneworkMat} position={[0, 3, 7.5]} castShadow receiveShadow />
+                <mesh geometry={topRoofGeo} material={grassMat} position={[0, 12, 0]} castShadow receiveShadow />
                 
                 <mesh geometry={doorGeo} material={doorMat} position={[0, 2, 8.51]} />
                 

@@ -1,6 +1,6 @@
-import { useRef, useMemo } from "react";
+import { useMemo } from "react";
 import * as THREE from "three";
-import { RigidBody } from "@react-three/rapier";
+import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { isMobilePerformanceMode } from "./performanceMode";
 
 const WOOD_COLOR = "#2a1c12"; // darker brown
@@ -10,6 +10,24 @@ const LEAF_EDGE_COLOR = "#244a1c";
 const ROOF_COLOR = "#342211"; // distinct roof brown
 const WINDOW_GLOW = "#ffb347"; // warm yellow-orange
 const MOBILE_PERFORMANCE_MODE = isMobilePerformanceMode();
+
+type HouseSpec = {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale: number;
+};
+
+type TreePlacement = {
+  pos: THREE.Vector3;
+  angle: number;
+};
+
+const TREE_HOUSE_SPECS: HouseSpec[] = [
+  { position: [6.5, 15, 6.5], rotation: [0, Math.PI / 4, 0], scale: 1.2 },
+  { position: [-7, 22, 5], rotation: [0, -Math.PI / 6, 0], scale: 1.0 },
+  { position: [-2, 28, -7.5], rotation: [0, Math.PI, 0], scale: 1.5 },
+  { position: [8, 25, -4], rotation: [0, Math.PI / 2, 0], scale: 0.9 },
+];
 
 function getBarkTexture() {
   let cachedBark = (window as any).__barkTexture;
@@ -109,22 +127,32 @@ function Window({ position, rotation = [0, 0, 0] }: { position: [number, number,
   );
 }
 
-function CanopyBlock({ position, size }: { position: [number, number, number]; size: [number, number, number] }) {
+function CanopyBlock({ position, size, color = LEAF_COLOR }: { position: [number, number, number]; size: [number, number, number]; color?: string }) {
+  const radius = 1;
+  const scale: [number, number, number] = [size[0] * 0.52, size[1] * 0.52, size[2] * 0.52];
+  const edgeScale: [number, number, number] = [scale[0] * 1.01, scale[1] * 1.01, scale[2] * 1.01];
+
   return (
     <group position={position}>
-      <mesh castShadow={false} receiveShadow scale={[1.004, 1.004, 1.004]} renderOrder={3}>
-        <boxGeometry args={size} />
-        <meshStandardMaterial color={LEAF_EDGE_COLOR} roughness={1} wireframe transparent opacity={0.28} depthWrite={false} />
+      <mesh castShadow={false} receiveShadow scale={edgeScale} renderOrder={3}>
+        <dodecahedronGeometry args={[radius, 0]} />
+        <meshStandardMaterial color={LEAF_EDGE_COLOR} roughness={1} wireframe transparent opacity={0.44} depthWrite={false} />
       </mesh>
-      <mesh castShadow receiveShadow>
-        <boxGeometry args={size} />
-        <meshStandardMaterial color={LEAF_COLOR} roughness={1} />
+      <mesh castShadow receiveShadow scale={scale}>
+        <dodecahedronGeometry args={[radius, 0]} />
+        <meshStandardMaterial color={color} roughness={1} />
       </mesh>
       {!MOBILE_PERFORMANCE_MODE && (
-        <mesh position={[0, size[1] * 0.28, -size[2] * 0.36]} castShadow={false}>
-          <boxGeometry args={[size[0] * 0.62, 0.55, size[2] * 0.12]} />
-          <meshStandardMaterial color="#2e5a22" roughness={1} />
-        </mesh>
+        <group position={[0, size[1] * 0.18, -size[2] * 0.28]} scale={[size[0] * 0.32, size[1] * 0.12, size[2] * 0.16]}>
+          <mesh scale={[1.012, 1.012, 1.012]} castShadow={false} renderOrder={3}>
+            <dodecahedronGeometry args={[1, 0]} />
+            <meshStandardMaterial color={LEAF_EDGE_COLOR} roughness={1} wireframe transparent opacity={0.4} depthWrite={false} />
+          </mesh>
+          <mesh castShadow={false}>
+            <dodecahedronGeometry args={[1, 0]} />
+            <meshStandardMaterial color="#2e5a22" roughness={1} />
+          </mesh>
+        </group>
       )}
     </group>
   );
@@ -159,14 +187,25 @@ function House({ position, rotation, scale = 1 }: { position: [number, number, n
   );
 }
 
+function HouseColliders({ position, rotation, scale = 1 }: { position: [number, number, number]; rotation?: [number, number, number]; scale?: number }) {
+  return (
+    <group position={position} rotation={rotation || [0, 0, 0]}>
+      <CuboidCollider args={[2.5 * scale, 2.5 * scale, 2.5 * scale]} />
+      <CuboidCollider args={[3 * scale, 1 * scale, 3 * scale]} position={[0, 3 * scale, 0]} />
+      <CuboidCollider args={[3.5 * scale, 0.25 * scale, 3.5 * scale]} position={[0, -2.5 * scale, 0]} />
+    </group>
+  );
+}
+
 function GiantTreeCanopy({ position, angleOffset = 0 }: { position: [number, number, number], angleOffset?: number }) {
   return (
     <group position={position} rotation={[0, angleOffset, 0]}>
-      {/* Blocky Canopy for DOOM feel */}
-      <CanopyBlock position={[0, 40, 0]} size={[30, 15, 30]} />
-      <CanopyBlock position={[12, 35, 10]} size={[20, 15, 20]} />
-      <CanopyBlock position={[-15, 38, -12]} size={[25, 20, 25]} />
-      <CanopyBlock position={[-10, 36, 15]} size={[20, 12, 20]} />
+      <CanopyBlock position={[0, 40, 0]} size={[30, 15, 30]} color="#1f3b18" />
+      <CanopyBlock position={[12, 35, 10]} size={[20, 15, 20]} color="#2d5a22" />
+      <CanopyBlock position={[-15, 38, -12]} size={[25, 20, 25]} color="#284f1d" />
+      <CanopyBlock position={[-10, 36, 15]} size={[20, 12, 20]} color="#3a6a2a" />
+      <CanopyBlock position={[16, 43, -8]} size={[17, 10, 18]} color="#335f25" />
+      <CanopyBlock position={[-4, 43.5, 8]} size={[16, 7, 14]} color="#244719" />
     </group>
   );
 }
@@ -185,6 +224,28 @@ function SpiralStaircase({ radius = 6.5, height = 15, steps = MOBILE_PERFORMANCE
             <boxGeometry args={[3, 0.2, 1.5]} />
             <meshStandardMaterial map={getPlankTexture()} roughness={0.9} />
           </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+function SpiralStaircaseColliders({ radius = 6.5, height = 15, steps = MOBILE_PERFORMANCE_MODE ? 16 : 30 }: { radius?: number; height?: number; steps?: number }) {
+  return (
+    <group>
+      {Array.from({ length: steps }).map((_, i) => {
+        const t = i / (steps - 1);
+        const y = t * height;
+        const angle = t * Math.PI * 4;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        return (
+          <CuboidCollider
+            key={`stair-step-collider-${i}`}
+            args={[1.5, 0.1, 0.75]}
+            position={[x, y, z]}
+            rotation={[0, -angle, 0]}
+          />
         );
       })}
     </group>
@@ -235,10 +296,32 @@ function GiantTree({ position, angleOffset = 0 }: { position: [number, number, n
       <SpiralStaircase />
 
       {/* Houses Clustered on Trunk */}
-      <House position={[6.5, 15, 6.5]} rotation={[0, Math.PI / 4, 0]} scale={1.2} />
-      <House position={[-7, 22, 5]} rotation={[0, -Math.PI / 6, 0]} scale={1.0} />
-      <House position={[-2, 28, -7.5]} rotation={[0, Math.PI, 0]} scale={1.5} />
-      <House position={[8, 25, -4]} rotation={[0, Math.PI / 2, 0]} scale={0.9} />
+      {TREE_HOUSE_SPECS.map((house, index) => (
+        <House key={`tree-house-${index}`} position={house.position} rotation={house.rotation} scale={house.scale} />
+      ))}
+    </group>
+  );
+}
+
+function GiantTreeColliders({ position, angleOffset = 0 }: { position: [number, number, number]; angleOffset?: number }) {
+  return (
+    <group position={position} rotation={[0, angleOffset, 0]}>
+      <CuboidCollider args={[5, 20, 5]} position={[0, 20, 0]} />
+      <CuboidCollider args={[4, 20, 4]} position={[2, 20, 2]} rotation={[0, 0.5, 0]} />
+      {[
+        { position: [4, 0, 4] as [number, number, number], rotation: Math.PI / 4 },
+        { position: [-4, 0, -4] as [number, number, number], rotation: -Math.PI * 3 / 4 },
+        { position: [-4, 0, 4] as [number, number, number], rotation: -Math.PI / 4 },
+        { position: [4, 0, -4] as [number, number, number], rotation: Math.PI * 3 / 4 },
+      ].map((root, index) => (
+        <group key={`root-collider-${index}`} position={root.position} rotation={[0, root.rotation, 0]}>
+          <CuboidCollider args={[2, 2, 7.5]} position={[0, -2, 4]} rotation={[Math.PI / 6, 0, 0]} />
+        </group>
+      ))}
+      <SpiralStaircaseColliders />
+      {TREE_HOUSE_SPECS.map((house, index) => (
+        <HouseColliders key={`tree-house-collider-${index}`} position={house.position} rotation={house.rotation} scale={house.scale} />
+      ))}
     </group>
   );
 }
@@ -272,6 +355,22 @@ function Bridge({ start, end }: { start: THREE.Vector3, end: THREE.Vector3 }) {
   );
 }
 
+function BridgeColliders({ start, end }: { start: THREE.Vector3; end: THREE.Vector3 }) {
+  const length = start.distanceTo(end);
+  const position = start.clone().lerp(end, 0.5);
+  const angleY = Math.atan2(end.x - start.x, end.z - start.z);
+  const distXZ = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.z - start.z, 2));
+  const angleX = Math.atan2(end.y - start.y, distXZ);
+
+  return (
+    <group position={position} rotation={[angleX, angleY, 0]}>
+      <CuboidCollider args={[2, 0.25, length / 2]} />
+      <CuboidCollider args={[0.1, 0.1, length / 2]} position={[2, 1, 0]} />
+      <CuboidCollider args={[0.1, 0.1, length / 2]} position={[-2, 1, 0]} />
+    </group>
+  );
+}
+
 function RopeClimb({ start, end }: { start: THREE.Vector3, end: THREE.Vector3 }) {
   const length = start.distanceTo(end);
   const position = start.clone().lerp(end, 0.5);
@@ -300,6 +399,64 @@ function RopeClimb({ start, end }: { start: THREE.Vector3, end: THREE.Vector3 })
   );
 }
 
+function RopeClimbColliders({ start, end }: { start: THREE.Vector3; end: THREE.Vector3 }) {
+  const length = start.distanceTo(end);
+  const position = start.clone().lerp(end, 0.5);
+  const angleY = Math.atan2(end.x - start.x, end.z - start.z);
+  const distXZ = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.z - start.z, 2));
+  const angleX = Math.atan2(end.y - start.y, distXZ);
+
+  return (
+    <group position={position} rotation={[angleX, angleY, 0]}>
+      <CuboidCollider args={[0.55, 0.14, length / 2]} />
+    </group>
+  );
+}
+
+function TreeHouseVillageCollisionLayer({
+  treePositions,
+  getHouseBalcony,
+  getTreeBase,
+}: {
+  treePositions: TreePlacement[];
+  getHouseBalcony: (treeIndex: number, houseIndex: number) => THREE.Vector3;
+  getTreeBase: (treeIndex: number) => THREE.Vector3;
+}) {
+  return (
+    <>
+      {treePositions.map((tree, index) => (
+        <GiantTreeColliders key={`tree-colliders-${index}`} position={[tree.pos.x, tree.pos.y, tree.pos.z]} angleOffset={tree.angle} />
+      ))}
+
+      {treePositions.map((_, index) => (
+        <group key={`internal-rope-colliders-${index}`}>
+          <RopeClimbColliders start={getHouseBalcony(index, 0)} end={getHouseBalcony(index, 1)} />
+          <RopeClimbColliders start={getHouseBalcony(index, 1)} end={getHouseBalcony(index, 3)} />
+          <RopeClimbColliders start={getHouseBalcony(index, 3)} end={getHouseBalcony(index, 2)} />
+        </group>
+      ))}
+
+      {treePositions.map((_, index) => (
+        <RopeClimbColliders key={`ground-rope-collider-${index}`} start={getTreeBase(index)} end={getHouseBalcony(index, 0)} />
+      ))}
+
+      <BridgeColliders start={getHouseBalcony(0, 0)} end={getHouseBalcony(1, 0)} />
+      <BridgeColliders start={getHouseBalcony(0, 0)} end={getHouseBalcony(2, 0)} />
+      <BridgeColliders start={getHouseBalcony(0, 0)} end={getHouseBalcony(3, 0)} />
+      <BridgeColliders start={getHouseBalcony(0, 0)} end={getHouseBalcony(4, 0)} />
+      <BridgeColliders start={getHouseBalcony(1, 0)} end={getHouseBalcony(2, 0)} />
+      <BridgeColliders start={getHouseBalcony(2, 0)} end={getHouseBalcony(4, 0)} />
+      <BridgeColliders start={getHouseBalcony(4, 0)} end={getHouseBalcony(3, 0)} />
+      <BridgeColliders start={getHouseBalcony(3, 0)} end={getHouseBalcony(1, 0)} />
+      <BridgeColliders start={getHouseBalcony(0, 2)} end={getHouseBalcony(1, 1)} />
+      <BridgeColliders start={getHouseBalcony(1, 2)} end={getHouseBalcony(3, 3)} />
+      <BridgeColliders start={getHouseBalcony(0, 1)} end={getHouseBalcony(2, 0)} />
+      <BridgeColliders start={getHouseBalcony(2, 2)} end={getHouseBalcony(4, 3)} />
+      <BridgeColliders start={getHouseBalcony(0, 3)} end={getHouseBalcony(4, 1)} />
+    </>
+  );
+}
+
 export function TreeHouseVillage() {
   const treePositions = useMemo(() => [
     { pos: new THREE.Vector3(0, -0.5, 0), angle: 0 },
@@ -309,12 +466,10 @@ export function TreeHouseVillage() {
     { pos: new THREE.Vector3(-22, -0.5, -24), angle: 0.8 },
   ], []);
 
-  const houseLocalPositions = useMemo(() => [
-    new THREE.Vector3(6.5, 15, 6.5),
-    new THREE.Vector3(-7, 22, 5),
-    new THREE.Vector3(-2, 28, -7.5),
-    new THREE.Vector3(8, 25, -4),
-  ], []);
+  const houseLocalPositions = useMemo(
+    () => TREE_HOUSE_SPECS.map((house) => new THREE.Vector3(...house.position)),
+    [],
+  );
 
   const getHouseBalcony = (treeIndex: number, houseIndex: number) => {
     const tree = treePositions[treeIndex];
@@ -322,7 +477,7 @@ export function TreeHouseVillage() {
     const pos = localPos.clone();
     pos.applyAxisAngle(new THREE.Vector3(0, 1, 0), tree.angle);
     pos.add(tree.pos);
-    pos.y -= 2.5; // Balcony offset
+    pos.y -= 2.5 * TREE_HOUSE_SPECS[houseIndex].scale; // Balcony offset
     return pos;
   };
 
@@ -333,7 +488,12 @@ export function TreeHouseVillage() {
 
   return (
     <group>
-      <RigidBody type="fixed" colliders="trimesh">
+      <RigidBody type="fixed" colliders={false}>
+        <TreeHouseVillageCollisionLayer
+          treePositions={treePositions}
+          getHouseBalcony={getHouseBalcony}
+          getTreeBase={getTreeBase}
+        />
         <group>
           {treePositions.map((t, i) => (
              <GiantTree key={i} position={[t.pos.x, t.pos.y, t.pos.z]} angleOffset={t.angle} />

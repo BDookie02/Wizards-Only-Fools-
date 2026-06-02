@@ -1,16 +1,23 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { RigidBody } from "@react-three/rapier";
+import { BallCollider, RigidBody } from "@react-three/rapier";
 import { getHutList } from "./Huts";
-import { getNearbySurvivalDesertManaWells, getTerrainHeight, type SurvivalManaWellSource } from "./GameWorld";
+import { getNearbySurvivalDesertManaWells, getNearbySurvivalManaFlowers, getTerrainHeight, type SurvivalManaFlowerSource, type SurvivalManaWellSource } from "./GameWorld";
 import { RUNE_POWER_MAX, SURVIVAL_BLOCK_SIZE, useGameStore } from "../store/gameStore";
 import { isMobilePerformanceMode } from "./performanceMode";
 import { socket } from "../lib/socket";
 
+const MANA_FLOWER_RESPAWN_MS = 142000;
+
 export function Runes() {
   const [manaPulses, setManaPulses] = useState<{ id: number; playerId: string }[]>([]);
   const [desertWellSources, setDesertWellSources] = useState<SurvivalManaWellSource[]>([]);
+  const [manaFlowerSources, setManaFlowerSources] = useState<SurvivalManaFlowerSource[]>([]);
+  const [collectedManaFlowers, setCollectedManaFlowers] = useState<Record<string, number>>({});
+  const gameMode = useGameStore(s => s.gameMode);
+  const manaSpawnRate = useGameStore(s => s.survivalRules.manaSpawnRate);
+  const isSurvivalMode = gameMode === "solo-survival" || gameMode === "multiplayer-survival";
   const lastWellChunkRef = useRef("");
   const hutPositions = useMemo(() => {
     return getHutList().map(h => ({
@@ -74,12 +81,32 @@ export function Runes() {
 
     const chunkX = Math.floor((playerPos.x + SURVIVAL_BLOCK_SIZE / 2) / SURVIVAL_BLOCK_SIZE);
     const chunkZ = Math.floor((playerPos.z + SURVIVAL_BLOCK_SIZE / 2) / SURVIVAL_BLOCK_SIZE);
-    const chunkKey = `${chunkX}:${chunkZ}`;
+    const chunkKey = `${gameMode}:${manaSpawnRate}:${chunkX}:${chunkZ}`;
     if (chunkKey === lastWellChunkRef.current) return;
 
     lastWellChunkRef.current = chunkKey;
-    setDesertWellSources(getNearbySurvivalDesertManaWells(playerPos.x, playerPos.z));
+    setDesertWellSources(isSurvivalMode ? getNearbySurvivalDesertManaWells(playerPos.x, playerPos.z) : []);
+    setManaFlowerSources(isSurvivalMode ? getNearbySurvivalManaFlowers(playerPos.x, playerPos.z, manaSpawnRate) : []);
   });
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const now = Date.now();
+      setCollectedManaFlowers((current) => {
+        let changed = false;
+        const next: Record<string, number> = {};
+        Object.entries(current).forEach(([id, until]) => {
+          if (until > now) {
+            next[id] = until;
+          } else {
+            changed = true;
+          }
+        });
+        return changed ? next : current;
+      });
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const handleRemoteManaPulse = (event: Event) => {
@@ -92,12 +119,44 @@ export function Runes() {
     return () => window.removeEventListener("manaPulse", handleRemoteManaPulse);
   }, []);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const now = Date.now();
+    (window as any).__wofManaFlowerSources = manaFlowerSources;
+    document.documentElement.dataset.wofManaFlowerCount = String(manaFlowerSources.length);
+    document.documentElement.dataset.wofManaFlowerReady = String(
+      manaFlowerSources.filter((source) => (collectedManaFlowers[source.id] ?? 0) <= now).length,
+    );
+    document.documentElement.dataset.wofManaFlowerSample = manaFlowerSources
+      .slice(0, 4)
+      .map((source) => `${source.id}:${Math.round(source.x)},${Math.round(source.y)},${Math.round(source.z)}`)
+      .join("|");
+    document.documentElement.dataset.wofManaFlowerCooldowns = Object.entries(collectedManaFlowers)
+      .map(([id, until]) => `${id}:${Math.max(0, Math.ceil((until - now) / 1000))}`)
+      .join("|");
+  }, [collectedManaFlowers, manaFlowerSources]);
+
   const collectRune = (id: string) => {
     const didRecharge = rechargeMostEmptyManaBar();
     if (!didRecharge) return;
 
     showAndBroadcastManaPulse();
     setActiveRunes((prev) => prev.filter((r) => r !== id));
+  };
+
+  const collectManaFlower = (id: string) => {
+    const didRecharge = rechargeMostEmptyManaBar();
+    if (!didRecharge) return false;
+
+    showAndBroadcastManaPulse();
+    setCollectedManaFlowers((current) => ({
+      ...current,
+      [id]: Date.now() + MANA_FLOWER_RESPAWN_MS,
+    }));
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.wofManaFlowerLastCollect = id;
+    }
+    return true;
   };
 
   return (
@@ -109,6 +168,14 @@ export function Runes() {
           source={source}
           variant="well"
           onRecharge={showAndBroadcastManaPulse}
+        />
+      ))}
+      {manaFlowerSources.map((source) => (
+        <ManaFlower
+          key={source.id}
+          source={source}
+          collectedUntil={collectedManaFlowers[source.id] ?? 0}
+          onCollect={() => collectManaFlower(source.id)}
         />
       ))}
       {manaPulses.map((pulse) => (
@@ -130,6 +197,26 @@ export function Runes() {
 const runeGeometry = new THREE.OctahedronGeometry(0.4, 0);
 const runeMaterial = new THREE.MeshStandardMaterial({ color: "#9400D3", emissive: "#9400D3", emissiveIntensity: 2, toneMapped: false });
 const infiniteRuneMaterial = new THREE.MeshStandardMaterial({ color: "#ff4fd8", emissive: "#ff4fd8", emissiveIntensity: 3, toneMapped: false, transparent: true, opacity: 0.85 });
+const manaFlowerStemGeometry = new THREE.CylinderGeometry(0.09, 0.14, 1, 6);
+const manaFlowerLeafGeometry = new THREE.ConeGeometry(0.26, 0.72, 5);
+const manaFlowerStemMaterial = new THREE.MeshStandardMaterial({ color: "#2f9e44", roughness: 0.9 });
+const manaFlowerLeafMaterial = new THREE.MeshStandardMaterial({ color: "#51cf66", roughness: 0.92 });
+const manaFlowerHeadMaterial = new THREE.MeshStandardMaterial({
+  color: "#ff4fd8",
+  emissive: "#b026ff",
+  emissiveIntensity: 2.8,
+  toneMapped: false,
+  transparent: true,
+  opacity: 0.92,
+});
+const manaFlowerGlowMaterial = new THREE.MeshBasicMaterial({
+  color: "#f0abfc",
+  transparent: true,
+  opacity: 0.28,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  toneMapped: false,
+});
 
 function isPlayerManaCollector(event: { other: { rigidBodyObject?: { name?: string } | null } }) {
   return event.other.rigidBodyObject?.name === "player";
@@ -259,6 +346,97 @@ function Rune({ hut, onCollect }: { hut: { id: string; x: number; y: number; z: 
     >
       <group position={[0, startY, 0]}>
          <mesh ref={ref} castShadow geometry={runeGeometry} material={runeMaterial} />
+      </group>
+    </RigidBody>
+  );
+}
+
+function ManaFlower({
+  source,
+  collectedUntil,
+  onCollect,
+}: {
+  source: SurvivalManaFlowerSource;
+  collectedUntil: number;
+  onCollect: () => boolean;
+}) {
+  const headRef = useRef<THREE.Group>(null);
+  const collectedUntilRef = useRef(collectedUntil);
+  const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
+  const ready = collectedUntil <= Date.now();
+
+  useEffect(() => {
+    collectedUntilRef.current = collectedUntil;
+  }, [collectedUntil]);
+
+  const tryCollect = () => {
+    if (collectedUntilRef.current > Date.now()) return;
+    if (onCollect()) {
+      collectedUntilRef.current = Date.now() + MANA_FLOWER_RESPAWN_MS;
+    }
+  };
+
+  useFrame((state, delta) => {
+    const head = headRef.current;
+    if (head) {
+      head.rotation.y += delta * 1.35;
+      head.position.y = source.y + source.stemHeight + 0.45 + Math.sin(state.clock.elapsedTime * 2.9 + source.x * 0.01) * 0.08;
+    }
+
+    if (collectedUntilRef.current > Date.now()) return;
+    const playerPos = (window as any).localPlayerPos as { x: number; z: number } | undefined;
+    if (!playerPos) return;
+    if (Math.hypot(playerPos.x - source.x, playerPos.z - source.z) < source.radius) {
+      tryCollect();
+    }
+  });
+
+  return (
+    <RigidBody
+      type="fixed"
+      colliders={false}
+      position={[source.x, source.y, source.z]}
+      name={source.id}
+    >
+      <BallCollider
+        args={[source.radius]}
+        position={[0, source.stemHeight * 0.6, 0]}
+        sensor
+        onIntersectionEnter={(event) => {
+          if (isPlayerManaCollector(event)) {
+            tryCollect();
+          }
+        }}
+      />
+      <group name="wilderness-mana-flower">
+        <mesh
+          castShadow={!mobilePerformanceMode}
+          geometry={manaFlowerStemGeometry}
+          material={manaFlowerStemMaterial}
+          position={[0, source.stemHeight * 0.5, 0]}
+          scale={[1, source.stemHeight, 1]}
+        />
+        {[0, 1, 2].map((leaf) => (
+          <mesh
+            key={leaf}
+            castShadow={false}
+            geometry={manaFlowerLeafGeometry}
+            material={manaFlowerLeafMaterial}
+            position={[
+              Math.sin(leaf * Math.PI * 0.72) * 0.18,
+              source.stemHeight * (0.34 + leaf * 0.13),
+              Math.cos(leaf * Math.PI * 0.72) * 0.18,
+            ]}
+            rotation={[0.9, leaf * Math.PI * 0.72, 0.35]}
+            scale={[0.72, 0.72, 0.72]}
+          />
+        ))}
+        {ready && (
+          <group ref={headRef} position={[0, source.stemHeight + 0.45, 0]} scale={[source.headScale, source.headScale, source.headScale]}>
+            <mesh castShadow={!mobilePerformanceMode} geometry={runeGeometry} material={manaFlowerHeadMaterial} />
+            <mesh scale={[1.75, 1.75, 1.75]} geometry={runeGeometry} material={manaFlowerGlowMaterial} />
+          </group>
+        )}
       </group>
     </RigidBody>
   );

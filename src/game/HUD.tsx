@@ -8,21 +8,31 @@ import {
   HOTBAR_SIZE,
   POISON_DURATION_MS,
   RUNE_POWER_MAX,
+  SPELL_DISPLAY_NAMES,
+  SPELL_QUEST_DEFINITIONS,
   SLEEP_DURATION_MS,
   TUNGSTON_SLOW_DURATION_MS,
+  CONTROLLER_LOOK_SENSITIVITY_100_PERCENT,
   DEFAULT_CONTROLLER_LOOK_SENSITIVITY,
   DEFAULT_MOBILE_LOOK_SENSITIVITY,
   DEFAULT_MOUSE_SENSITIVITY,
   DEFAULT_VOICE_OUTPUT_VOLUME,
   DEFAULT_VOICE_PROXIMITY_RANGE,
   DEFAULT_VOICE_PUSH_TO_TALK_KEY,
+  DARREL_QUEST_CHUNK,
+  DARREL_QUEST_SPAWN,
+  DARREL_QUEST_SPAWN_YAW,
   ENEMY_DIFFICULTY_SETTINGS,
   FORCED_DAY_ELAPSED_SECONDS,
   FORCED_NIGHT_ELAPSED_SECONDS,
+  LILY_COIL_QUEST_CHUNK,
   LOBBY_MAP_PRESETS,
   MANA_SPAWN_RATE_SETTINGS,
   hasRunePower,
+  getDarrelQuestSpawn,
+  getLilyCoilQuestSpawn,
   getSurvivalDifficultyMultiplier,
+  SURVIVAL_BLOCK_SIZE,
   useGameStore,
   SpellType,
   HandType,
@@ -30,10 +40,23 @@ import {
   PlayerState,
   ControllerAction,
   ControllerButtonName,
+  AvatarAnimation,
   CharacterCustomization,
   DEFAULT_CHARACTER_CUSTOMIZATION,
   LobbyMessage,
-  sanitizePlayerName
+  QuestNpcProgram,
+  QuestNpcEditorTarget,
+  QuestNpcRole,
+  QuestScriptPoint,
+  QuestFlagValue,
+  QuestNpcAssignment,
+  INVENTORY_ITEM_DEFINITIONS,
+  type InventoryItemId,
+  createDefaultQuestNpcProgram,
+  makeQuestScriptPointId,
+  sanitizePlayerName,
+  clearDarrelQuestSpawnOverride,
+  saveDarrelQuestSpawnOverride
 } from "../store/gameStore";
 import { Copy } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
@@ -173,7 +196,72 @@ const settingsVideoActionCount = videoBackIndex + 1;
 type SettingsPane = "video" | "keybinds" | "voice" | "character";
 type StartMenuStage = "press-start" | "mode-select" | "multiplayer-select" | "custom-lobby" | "survival-options" | "resume";
 type GameplayInputMode = "mouse" | "touch" | "controller";
+type HudPlayerState = {
+  isMoving: boolean;
+  isSprinting: boolean;
+  isSliding: boolean;
+  isCrouching: boolean;
+  isGrounded: boolean;
+  isMeditating: boolean;
+};
 const settingsPaneOrder: SettingsPane[] = ["video", "keybinds", "voice", "character"];
+type MenuDirection = "up" | "down" | "left" | "right";
+
+function clampMenuIndex(index: number, count: number) {
+  return Math.max(0, Math.min(count - 1, index));
+}
+
+function findDirectionalMenuIndex(selector: string, attribute: string, currentIndex: number, direction: MenuDirection, count: number) {
+  if (typeof document === "undefined") return clampMenuIndex(currentIndex, count);
+
+  const targets = Array.from(document.querySelectorAll<HTMLElement>(selector))
+    .map((element) => ({
+      element,
+      index: Number(element.getAttribute(attribute)),
+      rect: element.getBoundingClientRect(),
+    }))
+    .filter(({ element, index, rect }) => (
+      Number.isFinite(index) &&
+      !element.hasAttribute("disabled") &&
+      rect.width > 0 &&
+      rect.height > 0
+    ));
+  const current = targets.find((target) => target.index === currentIndex);
+
+  if (!current) {
+    const fallbackDelta = direction === "down" || direction === "right" ? 1 : -1;
+    return clampMenuIndex(currentIndex + fallbackDelta, count);
+  }
+
+  const currentCenterX = current.rect.left + current.rect.width / 2;
+  const currentCenterY = current.rect.top + current.rect.height / 2;
+  const isVertical = direction === "up" || direction === "down";
+  const candidates = targets
+    .filter((target) => target.index !== currentIndex)
+    .map((target) => {
+      const centerX = target.rect.left + target.rect.width / 2;
+      const centerY = target.rect.top + target.rect.height / 2;
+      const primaryDistance =
+        direction === "up" ? currentCenterY - centerY :
+        direction === "down" ? centerY - currentCenterY :
+        direction === "left" ? currentCenterX - centerX :
+        centerX - currentCenterX;
+      if (primaryDistance <= 4) return null;
+
+      const perpendicularDistance = isVertical
+        ? Math.abs(centerX - currentCenterX)
+        : Math.abs(centerY - currentCenterY);
+      const overlaps = isVertical
+        ? target.rect.right >= current.rect.left && target.rect.left <= current.rect.right
+        : target.rect.bottom >= current.rect.top && target.rect.top <= current.rect.bottom;
+      const score = primaryDistance * 1000 + perpendicularDistance + (overlaps ? 0 : 500);
+      return { index: target.index, score };
+    })
+    .filter((candidate): candidate is { index: number; score: number } => candidate !== null)
+    .sort((a, b) => a.score - b.score);
+
+  return candidates[0]?.index ?? currentIndex;
+}
 
 type ScoreboardRow = {
   id: string;
@@ -269,7 +357,7 @@ function CommandConsole({
         }}
       />
       <div className="mt-1 text-[8px] uppercase tracking-[0.18em] text-cyan-100/45">
-        Try /day, /night, /night off, /vclip on, or /navrecord start
+        Try /inventory, /forage leaves, /questdev on, /day, or /vclip on
       </div>
     </div>,
     document.body
@@ -410,6 +498,8 @@ const controllerActionRows: { action: ControllerAction; label: string; hint: str
   { action: "jump", label: "Jump / Thruster", hint: "jump and air boost" },
   { action: "slide", label: "Slide", hint: "hold to slide" },
   { action: "sprint", label: "Sprint Toggle", hint: "click once while moving" },
+  { action: "inventory", label: "Inventory", hint: "tap while standing still" },
+  { action: "interact", label: "Interact", hint: "talk / use, hold to stow magic" },
   { action: "spellMenu", label: "Spell Book", hint: "open spell menu" },
   { action: "map", label: "Map", hint: "toggle minimap" },
   { action: "scoreboard", label: "Player List", hint: "hold to view score" },
@@ -426,6 +516,8 @@ const keybindArrowLookIndex = keybindSensitivityStartIndex + 2;
 const keybindControlStartIndex = keybindSensitivityStartIndex + 3;
 const keybindBackIndex = keybindControlStartIndex + controllerActionRows.length;
 const settingsKeybindActionCount = keybindBackIndex + 1;
+const CONTROLLER_INVENTORY_HOLD_MS = 3000;
+const MAGIC_UNARM_HOLD_MS = 650;
 
 const voiceSettingsStartIndex = settingsTabCount;
 const voiceEnabledIndex = voiceSettingsStartIndex;
@@ -495,6 +587,8 @@ const keyboardKeybindRows = [
       ["Left Cast", "Mouse 1"],
       ["Right Cast", "Mouse 2 or hold Q + Mouse 1"],
       ["Spell Book", "E"],
+      ["Interact", "F"],
+      ["Inventory", "I"],
       ["Map", "M"],
       ["Player List", "Tab"],
       ["Hotbar", "1-0, hold Q for right hand"],
@@ -522,6 +616,14 @@ function canRequestPointerLockHere() {
   } catch {
     return false;
   }
+}
+
+function shouldUseRemoteMouseLookFallback() {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("remoteInput") === "1" ||
+    params.get("rustdesk") === "1" ||
+    params.get("qaHideMenu") === "1";
 }
 
 function getFullscreenElement() {
@@ -575,6 +677,112 @@ function wrapIndex(index: number, count: number) {
   if (count <= 0) return 0;
   return ((index % count) + count) % count;
 }
+
+type DevFastTravelSpawn = { x: number; y: number; z: number; yaw?: number };
+
+type DevFastTravelLocation = {
+  id: string;
+  label: string;
+  detail: string;
+  chunk: { cx: number; cz: number };
+  getSpawn: () => DevFastTravelSpawn;
+  spawnSpellDummies?: boolean;
+};
+
+function makeDevFastTravelSpawn(
+  cx: number,
+  cz: number,
+  options: { y?: number; localX?: number; localZ?: number; yaw?: number } = {},
+): DevFastTravelSpawn {
+  return {
+    x: cx * SURVIVAL_BLOCK_SIZE + (options.localX ?? 0),
+    y: options.y ?? 150,
+    z: cz * SURVIVAL_BLOCK_SIZE + (options.localZ ?? 214),
+    yaw: options.yaw,
+  };
+}
+
+function getDevFastTravelChunkCoord(value: number) {
+  return Math.floor((value + SURVIVAL_BLOCK_SIZE / 2) / SURVIVAL_BLOCK_SIZE);
+}
+
+function getDevDarrelQuestSpawn(): DevFastTravelSpawn {
+  const spawn = getDarrelQuestSpawn();
+  const spawnCx = getDevFastTravelChunkCoord(spawn.x);
+  const spawnCz = getDevFastTravelChunkCoord(spawn.z);
+  if (spawnCx === DARREL_QUEST_CHUNK.cx && spawnCz === DARREL_QUEST_CHUNK.cz) {
+    return spawn;
+  }
+
+  return { ...DARREL_QUEST_SPAWN, yaw: DARREL_QUEST_SPAWN_YAW };
+}
+
+const DEV_FAST_TRAVEL_LOCATIONS: DevFastTravelLocation[] = [
+  {
+    id: "spiral-dimension",
+    label: "Spiral Dimension",
+    detail: "Lily Coil realm",
+    chunk: { cx: LILY_COIL_QUEST_CHUNK.cx, cz: LILY_COIL_QUEST_CHUNK.cz },
+    getSpawn: getLilyCoilQuestSpawn,
+  },
+  {
+    id: "darrel-grove",
+    label: "Darrel Grove",
+    detail: "Unfinished garden realm",
+    chunk: { cx: DARREL_QUEST_CHUNK.cx, cz: DARREL_QUEST_CHUNK.cz },
+    getSpawn: getDevDarrelQuestSpawn,
+  },
+  {
+    id: "base-village",
+    label: "Base Village",
+    detail: "Original survival town",
+    chunk: { cx: 0, cz: 0 },
+    getSpawn: () => ({ x: 0, y: 15, z: 30, yaw: 0 }),
+  },
+  {
+    id: "swamp-village",
+    label: "Swamp Village",
+    detail: "Route town",
+    chunk: { cx: 0, cz: -3 },
+    getSpawn: () => makeDevFastTravelSpawn(0, -3, { y: 150, localZ: 214 }),
+  },
+  {
+    id: "chicago-city",
+    label: "Chicago City",
+    detail: "Dense authored city chunk",
+    chunk: { cx: -3, cz: -3 },
+    getSpawn: () => makeDevFastTravelSpawn(-3, -3, { y: 150, localZ: 214 }),
+  },
+  {
+    id: "desert-village",
+    label: "Desert Village",
+    detail: "Meadow route settlement",
+    chunk: { cx: 4, cz: -4 },
+    getSpawn: () => makeDevFastTravelSpawn(4, -4, { y: 150, localZ: 214 }),
+  },
+  {
+    id: "mountain-village",
+    label: "Mountain Village",
+    detail: "Highland authored village",
+    chunk: { cx: 3, cz: 0 },
+    getSpawn: () => makeDevFastTravelSpawn(3, 0, { y: 86, localX: -36, localZ: 182, yaw: 1.68 }),
+  },
+  {
+    id: "graveyard-village",
+    label: "Graveyard Village",
+    detail: "Ring quest landmark",
+    chunk: { cx: 5, cz: 2 },
+    getSpawn: () => makeDevFastTravelSpawn(5, 2, { y: 92, localZ: 132 }),
+  },
+  {
+    id: "spell-dummy-range",
+    label: "Spell Dummy Range",
+    detail: "Health targets for combat QA",
+    chunk: { cx: 4, cz: -3 },
+    getSpawn: () => makeDevFastTravelSpawn(4, -3, { y: 150, localZ: 214, yaw: 0 }),
+    spawnSpellDummies: true,
+  },
+];
 
 function getRemotePlayerStatus(player: PlayerState, now: number) {
   if (player.health <= 0) return "DOWN";
@@ -720,6 +928,115 @@ function CharacterPreview({ character }: { character: CharacterCustomization }) 
     <canvas
       ref={canvasRef}
       className="character-preview-canvas h-auto w-full border border-yellow-200/30 bg-black shadow-[0_0_18px_rgba(250,204,21,0.16)]"
+      style={{ imageRendering: "pixelated" }}
+    />
+  );
+}
+
+function getInventoryPreviewAnimation(playerState: HudPlayerState): AvatarAnimation {
+  if (playerState.isMeditating) return "meditate";
+  if (playerState.isSliding) return "slide";
+  if (playerState.isCrouching) return playerState.isMoving ? "crouchwalk" : "crouch";
+  if (!playerState.isGrounded) return "jump";
+  if (playerState.isSprinting) return "sprint";
+  if (playerState.isMoving) return "walk";
+  return "holding";
+}
+
+function InventoryWizardPreview({
+  character,
+  playerState,
+}: {
+  character: CharacterCustomization;
+  playerState: HudPlayerState;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [frame, setFrame] = useState(0);
+  const [isBlinking, setIsBlinking] = useState(false);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setFrame((current) => (current + 1) % 24), 130);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let blinkStartTimeout: number | null = null;
+    let blinkEndTimeout: number | null = null;
+    const scheduleBlink = () => {
+      blinkStartTimeout = window.setTimeout(() => {
+        if (cancelled) return;
+        setIsBlinking(true);
+        blinkEndTimeout = window.setTimeout(() => {
+          if (cancelled) return;
+          setIsBlinking(false);
+          scheduleBlink();
+        }, 85 + Math.random() * 80);
+      }, 1800 + Math.random() * 4200);
+    };
+
+    scheduleBlink();
+    return () => {
+      cancelled = true;
+      if (blinkStartTimeout !== null) window.clearTimeout(blinkStartTimeout);
+      if (blinkEndTimeout !== null) window.clearTimeout(blinkEndTimeout);
+    };
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const previewWidth = 220;
+    const previewHeight = 188;
+    const resolutionScale = 2;
+    canvas.width = previewWidth * resolutionScale;
+    canvas.height = previewHeight * resolutionScale;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.setTransform(resolutionScale, 0, 0, resolutionScale, 0, 0);
+    ctx.clearRect(0, 0, previewWidth, previewHeight);
+    ctx.fillStyle = "#020906";
+    ctx.fillRect(0, 0, previewWidth, previewHeight);
+
+    ctx.fillStyle = "rgba(16, 185, 129, 0.07)";
+    for (let x = 0; x < previewWidth; x += 12) ctx.fillRect(x, 0, 1, previewHeight);
+    for (let y = 0; y < previewHeight; y += 12) ctx.fillRect(0, y, previewWidth, 1);
+
+    const glow = ctx.createRadialGradient(112, 118, 8, 112, 118, 112);
+    glow.addColorStop(0, "rgba(250, 204, 21, 0.18)");
+    glow.addColorStop(0.45, "rgba(16, 185, 129, 0.14)");
+    glow.addColorStop(1, "rgba(2, 9, 6, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, previewWidth, previewHeight);
+
+    ctx.strokeStyle = "rgba(167, 243, 208, 0.28)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(12, 10, previewWidth - 24, previewHeight - 20);
+    ctx.strokeStyle = "rgba(250, 204, 21, 0.22)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(22, 20, previewWidth - 44, previewHeight - 40);
+
+    drawPixelAvatarFrame(ctx, {
+      character,
+      direction: 0,
+      animation: getInventoryPreviewAnimation(playerState),
+      frame,
+      x: 48,
+      y: 21,
+      scale: 1.35,
+      detailScale: 2,
+      isBlinking,
+    });
+  }, [character, frame, isBlinking, playerState]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-label="Wizard avatar preview"
+      className="h-auto w-full border border-emerald-100/25 bg-[#020906] shadow-[inset_0_0_24px_rgba(16,185,129,0.08)]"
       style={{ imageRendering: "pixelated" }}
     />
   );
@@ -1717,11 +2034,13 @@ function MobileTouchControls({
 const SpellMenu = memo(function SpellMenu({
   menuSpellIndex,
   setMenuSpellIndex,
+  setMenuBindingHand,
   onClose,
   bindingHand,
 }: {
   menuSpellIndex: number;
   setMenuSpellIndex: (value: number | ((prev: number) => number)) => void;
+  setMenuBindingHand: (hand: HandType) => void;
   onClose: () => void;
   bindingHand: HandType;
 }) {
@@ -1756,6 +2075,7 @@ const SpellMenu = memo(function SpellMenu({
   }, []);
 
   const assignSpellToSlot = (slotIndex: number, spell: SpellType, hand: HandType = bindingHand) => {
+    setMenuBindingHand(hand);
     setHotbarSpell(slotIndex, spell, hand);
     selectHotbarSlot(slotIndex, hand);
   };
@@ -1791,7 +2111,10 @@ const SpellMenu = memo(function SpellMenu({
                   : "border-yellow-200/25 text-yellow-100/75 hover:border-yellow-100/80",
               bindingHand === hand ? "brightness-125" : ""
             )}
-            onClick={() => selectHotbarSlot(index, hand)}
+            onClick={() => {
+              setMenuBindingHand(hand);
+              selectHotbarSlot(index, hand);
+            }}
           >
             <div className="text-center text-[9px] text-white/80">{hotkeyLabels[index]}</div>
             <div className="truncate text-[7px] leading-3">{spellNames[spell]}</div>
@@ -1803,11 +2126,11 @@ const SpellMenu = memo(function SpellMenu({
 
   return (
     <div className="absolute inset-0 z-[130] flex items-center justify-center pointer-events-auto">
-      <div className="absolute inset-0 bg-cyan-950/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[#02040c]/55 pointer-events-none" />
       <div
         ref={scrollRef}
         data-testid="spell-menu"
-        className="spell-menu-hologram relative overflow-x-hidden overflow-y-auto rounded-[2px] border border-cyan-200/60 bg-[#12071f]/24 p-3 text-cyan-100 shadow-[0_0_35px_rgba(34,211,238,0.45)] backdrop-blur-[1px]"
+        className="spell-menu-hologram relative overflow-x-hidden overflow-y-auto rounded-[2px] border border-cyan-200/60 bg-[#12071f]/92 p-3 text-cyan-100 shadow-[0_0_35px_rgba(34,211,238,0.45)] backdrop-blur-[2px]"
         style={{
           width: 'min(920px, calc(var(--app-vw, 100dvw) - 32px))',
           maxHeight: 'calc(var(--app-vh, 100dvh) - 96px)',
@@ -1903,6 +2226,1004 @@ const SpellMenu = memo(function SpellMenu({
   previous.bindingHand === next.bindingHand
 ));
 
+const questNpcRoles: QuestNpcRole[] = ["villager", "quest-giver", "town-leader"];
+const questEventPresetButtons = [
+  { label: "RANDOM SPELL", line: "unlockRandomLockedSpell" },
+  { label: "BLINK", line: "unlockSpell blink" },
+  { label: "START QUEST", line: "startQuest town_01_quest" },
+  { label: "COMPLETE", line: "completeQuest town_01_quest" },
+  { label: "FLAG", line: "setFlag town_01_quests=1" },
+  { label: "DARREL GROVE", line: "teleportQuestRealm darrel" },
+  { label: "MESSAGE", line: "message Good work, wizard." },
+] as const;
+
+function cloneQuestNpcProgram(program: QuestNpcProgram): QuestNpcProgram {
+  return {
+    ...program,
+    scriptPoints: program.scriptPoints.map((point) => ({ ...point })),
+  };
+}
+
+function isQuestNpcEditorTarget(value: unknown): value is QuestNpcEditorTarget {
+  if (typeof value !== "object" || value === null) return false;
+  const target = value as Partial<QuestNpcEditorTarget>;
+  return typeof target.npcId === "string" &&
+    typeof target.townId === "string" &&
+    typeof target.hutId === "string" &&
+    typeof target.defaultName === "string" &&
+    Array.isArray(target.position) &&
+    target.position.length === 3 &&
+    target.position.every((coordinate) => typeof coordinate === "number" && Number.isFinite(coordinate));
+}
+
+function QuestNpcEditor() {
+  const target = useGameStore(s => s.questNpcEditorTarget);
+  const savedProgram = useGameStore(s => {
+    const npcId = s.questNpcEditorTarget?.npcId;
+    return npcId ? s.questNpcPrograms[npcId] : undefined;
+  });
+  const questUnlockedSpellCount = useGameStore(s => s.questUnlockedSpells.length);
+  const upsertQuestNpcProgram = useGameStore(s => s.upsertQuestNpcProgram);
+  const removeQuestNpcProgram = useGameStore(s => s.removeQuestNpcProgram);
+  const closeQuestNpcEditor = useGameStore(s => s.closeQuestNpcEditor);
+  const runQuestScriptPoint = useGameStore(s => s.runQuestScriptPoint);
+  const addLobbyMessage = useGameStore(s => s.addLobbyMessage);
+  const [draft, setDraft] = useState<QuestNpcProgram | null>(null);
+  const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
+  const [eventMessage, setEventMessage] = useState("Good work, wizard.");
+  const [eventQuestId, setEventQuestId] = useState("town_01_quest");
+  const [eventFlag, setEventFlag] = useState("town_01_quests=1");
+
+  useEffect(() => {
+    if (!target) {
+      setDraft(null);
+      setSelectedPointId(null);
+      return;
+    }
+
+    const program = savedProgram ?? createDefaultQuestNpcProgram(target);
+    setDraft(cloneQuestNpcProgram(program));
+    setSelectedPointId(program.scriptPoints[0]?.id ?? null);
+  }, [savedProgram, target]);
+
+  if (!target || !draft) return null;
+
+  const selectedPoint = draft.scriptPoints.find((point) => point.id === selectedPointId) ?? draft.scriptPoints[0];
+  const selectedIndex = selectedPoint ? draft.scriptPoints.indexOf(selectedPoint) : -1;
+  const selectedEventCount = selectedPoint
+    ? selectedPoint.eventScript.split(/\r?\n/).filter((line) => line.trim()).length
+    : 0;
+
+  const updateDraft = (updates: Partial<QuestNpcProgram>) => {
+    setDraft((current) => current ? { ...current, ...updates } : current);
+  };
+
+  const updatePoint = (updates: Partial<QuestScriptPoint>) => {
+    if (!selectedPoint) return;
+    setDraft((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        scriptPoints: current.scriptPoints.map((point) => (
+          point.id === selectedPoint.id ? { ...point, ...updates } : point
+        )),
+      };
+    });
+  };
+
+  const addScriptPoint = () => {
+    const nextPoint: QuestScriptPoint = {
+      id: makeQuestScriptPointId(),
+      title: `Point ${draft.scriptPoints.length + 1}`,
+      dialog: '',
+      eventScript: '',
+    };
+    setDraft((current) => current ? {
+      ...current,
+      scriptPoints: [...current.scriptPoints, nextPoint],
+    } : current);
+    setSelectedPointId(nextPoint.id);
+  };
+
+  const duplicateSelectedPoint = () => {
+    if (!selectedPoint) return;
+    const nextPoint: QuestScriptPoint = {
+      ...selectedPoint,
+      id: makeQuestScriptPointId(),
+      title: `${selectedPoint.title || "Point"} Copy`.slice(0, 48),
+    };
+    setDraft((current) => current ? {
+      ...current,
+      scriptPoints: [
+        ...current.scriptPoints.slice(0, selectedIndex + 1),
+        nextPoint,
+        ...current.scriptPoints.slice(selectedIndex + 1),
+      ],
+    } : current);
+    setSelectedPointId(nextPoint.id);
+  };
+
+  const moveSelectedPoint = (direction: -1 | 1) => {
+    if (!selectedPoint || selectedIndex < 0) return;
+    const nextIndex = selectedIndex + direction;
+    if (nextIndex < 0 || nextIndex >= draft.scriptPoints.length) return;
+    setDraft((current) => {
+      if (!current) return current;
+      const currentIndex = current.scriptPoints.findIndex((point) => point.id === selectedPoint.id);
+      const targetIndex = currentIndex + direction;
+      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= current.scriptPoints.length) return current;
+      const nextPoints = [...current.scriptPoints];
+      [nextPoints[currentIndex], nextPoints[targetIndex]] = [nextPoints[targetIndex], nextPoints[currentIndex]];
+      return { ...current, scriptPoints: nextPoints };
+    });
+  };
+
+  const appendEventLine = (line: string) => {
+    if (!selectedPoint) return;
+    const cleanedLine = line.trim();
+    if (!cleanedLine) return;
+    const currentScript = selectedPoint.eventScript.trimEnd();
+    updatePoint({ eventScript: currentScript ? `${currentScript}\n${cleanedLine}` : cleanedLine });
+  };
+
+  const appendEventFromBuilder = (kind: "message" | "startQuest" | "completeQuest" | "setFlag") => {
+    if (kind === "message") {
+      appendEventLine(`message ${eventMessage.trim() || "Good work, wizard."}`);
+      return;
+    }
+    if (kind === "setFlag") {
+      appendEventLine(`setFlag ${eventFlag.trim() || "town_01_quests=1"}`);
+      return;
+    }
+    const questId = eventQuestId.trim() || "town_01_quest";
+    appendEventLine(`${kind} ${questId}`);
+  };
+
+  const removeSelectedPoint = () => {
+    if (!selectedPoint || draft.scriptPoints.length <= 1) {
+      addLobbyMessage("A dialog needs at least one scriptpoint", "system");
+      return;
+    }
+    const nextPoints = draft.scriptPoints.filter((point) => point.id !== selectedPoint.id);
+    setDraft((current) => current ? { ...current, scriptPoints: nextPoints } : current);
+    setSelectedPointId(nextPoints[Math.max(0, selectedIndex - 1)]?.id ?? nextPoints[0]?.id ?? null);
+  };
+
+  const saveDraft = () => {
+    const cleanedName = draft.displayName.trim() || target.defaultName;
+    const cleanedGreeting = draft.greeting.trim();
+    const cleanedPoints = draft.scriptPoints.map((point, index) => ({
+      ...point,
+      title: point.title.trim() || `Point ${index + 1}`,
+      dialog: point.dialog.trim(),
+      eventScript: point.eventScript.trim(),
+    }));
+    upsertQuestNpcProgram({
+      ...draft,
+      displayName: cleanedName,
+      greeting: cleanedGreeting,
+      scriptPoints: cleanedPoints,
+      updatedAt: Date.now(),
+    });
+    addLobbyMessage(`Saved ${cleanedName}`, "system");
+  };
+
+  const resetProgram = () => {
+    removeQuestNpcProgram(target.npcId);
+    const fresh = createDefaultQuestNpcProgram(target);
+    setDraft(fresh);
+    setSelectedPointId(fresh.scriptPoints[0]?.id ?? null);
+    addLobbyMessage("NPC program reset", "system");
+  };
+
+  const runSelectedPoint = () => {
+    if (!selectedPoint) return;
+    saveDraft();
+    window.setTimeout(() => {
+      runQuestScriptPoint(target.npcId, selectedPoint.id);
+    }, 0);
+  };
+
+  return createPortal(
+    <div
+      data-testid="quest-npc-editor"
+      className="fixed inset-0 z-[245] flex items-center justify-center bg-black/72 px-3 py-3 font-mono text-cyan-50 pointer-events-auto"
+      style={{ width: "var(--app-vw, 100dvw)", height: "var(--app-vh, 100dvh)" }}
+      onMouseDown={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.preventDefault()}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      <div className="flex max-h-[min(800px,calc(var(--app-vh,100dvh)-24px))] w-[min(1180px,calc(var(--app-vw,100dvw)-24px))] flex-col overflow-hidden border-2 border-cyan-200/70 bg-[#050711]/96 shadow-[0_0_36px_rgba(34,211,238,0.28)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-300/35 px-3 py-2">
+          <div>
+            <div className="text-[9px] tracking-[0.26em] text-cyan-100/55">QUEST NPC DEV</div>
+            <div className="normal-case text-lg font-bold tracking-wide text-yellow-100">{draft.displayName || target.defaultName}</div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-[10px] tracking-widest">
+            <button className="border border-emerald-200/70 bg-emerald-400/10 px-3 py-2 text-emerald-50 hover:bg-emerald-300/20" onClick={saveDraft}>SAVE</button>
+            <button className="border border-cyan-200/60 bg-cyan-300/10 px-3 py-2 text-cyan-50 hover:bg-cyan-200/20" onClick={closeQuestNpcEditor}>CLOSE</button>
+          </div>
+        </div>
+
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-y-auto md:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="border-b border-cyan-300/25 bg-cyan-950/25 p-3 md:border-b-0 md:border-r">
+            <label className="block text-[9px] tracking-[0.2em] text-cyan-100/65">
+              NAME
+              <input
+                className="normal-case mt-1 w-full border border-cyan-300/45 bg-black/65 px-2 py-2 text-sm tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
+                maxLength={42}
+                value={draft.displayName}
+                onChange={(e) => updateDraft({ displayName: e.currentTarget.value })}
+              />
+            </label>
+            <label className="mt-3 block text-[9px] tracking-[0.2em] text-cyan-100/65">
+              ROLE
+              <select
+                className="mt-1 w-full border border-cyan-300/45 bg-black/80 px-2 py-2 text-xs tracking-widest text-cyan-50 outline-none focus:border-yellow-200"
+                value={draft.role}
+                onChange={(e) => updateDraft({ role: e.currentTarget.value as QuestNpcRole })}
+              >
+                {questNpcRoles.map((role) => (
+                  <option key={role} value={role}>{role.toUpperCase()}</option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-3 block text-[9px] tracking-[0.2em] text-cyan-100/65">
+              TOWN
+              <input
+                className="normal-case mt-1 w-full border border-cyan-300/45 bg-black/65 px-2 py-2 text-xs tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
+                maxLength={64}
+                value={draft.townId}
+                onChange={(e) => updateDraft({ townId: e.currentTarget.value })}
+              />
+            </label>
+            <label className="mt-3 block text-[9px] tracking-[0.2em] text-cyan-100/65">
+              OPENING LINE
+              <textarea
+                className="normal-case mt-1 h-24 w-full resize-none border border-cyan-300/45 bg-black/65 px-2 py-2 text-xs leading-5 tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
+                maxLength={900}
+                value={draft.greeting}
+                onChange={(e) => updateDraft({ greeting: e.currentTarget.value })}
+              />
+            </label>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-[9px] tracking-widest">
+              <button className="border border-cyan-200/55 bg-cyan-300/10 px-2 py-2 hover:bg-cyan-200/20" onClick={addScriptPoint}>ADD POINT</button>
+              <button className="border border-red-200/55 bg-red-400/10 px-2 py-2 text-red-50 hover:bg-red-300/20" onClick={removeSelectedPoint}>DELETE</button>
+            </div>
+            <button className="mt-2 w-full border border-zinc-300/45 bg-zinc-500/10 px-2 py-2 text-[9px] tracking-widest text-zinc-100 hover:bg-zinc-300/15" onClick={resetProgram}>RESET NPC</button>
+            <div className="normal-case mt-3 text-[10px] leading-4 text-cyan-100/45">
+              {target.npcId} - {target.theme ?? "village"} - unlocked spells tracked: {questUnlockedSpellCount}
+            </div>
+          </div>
+
+          <div className="grid min-h-0 grid-cols-1 gap-3 p-3 lg:grid-cols-[190px_minmax(0,1fr)]">
+            <div className="min-h-0">
+              <div className="mb-2 text-[9px] tracking-[0.22em] text-cyan-100/60">SCRIPTPOINTS</div>
+              <div className="flex max-h-52 flex-col gap-1 overflow-y-auto pr-1 lg:max-h-none">
+                {draft.scriptPoints.map((point, index) => (
+                  <button
+                    key={point.id}
+                    className={cn(
+                      "normal-case border px-2 py-2 text-left text-xs leading-4 transition-colors",
+                      selectedPoint?.id === point.id
+                        ? "border-yellow-200 bg-yellow-200/12 text-yellow-50"
+                        : "border-cyan-300/25 bg-black/30 text-cyan-100/75 hover:border-cyan-200/70"
+                    )}
+                    onClick={() => setSelectedPointId(point.id)}
+                  >
+                    <span className="mr-1 text-[9px] text-cyan-100/45">{index + 1}.</span>
+                    {point.title || `Point ${index + 1}`}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-1 text-[9px] tracking-widest">
+                <button className="border border-cyan-200/45 bg-cyan-300/10 px-2 py-2 hover:bg-cyan-200/20" onClick={() => moveSelectedPoint(-1)}>UP</button>
+                <button className="border border-cyan-200/45 bg-cyan-300/10 px-2 py-2 hover:bg-cyan-200/20" onClick={() => moveSelectedPoint(1)}>DOWN</button>
+                <button className="border border-cyan-200/45 bg-cyan-300/10 px-2 py-2 hover:bg-cyan-200/20" onClick={duplicateSelectedPoint}>COPY</button>
+              </div>
+            </div>
+
+            {selectedPoint && (
+              <div className="min-w-0">
+                <label className="block text-[9px] tracking-[0.2em] text-cyan-100/65">
+                  POINT TITLE
+                  <input
+                    className="normal-case mt-1 w-full border border-cyan-300/45 bg-black/65 px-2 py-2 text-sm tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
+                    maxLength={48}
+                    value={selectedPoint.title}
+                    onChange={(e) => updatePoint({ title: e.currentTarget.value })}
+                  />
+                </label>
+                <label className="mt-3 block text-[9px] tracking-[0.2em] text-cyan-100/65">
+                  DIALOG
+                  <textarea
+                    className="normal-case mt-1 h-28 w-full resize-none border border-cyan-300/45 bg-black/65 px-2 py-2 text-sm leading-5 tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
+                    maxLength={900}
+                    value={selectedPoint.dialog}
+                    onChange={(e) => updatePoint({ dialog: e.currentTarget.value })}
+                  />
+                </label>
+                <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
+                  <label className="block text-[9px] tracking-[0.2em] text-cyan-100/65">
+                    EVENTS
+                    <textarea
+                      className="normal-case mt-1 h-44 w-full resize-none border border-cyan-300/45 bg-black/65 px-2 py-2 text-xs leading-5 tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
+                      maxLength={900}
+                      value={selectedPoint.eventScript}
+                      onChange={(e) => updatePoint({ eventScript: e.currentTarget.value })}
+                      placeholder={"unlockSpell blink\nunlockRandomLockedSpell\nstartQuest town_01_fetch\ncompleteQuest town_01_fetch\nsetFlag town_01_quests=1\nmessage Good work, wizard."}
+                    />
+                  </label>
+                  <div className="border border-cyan-300/30 bg-cyan-950/15 p-2">
+                    <div className="text-[9px] tracking-[0.22em] text-cyan-100/60">EVENT BUILDER</div>
+                    <div className="mt-2 grid grid-cols-2 gap-1 text-[9px] tracking-widest">
+                      {questEventPresetButtons.map((preset) => (
+                        <button
+                          key={preset.label}
+                          className="border border-cyan-200/40 bg-black/35 px-2 py-2 text-cyan-50 hover:bg-cyan-200/15"
+                          onClick={() => appendEventLine(preset.line)}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    <label className="mt-3 block text-[8px] tracking-[0.18em] text-cyan-100/55">
+                      MESSAGE
+                      <input
+                        className="normal-case mt-1 w-full border border-cyan-300/35 bg-black/60 px-2 py-1.5 text-[11px] tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
+                        maxLength={120}
+                        value={eventMessage}
+                        onChange={(e) => setEventMessage(e.currentTarget.value)}
+                      />
+                    </label>
+                    <button className="mt-1 w-full border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 text-[9px] tracking-widest hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("message")}>ADD MESSAGE</button>
+                    <label className="mt-2 block text-[8px] tracking-[0.18em] text-cyan-100/55">
+                      QUEST ID
+                      <input
+                        className="normal-case mt-1 w-full border border-cyan-300/35 bg-black/60 px-2 py-1.5 text-[11px] tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
+                        maxLength={80}
+                        value={eventQuestId}
+                        onChange={(e) => setEventQuestId(e.currentTarget.value)}
+                      />
+                    </label>
+                    <div className="mt-1 grid grid-cols-2 gap-1 text-[9px] tracking-widest">
+                      <button className="border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("startQuest")}>START</button>
+                      <button className="border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("completeQuest")}>COMPLETE</button>
+                    </div>
+                    <label className="mt-2 block text-[8px] tracking-[0.18em] text-cyan-100/55">
+                      FLAG
+                      <input
+                        className="normal-case mt-1 w-full border border-cyan-300/35 bg-black/60 px-2 py-1.5 text-[11px] tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
+                        maxLength={120}
+                        value={eventFlag}
+                        onChange={(e) => setEventFlag(e.currentTarget.value)}
+                      />
+                    </label>
+                    <button className="mt-1 w-full border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 text-[9px] tracking-widest hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("setFlag")}>SET FLAG</button>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
+                  <div className="border border-cyan-300/25 bg-black/35 p-2">
+                    <div className="text-[9px] tracking-[0.22em] text-cyan-100/60">PREVIEW</div>
+                    <div className="normal-case mt-2 text-sm font-bold tracking-wide text-yellow-100">{draft.displayName || target.defaultName}</div>
+                    <div className="normal-case mt-1 min-h-12 border border-cyan-300/20 bg-cyan-950/10 px-2 py-2 text-xs leading-5 tracking-wide text-cyan-50">
+                      {selectedPoint.dialog || draft.greeting || "Need something, wizard?"}
+                    </div>
+                  </div>
+                  <div className="flex flex-col justify-between gap-2 border border-yellow-200/35 bg-yellow-300/5 p-2">
+                    <div>
+                      <div className="text-[9px] tracking-[0.22em] text-yellow-100/65">SCRIPTPOINT</div>
+                      <div className="normal-case mt-1 text-xs leading-5 text-yellow-50">
+                        {selectedPoint.title || `Point ${selectedIndex + 1}`} - {selectedEventCount} event{selectedEventCount === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                    <button
+                      className="border border-yellow-200/70 bg-yellow-300/10 px-3 py-2 text-[10px] tracking-widest text-yellow-50 hover:bg-yellow-200/20"
+                      onClick={runSelectedPoint}
+                    >
+                      TEST POINT
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function QuestDialogPanel() {
+  const session = useGameStore(s => s.questDialogSession);
+  const closeQuestDialog = useGameStore(s => s.closeQuestDialog);
+  const chooseQuestDialogChoice = useGameStore(s => s.chooseQuestDialogChoice);
+  const controllerBindings = useGameStore(s => s.controllerBindings);
+  const [controllerChoiceIndex, setControllerChoiceIndex] = useState(0);
+  const controllerChoiceIndexRef = useRef(0);
+  const controllerButtonsRef = useRef<Record<string, boolean>>({});
+  const controllerRepeatRef = useRef<Partial<Record<string, number>>>({});
+
+  useEffect(() => {
+    controllerChoiceIndexRef.current = 0;
+    setControllerChoiceIndex(0);
+    controllerButtonsRef.current = {};
+    controllerRepeatRef.current = {};
+  }, [session?.line, session?.npcId, session?.choices.length]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+
+      if (event.code === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeQuestDialog();
+        return;
+      }
+
+      const slotIndex = getNumberSlot(event.code);
+      const choice = slotIndex >= 0 ? session.choices[slotIndex] : undefined;
+      if (!choice) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      chooseQuestDialogChoice(choice.id);
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [chooseQuestDialogChoice, closeQuestDialog, session]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    const consumePress = (key: string, pressed: boolean) => {
+      const wasPressed = controllerButtonsRef.current[key] ?? false;
+      controllerButtonsRef.current[key] = pressed;
+      return pressed && !wasPressed;
+    };
+
+    const consumeRepeat = (key: string, pressed: boolean, firstDelay = 260, repeatDelay = 160) => {
+      const now = performance.now();
+      const wasPressed = controllerButtonsRef.current[key] ?? false;
+      controllerButtonsRef.current[key] = pressed;
+
+      if (!pressed) {
+        delete controllerRepeatRef.current[key];
+        return false;
+      }
+
+      if (!wasPressed) {
+        controllerRepeatRef.current[key] = now + firstDelay;
+        return true;
+      }
+
+      if (now >= (controllerRepeatRef.current[key] ?? 0)) {
+        controllerRepeatRef.current[key] = now + repeatDelay;
+        return true;
+      }
+
+      return false;
+    };
+
+    const moveChoice = (direction: 1 | -1) => {
+      const choiceCount = session.choices.length;
+      if (choiceCount <= 0) return;
+      const nextIndex = (controllerChoiceIndexRef.current + direction + choiceCount) % choiceCount;
+      controllerChoiceIndexRef.current = nextIndex;
+      setControllerChoiceIndex(nextIndex);
+    };
+
+    let raf = 0;
+    const pollQuestDialogController = () => {
+      const gamepad = getPrimaryGamepad();
+      if (!gamepad) {
+        controllerButtonsRef.current = {};
+        controllerRepeatRef.current = {};
+        raf = window.requestAnimationFrame(pollQuestDialogController);
+        return;
+      }
+
+      const axisY = getGamepadAxis(gamepad, 1, 0.55);
+      const selectPressed = consumePress("questDialogSelect", isGamepadButtonPressed(gamepad, controllerBindings.menuSelect as GamepadButtonName));
+      const backPressed = consumePress("questDialogBack", isGamepadButtonPressed(gamepad, controllerBindings.menuBack as GamepadButtonName));
+      const startPressed = consumePress("questDialogStart", isGamepadButtonPressed(gamepad, controllerBindings.pause as GamepadButtonName));
+      const nextPressed = consumeRepeat(
+        "questDialogNext",
+        isGamepadButtonPressed(gamepad, "dpadDown") || axisY > 0.6,
+      );
+      const prevPressed = consumeRepeat(
+        "questDialogPrev",
+        isGamepadButtonPressed(gamepad, "dpadUp") || axisY < -0.6,
+      );
+
+      if (nextPressed) {
+        moveChoice(1);
+      } else if (prevPressed) {
+        moveChoice(-1);
+      }
+
+      if (selectPressed) {
+        const choice = session.choices[controllerChoiceIndexRef.current] ?? session.choices[0];
+        if (choice) {
+          chooseQuestDialogChoice(choice.id);
+        }
+      } else if (backPressed || startPressed) {
+        closeQuestDialog();
+      }
+
+      raf = window.requestAnimationFrame(pollQuestDialogController);
+    };
+
+    raf = window.requestAnimationFrame(pollQuestDialogController);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      controllerButtonsRef.current = {};
+      controllerRepeatRef.current = {};
+    };
+  }, [chooseQuestDialogChoice, closeQuestDialog, controllerBindings, session]);
+
+  if (!session) return null;
+
+  return createPortal(
+    <div
+      data-no-resume-click
+      data-testid="quest-dialog-panel"
+      className="fixed inset-0 z-[244] flex items-end justify-center bg-black/35 px-3 pb-5 pt-20 font-mono normal-case text-slate-50 pointer-events-auto sm:items-center sm:py-5"
+      style={{ width: "var(--app-vw, 100dvw)", height: "var(--app-vh, 100dvh)" }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${session.displayName} quest dialog`}
+      onMouseDown={(event) => event.stopPropagation()}
+      onContextMenu={(event) => event.preventDefault()}
+      onWheel={(event) => event.stopPropagation()}
+    >
+      <div className="w-[min(760px,calc(var(--app-vw,100dvw)-24px))] border-2 border-yellow-100/65 bg-[#070611]/96 shadow-[0_0_36px_rgba(250,204,21,0.2)]">
+        <div className="flex items-center justify-between gap-3 border-b border-yellow-100/25 px-4 py-3">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-yellow-100/60">Quest</div>
+            <div className="text-xl font-bold tracking-wide text-yellow-50">{session.displayName}</div>
+          </div>
+          <button
+            className="border border-yellow-100/50 bg-yellow-200/10 px-3 py-2 text-xs uppercase tracking-[0.18em] text-yellow-50 hover:bg-yellow-100/20"
+            onClick={closeQuestDialog}
+          >
+            Close
+          </button>
+        </div>
+        <div className="px-4 py-4">
+          <div className="whitespace-pre-line border border-cyan-200/20 bg-cyan-950/20 px-3 py-3 text-sm leading-6 text-cyan-50">
+            {session.line}
+          </div>
+          <div className="mt-3 grid gap-2">
+            {session.choices.map((choice, index) => (
+              <button
+                key={choice.id}
+                className={cn(
+                  "flex min-h-12 items-center gap-3 border px-3 py-2 text-left text-sm leading-5 text-yellow-50 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-100/60",
+                  index === controllerChoiceIndex
+                    ? "border-yellow-100 bg-yellow-100/18 shadow-[0_0_18px_rgba(250,204,21,0.26)]"
+                    : "border-yellow-100/40 bg-black/35 hover:border-yellow-100/75 hover:bg-yellow-100/15",
+                )}
+                onMouseEnter={() => {
+                  controllerChoiceIndexRef.current = index;
+                  setControllerChoiceIndex(index);
+                }}
+                onClick={() => chooseQuestDialogChoice(choice.id)}
+              >
+                <span className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center border text-xs uppercase text-yellow-100",
+                  index === controllerChoiceIndex ? "border-yellow-50 bg-yellow-200/25" : "border-yellow-100/50 bg-yellow-200/10",
+                )}>
+                  {index + 1}
+                </span>
+                <span className="min-w-0 flex-1 break-words">{choice.label}</span>
+              </button>
+            ))}
+            <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-yellow-100/45">
+              D-Pad / Stick choose · A select · B close
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+const inventoryItemOrder = Object.keys(INVENTORY_ITEM_DEFINITIONS) as InventoryItemId[];
+const inventoryBackpackSlotCount = 27;
+const inventoryQuickSlotCount = 9;
+
+type InventoryControllerMoveDetail = {
+  direction: 1 | -1;
+};
+
+function isInventoryQuestFlagTruthy(value: QuestFlagValue | undefined) {
+  return value === true || value === "true" || value === "completed" || value === "ready" || value === "1";
+}
+
+function getQuestDefinitionForAssignment(assignment: QuestNpcAssignment) {
+  return SPELL_QUEST_DEFINITIONS.find((quest) => quest.id === assignment.questId || quest.spell === assignment.spell) ?? null;
+}
+
+function QuestInventoryIcon({ active }: { active: boolean }) {
+  return (
+    <span
+      className={cn(
+        "grid h-10 w-10 shrink-0 place-items-center border bg-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.05)] sm:h-14 sm:w-14",
+        active ? "border-yellow-100/80" : "border-emerald-100/35",
+      )}
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 48 48" className="h-8 w-8 sm:h-12 sm:w-12" role="img">
+        <rect x="0" y="0" width="48" height="48" fill="#000000" />
+        <path
+          d="M12 9h19c3.6 0 6 2.2 6 5.6v22.7c0 .9-.7 1.7-1.7 1.7H15.8c-3.6 0-6-2.2-6-5.6V12c0-1.7 1.4-3 3.2-3Z"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="3.2"
+          strokeLinejoin="round"
+        />
+        <path d="M17 16h14M17 23h12M17 30h8" stroke="#ffffff" strokeWidth="3" strokeLinecap="square" />
+        <path d="M32 10v27M12 36h23" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="square" />
+        <path d="M34 18h7l-3.5 6 3.5 6h-7" fill="#ffffff" />
+      </svg>
+    </span>
+  );
+}
+
+function InventoryPanel({ playerState }: { playerState: HudPlayerState }) {
+  const isOpen = useGameStore(s => s.isInventoryOpen);
+  const inventory = useGameStore(s => s.inventory);
+  const setInventoryOpen = useGameStore(s => s.setInventoryOpen);
+  const characterCustomization = useGameStore(s => s.characterCustomization);
+  const spellQuestAssignments = useGameStore(s => s.spellQuestAssignments);
+  const questFlags = useGameStore(s => s.questFlags);
+  const questUnlockedSpells = useGameStore(s => s.questUnlockedSpells);
+  const [isQuestJournalOpen, setQuestJournalOpen] = useState(false);
+  const [selectedQuestIndex, setSelectedQuestIndex] = useState(0);
+
+  const activeQuestEntries = Object.values(spellQuestAssignments)
+    .map((assignment) => ({
+      assignment,
+      definition: getQuestDefinitionForAssignment(assignment),
+    }))
+    .filter((entry): entry is { assignment: QuestNpcAssignment; definition: NonNullable<ReturnType<typeof getQuestDefinitionForAssignment>> } => (
+      entry.definition !== null &&
+      entry.assignment.status !== "completed" &&
+      !questUnlockedSpells.includes(entry.assignment.spell)
+    ));
+  const selectedQuestEntry = activeQuestEntries[selectedQuestIndex] ?? activeQuestEntries[0] ?? null;
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+      if (event.code === "KeyJ") {
+        event.preventDefault();
+        event.stopPropagation();
+        setQuestJournalOpen((open) => !open);
+        return;
+      }
+
+      if (isQuestJournalOpen && (event.code === "ArrowDown" || event.code === "ArrowUp")) {
+        event.preventDefault();
+        event.stopPropagation();
+        const direction = event.code === "ArrowDown" ? 1 : -1;
+        setSelectedQuestIndex((index) => {
+          const count = activeQuestEntries.length;
+          return count > 0 ? (index + direction + count) % count : 0;
+        });
+        return;
+      }
+
+      if (event.code === "Enter" && !isQuestJournalOpen) {
+        event.preventDefault();
+        event.stopPropagation();
+        setQuestJournalOpen(true);
+        return;
+      }
+
+      if (event.code !== "Escape" && event.code !== "KeyI") return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (isQuestJournalOpen) {
+        setQuestJournalOpen(false);
+        return;
+      }
+      setInventoryOpen(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [activeQuestEntries.length, isOpen, isQuestJournalOpen, setInventoryOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setQuestJournalOpen(false);
+      setSelectedQuestIndex(0);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    setSelectedQuestIndex((index) => Math.min(index, Math.max(0, activeQuestEntries.length - 1)));
+  }, [activeQuestEntries.length]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleControllerSelect = () => {
+      if (isQuestJournalOpen) return;
+      setQuestJournalOpen(true);
+    };
+
+    const handleControllerBack = (event: Event) => {
+      const detail = (event as CustomEvent<{ handled?: boolean }>).detail;
+      if (!isQuestJournalOpen) return;
+      if (detail) detail.handled = true;
+      setQuestJournalOpen(false);
+    };
+
+    const handleControllerMove = (event: Event) => {
+      if (!isQuestJournalOpen) return;
+      const direction = (event as CustomEvent<InventoryControllerMoveDetail>).detail?.direction;
+      if (direction !== 1 && direction !== -1) return;
+      setSelectedQuestIndex((index) => {
+        const count = activeQuestEntries.length;
+        return count > 0 ? (index + direction + count) % count : 0;
+      });
+    };
+
+    window.addEventListener("inventory-controller-select", handleControllerSelect);
+    window.addEventListener("inventory-controller-back", handleControllerBack);
+    window.addEventListener("inventory-controller-move", handleControllerMove);
+    return () => {
+      window.removeEventListener("inventory-controller-select", handleControllerSelect);
+      window.removeEventListener("inventory-controller-back", handleControllerBack);
+      window.removeEventListener("inventory-controller-move", handleControllerMove);
+    };
+  }, [activeQuestEntries.length, isOpen, isQuestJournalOpen]);
+
+  if (!isOpen) return null;
+
+  const entries = inventoryItemOrder
+    .map((itemId) => ({ definition: INVENTORY_ITEM_DEFINITIONS[itemId], quantity: inventory[itemId]?.quantity ?? 0 }))
+    .filter((entry) => entry.quantity > 0);
+  const inventorySlots = Array.from(
+    { length: inventoryBackpackSlotCount + inventoryQuickSlotCount },
+    (_, index) => entries[index] ?? null
+  );
+  const backpackSlots = inventorySlots.slice(0, inventoryBackpackSlotCount);
+  const quickSlots = inventorySlots.slice(inventoryBackpackSlotCount);
+
+  const renderInventorySlot = (
+    entry: (typeof entries)[number] | null,
+    index: number,
+    label?: string,
+    visibleLabel = label
+  ) => {
+    const definition = entry?.definition;
+    const quantity = entry?.quantity ?? 0;
+
+    return (
+      <div
+        key={`${label ?? "slot"}-${index}`}
+        className={cn(
+          "relative aspect-square min-w-[34px] overflow-hidden border bg-black/45 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]",
+          definition
+            ? "border-emerald-100/55 bg-emerald-200/12"
+            : "border-emerald-100/20 bg-[#020906]/70"
+        )}
+        title={definition ? `${definition.name} x${quantity}` : label ?? `Slot ${index + 1}`}
+        aria-label={definition ? `${definition.name} x${quantity}` : label ?? `Empty slot ${index + 1}`}
+      >
+        <div className="absolute inset-[3px] border border-black/45 bg-gradient-to-br from-white/8 via-transparent to-black/35" />
+        {definition ? (
+          <>
+            <div className="absolute inset-1 flex items-center justify-center text-[8px] font-bold uppercase text-emerald-50 sm:text-xs">
+              <span className="flex h-[68%] w-[68%] max-w-full items-center justify-center overflow-hidden text-ellipsis whitespace-nowrap border border-emerald-100/35 bg-emerald-300/15 px-0.5 text-center leading-none shadow-[0_0_16px_rgba(110,231,183,0.14)]">
+                {definition.name.slice(0, 2)}
+              </span>
+            </div>
+            <div className="absolute bottom-0.5 right-0.5 max-w-[82%] overflow-hidden text-ellipsis whitespace-nowrap rounded-sm bg-black/70 px-1 text-[8px] font-bold leading-3 text-emerald-50 sm:right-1 sm:text-[10px] sm:leading-4">
+              {quantity}
+            </div>
+          </>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center overflow-hidden text-ellipsis whitespace-nowrap px-1 text-center text-[8px] uppercase text-emerald-100/20 sm:text-[9px]">
+            {visibleLabel ?? index + 1}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderQuestStatus = (entry: typeof selectedQuestEntry) => {
+    if (!entry) return "No active quest selected.";
+    const requiredReady = isInventoryQuestFlagTruthy(questFlags[entry.definition.requiredFlag]);
+    const questState = questFlags[`quest:${entry.definition.id}`];
+    if (questState === "completed") return "Complete";
+    if (requiredReady || questState === "ready") return "Ready to turn in";
+    if (questState === "started" || entry.assignment.status === "assigned") return "In progress";
+    return "Discovered";
+  };
+
+  const renderDarrelProgress = () => {
+    const stepRows = [
+      ["Leaves", questFlags["darrel:ingredient:leaves"]],
+      ["Berries", questFlags["darrel:ingredient:berries"]],
+      ["Roots", questFlags["darrel:ingredient:roots"]],
+      ["Garden Draught", questFlags["darrel:garden-draught"]],
+    ] as const;
+
+    return (
+      <div className="mt-3 grid gap-1.5">
+        {stepRows.map(([label, value]) => {
+          const done = value === "gathered" || value === "brewed" || value === "drunk" || isInventoryQuestFlagTruthy(value);
+          return (
+            <div key={label} className="flex min-w-0 flex-wrap items-center justify-between gap-2 border border-emerald-100/20 bg-black/25 px-2 py-1.5 text-[10px] uppercase tracking-[0.14em] text-emerald-50/75">
+              <span className="min-w-0 break-words">{label}</span>
+              <span className={cn("shrink-0", done ? "text-yellow-100" : "text-emerald-100/40")}>{done ? "Done" : "Needed"}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return createPortal(
+    <div
+      data-no-resume-click
+      data-testid="inventory-panel"
+      className="fixed inset-0 z-[243] flex items-end justify-center bg-black/45 px-3 pb-5 pt-20 font-mono normal-case text-slate-50 pointer-events-auto sm:items-center sm:py-5"
+      style={{ width: "var(--app-vw, 100dvw)", height: "var(--app-vh, 100dvh)" }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Inventory"
+      onMouseDown={(event) => event.stopPropagation()}
+      onContextMenu={(event) => event.preventDefault()}
+      onWheel={(event) => event.stopPropagation()}
+    >
+      <div className="max-h-[min(760px,calc(var(--app-vh,100dvh)-24px))] w-[min(1060px,calc(var(--app-vw,100dvw)-24px))] overflow-hidden border-2 border-emerald-100/65 bg-[#06100c]/96 shadow-[0_0_38px_rgba(52,211,153,0.22)]">
+        <div className="flex items-center justify-between gap-3 border-b border-emerald-100/25 bg-emerald-950/20 px-3 py-3 sm:px-4">
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-emerald-100/60">Survival Pack</div>
+            <div className="truncate text-xl font-bold tracking-wide text-emerald-50">Inventory</div>
+          </div>
+          <button
+            className="flex h-9 w-9 shrink-0 items-center justify-center border border-emerald-100/50 bg-emerald-200/10 text-base font-bold text-emerald-50 hover:bg-emerald-100/20"
+            aria-label="Close inventory"
+            onClick={() => setInventoryOpen(false)}
+          >
+            X
+          </button>
+        </div>
+
+        <div className="grid max-h-[calc(min(760px,calc(var(--app-vh,100dvh)-24px))-62px)] min-w-0 content-start gap-3 overflow-x-hidden overflow-y-auto overscroll-contain p-3 sm:gap-4 sm:p-4">
+          <div className="grid min-w-0 grid-cols-1 items-start gap-3 min-[520px]:grid-cols-[112px_minmax(0,1fr)] sm:grid-cols-[180px_minmax(0,1fr)] lg:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="grid min-w-0 content-start gap-2 overflow-hidden border border-emerald-100/30 bg-black/35 p-2 sm:p-3">
+              <div className="truncate text-[10px] uppercase tracking-[0.22em] text-emerald-100/50">Wizard</div>
+              <InventoryWizardPreview character={characterCustomization} playerState={playerState} />
+              <button
+                className={cn(
+                  "mt-1 grid min-w-0 justify-items-center gap-1 overflow-hidden border px-1 py-2 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-50 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-100/60 sm:px-2 sm:tracking-[0.16em]",
+                  isQuestJournalOpen
+                    ? "border-yellow-100 bg-yellow-100/18 shadow-[0_0_18px_rgba(250,204,21,0.22)]"
+                    : "border-emerald-100/40 bg-emerald-300/10 hover:border-emerald-100/70 hover:bg-emerald-200/18",
+                )}
+                aria-label={`Quests journal, ${activeQuestEntries.length} active`}
+                title={`Quests journal (${activeQuestEntries.length} active)`}
+                onClick={() => setQuestJournalOpen((open) => !open)}
+              >
+                <QuestInventoryIcon active={isQuestJournalOpen} />
+                <span className={cn("block max-w-full truncate text-[10px] sm:text-[11px]", isQuestJournalOpen ? "text-yellow-50" : "text-emerald-50")}>Quests</span>
+              </button>
+            </div>
+            {isQuestJournalOpen ? (
+              <div className="grid min-w-0 content-start gap-3 overflow-hidden border border-yellow-100/35 bg-black/35 p-3">
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[10px] uppercase tracking-[0.22em] text-yellow-100/50">Quest Journal</div>
+                    <div className="truncate text-sm font-bold uppercase tracking-[0.16em] text-yellow-50">Active Quests</div>
+                  </div>
+                  <button
+                    className="shrink-0 border border-yellow-100/45 bg-yellow-200/10 px-2 py-1.5 text-[10px] uppercase tracking-[0.14em] text-yellow-50 hover:bg-yellow-100/20"
+                    onClick={() => setQuestJournalOpen(false)}
+                  >
+                    Back
+                  </button>
+                </div>
+                {activeQuestEntries.length === 0 ? (
+                  <div className="grid min-h-36 min-w-0 place-items-center border border-emerald-100/20 bg-black/30 px-4 py-8 text-center text-xs uppercase tracking-[0.16em] text-emerald-100/45">
+                    No active spell quests yet.
+                  </div>
+                ) : (
+                  <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.2fr)]">
+                    <div className="grid max-h-64 min-w-0 content-start gap-1.5 overflow-y-auto pr-1">
+                      {activeQuestEntries.map((entry, index) => {
+                        const selected = index === selectedQuestIndex;
+                        return (
+                          <button
+                            key={entry.assignment.npcId}
+                            className={cn(
+                              "min-h-14 min-w-0 overflow-hidden border px-2 py-2 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-100/60",
+                              selected
+                                ? "border-yellow-100 bg-yellow-100/18 shadow-[0_0_14px_rgba(250,204,21,0.22)]"
+                                : "border-emerald-100/25 bg-black/35 hover:border-emerald-100/55 hover:bg-emerald-200/10",
+                            )}
+                            onMouseEnter={() => setSelectedQuestIndex(index)}
+                            onClick={() => setSelectedQuestIndex(index)}
+                          >
+                            <div className="truncate text-xs font-bold uppercase tracking-[0.12em] text-emerald-50">{entry.definition.title}</div>
+                            <div className="mt-1 truncate text-[10px] uppercase tracking-[0.12em] text-emerald-100/45">
+                              {entry.assignment.displayName} / {SPELL_DISPLAY_NAMES[entry.assignment.spell]}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="min-h-64 min-w-0 overflow-hidden border border-emerald-100/25 bg-[#030906]/75 p-3">
+                      {selectedQuestEntry && (
+                        <>
+                          <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-yellow-100/50">Selected Quest</div>
+                              <div className="mt-1 break-words text-sm font-black uppercase tracking-[0.1em] text-yellow-50 sm:text-lg sm:tracking-[0.12em]">{selectedQuestEntry.definition.title}</div>
+                            </div>
+                            <div className="max-w-full shrink-0 break-words border border-yellow-100/35 bg-yellow-200/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-yellow-50">
+                              {renderQuestStatus(selectedQuestEntry)}
+                            </div>
+                          </div>
+                          <div className="mt-3 grid min-w-0 gap-2 text-xs leading-5 text-emerald-50/80">
+                            <div className="min-w-0 break-words"><span className="uppercase tracking-[0.14em] text-emerald-100/45">Giver:</span> {selectedQuestEntry.assignment.displayName}</div>
+                            <div className="min-w-0 break-words"><span className="uppercase tracking-[0.14em] text-emerald-100/45">Reward:</span> {SPELL_DISPLAY_NAMES[selectedQuestEntry.assignment.spell]}</div>
+                            <div className="max-h-36 min-w-0 overflow-y-auto break-words border border-cyan-100/15 bg-cyan-950/20 px-3 py-2 text-cyan-50/90">
+                              {selectedQuestEntry.definition.objective}
+                            </div>
+                          </div>
+                          {selectedQuestEntry.assignment.spell === "healingcrystals" && renderDarrelProgress()}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="break-words text-[10px] uppercase tracking-[0.18em] text-yellow-100/40">
+                  D-Pad / Stick choose / A open / B back
+                </div>
+              </div>
+            ) : (
+              <div className="grid min-w-0 content-start gap-3 overflow-hidden">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <div className="text-[10px] uppercase tracking-[0.22em] text-emerald-100/50">Backpack</div>
+                  <div className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-emerald-100/35">{entries.length}/36</div>
+                </div>
+                <div className="min-w-0 overflow-x-auto border border-emerald-100/25 bg-black/35 p-1.5 sm:p-2">
+                  <div className="grid min-w-[360px] grid-cols-[repeat(9,minmax(34px,1fr))] gap-1 sm:min-w-[468px] sm:gap-1.5">
+                    {backpackSlots.map((entry, index) => renderInventorySlot(entry, index))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="mt-1 truncate text-[10px] uppercase tracking-[0.22em] text-emerald-100/50">Quick Row</div>
+          <div className="min-w-0 overflow-x-auto border border-yellow-100/35 bg-yellow-200/8 p-2">
+            <div className="grid min-w-[360px] grid-cols-[repeat(9,minmax(34px,1fr))] gap-1.5 sm:min-w-[468px]">
+              {quickSlots.map((entry, index) => renderInventorySlot(entry, index, `${index + 1}`))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export function HUD() {
   const health = useGameStore(s => s.health);
   const armor = useGameStore(s => s.armor);
@@ -1915,6 +3236,8 @@ export function HUD() {
   const rightSelectedHotbarIndex = useGameStore(s => s.rightSelectedHotbarIndex);
   const activeHand = useGameStore(s => s.activeHand);
   const setActiveHand = useGameStore(s => s.setActiveHand);
+  const isMagicArmed = useGameStore(s => s.isMagicArmed);
+  const setMagicArmed = useGameStore(s => s.setMagicArmed);
   const selectHotbarSlot = useGameStore(s => s.selectHotbarSlot);
   const setHotbarSpell = useGameStore(s => s.setHotbarSpell);
   const isSpellMenuOpen = useGameStore(s => s.isSpellMenuOpen);
@@ -1937,6 +3260,8 @@ export function HUD() {
   const setPauseMenuOpen = useGameStore(s => s.setPauseMenuOpen);
   const isScoreboardOpen = useGameStore(s => s.isScoreboardOpen);
   const setScoreboardOpen = useGameStore(s => s.setScoreboardOpen);
+  const isInventoryOpen = useGameStore(s => s.isInventoryOpen);
+  const setInventoryOpen = useGameStore(s => s.setInventoryOpen);
   const isTouchControlsActive = useGameStore(s => s.isTouchControlsActive);
   const setTouchControlsActive = useGameStore(s => s.setTouchControlsActive);
   const isControllerGameplayActive = useGameStore(s => s.isControllerGameplayActive);
@@ -1974,6 +3299,9 @@ export function HUD() {
   const setSurvivalRules = useGameStore(s => s.setSurvivalRules);
   const localPlayerName = useGameStore(s => s.localPlayerName);
   const setLocalPlayerName = useGameStore(s => s.setLocalPlayerName);
+  const survivalSave = useGameStore(s => s.survivalSave);
+  const survivalLevel = useGameStore(s => s.survivalLevel);
+  const saveSurvivalProgress = useGameStore(s => s.saveSurvivalProgress);
   const lobbyMessages = useGameStore(s => s.lobbyMessages);
   const addLobbyMessage = useGameStore(s => s.addLobbyMessage);
   const removeLobbyMessage = useGameStore(s => s.removeLobbyMessage);
@@ -1981,7 +3309,12 @@ export function HUD() {
   const setVClipEnabled = useGameStore(s => s.setVClipEnabled);
   const setSurvivalTimeOverrideSeconds = useGameStore(s => s.setSurvivalTimeOverrideSeconds);
   const players = useGameStore(s => s.players);
-  
+  const isQuestDevModeEnabled = useGameStore(s => s.isQuestDevModeEnabled);
+  const setQuestDevModeEnabled = useGameStore(s => s.setQuestDevModeEnabled);
+  const questNpcEditorTarget = useGameStore(s => s.questNpcEditorTarget);
+  const questDialogSession = useGameStore(s => s.questDialogSession);
+  const openQuestNpcEditor = useGameStore(s => s.openQuestNpcEditor);
+
   const aspectRatio = useGameStore(s => s.aspectRatio);
   const setAspectRatio = useGameStore(s => s.setAspectRatio);
   const isFillAspect = aspectRatio === "Fill";
@@ -1993,7 +3326,7 @@ export function HUD() {
     containerType: "size",
   } as CSSProperties;
   const [showVideoMenu, setShowVideoMenu] = useState(false);
-  
+
   const [isLocked, setIsLocked] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [isDocumentFullscreen, setIsDocumentFullscreen] = useState(false);
@@ -2004,10 +3337,11 @@ export function HUD() {
     const state = useGameStore.getState();
     return state.isGameLaunched && !state.isControllerGameplayActive && !state.isTouchControlsActive;
   });
-  const [playerState, setPlayerState] = useState({
+  const [playerState, setPlayerState] = useState<HudPlayerState>({
     isMoving: false,
     isSprinting: false,
     isSliding: false,
+    isCrouching: false,
     isGrounded: true,
     isMeditating: false
   });
@@ -2016,6 +3350,8 @@ export function HUD() {
   const [menuBindingHand, setMenuBindingHand] = useState<HandType>("left");
   const [isSpellMenuPreloaded, setSpellMenuPreloaded] = useState(false);
   const [pauseMenuIndex, setPauseMenuIndex] = useState(0);
+  const [isDevFastTravelOpen, setDevFastTravelOpen] = useState(false);
+  const [devFastTravelIndex, setDevFastTravelIndex] = useState(0);
   const [startMenuStage, setStartMenuStage] = useState<StartMenuStage>(() => (
     useGameStore.getState().isGameLaunched ? "resume" : "press-start"
   ));
@@ -2035,6 +3371,7 @@ export function HUD() {
   const pointerLockUnavailableRef = useRef(false);
   const pointerLockRequestIdRef = useRef(0);
   const pointerLockResumeGraceUntilRef = useRef(0);
+  const pauseMenuExplicitlyRequestedRef = useRef(false);
   const pauseMenuRequestedRef = useRef(
     useGameStore.getState().isGameLaunched &&
     !useGameStore.getState().isControllerGameplayActive &&
@@ -2052,8 +3389,17 @@ export function HUD() {
   const remapReadyAtRef = useRef(0);
   const controllerLastSeenAtRef = useRef(0);
   const settingsScrollRef = useRef<HTMLDivElement>(null);
-  const controllerButtonsRef = useRef<Partial<Record<GamepadButtonName | "menuStickLeft" | "menuStickRight" | "menuStickUp" | "menuStickDown", boolean>>>({});
+  const controllerButtonsRef = useRef<Record<string, boolean>>({});
   const controllerRepeatRef = useRef<Partial<Record<string, number>>>({});
+  const controllerInventoryHoldStartedAtRef = useRef<number | null>(null);
+  const controllerInventoryTapEligibleRef = useRef(false);
+  const controllerInventoryIgnoreUntilReleaseRef = useRef(false);
+  const devFastTravelOpenedAtRef = useRef(0);
+  const keyboardMagicHoldStartedAtRef = useRef<number | null>(null);
+  const keyboardMagicHoldTimeoutRef = useRef<number | null>(null);
+  const keyboardMagicHoldConsumedRef = useRef(false);
+  const controllerMagicHoldStartedAtRef = useRef<number | null>(null);
+  const controllerMagicHoldConsumedRef = useRef(false);
 
   useEffect(() => {
     const updateTouchCapability = () => {
@@ -2109,6 +3455,18 @@ export function HUD() {
   }, [localPlayerName]);
 
   useEffect(() => {
+    const handleQuestNpcEditorRequest = (event: Event) => {
+      const target = (event as CustomEvent<unknown>).detail;
+      if (!isQuestNpcEditorTarget(target)) return;
+      openQuestNpcEditor(target);
+      addLobbyMessage(`Editing ${target.npcId}`, "system");
+    };
+
+    window.addEventListener("quest-npc-editor-request", handleQuestNpcEditorRequest);
+    return () => window.removeEventListener("quest-npc-editor-request", handleQuestNpcEditorRequest);
+  }, [addLobbyMessage, openQuestNpcEditor]);
+
+  useEffect(() => {
     if (isGameLaunched && startMenuStage === "press-start") {
       setStartMenuStage("resume");
     }
@@ -2143,18 +3501,43 @@ export function HUD() {
 
   const touchGameplayActive = isTouchDevice && isTouchControlsActive;
   const controllerGameplayActive = isControllerGameplayActive;
-  const isMenuOverlaySuppressedForQa = import.meta.env.DEV && new URLSearchParams(window.location.search).get("qaHideMenu") === "1";
+  const qaParams = typeof window !== "undefined" && import.meta.env.DEV
+    ? new URLSearchParams(window.location.search)
+    : null;
+  const isMenuOverlaySuppressedForQa = Boolean(
+    qaParams?.get("qaHideMenu") === "1" ||
+    qaParams?.get("qaSurvivalWalk") === "1" ||
+    qaParams?.get("qaPerfStats") === "1" ||
+    qaParams?.get("qaSurvival") === "1" ||
+    qaParams?.has("qaSurvivalChunk"),
+  );
+  const shouldHideGameplayViewObstructionsForQa = Boolean(
+    qaParams?.get("qaHideMenu") === "1" ||
+    qaParams?.get("qaHideHands") === "1" ||
+    qaParams?.get("qaCleanView") === "1" ||
+    qaParams?.get("qaGrassView") === "1",
+  );
+  const shouldHideGameplayHudForQa = Boolean(
+    qaParams?.get("qaCleanView") === "1" ||
+    qaParams?.get("qaGrassView") === "1",
+  );
   const hasPointerLock = typeof document !== "undefined" && document.pointerLockElement !== null;
   const hasMouseLookFallback = typeof document !== "undefined" && document.documentElement.dataset.wizardsMouseLookFallback === "true";
   const mouseGameplayActive = !pauseMenuRequestedRef.current && (hasPointerLock || hasMouseLookFallback);
   const isGameplayActive = mouseGameplayActive || touchGameplayActive || controllerGameplayActive;
   const isResumePauseOverlayRequested = isGameLaunched
     && startMenuStage === "resume"
-    && ((isPauseOverlayOpen && pauseMenuRequestedRef.current) || showVideoMenu)
+    && (
+      (isPauseOverlayOpen && pauseMenuRequestedRef.current && (!isMenuOverlaySuppressedForQa || pauseMenuExplicitlyRequestedRef.current)) ||
+      showVideoMenu
+    )
     && !mouseGameplayActive;
-  const shouldShowMenuOverlay = !isMenuOverlaySuppressedForQa
+  const shouldShowMenuOverlay = (!isMenuOverlaySuppressedForQa || isResumePauseOverlayRequested)
     && !isCommandConsoleOpen
     && !isSpellMenuOpen
+    && !questNpcEditorTarget
+    && !questDialogSession
+    && !isInventoryOpen
     && !isReturningToGame
     && (isResumePauseOverlayRequested || ((!isGameLaunched || startMenuStage !== "resume") && !isGameplayActive));
   const menuOverlayStyle = {
@@ -2188,6 +3571,13 @@ export function HUD() {
   const isLocalHttpOrigin = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   const voiceNeedsSecureOrigin = !window.isSecureContext && !isLocalHttpOrigin;
   const isMultiplayerMode = gameMode !== "solo-survival";
+  const isSurvivalMode = gameMode === "solo-survival" || gameMode === "multiplayer-survival";
+  const isDevFastTravelAllowed = isSurvivalMode && (
+    import.meta.env.DEV ||
+    isQuestDevModeEnabled ||
+    (gameMode as string) === "creative"
+  );
+  const devFastTravelLocationCount = DEV_FAST_TRAVEL_LOCATIONS.length;
   const resumeMenuActionCount = isMultiplayerMode ? pauseMenuItemCount : 2;
   const settingsActionCount = settingsPane === "video"
     ? settingsVideoActionCount
@@ -2239,7 +3629,9 @@ export function HUD() {
   const scoreboardRows: ScoreboardRow[] = [
     {
       id: socket.id ?? "local",
-      label: localPlayerName ? `YOU - ${localPlayerName}` : "YOU",
+      label: localPlayerName
+        ? `YOU - ${localPlayerName}${isSurvivalMode ? ` LVL ${survivalLevel}` : ""}`
+        : `YOU${isSurvivalMode ? ` LVL ${survivalLevel}` : ""}`,
       status: localPlayerStatus,
       health,
       armor,
@@ -2251,7 +3643,7 @@ export function HUD() {
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((player, index) => ({
         id: player.id,
-        label: player.playerName || `WIZARD ${index + 1} (${player.id.slice(0, 4).toUpperCase()})`,
+        label: `${player.playerName || `WIZARD ${index + 1} (${player.id.slice(0, 4).toUpperCase()})`}${isSurvivalMode && player.survivalLevel ? ` LVL ${player.survivalLevel}` : ""}`,
         status: getRemotePlayerStatus(player, buffClock),
         health: player.health,
         armor: player.armor ?? 0,
@@ -2323,6 +3715,7 @@ export function HUD() {
   };
 
   const finishMouseGameplayResume = (mode: "pointer-lock" | "fallback" = "pointer-lock") => {
+    pauseMenuExplicitlyRequestedRef.current = false;
     pauseMenuRequestedRef.current = false;
     pointerLockResumeGraceUntilRef.current = 0;
     document.documentElement.classList.add("wizards-mouse-gameplay-active");
@@ -2340,10 +3733,13 @@ export function HUD() {
     setControllerGameplayActive(false);
     setScoreboardSource("keyboard", false);
     setScoreboardSource("controller", false);
+    const canvas = document.getElementById("game-canvas") as HTMLCanvasElement | null;
+    canvas?.focus({ preventScroll: true });
   };
 
   const openPauseMenuFromGameplay = (inputMode: GameplayInputMode) => {
     pointerLockRequestIdRef.current += 1;
+    pauseMenuExplicitlyRequestedRef.current = true;
     pauseMenuRequestedRef.current = true;
     pointerLockResumeGraceUntilRef.current = 0;
     document.documentElement.classList.remove("wizards-mouse-gameplay-active");
@@ -2532,7 +3928,7 @@ export function HUD() {
   // Deplete rune energy
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || isEditableTarget(e.target)) return;
+      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
       if (e.code !== "KeyQ" || e.repeat) return;
       qHeldRef.current = true;
       setIsRightHandModifier(true);
@@ -2541,12 +3937,14 @@ export function HUD() {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || isEditableTarget(e.target)) return;
+      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
       if (e.code !== "KeyQ") return;
       qHeldRef.current = false;
       setIsRightHandModifier(false);
-      setMenuBindingHand("left");
-      setActiveHand("left");
+      if (!useGameStore.getState().isSpellMenuOpen) {
+        setMenuBindingHand("left");
+        setActiveHand("left");
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -2555,11 +3953,11 @@ export function HUD() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [isCommandConsoleOpen, setActiveHand]);
+  }, [isCommandConsoleOpen, isInventoryOpen, questDialogSession, questNpcEditorTarget, setActiveHand]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || isEditableTarget(e.target)) return;
+      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
       if (
         e.code === "Escape" &&
         isGameLaunched &&
@@ -2582,6 +3980,8 @@ export function HUD() {
         e.preventDefault();
         e.stopPropagation();
         setIsReturningToGame(false);
+        pauseMenuExplicitlyRequestedRef.current = true;
+        pauseMenuRequestedRef.current = true;
         setPauseOverlayOpen(true);
         setPauseMenuOpen(true);
         return;
@@ -2595,6 +3995,8 @@ export function HUD() {
         setRemappingAction(null);
         setRemappingVoiceKey(false);
         setPauseMenuIndex(3);
+        pauseMenuExplicitlyRequestedRef.current = true;
+        pauseMenuRequestedRef.current = true;
         setPauseOverlayOpen(true);
         setPauseMenuOpen(true);
         return;
@@ -2603,7 +4005,7 @@ export function HUD() {
     };
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [controllerGameplayActive, isCommandConsoleOpen, isGameLaunched, isLocked, isPauseMenuVisible, isReturningToGame, isSpellMenuOpen, openPauseMenuFromGameplay, setPauseMenuOpen, showVideoMenu, startMenuStage, touchGameplayActive]);
+  }, [controllerGameplayActive, isCommandConsoleOpen, isGameLaunched, isInventoryOpen, isLocked, isPauseMenuVisible, isReturningToGame, isSpellMenuOpen, openPauseMenuFromGameplay, questDialogSession, questNpcEditorTarget, setPauseMenuOpen, showVideoMenu, startMenuStage, touchGameplayActive]);
 
   useEffect(() => {
     if (!isLocked && !touchGameplayActive && !controllerGameplayActive) return;
@@ -2633,9 +4035,13 @@ export function HUD() {
         if (
           useGameStore.getState().isGameLaunched &&
           !useGameStore.getState().isSpellMenuOpen &&
+          !useGameStore.getState().questNpcEditorTarget &&
+          !useGameStore.getState().questDialogSession &&
+          !useGameStore.getState().isInventoryOpen &&
           !isCommandConsoleOpen &&
           !pauseMenuRequestedRef.current
         ) {
+          pauseMenuExplicitlyRequestedRef.current = true;
           pauseMenuRequestedRef.current = true;
           setStartMenuStage("resume");
           setPauseOverlayOpen(true);
@@ -2648,10 +4054,11 @@ export function HUD() {
         prev.isMoving === e.detail.isMoving && 
         prev.isSprinting === e.detail.isSprinting && 
         prev.isSliding === e.detail.isSliding &&
+        prev.isCrouching === Boolean(e.detail.isCrouching) &&
         prev.isGrounded === e.detail.isGrounded &&
         prev.isMeditating === e.detail.isMeditating
       ) return prev;
-      return e.detail;
+      return { ...e.detail, isCrouching: Boolean(e.detail.isCrouching) };
     });
     const handleKeyDown = (e: KeyboardEvent) => {
       // Intentionally left blank or handle other keys
@@ -2786,6 +4193,7 @@ export function HUD() {
     }
 
     pointerLockRequestIdRef.current += 1;
+    pauseMenuExplicitlyRequestedRef.current = false;
     pauseMenuRequestedRef.current = false;
     pointerLockResumeGraceUntilRef.current = 0;
     document.documentElement.classList.remove("wizards-mouse-gameplay-active");
@@ -2819,6 +4227,7 @@ export function HUD() {
     }
 
     pointerLockRequestIdRef.current += 1;
+    pauseMenuExplicitlyRequestedRef.current = false;
     pauseMenuRequestedRef.current = false;
     pointerLockResumeGraceUntilRef.current = 0;
     document.documentElement.classList.remove("wizards-mouse-gameplay-active");
@@ -2841,6 +4250,105 @@ export function HUD() {
     openPauseMenuFromGameplay("controller");
   };
 
+  const pauseGameplayFromController = () => {
+    openPauseMenuFromGameplay(touchGameplayActive ? "touch" : "controller");
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+  };
+
+  const closeDevFastTravelMenu = (resumeGameplay = true) => {
+    setDevFastTravelOpen(false);
+    if (!resumeGameplay) return;
+
+    const inputMode = lastGameplayInputModeRef.current;
+    window.setTimeout(() => {
+      if (inputMode === "controller") {
+        startControllerGameplay();
+      } else if (inputMode === "touch") {
+        startTouchGameplay();
+      } else {
+        setIsReturningToGame(true);
+        requestGamePointerLock();
+      }
+    }, 0);
+  };
+
+  const openDevFastTravelMenu = (inputMode: GameplayInputMode) => {
+    if (
+      !isDevFastTravelAllowed ||
+      !isGameLaunched ||
+      isCommandConsoleOpen ||
+      isInventoryOpen ||
+      isSpellMenuOpen ||
+      questDialogSession ||
+      questNpcEditorTarget
+    ) {
+      return false;
+    }
+
+    pointerLockRequestIdRef.current += 1;
+    pointerLockResumeGraceUntilRef.current = 0;
+    lastGameplayInputModeRef.current = inputMode;
+    pauseMenuExplicitlyRequestedRef.current = false;
+    pauseMenuRequestedRef.current = false;
+    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+    setMouseLookFallbackActive(false);
+    setScoreboardSource("keyboard", false);
+    setScoreboardSource("controller", false);
+    setPauseOverlayOpen(false);
+    setPauseMenuOpen(false);
+    setShowVideoMenu(false);
+    setRemappingAction(null);
+    setRemappingVoiceKey(false);
+    setTouchControlsActive(false);
+    releaseMobileGameplayInputs();
+    setControllerGameplayActive(false);
+    setIsReturningToGame(false);
+    setIsLocked(false);
+    setCanLock(true);
+    setDevFastTravelIndex(0);
+    devFastTravelOpenedAtRef.current = performance.now();
+    setDevFastTravelOpen(true);
+    window.dispatchEvent(new Event("command-console-opened"));
+
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+    return true;
+  };
+
+  const runDevFastTravel = (location: DevFastTravelLocation) => {
+    const spawn = location.getSpawn();
+    document.documentElement.dataset.wofFastTravelTarget = location.id;
+    document.documentElement.dataset.wofFastTravelX = String(Math.round(spawn.x));
+    document.documentElement.dataset.wofFastTravelY = String(Math.round(spawn.y));
+    document.documentElement.dataset.wofFastTravelZ = String(Math.round(spawn.z));
+    window.dispatchEvent(new Event("wof-reset-perf-stats"));
+    window.dispatchEvent(new CustomEvent("teleportPlayer", {
+      detail: {
+        x: spawn.x,
+        y: spawn.y,
+        z: spawn.z,
+        yaw: Number.isFinite(spawn.yaw) ? spawn.yaw : undefined,
+      },
+    }));
+    if (location.spawnSpellDummies) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("wof-spawn-spell-dummies", {
+          detail: {
+            x: spawn.x,
+            y: spawn.y,
+            z: spawn.z,
+            yaw: Number.isFinite(spawn.yaw) ? spawn.yaw : 0,
+          },
+        }));
+      }, 120);
+    }
+    addLobbyMessage(`FAST TRAVEL: ${location.label} (${location.chunk.cx},${location.chunk.cz})`, "system");
+    closeDevFastTravelMenu(true);
+  };
+
   const requestGamePointerLock = () => {
     if (!localPlayerName) {
       setCanLock(true);
@@ -2855,6 +4363,7 @@ export function HUD() {
 
     const requestId = pointerLockRequestIdRef.current + 1;
     pointerLockRequestIdRef.current = requestId;
+    pauseMenuExplicitlyRequestedRef.current = false;
     pauseMenuRequestedRef.current = false;
     pointerLockResumeGraceUntilRef.current = performance.now() + 1800;
 
@@ -2916,6 +4425,112 @@ export function HUD() {
     }
   };
 
+  useEffect(() => {
+    if (
+      !isGameLaunched ||
+      !localPlayerName ||
+      !shouldUseRemoteMouseLookFallback() ||
+      isCommandConsoleOpen ||
+      isSpellMenuOpen ||
+      questNpcEditorTarget ||
+      questDialogSession ||
+      isInventoryOpen ||
+      isMapExpanded ||
+      isScoreboardOpen ||
+      (isPauseOverlayOpen && pauseMenuExplicitlyRequestedRef.current) ||
+      pauseMenuExplicitlyRequestedRef.current ||
+      showVideoMenu ||
+      touchGameplayActive ||
+      controllerGameplayActive
+    ) {
+      return;
+    }
+
+    if (document.pointerLockElement || document.documentElement.dataset.wizardsMouseLookFallback === "true") {
+      return;
+    }
+
+    finishMouseGameplayResume("fallback");
+  }, [
+    controllerGameplayActive,
+    finishMouseGameplayResume,
+    isCommandConsoleOpen,
+    isGameLaunched,
+    isInventoryOpen,
+    isMapExpanded,
+    isPauseOverlayOpen,
+    isScoreboardOpen,
+    isSpellMenuOpen,
+    localPlayerName,
+    questDialogSession,
+    questNpcEditorTarget,
+    showVideoMenu,
+    touchGameplayActive,
+  ]);
+
+  useEffect(() => {
+    if (!isGameLaunched || !localPlayerName) return;
+
+    const handleCanvasPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target?.closest("#game-canvas")) return;
+      if (
+        shouldShowMenuOverlay ||
+        isReturningToGame ||
+        isCommandConsoleOpen ||
+        isSpellMenuOpen ||
+        questNpcEditorTarget ||
+        questDialogSession ||
+        isInventoryOpen ||
+        isMapExpanded ||
+        isScoreboardOpen ||
+        showVideoMenu
+      ) {
+        return;
+      }
+
+      const canvas = document.getElementById("game-canvas") as HTMLCanvasElement | null;
+      canvas?.focus({ preventScroll: true });
+
+      if (
+        document.pointerLockElement ||
+        document.documentElement.dataset.wizardsMouseLookFallback === "true" ||
+        touchGameplayActive ||
+        controllerGameplayActive
+      ) {
+        return;
+      }
+
+      if (shouldUseRemoteMouseLookFallback() || pointerLockUnavailableRef.current || !canRequestPointerLockHere()) {
+        finishMouseGameplayResume("fallback");
+        return;
+      }
+
+      requestGamePointerLock();
+    };
+
+    document.addEventListener("pointerdown", handleCanvasPointerDown, true);
+    return () => document.removeEventListener("pointerdown", handleCanvasPointerDown, true);
+  }, [
+    controllerGameplayActive,
+    finishMouseGameplayResume,
+    isCommandConsoleOpen,
+    isGameLaunched,
+    isInventoryOpen,
+    isMapExpanded,
+    isReturningToGame,
+    isScoreboardOpen,
+    isSpellMenuOpen,
+    localPlayerName,
+    questDialogSession,
+    questNpcEditorTarget,
+    requestGamePointerLock,
+    shouldShowMenuOverlay,
+    showVideoMenu,
+    touchGameplayActive,
+  ]);
+
   const closeCommandConsole = (resumeGameplay = true) => {
     setCommandConsoleOpen(false);
     setCommandConsoleValue("/");
@@ -2929,7 +4544,7 @@ export function HUD() {
   };
 
   const openCommandConsole = () => {
-    if (!isGameLaunched || isCommandConsoleOpen || isSpellMenuOpen) return;
+    if (!isGameLaunched || isCommandConsoleOpen || isSpellMenuOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen) return;
 
     commandConsoleShouldRelockRef.current = Boolean(
       (document.pointerLockElement || document.documentElement.dataset.wizardsMouseLookFallback === "true") &&
@@ -2957,8 +4572,10 @@ export function HUD() {
       isLocked ||
       isTouchDevice ||
       isSpellMenuOpen ||
+      isInventoryOpen ||
       showVideoMenu ||
       isCommandConsoleOpen ||
+      questDialogSession ||
       isReturningToGame
     ) {
       return;
@@ -2971,7 +4588,7 @@ export function HUD() {
 
     window.addEventListener("mousedown", handleMouseResume, true);
     return () => window.removeEventListener("mousedown", handleMouseResume, true);
-  }, [controllerGameplayActive, isCommandConsoleOpen, isLocked, isReturningToGame, isSpellMenuOpen, isTouchDevice, requestGamePointerLock, showVideoMenu]);
+  }, [controllerGameplayActive, isCommandConsoleOpen, isInventoryOpen, isLocked, isReturningToGame, isSpellMenuOpen, isTouchDevice, questDialogSession, requestGamePointerLock, showVideoMenu]);
 
   const submitCommandConsole = () => {
     const rawCommand = commandConsoleValue.trim();
@@ -3006,6 +4623,112 @@ export function HUD() {
       }
 
       closeCommandConsole();
+      return;
+    }
+
+    if (normalizedCommand === "questdev" || normalizedCommand === "npcdev" || normalizedCommand === "devquests") {
+      const [rawAction = "", ...openTargetParts] = commandArgs;
+      const action = rawAction.toLowerCase();
+      if (action === "open" || action === "editor") {
+        const requestedNpcId = openTargetParts.join("-").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
+        const npcId = requestedNpcId || "manual-dev-npc";
+        setQuestDevModeEnabled(true);
+        openQuestNpcEditor({
+          npcId,
+          townId: "manual-dev-town",
+          hutId: npcId,
+          defaultName: "Manual Quest NPC",
+          theme: "village",
+          position: [0, 0, 0],
+        });
+        addLobbyMessage(`Editing ${npcId}`, "system");
+        closeCommandConsole(false);
+        return;
+      }
+
+      const truthy = ["on", "true", "1", "yes", "enable", "enabled"];
+      const falsy = ["off", "false", "0", "no", "disable", "disabled"];
+      const nextEnabled = normalizedValue.length === 0 || normalizedValue === "toggle"
+        ? !useGameStore.getState().isQuestDevModeEnabled
+        : truthy.includes(normalizedValue)
+          ? true
+          : falsy.includes(normalizedValue)
+            ? false
+            : null;
+
+      if (nextEnabled === null) {
+        addLobbyMessage("Usage: /questdev on or /questdev off", "system");
+      } else {
+        setQuestDevModeEnabled(nextEnabled);
+        addLobbyMessage(`QUEST DEV ${nextEnabled ? "ENABLED" : "DISABLED"}`, "system");
+      }
+
+      closeCommandConsole();
+      return;
+    }
+
+    if (normalizedCommand === "darrelhere" || normalizedCommand === "claimdarrel" || normalizedCommand === "setdarrel") {
+      window.dispatchEvent(new Event("quest-claim-darrel-here"));
+      addLobbyMessage("Claiming Darrel at your current hut or target.", "system");
+      closeCommandConsole();
+      return;
+    }
+
+    if (normalizedCommand === "darrelspawnhere" || normalizedCommand === "darrelquestspawnhere" || normalizedCommand === "setdarrelquestspawn") {
+      const position = (window as any).__wofLastPlayerPosition ?? (window as any).localPlayerPos;
+      const x = Number(position?.x);
+      const y = Number(position?.y);
+      const z = Number(position?.z);
+      const yaw = Number((window as any).__wofLastPlayerYaw);
+      const spawn = saveDarrelQuestSpawnOverride({
+        x,
+        y,
+        z,
+        yaw: Number.isFinite(yaw) ? yaw : undefined,
+      });
+
+      if (spawn) {
+        addLobbyMessage(`Darrel realm spawn set: X ${spawn.x.toFixed(1)} Y ${spawn.y.toFixed(1)} Z ${spawn.z.toFixed(1)}`, "system");
+      } else {
+        addLobbyMessage("Could not read current player position for Darrel spawn.", "system");
+      }
+      closeCommandConsole();
+      return;
+    }
+
+    if (normalizedCommand === "resetdarrelspawn" || normalizedCommand === "cleardarrelspawn") {
+      clearDarrelQuestSpawnOverride();
+      addLobbyMessage("Darrel realm spawn reset to authored default.", "system");
+      closeCommandConsole();
+      return;
+    }
+
+    if (normalizedCommand === "inventory" || normalizedCommand === "inv") {
+      setInventoryOpen(true);
+      closeCommandConsole(false);
+      return;
+    }
+
+    if (normalizedCommand === "forage") {
+      const ingredient = normalizedValue === "leaf" ? "leaves" : normalizedValue;
+      if (ingredient === "leaves" || ingredient === "berries" || ingredient === "roots") {
+        useGameStore.getState().collectDarrelIngredient(ingredient);
+      } else {
+        addLobbyMessage("Usage: /forage leaves, /forage berries, or /forage roots", "system");
+      }
+      closeCommandConsole();
+      return;
+    }
+
+    if (normalizedCommand === "brew") {
+      useGameStore.getState().brewDarrelGardenDraught();
+      closeCommandConsole();
+      return;
+    }
+
+    if (normalizedCommand === "drinkpotion" || normalizedCommand === "drinkdraught" || normalizedCommand === "drink") {
+      closeCommandConsole(false);
+      useGameStore.getState().drinkDarrelGardenDraught();
       return;
     }
 
@@ -3085,7 +4808,7 @@ export function HUD() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || remappingAction || remappingVoiceKey || isEditableTarget(e.target)) return;
+      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || remappingAction || remappingVoiceKey || isEditableTarget(e.target)) return;
       if (e.key !== "/" && e.code !== "Slash") return;
       e.preventDefault();
       e.stopPropagation();
@@ -3094,9 +4817,13 @@ export function HUD() {
 
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [isCommandConsoleOpen, openCommandConsole, remappingAction, remappingVoiceKey]);
+  }, [isCommandConsoleOpen, isInventoryOpen, openCommandConsole, questDialogSession, questNpcEditorTarget, remappingAction, remappingVoiceKey]);
 
   const launchMode = (mode: GameMode) => {
+    if (mode === "solo-survival" || mode === "multiplayer-survival") {
+      saveSurvivalProgress({ lastMode: mode });
+    }
+    pauseMenuExplicitlyRequestedRef.current = false;
     pauseMenuRequestedRef.current = false;
     setGameMode(mode);
     setGameLaunched(true);
@@ -3120,6 +4847,14 @@ export function HUD() {
     setIsReturningToGame(true);
     requestGamePointerLock();
   };
+
+  useEffect(() => {
+    if (!isGameLaunched || !survivalSave || (gameMode !== "solo-survival" && gameMode !== "multiplayer-survival")) return;
+    const interval = window.setInterval(() => {
+      saveSurvivalProgress({ lastMode: gameMode });
+    }, 15000);
+    return () => window.clearInterval(interval);
+  }, [gameMode, isGameLaunched, saveSurvivalProgress, survivalSave]);
 
   const cycleLobbyMap = (direction: 1 | -1) => {
     setLobbyRules({
@@ -3183,6 +4918,7 @@ export function HUD() {
     }
 
     if (canLock) {
+      pauseMenuExplicitlyRequestedRef.current = false;
       pauseMenuRequestedRef.current = false;
       pointerLockResumeGraceUntilRef.current = performance.now() + 1800;
       setIsLocked(false);
@@ -3239,11 +4975,71 @@ export function HUD() {
     });
   };
 
+  const closeInventoryAndResume = () => {
+    const inputMode = controllerGameplayActive
+      ? "controller"
+      : touchGameplayActive
+        ? "touch"
+        : lastGameplayInputModeRef.current;
+
+    setInventoryOpen(false);
+
+    if (inputMode === "controller") {
+      startControllerGameplay();
+      return;
+    }
+
+    if (isTouchDevice || inputMode === "touch") {
+      if (startTouchGameplay()) {
+        return;
+      }
+    }
+
+    if (pointerLockUnavailableRef.current) {
+      setIsReturningToGame(false);
+      setCanLock(true);
+      return;
+    }
+
+    setIsReturningToGame(true);
+    const requestedImmediately = requestGamePointerLock();
+    if (!requestedImmediately) {
+      requestAnimationFrame(requestGamePointerLock);
+    }
+  };
+
+  const openInventoryFromGame = () => {
+    if (
+      isMapExpanded ||
+      showVideoMenu ||
+      isPauseMenuVisible ||
+      isSpellMenuOpen ||
+      questDialogSession ||
+      !(isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)
+    ) {
+      return;
+    }
+    lastGameplayInputModeRef.current = controllerGameplayActive
+      ? "controller"
+      : touchGameplayActive
+        ? "touch"
+        : "mouse";
+    setScoreboardSource("keyboard", false);
+    setScoreboardSource("controller", false);
+    setInventoryOpen(true);
+    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+    window.dispatchEvent(new Event("command-console-opened"));
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+  };
+
   const openSpellMenuFromGame = () => {
     if (
       isMapExpanded ||
       showVideoMenu ||
       isPauseMenuVisible ||
+      isInventoryOpen ||
       !(isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)
     ) {
       return;
@@ -3261,6 +5057,46 @@ export function HUD() {
     if (document.pointerLockElement) {
       document.exitPointerLock();
     }
+  };
+
+  const toggleMagicArmedFromGame = () => {
+    if (
+      isMapExpanded ||
+      showVideoMenu ||
+      isPauseMenuVisible ||
+      isInventoryOpen ||
+      isSpellMenuOpen ||
+      questDialogSession ||
+      !(isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)
+    ) {
+      return false;
+    }
+
+    const nextArmed = !useGameStore.getState().isMagicArmed;
+    setMagicArmed(nextArmed);
+    if (!shouldHideGameplayViewObstructionsForQa) {
+      addLobbyMessage(nextArmed ? "Magic readied." : "Magic stowed.", "system");
+    }
+    return true;
+  };
+
+  const requestVillagerInteractionFromGame = (source: "keyboard" | "controller" | "cast") => {
+    if (
+      isMapExpanded ||
+      showVideoMenu ||
+      isPauseMenuVisible ||
+      isInventoryOpen ||
+      isSpellMenuOpen ||
+      questDialogSession ||
+      questNpcEditorTarget ||
+      !(isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)
+    ) {
+      return false;
+    }
+
+    const detail = { source, handled: false };
+    window.dispatchEvent(new CustomEvent("quest-villager-interact", { detail }));
+    return detail.handled;
   };
 
   const runPauseMenuAction = (index = pauseMenuIndex) => {
@@ -3511,26 +5347,36 @@ export function HUD() {
     setPauseMenuIndex(0);
   };
 
-  const movePauseMenuFocus = (direction: number) => {
+  const movePauseMenuFocus = (direction: MenuDirection) => {
     const count = showVideoMenu ? settingsActionCount : mainMenuActionCount;
-    setPauseMenuIndex(prev => wrapIndex(prev + direction, count));
+    const selector = showVideoMenu ? "[data-settings-index]" : "[data-menu-index]";
+    const attribute = showVideoMenu ? "data-settings-index" : "data-menu-index";
+    setPauseMenuIndex((prev) => {
+      const nextIndex = findDirectionalMenuIndex(selector, attribute, prev, direction, count);
+      if (showVideoMenu && nextIndex >= 0 && nextIndex < settingsTabCount) {
+        setSettingsPane(settingsPaneOrder[nextIndex]);
+      }
+      return nextIndex;
+    });
   };
 
   useEffect(() => {
     const count = showVideoMenu ? settingsActionCount : mainMenuActionCount;
-    setPauseMenuIndex(prev => Math.min(prev, count - 1));
+    setPauseMenuIndex(prev => clampMenuIndex(prev, count));
   }, [mainMenuActionCount, settingsActionCount, showVideoMenu]);
 
   useEffect(() => {
     if (!showVideoMenu) return;
     const panel = settingsScrollRef.current;
-    const focusedItem = panel?.querySelector<HTMLElement>(`[data-settings-index="${pauseMenuIndex}"]`);
+    const focusedItem =
+      panel?.querySelector<HTMLElement>(`[data-settings-index="${pauseMenuIndex}"]`) ??
+      document.querySelector<HTMLElement>(`[data-settings-index="${pauseMenuIndex}"]`);
     focusedItem?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [pauseMenuIndex, settingsPane, showVideoMenu]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || isEditableTarget(e.target)) return;
+      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
       if (remappingVoiceKey) {
         e.preventDefault();
         if (e.code === "Escape") {
@@ -3540,6 +5386,45 @@ export function HUD() {
 
         setVoicePushToTalkKey(e.code || DEFAULT_VOICE_PUSH_TO_TALK_KEY);
         setRemappingVoiceKey(false);
+        return;
+      }
+
+      if (isDevFastTravelOpen) {
+        if (e.code === "Escape" || e.code === "F8") {
+          e.preventDefault();
+          closeDevFastTravelMenu(true);
+          return;
+        }
+
+        if (e.code === "ArrowDown" || e.code === "ArrowRight") {
+          e.preventDefault();
+          setDevFastTravelIndex(prev => wrapIndex(prev + 1, devFastTravelLocationCount));
+          return;
+        }
+
+        if (e.code === "ArrowUp" || e.code === "ArrowLeft") {
+          e.preventDefault();
+          setDevFastTravelIndex(prev => wrapIndex(prev - 1, devFastTravelLocationCount));
+          return;
+        }
+
+        if (e.code === "Enter" || e.code === "Space") {
+          e.preventDefault();
+          runDevFastTravel(DEV_FAST_TRAVEL_LOCATIONS[devFastTravelIndex]);
+          return;
+        }
+
+        return;
+      }
+
+      if (e.code === "F8" && !e.repeat && isDevFastTravelAllowed) {
+        e.preventDefault();
+        const inputMode: GameplayInputMode = controllerGameplayActive
+          ? "controller"
+          : touchGameplayActive
+            ? "touch"
+            : "mouse";
+        openDevFastTravelMenu(inputMode);
         return;
       }
 
@@ -3559,13 +5444,13 @@ export function HUD() {
 
       if (e.code === "ArrowDown" || e.code === "ArrowRight") {
         e.preventDefault();
-        movePauseMenuFocus(1);
+        movePauseMenuFocus(e.code === "ArrowDown" ? "down" : "right");
         return;
       }
 
       if (e.code === "ArrowUp" || e.code === "ArrowLeft") {
         e.preventDefault();
-        movePauseMenuFocus(-1);
+        movePauseMenuFocus(e.code === "ArrowUp" ? "up" : "left");
         return;
       }
 
@@ -3581,7 +5466,7 @@ export function HUD() {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || isEditableTarget(e.target)) return;
+      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
       if (e.code !== "Tab") return;
       e.preventDefault();
       setScoreboardSource("keyboard", false);
@@ -3593,23 +5478,68 @@ export function HUD() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [closePauseMenu, isCommandConsoleOpen, isPauseMenuVisible, movePauseMenuFocus, remappingVoiceKey, runPauseMenuAction, setScoreboardSource, setVoicePushToTalkKey]);
+  }, [closeDevFastTravelMenu, closePauseMenu, controllerGameplayActive, devFastTravelIndex, devFastTravelLocationCount, isCommandConsoleOpen, isDevFastTravelAllowed, isDevFastTravelOpen, isInventoryOpen, isPauseMenuVisible, movePauseMenuFocus, openDevFastTravelMenu, questDialogSession, questNpcEditorTarget, remappingVoiceKey, runDevFastTravel, runPauseMenuAction, setScoreboardSource, setVoicePushToTalkKey, touchGameplayActive]);
 
   useEffect(() => {
+    const clearKeyboardMagicHold = () => {
+      if (keyboardMagicHoldTimeoutRef.current !== null) {
+        window.clearTimeout(keyboardMagicHoldTimeoutRef.current);
+        keyboardMagicHoldTimeoutRef.current = null;
+      }
+      keyboardMagicHoldStartedAtRef.current = null;
+      keyboardMagicHoldConsumedRef.current = false;
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || isEditableTarget(e.target)) return;
+      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isEditableTarget(e.target)) return;
       const slotIndex = getNumberSlot(e.code);
       const hand: HandType = isSpellMenuOpen
         ? (qHeldRef.current ? "right" : menuBindingHand)
         : (qHeldRef.current ? "right" : "left");
 
-      if (e.code === "KeyE" && !e.repeat) {
+      if (e.code === "KeyI" && !e.repeat) {
+        e.preventDefault();
+        if (isInventoryOpen) {
+          closeInventoryAndResume();
+        } else {
+          openInventoryFromGame();
+        }
+        return;
+      }
+
+      if (isInventoryOpen) return;
+
+      if (e.code === "KeyF" && !e.repeat) {
+        e.preventDefault();
+        requestVillagerInteractionFromGame("keyboard");
+        return;
+      }
+
+      if (e.code === "KeyE") {
         e.preventDefault();
         if (isSpellMenuOpen) {
-          closeSpellMenuAndResume();
-        } else {
-          openSpellMenuFromGame();
+          if (!e.repeat) {
+            closeSpellMenuAndResume();
+          }
+          return;
         }
+
+        if (e.repeat || keyboardMagicHoldStartedAtRef.current !== null) {
+          return;
+        }
+
+        keyboardMagicHoldStartedAtRef.current = performance.now();
+        keyboardMagicHoldConsumedRef.current = false;
+        if (keyboardMagicHoldTimeoutRef.current !== null) {
+          window.clearTimeout(keyboardMagicHoldTimeoutRef.current);
+        }
+        keyboardMagicHoldTimeoutRef.current = window.setTimeout(() => {
+          keyboardMagicHoldTimeoutRef.current = null;
+          if (keyboardMagicHoldStartedAtRef.current === null || keyboardMagicHoldConsumedRef.current) return;
+          if (toggleMagicArmedFromGame()) {
+            keyboardMagicHoldConsumedRef.current = true;
+          }
+        }, MAGIC_UNARM_HOLD_MS);
         return;
       }
 
@@ -3656,25 +5586,58 @@ export function HUD() {
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code !== "KeyE") return;
+      const holdStartedAt = keyboardMagicHoldStartedAtRef.current;
+      if (holdStartedAt === null) return;
+
+      e.preventDefault();
+      const wasConsumed = keyboardMagicHoldConsumedRef.current;
+      const holdDuration = performance.now() - holdStartedAt;
+      clearKeyboardMagicHold();
+
+      if (!wasConsumed && holdDuration < MAGIC_UNARM_HOLD_MS) {
+        openSpellMenuFromGame();
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
   }, [
     isLocked,
     isCommandConsoleOpen,
     controllerGameplayActive,
+    closeInventoryAndResume,
     isSpellMenuOpen,
+    isInventoryOpen,
+    questDialogSession,
+    questNpcEditorTarget,
     touchGameplayActive,
     leftSelectedHotbarIndex,
     menuBindingHand,
     menuSpellIndex,
+    openInventoryFromGame,
     openSpellMenuFromGame,
     rightSelectedHotbarIndex,
+    requestVillagerInteractionFromGame,
     selectHotbarSlot,
     setHotbarSpell,
+    toggleMagicArmedFromGame,
   ]);
 
+  useEffect(() => () => {
+    if (keyboardMagicHoldTimeoutRef.current !== null) {
+      window.clearTimeout(keyboardMagicHoldTimeoutRef.current);
+      keyboardMagicHoldTimeoutRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
-    const consumePress = (key: GamepadButtonName, pressed: boolean) => {
+    const consumePress = (key: string, pressed: boolean) => {
       const wasPressed = controllerButtonsRef.current[key] ?? false;
       controllerButtonsRef.current[key] = pressed;
       return pressed && !wasPressed;
@@ -3708,6 +5671,19 @@ export function HUD() {
       const now = performance.now();
       const gamepad = getPrimaryGamepad();
 
+      if (questNpcEditorTarget || questDialogSession) {
+        controllerButtonsRef.current = {};
+        controllerRepeatRef.current = {};
+        controllerInventoryHoldStartedAtRef.current = null;
+        controllerInventoryTapEligibleRef.current = false;
+        controllerInventoryIgnoreUntilReleaseRef.current = false;
+        controllerMagicHoldStartedAtRef.current = null;
+        controllerMagicHoldConsumedRef.current = false;
+        setScoreboardSource("controller", false);
+        raf = window.requestAnimationFrame(pollController);
+        return;
+      }
+
       if (!gamepad) {
         if (controllerGameplayActive) {
           if (controllerLastSeenAtRef.current === 0) {
@@ -3721,6 +5697,11 @@ export function HUD() {
         }
         controllerButtonsRef.current = {};
         controllerRepeatRef.current = {};
+        controllerInventoryHoldStartedAtRef.current = null;
+        controllerInventoryTapEligibleRef.current = false;
+        controllerInventoryIgnoreUntilReleaseRef.current = false;
+        controllerMagicHoldStartedAtRef.current = null;
+        controllerMagicHoldConsumedRef.current = false;
         setScoreboardSource("controller", false);
         raf = window.requestAnimationFrame(pollController);
         return;
@@ -3751,24 +5732,94 @@ export function HUD() {
       const bindings = controllerBindings;
       const leftBumperHeld = isGamepadButtonPressed(gamepad, bindings.leftHotbar as GamepadButtonName);
       const rightBumperHeld = isGamepadButtonPressed(gamepad, bindings.rightHotbar as GamepadButtonName);
+      const hotbarModifierHeld = leftBumperHeld || rightBumperHeld;
       const leftBumperPressed = consumePress("leftBumper", leftBumperHeld);
       const rightBumperPressed = consumePress("rightBumper", rightBumperHeld);
 
       const aPressed = consumePress("a", isGamepadButtonPressed(gamepad, bindings.menuSelect as GamepadButtonName));
       const bPressed = consumePress("b", isGamepadButtonPressed(gamepad, bindings.menuBack as GamepadButtonName));
-      const xPressed = consumePress("x", isGamepadButtonPressed(gamepad, bindings.spellMenu as GamepadButtonName));
+      const inventoryHeld = isGamepadButtonPressed(gamepad, bindings.inventory as GamepadButtonName);
+      const inventoryPressed = consumePress("inventory", inventoryHeld);
+      const spellMenuHeld = isGamepadButtonPressed(gamepad, bindings.spellMenu as GamepadButtonName);
+      const spellMenuPressed = consumePress("spellMenu", spellMenuHeld);
+      const interactHeld = isGamepadButtonPressed(gamepad, bindings.interact as GamepadButtonName);
       const yPressed = consumePress("y", isGamepadButtonPressed(gamepad, bindings.map as GamepadButtonName));
       const backHeld = isGamepadButtonPressed(gamepad, bindings.scoreboard as GamepadButtonName);
       const startPressed = consumePress("start", isGamepadButtonPressed(gamepad, bindings.pause as GamepadButtonName));
+
+      if (isInventoryOpen) {
+        controllerMagicHoldStartedAtRef.current = null;
+        controllerMagicHoldConsumedRef.current = false;
+        setScoreboardSource("controller", false);
+        const inventoryAxisY = getGamepadAxis(gamepad, 1, 0.55);
+        const inventoryNextPressed = consumeRepeat(
+          "controllerInventoryNext",
+          isGamepadButtonPressed(gamepad, "dpadDown") || inventoryAxisY > 0.6,
+        );
+        const inventoryPrevPressed = consumeRepeat(
+          "controllerInventoryPrev",
+          isGamepadButtonPressed(gamepad, "dpadUp") || inventoryAxisY < -0.6,
+        );
+        if (inventoryNextPressed || inventoryPrevPressed) {
+          window.dispatchEvent(new CustomEvent<InventoryControllerMoveDetail>("inventory-controller-move", {
+            detail: { direction: inventoryNextPressed ? 1 : -1 },
+          }));
+        }
+        if (aPressed) {
+          window.dispatchEvent(new Event("inventory-controller-select"));
+        }
+        if (bPressed || startPressed) {
+          const detail = { handled: false };
+          window.dispatchEvent(new CustomEvent("inventory-controller-back", { detail }));
+          if (!detail.handled) {
+            if (inventoryHeld) {
+              controllerInventoryIgnoreUntilReleaseRef.current = true;
+              controllerInventoryHoldStartedAtRef.current = null;
+              controllerInventoryTapEligibleRef.current = false;
+            }
+            closeInventoryAndResume();
+          }
+        }
+        raf = window.requestAnimationFrame(pollController);
+        return;
+      }
 
       const dpadLeft = isGamepadButtonPressed(gamepad, "dpadLeft");
       const dpadRight = isGamepadButtonPressed(gamepad, "dpadRight");
       const dpadUp = isGamepadButtonPressed(gamepad, "dpadUp");
       const dpadDown = isGamepadButtonPressed(gamepad, "dpadDown");
+      const movementAxisX = getGamepadAxis(gamepad, 0, 0.25);
+      const movementAxisY = getGamepadAxis(gamepad, 1, 0.25);
       const menuAxisX = getGamepadAxis(gamepad, 0, 0.55);
       const menuAxisY = getGamepadAxis(gamepad, 1, 0.55);
       const scrollAxisY = getGamepadAxis(gamepad, 3, 0.25);
       const pauseMenuOpen = isPauseMenuVisible;
+
+      if (isDevFastTravelOpen) {
+        setScoreboardSource("controller", false);
+        const canNavigateFastTravel = now - devFastTravelOpenedAtRef.current > 220;
+        const fastTravelNextPressed = canNavigateFastTravel && consumeRepeat("controllerDevFastTravelNext", dpadDown || menuAxisY > 0.6);
+        const fastTravelPrevPressed = canNavigateFastTravel && consumeRepeat("controllerDevFastTravelPrev", dpadUp || menuAxisY < -0.6);
+
+        if (fastTravelNextPressed || fastTravelPrevPressed) {
+          setDevFastTravelIndex(prev => wrapIndex(prev + (fastTravelNextPressed ? 1 : -1), devFastTravelLocationCount));
+        }
+
+        if (bPressed || startPressed) {
+          closeDevFastTravelMenu(true);
+          raf = window.requestAnimationFrame(pollController);
+          return;
+        }
+
+        if (aPressed) {
+          runDevFastTravel(DEV_FAST_TRAVEL_LOCATIONS[devFastTravelIndex]);
+          raf = window.requestAnimationFrame(pollController);
+          return;
+        }
+
+        raf = window.requestAnimationFrame(pollController);
+        return;
+      }
 
       setScoreboardSource("controller", !isSpellMenuOpen && backHeld);
       if (pauseMenuOpen && showVideoMenu && Math.abs(scrollAxisY) > 0.05) {
@@ -3793,7 +5844,7 @@ export function HUD() {
           setMenuBindingHand("left");
         }
 
-        if (bPressed || xPressed || startPressed) {
+        if (bPressed || startPressed) {
           closeSpellMenuAndResume();
           raf = window.requestAnimationFrame(pollController);
           return;
@@ -3824,30 +5875,31 @@ export function HUD() {
       }
 
       if (pauseMenuOpen) {
+        const pauseVerticalMoved = pauseNextPressed || pausePrevPressed;
         if (pauseNextPressed) {
-          movePauseMenuFocus(1);
+          movePauseMenuFocus("down");
         } else if (pausePrevPressed) {
-          movePauseMenuFocus(-1);
+          movePauseMenuFocus("up");
         }
 
-        if (pauseRightPressed) {
+        if (!pauseVerticalMoved && pauseRightPressed) {
           if (!adjustFocusedSetting(1)) {
             if (showVideoMenu && pauseMenuIndex < settingsTabCount) {
               const nextTabIndex = wrapIndex(pauseMenuIndex + 1, settingsTabCount);
               setSettingsPane(settingsPaneOrder[nextTabIndex]);
               setPauseMenuIndex(nextTabIndex);
             } else {
-              movePauseMenuFocus(1);
+              movePauseMenuFocus("right");
             }
           }
-        } else if (pauseLeftPressed) {
+        } else if (!pauseVerticalMoved && pauseLeftPressed) {
           if (!adjustFocusedSetting(-1)) {
             if (showVideoMenu && pauseMenuIndex < settingsTabCount) {
               const nextTabIndex = wrapIndex(pauseMenuIndex - 1, settingsTabCount);
               setSettingsPane(settingsPaneOrder[nextTabIndex]);
               setPauseMenuIndex(nextTabIndex);
             } else {
-              movePauseMenuFocus(-1);
+              movePauseMenuFocus("left");
             }
           }
         }
@@ -3878,16 +5930,38 @@ export function HUD() {
         return;
       }
 
+      const canOpenDevFastTravelMenu =
+        isDevFastTravelAllowed &&
+        isGameLaunched &&
+        startMenuStage === "resume" &&
+        !showVideoMenu &&
+        !isMapExpanded &&
+        !isScoreboardOpen &&
+        !isSpellMenuOpen &&
+        !isInventoryOpen &&
+        !isCommandConsoleOpen &&
+        !hotbarModifierHeld &&
+        (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive);
+      const fastTravelOpenPressed = consumePress("controllerDevFastTravelOpen", dpadDown && !hotbarModifierHeld);
+      if (fastTravelOpenPressed && canOpenDevFastTravelMenu) {
+        openDevFastTravelMenu("controller");
+        raf = window.requestAnimationFrame(pollController);
+        return;
+      }
+
       if (startPressed) {
+        const controllerCanPauseActiveGameplay = Boolean(
+          touchGameplayActive ||
+          controllerGameplayActive ||
+          isLocked ||
+          document.pointerLockElement ||
+          document.documentElement.dataset.wizardsMouseLookFallback === "true"
+        );
+
         if (touchGameplayActive) {
-          pauseTouchGameplay();
-        } else if (isLocked || document.pointerLockElement) {
-          pauseControllerGameplay();
-          if (document.pointerLockElement) {
-            document.exitPointerLock();
-          }
-        } else if (controllerGameplayActive) {
-          pauseControllerGameplay();
+          pauseGameplayFromController();
+        } else if (controllerCanPauseActiveGameplay) {
+          pauseGameplayFromController();
         } else if (isTouchDevice) {
           startTouchGameplay();
         } else {
@@ -3905,11 +5979,98 @@ export function HUD() {
         }
       }
 
-      if (xPressed && (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive) && !isMapExpanded && !isScoreboardOpen) {
+      const isStandingStillForInventory =
+        controllerGameplayActive &&
+        !playerState.isMoving &&
+        !playerState.isSprinting &&
+        !playerState.isSliding &&
+        !playerState.isCrouching &&
+        Math.abs(movementAxisX) === 0 &&
+        Math.abs(movementAxisY) === 0;
+      const canUseControllerInventory =
+        (isLocked || document.pointerLockElement || controllerGameplayActive) &&
+        !isMapExpanded &&
+        !isScoreboardOpen &&
+        !isSpellMenuOpen &&
+        !hotbarModifierHeld;
+
+      if (controllerInventoryIgnoreUntilReleaseRef.current) {
+        controllerInventoryHoldStartedAtRef.current = null;
+        controllerInventoryTapEligibleRef.current = false;
+        if (!inventoryHeld) {
+          controllerInventoryIgnoreUntilReleaseRef.current = false;
+        }
+      } else if (inventoryHeld) {
+        if (isStandingStillForInventory && canUseControllerInventory) {
+          if (controllerInventoryHoldStartedAtRef.current === null) {
+            controllerInventoryHoldStartedAtRef.current = now;
+            controllerInventoryTapEligibleRef.current = true;
+          } else if (now - controllerInventoryHoldStartedAtRef.current >= CONTROLLER_INVENTORY_HOLD_MS) {
+            controllerInventoryTapEligibleRef.current = false;
+          }
+        } else {
+          controllerInventoryTapEligibleRef.current = false;
+        }
+      } else if (controllerInventoryHoldStartedAtRef.current !== null) {
+        const holdDuration = now - controllerInventoryHoldStartedAtRef.current;
+        const shouldOpenInventory =
+          controllerInventoryTapEligibleRef.current &&
+          holdDuration < CONTROLLER_INVENTORY_HOLD_MS &&
+          isStandingStillForInventory &&
+          canUseControllerInventory;
+        controllerInventoryHoldStartedAtRef.current = null;
+        controllerInventoryTapEligibleRef.current = false;
+
+        if (shouldOpenInventory) {
+          openInventoryFromGame();
+          raf = window.requestAnimationFrame(pollController);
+          return;
+        }
+      }
+
+      const canUseControllerMagicShortcut =
+        (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive) &&
+        !isMapExpanded &&
+        !isScoreboardOpen;
+      const canUseControllerMapShortcut =
+        (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive) &&
+        !isMapExpanded &&
+        !isScoreboardOpen &&
+        !isSpellMenuOpen &&
+        !isInventoryOpen &&
+        !hotbarModifierHeld;
+
+      if (interactHeld) {
+        if (canUseControllerMagicShortcut) {
+          if (controllerMagicHoldStartedAtRef.current === null) {
+            controllerMagicHoldStartedAtRef.current = now;
+            controllerMagicHoldConsumedRef.current = false;
+          } else if (!controllerMagicHoldConsumedRef.current && now - controllerMagicHoldStartedAtRef.current >= MAGIC_UNARM_HOLD_MS) {
+            controllerMagicHoldConsumedRef.current = toggleMagicArmedFromGame();
+          }
+        } else {
+          controllerMagicHoldStartedAtRef.current = null;
+          controllerMagicHoldConsumedRef.current = false;
+        }
+      } else if (controllerMagicHoldStartedAtRef.current !== null) {
+        const holdDuration = now - controllerMagicHoldStartedAtRef.current;
+        const shouldInteract =
+          !controllerMagicHoldConsumedRef.current &&
+          holdDuration < MAGIC_UNARM_HOLD_MS &&
+          canUseControllerMagicShortcut;
+        controllerMagicHoldStartedAtRef.current = null;
+        controllerMagicHoldConsumedRef.current = false;
+
+        if (shouldInteract) {
+          requestVillagerInteractionFromGame("controller");
+        }
+      }
+
+      if (spellMenuPressed && canUseControllerMagicShortcut) {
         openSpellMenuFromGame();
       }
 
-      if (yPressed && !isScoreboardOpen && (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive || isMapExpanded)) {
+      if (yPressed && canUseControllerMapShortcut) {
         requestMapToggle();
       }
 
@@ -3922,14 +6083,23 @@ export function HUD() {
     activeBindingHand,
     adjustFocusedSetting,
     canLock,
+    closeDevFastTravelMenu,
     closePauseMenu,
     closeSpellMenuAndResume,
     controllerGameplayActive,
     controllerBindings,
+    devFastTravelIndex,
+    devFastTravelLocationCount,
     isLocked,
     isCommandConsoleOpen,
+    isDevFastTravelAllowed,
+    isDevFastTravelOpen,
+    isGameLaunched,
+    isInventoryOpen,
     isMapExpanded,
     isPauseMenuVisible,
+    questDialogSession,
+    questNpcEditorTarget,
     isReturningToGame,
     isScoreboardOpen,
     isSpellMenuOpen,
@@ -3938,10 +6108,19 @@ export function HUD() {
     menuSpellIndex,
     movePauseMenuFocus,
     openSpellMenuFromGame,
+    openInventoryFromGame,
+    openDevFastTravelMenu,
     pauseControllerGameplay,
+    pauseGameplayFromController,
+    playerState.isCrouching,
+    playerState.isMoving,
+    playerState.isSliding,
+    playerState.isSprinting,
     requestGamePointerLock,
     remappingAction,
+    requestVillagerInteractionFromGame,
     rightSelectedHotbarIndex,
+    runDevFastTravel,
     runPauseMenuAction,
     scrollSettingsPanel,
     selectHotbarSlot,
@@ -3951,8 +6130,10 @@ export function HUD() {
     setHotbarSpell,
     setScoreboardSource,
     showVideoMenu,
+    startMenuStage,
     touchGameplayActive,
     toggleMap,
+    toggleMagicArmedFromGame,
   ]);
 
   useEffect(() => {
@@ -3980,6 +6161,7 @@ export function HUD() {
     <button
       key={`${startMenuStage}-${index}-${label}`}
       type="button"
+      data-menu-index={index}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
@@ -4005,6 +6187,7 @@ export function HUD() {
     <button
       key={`${startMenuStage}-rule-${index}-${label}`}
       type="button"
+      data-menu-index={index}
       onClick={(e) => {
         e.stopPropagation();
         onStep(1);
@@ -4029,6 +6212,7 @@ export function HUD() {
   const renderInviteCodeForm = (focusIndex: number) => (
     <form
       data-testid="invite-code-form"
+      data-menu-index={focusIndex}
       className={cn(
         "flex w-full flex-col gap-1 border-2 bg-black/45 p-2 text-cyan-50",
         mainMenuFocus(focusIndex) ? "border-yellow-200 shadow-[0_0_18px_rgba(250,204,21,0.35)]" : "border-cyan-100/35"
@@ -4085,6 +6269,7 @@ export function HUD() {
       return (
         <button
           type="button"
+          data-menu-index={0}
           className="pointer-events-auto flex h-full w-full cursor-pointer flex-col items-center justify-center bg-[radial-gradient(circle_at_center,rgba(88,28,135,0.35),rgba(5,2,7,0.96)_62%)] text-center"
           onClick={(e) => {
             e.stopPropagation();
@@ -4187,6 +6372,7 @@ export function HUD() {
   };
 
   const requestResumeFromOverlay = (target: EventTarget | null) => {
+    if (questDialogSession || isInventoryOpen) return;
     if (showVideoMenu || startMenuStage !== "resume" || !canLock) return;
     if (isEditableTarget(target)) return;
     const element = target instanceof HTMLElement ? target : null;
@@ -4210,7 +6396,13 @@ export function HUD() {
         />
       )}
 
-      <LobbyChatBox messages={lobbyMessages} />
+      {!shouldHideGameplayViewObstructionsForQa && <LobbyChatBox messages={lobbyMessages} />}
+
+      {isQuestDevModeEnabled && !questNpcEditorTarget && !questDialogSession && !isInventoryOpen && (
+        <div className="pointer-events-none absolute left-3 top-3 z-[92] border border-yellow-200/55 bg-black/65 px-2 py-1 text-[9px] tracking-[0.22em] text-yellow-100 shadow-[0_0_14px_rgba(250,204,21,0.25)]">
+          QUEST DEV
+        </div>
+      )}
 
       {isCommandConsoleOpen && (
         <CommandConsole
@@ -4221,6 +6413,10 @@ export function HUD() {
           onSubmit={submitCommandConsole}
         />
       )}
+
+      <QuestNpcEditor />
+      <QuestDialogPanel />
+      <InventoryPanel playerState={playerState} />
 
       {!localPlayerName && startMenuStage !== "press-start" && (
         <PlayerNamePrompt
@@ -4236,7 +6432,7 @@ export function HUD() {
       </div>
 
       {health <= 0 && (
-        <div className="absolute inset-0 bg-red-900/60 flex flex-col items-center justify-center">
+        <div className="absolute inset-0 z-[260] bg-red-950/80 flex flex-col items-center justify-center pointer-events-auto">
           <h1 className="text-6xl text-red-500 font-bold tracking-widest drop-shadow-[0_4px_0_theme(colors.black)]">YOU DIED</h1>
           <p className="mt-8 text-xl text-red-200 drop-shadow-[0_2px_0_theme(colors.black)]">CLICK ANYWHERE TO RESPAWN</p>
         </div>
@@ -4274,6 +6470,7 @@ export function HUD() {
               <div className={canLock ? "" : "cursor-not-allowed opacity-50"}>
                 <div 
                   id="play-button"
+                  data-menu-index={0}
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
@@ -4306,6 +6503,7 @@ export function HUD() {
               {isMultiplayerMode && (
                 <form
                   data-testid="invite-code-form"
+                  data-menu-index={1}
                   className={cn(
                     "flex w-[min(92vw,520px)] flex-col gap-1 border-2 bg-black/45 p-2 text-cyan-50",
                     mainMenuFocus(1) ? "border-yellow-200 shadow-[0_0_18px_rgba(250,204,21,0.35)]" : "border-cyan-100/35"
@@ -4355,6 +6553,7 @@ export function HUD() {
               <div className="flex flex-wrap items-center justify-center gap-3" style={{ marginTop: 'clamp(0.25rem, 1.5vmin, 1rem)' }}>
                 {isMultiplayerMode && (
                   <button 
+                    data-menu-index={2}
                     onClick={(e) => {
                       e.stopPropagation();
                       copyInvite();
@@ -4374,6 +6573,7 @@ export function HUD() {
                   </button>
                 )}
                 <button 
+                  data-menu-index={isMultiplayerMode ? 3 : 1}
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowVideoMenu(true);
@@ -4550,14 +6750,14 @@ export function HUD() {
                    >
                      <div className="flex items-center justify-between text-[9px] tracking-widest text-cyan-100">
                        <span>Joystick Sensitivity</span>
-                       <span>{Math.round((controllerLookSensitivity / DEFAULT_CONTROLLER_LOOK_SENSITIVITY) * 100)}%</span>
+                       <span>{Math.round((controllerLookSensitivity / CONTROLLER_LOOK_SENSITIVITY_100_PERCENT) * 100)}%</span>
                      </div>
                      <input
                        className="mt-2 w-full accent-cyan-300"
                        type="range"
                        min={0.8}
                        max={6}
-                       step={0.05}
+                       step={0.01}
                        value={controllerLookSensitivity}
                        onChange={(e) => setControllerLookSensitivity(Number(e.currentTarget.value))}
                      />
@@ -5021,23 +7221,87 @@ export function HUD() {
         </div>,
         document.body
       )}
+
+      {isDevFastTravelOpen && isDevFastTravelAllowed && createPortal(
+        <div
+          data-testid="dev-fast-travel-menu"
+          className="fixed inset-0 z-[215] flex items-center justify-center bg-black/70 px-4 font-mono uppercase text-white pointer-events-auto"
+          style={{ width: "var(--app-vw, 100dvw)", height: "var(--app-vh, 100dvh)" }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          <div className="w-[min(92vw,640px)] border-2 border-lime-200/70 bg-[#06110b]/95 p-3 shadow-[0_0_30px_rgba(132,204,22,0.28)]">
+            <div className="flex items-center justify-between gap-3 border-b border-lime-200/25 pb-2">
+              <div>
+                <div className="text-[11px] tracking-[0.28em] text-lime-100/65">DEV</div>
+                <div className="text-lg tracking-[0.18em] text-lime-50">Fast Travel</div>
+              </div>
+              <button
+                type="button"
+                className="border border-lime-100/45 bg-lime-300/10 px-3 py-1 text-[10px] tracking-widest text-lime-50 hover:bg-lime-200/20"
+                onClick={() => closeDevFastTravelMenu(true)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-3 grid max-h-[min(68dvh,520px)] gap-2 overflow-y-auto pr-1">
+              {DEV_FAST_TRAVEL_LOCATIONS.map((location, index) => {
+                const focused = index === devFastTravelIndex;
+                return (
+                  <button
+                    key={location.id}
+                    type="button"
+                    data-dev-fast-travel-index={index}
+                    data-testid={`dev-fast-travel-${location.id}`}
+                    className={cn(
+                      "grid grid-cols-[1fr_auto] gap-3 border px-3 py-2 text-left transition-all",
+                      focused
+                        ? "border-yellow-200 bg-yellow-200/12 text-yellow-50 shadow-[0_0_18px_rgba(250,204,21,0.35)]"
+                        : "border-lime-200/25 bg-black/25 text-lime-50/85 hover:border-lime-100/65 hover:bg-lime-200/10"
+                    )}
+                    onMouseEnter={() => setDevFastTravelIndex(index)}
+                    onClick={() => runDevFastTravel(location)}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13px] tracking-widest">{location.label}</span>
+                      <span className="mt-1 block truncate text-[9px] tracking-[0.18em] text-lime-100/50">{location.detail}</span>
+                    </span>
+                    <span className="self-center border border-lime-100/35 bg-lime-100/10 px-2 py-1 text-[10px] tracking-widest text-lime-50">
+                      {location.chunk.cx},{location.chunk.cz}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex flex-wrap justify-between gap-2 border-t border-lime-200/20 pt-2 text-[8px] tracking-[0.2em] text-lime-100/45">
+              <span>D-PAD / LEFT STICK</span>
+              <span>A / ENTER TRAVEL</span>
+              <span>B / ESC CLOSE</span>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
        
       {isSpellMenuPreloaded && (
         <div style={{ display: isSpellMenuOpen ? "contents" : "none" }} aria-hidden={!isSpellMenuOpen}>
           <SpellMenu
             menuSpellIndex={menuSpellIndex}
             setMenuSpellIndex={setMenuSpellIndex}
+            setMenuBindingHand={setMenuBindingHand}
             onClose={closeSpellMenuAndResume}
             bindingHand={activeBindingHand}
           />
         </div>
       )}
 
-      {isScoreboardOpen && !isSpellMenuOpen && (
+      {isScoreboardOpen && !isSpellMenuOpen && !isInventoryOpen && (
         <PlayerScoreMenu rows={scoreboardRows} />
       )}
 
-      {isReturningToGame && !isLocked && !controllerGameplayActive && !isSpellMenuOpen && (
+      {isReturningToGame && !isLocked && !controllerGameplayActive && !isSpellMenuOpen && !isInventoryOpen && (
         <button
           aria-label="Return to game"
           className="absolute inset-0 z-[105] cursor-crosshair bg-transparent pointer-events-auto"
@@ -5049,7 +7313,7 @@ export function HUD() {
       )}
 
       {/* Player Hands (DOOM Style) */}
-      {(shouldRenderGameplayHud || isSpellMenuOpen) && !isMapExpanded && (
+      {shouldRenderGameplayHud && !shouldHideGameplayViewObstructionsForQa && !isSpellMenuOpen && !isInventoryOpen && !isMapExpanded && (
         <div
           className={isFillAspect
             ? "absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"
@@ -5064,23 +7328,24 @@ export function HUD() {
       )}
       
       {/* HUD WRAPPER TO FORBID OVERLAP AND MAINTAIN RATIO */}
-      {touchGameplayActive && !isSpellMenuOpen && !isMapExpanded && !isScoreboardOpen && (
+      {touchGameplayActive && !shouldHideGameplayHudForQa && !isSpellMenuOpen && !isInventoryOpen && !isMapExpanded && !isScoreboardOpen && (
         <MobileTouchControls
           openSpellMenu={openSpellMenuFromGame}
           pauseTouchGameplay={pauseTouchGameplay}
         />
       )}
 
-      {shouldRenderGameplayHud && !isSpellMenuOpen && !isMapExpanded && !isScoreboardOpen && (
+      {shouldRenderGameplayHud && !shouldHideGameplayHudForQa && !isSpellMenuOpen && !isInventoryOpen && !isMapExpanded && !isScoreboardOpen && (
       <div className="hud-shell absolute bottom-0 left-0 w-full z-50 pointer-events-none">
          {/* RUNE TIMER BAR */}
          <div
-           className="mana-meter absolute left-1/2 -translate-x-1/2 bg-[#211627] border-[3px] border-[#120c16] rounded-xl overflow-hidden flex flex-col p-1 pointer-events-none shadow-[0_4px_10px_rgba(0,0,0,0.8)]"
+           className="mana-meter absolute left-1/2 pointer-events-none"
            style={{
              bottom: 'calc(var(--hud-status-height) + 10px)',
              width: 'min(clamp(220px, 72%, 400px), calc(100% - 32px))',
            }}
          >
+          <div className="mana-meter-panel flex flex-col">
             <div className="mana-meter-title flex justify-center px-3 items-center text-[12px] text-[#a8a8a8] z-10 drop-shadow-[1px_1px_0_theme(colors.black)] font-mono pb-1 tracking-widest">
                <span>MANA</span>
             </div>
@@ -5104,6 +7369,7 @@ export function HUD() {
                   />
                </div>
             </div>
+          </div>
          </div>
          
          {/* WIZARD STATUS BAR */}
@@ -5146,20 +7412,31 @@ export function HUD() {
               {/* CURRENT SPELL NAME */}
               <div className="flex-1 flex flex-col items-center justify-center wizard-inset h-full overflow-hidden">
                  <div className="hud-panel-title text-[clamp(8px,1.3vw,12px)] text-[#a8a8a8] mb-1 tracking-widest font-mono">SPELLS</div>
-                 <div className={cn(
-                    "hud-spell-line max-w-full truncate px-1 text-center leading-none drop-shadow-[2px_2px_0_theme(colors.black)] font-mono",
-                    leftRuneReady ? spellColors[leftCurrentSpell] : "text-[#555]"
+                 {!isMagicArmed ? (
+                   <div
+                     className="hud-spell-line max-w-full truncate px-1 text-center font-mono leading-none text-cyan-100/65 drop-shadow-[2px_2px_0_theme(colors.black)]"
+                     style={{ fontSize: 'clamp(0.52rem, 1.45vw, 1.05rem)' }}
+                   >
+                     MAGIC STOWED
+                   </div>
+                 ) : (
+                   <>
+                     <div className={cn(
+                        "hud-spell-line max-w-full truncate px-1 text-center leading-none drop-shadow-[2px_2px_0_theme(colors.black)] font-mono",
+                        leftRuneReady ? spellColors[leftCurrentSpell] : "text-[#555]"
+                     )}
+                     style={{ fontSize: 'clamp(0.52rem, 1.45vw, 1.05rem)' }}>
+                        L {leftRuneReady ? spellNames[leftCurrentSpell] : "No Mana"}
+                     </div>
+                     <div className={cn(
+                        "hud-spell-line max-w-full truncate px-1 text-center leading-none drop-shadow-[2px_2px_0_theme(colors.black)] font-mono",
+                        rightRuneReady ? spellColors[rightCurrentSpell] : "text-[#555]"
+                     )}
+                     style={{ fontSize: 'clamp(0.52rem, 1.45vw, 1.05rem)' }}>
+                        R {rightRuneReady ? spellNames[rightCurrentSpell] : "No Mana"}
+                     </div>
+                   </>
                  )}
-                 style={{ fontSize: 'clamp(0.52rem, 1.45vw, 1.05rem)' }}>
-                    L {leftRuneReady ? spellNames[leftCurrentSpell] : "No Mana"}
-                 </div>
-                 <div className={cn(
-                    "hud-spell-line max-w-full truncate px-1 text-center leading-none drop-shadow-[2px_2px_0_theme(colors.black)] font-mono",
-                    rightRuneReady ? spellColors[rightCurrentSpell] : "text-[#555]"
-                 )}
-                 style={{ fontSize: 'clamp(0.52rem, 1.45vw, 1.05rem)' }}>
-                    R {rightRuneReady ? spellNames[rightCurrentSpell] : "No Mana"}
-                 </div>
                  {hasActiveBuff && (
                    <div className="hud-buff-list mt-1 flex max-w-full flex-wrap justify-center gap-1 text-[8px] leading-3 tracking-widest">
                      {speedBoostSeconds > 0 && <span className="border border-yellow-300/50 bg-yellow-500/15 px-1 text-yellow-200">SPD {speedBoostSeconds}s</span>}

@@ -2,25 +2,35 @@ import { useFBO, Hud, OrthographicCamera } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useEffect, useRef, useMemo } from "react";
-import { useGameStore } from "../store/gameStore";
+import { SURVIVAL_BLOCK_SIZE, useGameStore } from "../store/gameStore";
 import { isMobilePerformanceMode } from "./performanceMode";
 
 function shouldHideForMiniMap(object: THREE.Object3D) {
-  return object.name === "horizon-cylinder" || object.name.startsWith("survival-sky-");
+  return (
+    object.name === "horizon-cylinder" ||
+    object.name.startsWith("survival-sky-") ||
+    object.name === "quest-navigation-beacons" ||
+    object.name.startsWith("quest-beacon-") ||
+    object.userData.hideFromMiniMap === true
+  );
 }
 
 const COMPACT_MINIMAP_VIEW_SIZE = 80;
-const EXPANDED_MAP_VIEW_SIZE = 1180;
-const EXPANDED_MAP_VIEW_SIZE_MOBILE = 860;
+const EXPANDED_BLOCK_MAP_VIEW_SIZE = SURVIVAL_BLOCK_SIZE / 2;
+
+function getSurvivalBlockCenter(value: number) {
+  return Math.floor((value + SURVIVAL_BLOCK_SIZE / 2) / SURVIVAL_BLOCK_SIZE) * SURVIVAL_BLOCK_SIZE;
+}
 
 export function LiveMiniMap() {
   const isExpanded = useGameStore(s => s.isMapExpanded);
   const isSpellMenuOpen = useGameStore(s => s.isSpellMenuOpen);
   const isPauseMenuOpen = useGameStore(s => s.isPauseMenuOpen);
   const isScoreboardOpen = useGameStore(s => s.isScoreboardOpen);
+  const expandedMapPage = useGameStore(s => s.expandedMapPage);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
-  const mapTargetSize = mobilePerformanceMode ? 96 : 256;
-  const circleSegments = mobilePerformanceMode ? 36 : 64;
+  const mapTargetSize = mobilePerformanceMode ? 112 : 224;
+  const circleSegments = mobilePerformanceMode ? 28 : 40;
   
   // Keep the minimap render target modest; it is redrawn repeatedly from above.
   const mapTarget = useFBO(mapTargetSize, mapTargetSize, {
@@ -44,12 +54,12 @@ export function LiveMiniMap() {
   const isNarrowViewport = size.width <= 430;
   const isTallNarrowViewport = isNarrowViewport && size.height >= 470;
   const miniMapSize = isUltraShortViewport
-    ? Math.max(48, Math.min(minViewportSide * 0.28, 62))
+    ? Math.max(56, Math.min(minViewportSide * 0.32, 70))
     : isTallNarrowViewport
-    ? Math.max(82, Math.min(minViewportSide * 0.20, 108))
+    ? Math.max(98, Math.min(minViewportSide * 0.25, 132))
     : (isShortViewport || isNarrowViewport)
-      ? Math.max(70, Math.min(minViewportSide * 0.22, 88))
-      : Math.max(82, Math.min(minViewportSide * 0.18, 176));
+      ? Math.max(84, Math.min(minViewportSide * 0.26, 112))
+      : Math.max(104, Math.min(minViewportSide * 0.22, 212));
   const miniMapRadius = miniMapSize / 2;
   const miniMapInset = isUltraShortViewport
     ? Math.max(3, Math.min(minViewportSide * 0.018, 8))
@@ -62,6 +72,7 @@ export function LiveMiniMap() {
   const delayRenderUntilRef = useRef(0);
   const hasRenderedMapRef = useRef(false);
   const previousExpandedRef = useRef(isExpanded);
+  const lastRenderedPlayerRef = useRef({ x: Number.POSITIVE_INFINITY, z: Number.POSITIVE_INFINITY, expanded: false });
 
   useEffect(() => {
     document.documentElement.style.setProperty("--live-minimap-size", `${miniMapSize}px`);
@@ -93,17 +104,24 @@ export function LiveMiniMap() {
 
   useFrame((state) => {
     if (isScoreboardOpen || isSpellMenuOpen || isPauseMenuOpen) return;
+    if (isExpanded && expandedMapPage === "world") return;
 
     const now = performance.now();
     if (now < delayRenderUntilRef.current) return;
 
-    const renderInterval = mobilePerformanceMode ? (isExpanded ? 700 : 1600) : (isExpanded ? 180 : 420);
+    const renderInterval = mobilePerformanceMode ? (isExpanded ? 900 : 2200) : (isExpanded ? 420 : 950);
     if (now - lastRenderTime.current < renderInterval) return;
+
+    const movementThreshold = isExpanded ? 3.5 : 1.75;
+    const lastRenderedPlayer = lastRenderedPlayerRef.current;
+    const movedSinceLastRender = Math.hypot(playerPos.current.x - lastRenderedPlayer.x, playerPos.current.z - lastRenderedPlayer.z) >= movementThreshold;
+    if (hasRenderedMapRef.current && lastRenderedPlayer.expanded === isExpanded && !movedSinceLastRender) {
+      return;
+    }
+
     lastRenderTime.current = now;
 
-    const viewSize = isExpanded
-      ? (mobilePerformanceMode ? EXPANDED_MAP_VIEW_SIZE_MOBILE : EXPANDED_MAP_VIEW_SIZE)
-      : COMPACT_MINIMAP_VIEW_SIZE;
+    const viewSize = isExpanded ? EXPANDED_BLOCK_MAP_VIEW_SIZE : COMPACT_MINIMAP_VIEW_SIZE;
     const aspect = 1; // Always square
     
     mapCamera.left = -viewSize * aspect;
@@ -111,9 +129,9 @@ export function LiveMiniMap() {
     mapCamera.top = viewSize;
     mapCamera.bottom = -viewSize;
     
-    // Follow the player for both the small minimap and the expanded M-map so
-    // survival villages far from world zero still show live local terrain.
-    mapCamera.position.set(playerPos.current.x, 200, playerPos.current.z);
+    const mapCenterX = isExpanded ? getSurvivalBlockCenter(playerPos.current.x) : playerPos.current.x;
+    const mapCenterZ = isExpanded ? getSurvivalBlockCenter(playerPos.current.z) : playerPos.current.z;
+    mapCamera.position.set(mapCenterX, isExpanded ? 520 : 200, mapCenterZ);
     
     mapCamera.updateProjectionMatrix();
     mapCamera.updateMatrixWorld();
@@ -152,6 +170,7 @@ export function LiveMiniMap() {
     state.gl.setScissor(currentScissor);
     state.gl.setScissorTest(currentScissorTest);
     hasRenderedMapRef.current = true;
+    lastRenderedPlayerRef.current = { x: playerPos.current.x, z: playerPos.current.z, expanded: isExpanded };
   });
 
   return (
@@ -169,7 +188,7 @@ export function LiveMiniMap() {
       />
       
       {/* Expanded Map */}
-      <group position={[0, 0, 0]} visible={isExpanded && !isSpellMenuOpen && !isPauseMenuOpen && !isScoreboardOpen}>
+      <group position={[0, 0, 0]} visible={isExpanded && expandedMapPage === "live" && !isSpellMenuOpen && !isPauseMenuOpen && !isScoreboardOpen}>
           {/* Box background for the square map */}
           <mesh position={[0, 0, -1]}>
              <planeGeometry args={[Math.min(size.width * 0.8, size.height * 0.8, 800) + 16, Math.min(size.width * 0.8, size.height * 0.8, 800) + 16]} />
