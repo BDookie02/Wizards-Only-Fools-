@@ -3313,11 +3313,15 @@ const SURVIVAL_BOTW_GRASS_AIR_RADIUS = 214;
 const SURVIVAL_BOTW_GRASS_EDGE_FADE = 34;
 const SURVIVAL_BOTW_GRASS_CENTER_STEP = 72;
 const SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE = 62;
-const SURVIVAL_BOTW_GRASS_LEAD_SECONDS = 1.35;
-const SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE = 48;
-const SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE = 118;
+const SURVIVAL_BOTW_GRASS_LEAD_SECONDS = 1.55;
+const SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE = 68;
+const SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE = 150;
 const SURVIVAL_BOTW_GRASS_PENDING_VIEWER_SAFE_DISTANCE = 70;
 const SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE = 88;
+const SURVIVAL_BOTW_GRASS_UPLOAD_NEAR_PRIORITY_RADIUS = 96;
+const SURVIVAL_BOTW_GRASS_UPLOAD_MID_PRIORITY_RADIUS = 148;
+const SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_MIN_PROGRESS = 0.94;
+const SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE = SURVIVAL_BOTW_GRASS_RADIUS * 0.88;
 const SURVIVAL_BOTW_GRASS_DESKTOP_COUNT = 20000;
 const SURVIVAL_BOTW_GRASS_MOBILE_COUNT = 9200;
 const SURVIVAL_BOTW_GRASS_CARPET_RADIUS = 384;
@@ -5949,6 +5953,33 @@ function getSurvivalBotwGrassBuildKey(center: SurvivalBotwGrassCenter, mobilePer
   return `${center.x}:${Math.round(center.y)}:${center.z}:${mobilePerformanceMode ? "m" : "d"}`;
 }
 
+function getSurvivalBotwGrassUploadPrioritizedInstances(
+  instances: SurvivalBotwGrassBladeInstance[],
+  priorityX: number,
+  priorityZ: number,
+) {
+  if (instances.length < 2) return instances;
+
+  const nearRadiusSq = SURVIVAL_BOTW_GRASS_UPLOAD_NEAR_PRIORITY_RADIUS * SURVIVAL_BOTW_GRASS_UPLOAD_NEAR_PRIORITY_RADIUS;
+  const midRadiusSq = SURVIVAL_BOTW_GRASS_UPLOAD_MID_PRIORITY_RADIUS * SURVIVAL_BOTW_GRASS_UPLOAD_MID_PRIORITY_RADIUS;
+  const near: SurvivalBotwGrassBladeInstance[] = [];
+  const mid: SurvivalBotwGrassBladeInstance[] = [];
+  const far: SurvivalBotwGrassBladeInstance[] = [];
+
+  instances.forEach((instance) => {
+    const distanceSq = (instance.x - priorityX) * (instance.x - priorityX) + (instance.z - priorityZ) * (instance.z - priorityZ);
+    if (distanceSq <= nearRadiusSq) {
+      near.push(instance);
+    } else if (distanceSq <= midRadiusSq) {
+      mid.push(instance);
+    } else {
+      far.push(instance);
+    }
+  });
+
+  return near.concat(mid, far);
+}
+
 function getSurvivalPendingChunkCount() {
   if (typeof document === "undefined") return 0;
   const pendingChunks = Number(document.documentElement.dataset.wofSurvivalPendingChunks || 0);
@@ -5963,6 +5994,8 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
   const centerRef = useRef(center);
   const lastViewerRef = useRef<{ x: number; z: number; time: number } | null>(null);
   const hasPublishedGrassBuildRef = useRef(false);
+  const uploadPriorityRef = useRef({ x: initialCenter.x, z: initialCenter.z });
+  const bladeUploadProgressRef = useRef(0);
   const bladeMeshRef = useRef<THREE.InstancedMesh>(null);
   const flowerStemRef = useRef<THREE.InstancedMesh>(null);
   const flowerStarBloomRef = useRef<THREE.InstancedMesh>(null);
@@ -6019,6 +6052,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     if (!enabled || typeof window === "undefined") {
       bladeInstancesRef.current = [];
       hasPublishedGrassBuildRef.current = false;
+      bladeUploadProgressRef.current = 0;
       setBladeUploadVersion((version) => version + 1);
       setFlowerInstances([]);
       return undefined;
@@ -6051,7 +6085,13 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     const publishBuild = () => {
       if (cancelled) return;
       hasPublishedGrassBuildRef.current = true;
-      bladeInstancesRef.current = nextBladeInstances;
+      const uploadPriority = uploadPriorityRef.current;
+      const prioritizedBladeInstances = getSurvivalBotwGrassUploadPrioritizedInstances(
+        nextBladeInstances,
+        uploadPriority.x,
+        uploadPriority.z,
+      );
+      bladeInstancesRef.current = prioritizedBladeInstances;
       startTransition(() => {
         setBladeUploadVersion((version) => version + 1);
         setFlowerInstances(nextFlowerInstances);
@@ -6133,6 +6173,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     if (count <= 0) {
       mesh.count = 0;
       bladeUploadCountRef.current = 0;
+      bladeUploadProgressRef.current = 0;
       mesh.instanceMatrix.needsUpdate = true;
       if (typeof document !== "undefined") {
         document.documentElement.dataset.wofBotwGrassCenter = `${Math.round(center.x)},${Math.round(center.z)}`;
@@ -6144,6 +6185,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     }
 
     ensureSurvivalInstancedMeshColors(mesh, count);
+    bladeUploadProgressRef.current = 0;
     if (bladeUploadCountRef.current <= 0 || bladeUploadCountRef.current > count) {
       mesh.count = 0;
     }
@@ -6168,6 +6210,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
 
       const batchStart = uploadIndex;
       uploadIndex = end;
+      bladeUploadProgressRef.current = count > 0 ? uploadIndex / count : 0;
       mesh.count = Math.max(mesh.count, uploadIndex);
       markSurvivalInstancedMeshRange(mesh, batchStart, end - batchStart);
 
@@ -6185,6 +6228,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       }
 
       bladeUploadCountRef.current = count;
+      bladeUploadProgressRef.current = 1;
       if (typeof document !== "undefined") {
         document.documentElement.dataset.wofBotwGrassInstances = String(count);
         document.documentElement.dataset.wofBotwGrassUploadProgress = `${count}/${count}`;
@@ -6330,6 +6374,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       z: viewerPosition.z,
       time: clock.elapsedTime,
     };
+    uploadPriorityRef.current = { x: predictedX, z: predictedZ };
     const viewerDistanceFromGrassCenter = Math.hypot(viewerPosition.x - currentCenter.x, viewerPosition.z - currentCenter.z);
     const targetDistanceFromGrassCenter = Math.hypot(predictedX - currentCenter.x, predictedZ - currentCenter.z);
     const chunkStreamingActive = getSurvivalPendingChunkCount() > 0;
@@ -6339,9 +6384,13 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       targetDistanceFromGrassCenter < SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE;
     const coldBuildStillPublishing = !hasPublishedGrassBuildRef.current;
     const coldBuildTooFarFromViewer = viewerDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RADIUS * 1.15;
+    const uploadStillCatchingUp =
+      bladeUploadProgressRef.current < SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_MIN_PROGRESS &&
+      viewerDistanceFromGrassCenter < SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE;
     if (
       targetDistanceFromGrassCenter > SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE &&
       !shouldDelayGrassRecenter &&
+      !uploadStillCatchingUp &&
       (!coldBuildStillPublishing || coldBuildTooFarFromViewer)
     ) {
       const nextCenter = getSurvivalBotwGrassSnappedCenter(predictedX, viewerPosition.y, predictedZ);
@@ -6353,6 +6402,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     if (typeof document !== "undefined") {
       document.documentElement.dataset.wofBotwGrassLead = String(Math.round(leadDistance));
       document.documentElement.dataset.wofBotwGrassTargetDistance = String(Math.round(targetDistanceFromGrassCenter));
+      document.documentElement.dataset.wofBotwGrassUploadRatio = bladeUploadProgressRef.current.toFixed(2);
     }
 
     const groundY = getSurvivalGrassSurfaceHeightAtWorld(viewerPosition.x, viewerPosition.z);
