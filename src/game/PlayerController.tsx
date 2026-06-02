@@ -2430,6 +2430,24 @@ export function PlayerController() {
       const qaSpellDummyRunActive = isQaSpellDummyRunEnabled();
       const qaRouteWaypoints = getQaSurvivalRouteWaypoints();
       const qaRouteActive = qaRouteWaypoints.length > 0 && !lilyCoilTubeQaActive && !qaSpellDummyRunActive;
+      if (qaRouteActive && typeof document !== "undefined") {
+        const grassUploadProgress = document.documentElement.dataset.wofBotwGrassUploadProgress;
+        const grassUploadRatio = Number(document.documentElement.dataset.wofBotwGrassUploadRatio || 0);
+        const grassBuildState = document.documentElement.dataset.wofBotwGrassBuildState;
+        const grassReady =
+          grassUploadProgress === "20000/20000" ||
+          grassUploadRatio >= 0.98 ||
+          grassBuildState === "cached";
+        if (!grassReady && elapsed < 12) {
+          qaWalkInputState.current = { forward: 0, strafe: 0, sprint: false, mode: "travel" };
+          document.documentElement.dataset.wofQaWalkMode = "warmup";
+          document.documentElement.dataset.wofQaWalkForward = "0.00";
+          document.documentElement.dataset.wofQaWalkStrafe = "0.00";
+          document.documentElement.dataset.wofQaWalkSprint = "0";
+          document.documentElement.dataset.wofQaWalkAction = "grass-warmup";
+          return;
+        }
+      }
       if (lilyCoilTubeTravelState) {
         if (qaWalkLilyTubeDirection.current >= 0 && lilyCoilTubeTravelState.t > QA_LILY_COIL_TUBE_REVERSE_EDGE_T) {
           qaWalkLilyTubeDirection.current = -1;
