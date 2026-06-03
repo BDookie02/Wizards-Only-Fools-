@@ -18,6 +18,10 @@ export function Runes() {
   const gameMode = useGameStore(s => s.gameMode);
   const manaSpawnRate = useGameStore(s => s.survivalRules.manaSpawnRate);
   const isSurvivalMode = gameMode === "solo-survival" || gameMode === "multiplayer-survival";
+  const hideManaFlowersForQa = useMemo(() => (
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("qaHideManaFlowers") === "1"
+  ), []);
   const lastWellChunkRef = useRef("");
   const hutPositions = useMemo(() => {
     return getHutList().map(h => ({
@@ -86,7 +90,11 @@ export function Runes() {
 
     lastWellChunkRef.current = chunkKey;
     setDesertWellSources(isSurvivalMode ? getNearbySurvivalDesertManaWells(playerPos.x, playerPos.z) : []);
-    setManaFlowerSources(isSurvivalMode ? getNearbySurvivalManaFlowers(playerPos.x, playerPos.z, manaSpawnRate) : []);
+    setManaFlowerSources(
+      isSurvivalMode && !hideManaFlowersForQa
+        ? getNearbySurvivalManaFlowers(playerPos.x, playerPos.z, manaSpawnRate)
+        : [],
+    );
   });
 
   useEffect(() => {
@@ -199,8 +207,8 @@ const runeMaterial = new THREE.MeshStandardMaterial({ color: "#9400D3", emissive
 const infiniteRuneMaterial = new THREE.MeshStandardMaterial({ color: "#ff4fd8", emissive: "#ff4fd8", emissiveIntensity: 3, toneMapped: false, transparent: true, opacity: 0.85 });
 const manaFlowerStemGeometry = new THREE.CylinderGeometry(0.09, 0.14, 1, 6);
 const manaFlowerLeafGeometry = new THREE.ConeGeometry(0.26, 0.72, 5);
-const manaFlowerStemMaterial = new THREE.MeshStandardMaterial({ color: "#2f9e44", roughness: 0.9 });
-const manaFlowerLeafMaterial = new THREE.MeshStandardMaterial({ color: "#51cf66", roughness: 0.92 });
+const manaFlowerStemMaterial = new THREE.MeshBasicMaterial({ color: "#52c15d", toneMapped: false });
+const manaFlowerLeafMaterial = new THREE.MeshBasicMaterial({ color: "#72dd6f", toneMapped: false });
 const manaFlowerHeadMaterial = new THREE.MeshStandardMaterial({
   color: "#ff4fd8",
   emissive: "#b026ff",

@@ -124,6 +124,11 @@ canvas:focus {
   height: var(--app-vh, 100dvh);
 }
 
+.gameplay-cursor-hidden,
+.gameplay-cursor-hidden * {
+  cursor: none;
+}
+
 .mobile-touch-controls {
   padding-top: env(safe-area-inset-top);
   padding-right: env(safe-area-inset-right);

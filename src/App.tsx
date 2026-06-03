@@ -1016,7 +1016,7 @@ export default function App() {
       
       {/* GameWorld and HUD Container */}
       <div 
-        className={`game-frame relative bg-black overflow-hidden shrink-0 ${isFill ? 'w-full h-full' : 'shadow-[0_0_50px_rgba(0,0,0,1)]'}`}
+        className={`game-frame ${isGameLaunched ? 'gameplay-cursor-hidden' : ''} relative bg-black overflow-hidden shrink-0 ${isFill ? 'w-full h-full' : 'shadow-[0_0_50px_rgba(0,0,0,1)]'}`}
         data-aspect-ratio={safeAspectRatio}
         style={frameStyle}
       >

@@ -830,11 +830,11 @@ type SurvivalVillageKind = "desert" | "swamp" | "chicago" | "mountain" | "gravey
 const SURVIVAL_RENDER_RADIUS = 3;
 const SURVIVAL_NEAR_RADIUS = 1;
 const SURVIVAL_COLLISION_RADIUS = 2;
-const SURVIVAL_CHUNK_STREAM_INITIAL_RADIUS = SURVIVAL_NEAR_RADIUS;
-const SURVIVAL_CHUNK_STREAM_STEP_MS = 3200;
-const SURVIVAL_CHUNK_STREAM_STEP_CURVE_MS = 1700;
-const SURVIVAL_CHUNK_MOUNT_INTERVAL_MS = 700;
-const SURVIVAL_CHUNK_MOBILE_MOUNT_INTERVAL_MS = 920;
+const SURVIVAL_CHUNK_STREAM_INITIAL_RADIUS = 2;
+const SURVIVAL_CHUNK_STREAM_STEP_MS = 1500;
+const SURVIVAL_CHUNK_STREAM_STEP_CURVE_MS = 700;
+const SURVIVAL_CHUNK_MOUNT_INTERVAL_MS = 240;
+const SURVIVAL_CHUNK_MOBILE_MOUNT_INTERVAL_MS = 380;
 const SURVIVAL_CHUNK_CENTER_HYSTERESIS = SURVIVAL_BLOCK_SIZE * 0.72;
 const SURVIVAL_CHUNK_STREAM_ROUNDING = 0.45;
 const BASE_VILLAGE_STREAM_DISTANCE = SURVIVAL_BLOCK_SIZE * 1.45;
@@ -846,7 +846,15 @@ const SURVIVAL_TERRAIN_CENTER_COLLISION_SEGMENTS = SURVIVAL_TERRAIN_NEAR_SEGMENT
 const SURVIVAL_TERRAIN_NEAR_COLLISION_SEGMENTS = 18;
 const SURVIVAL_VILLAGE_PAD_SEGMENTS = 18;
 const SURVIVAL_TERRAIN_SKIRT_DEPTH = 44;
+const SURVIVAL_TERRAIN_SKIRT_TOP_INSET = 0.04;
 const SURVIVAL_TERRAIN_CACHE_LIMIT = 512;
+const SURVIVAL_RESTORED_MEADOW_TERRAIN_VISUAL_FADE_RADIUS = 350;
+const SURVIVAL_RESTORED_MEADOW_TERRAIN_VISUAL_FADE_WIDTH = 76;
+const SURVIVAL_RESTORED_MEADOW_TERRAIN_VISUAL_NEAR_SOLID = 252;
+const SURVIVAL_RESTORED_MEADOW_TERRAIN_VISUAL_NEAR_FADE = 72;
+const survivalRestoredMeadowTerrainFadeUniforms = {
+  viewerXZ: { value: new THREE.Vector2(0, 0) },
+};
 
 function getSurvivalChunkStreamDelay(stepIndex: number) {
   const streamStep = stepIndex + 1;
@@ -1128,18 +1136,18 @@ function getSurvivalTerrainDetailTexture() {
         const grain = Math.sin(x * 19.19 + y * 73.31) * 43758.5453;
         const speckle = grain - Math.floor(grain);
 
-        if (fiber > 0.94 && speckle > 0.24) {
-          ctx.fillStyle = "#edf5df";
-          ctx.fillRect(x, y, 4, 2);
-        } else if (shortBlade > 0.54 && speckle > 0.52) {
-          ctx.fillStyle = "#f7fbef";
-          ctx.fillRect(x, y, 2, 2);
-        } else if (fiber < -1.18 && speckle > 0.48) {
-          ctx.fillStyle = "#e3ecd0";
-          ctx.fillRect(x, y, 2, 2);
-        } else if (speckle > 0.985) {
-          ctx.fillStyle = "#e6eed7";
-          ctx.fillRect(x, y, 2, 2);
+        if (fiber > 0.98 && speckle > 0.58) {
+          ctx.fillStyle = "#f3f7eb";
+          ctx.fillRect(x, y, 1, 1);
+        } else if (shortBlade > 0.68 && speckle > 0.68) {
+          ctx.fillStyle = "#f8fbf2";
+          ctx.fillRect(x, y, 1, 1);
+        } else if (fiber < -1.24 && speckle > 0.68) {
+          ctx.fillStyle = "#edf3e1";
+          ctx.fillRect(x, y, 1, 1);
+        } else if (speckle > 0.992) {
+          ctx.fillStyle = "#f1f6e8";
+          ctx.fillRect(x, y, 1, 1);
         }
       }
     }
@@ -1168,54 +1176,47 @@ function getSurvivalGrasslandTerrainDetailTexture() {
 
   if (ctx) {
     ctx.imageSmoothingEnabled = true;
-    ctx.fillStyle = "#b7d295";
+    ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    for (let bladeIndex = 0; bladeIndex < 900; bladeIndex += 1) {
-      const baseX = Math.floor(survivalHash01(bladeIndex, 0, 21100) * canvas.width);
-      const baseY = Math.floor(survivalHash01(bladeIndex, 1, 21101) * canvas.height);
-      const length = 3 + Math.floor(survivalHash01(bladeIndex, 2, 21102) * 5);
-      const drift = (survivalHash01(bladeIndex, 3, 21103) - 0.5) * 1.2;
-      const shade = survivalHash01(bladeIndex, 4, 21104);
-      ctx.strokeStyle = shade > 0.72 ? "rgba(103,158,70,0.18)" : shade > 0.38 ? "rgba(134,181,91,0.16)" : "rgba(68,121,52,0.13)";
-      ctx.lineWidth = shade > 0.88 ? 1.35 : 1;
-      ctx.beginPath();
-      ctx.moveTo(baseX, baseY);
-
-      for (let step = 0; step < length; step += 1) {
-        const x = (baseX + Math.round(drift * step + Math.sin(step + bladeIndex) * 0.9) + canvas.width) % canvas.width;
-        const y = (baseY + step) % canvas.height;
-        ctx.lineTo(x, y);
-      }
-      ctx.stroke();
+    for (let grain = 0; grain < canvas.width * canvas.height * 0.42; grain += 1) {
+      const x = Math.floor(survivalHash01(grain, 0, 21900) * canvas.width);
+      const y = Math.floor(survivalHash01(grain, 1, 21901) * canvas.height);
+      const shade = survivalHash01(grain, 2, 21902);
+      ctx.fillStyle = shade > 0.72
+        ? "rgba(244,244,236,0.16)"
+        : shade > 0.38
+          ? "rgba(226,226,214,0.12)"
+          : "rgba(255,255,255,0.14)";
+      ctx.fillRect(x, y, 1, 1);
     }
 
-    for (let tuftIndex = 0; tuftIndex < 90; tuftIndex += 1) {
-      const centerX = Math.floor(survivalHash01(tuftIndex, 0, 21310) * canvas.width);
-      const centerY = Math.floor(survivalHash01(tuftIndex, 1, 21311) * canvas.height);
-      const radius = 2 + Math.floor(survivalHash01(tuftIndex, 2, 21312) * 4);
-      ctx.strokeStyle = tuftIndex % 3 === 0 ? "rgba(95,151,66,0.16)" : "rgba(124,176,82,0.14)";
+    for (let fiber = 0; fiber < 1600; fiber += 1) {
+      const baseX = survivalHash01(fiber, 0, 22000) * canvas.width;
+      const baseY = survivalHash01(fiber, 1, 22001) * canvas.height;
+      const length = 2 + survivalHash01(fiber, 2, 22002) * 5;
+      const angle = -Math.PI * 0.5 + (survivalHash01(fiber, 3, 22003) - 0.5) * 1.4;
+      const shade = survivalHash01(fiber, 4, 22004);
+      ctx.strokeStyle = shade > 0.68
+        ? "rgba(224,224,212,0.14)"
+        : shade > 0.32
+          ? "rgba(244,244,236,0.14)"
+          : "rgba(214,214,202,0.1)";
       ctx.lineWidth = 1;
-      for (let blade = 0; blade < 5; blade += 1) {
-        const angle = (blade / 7) * Math.PI * 2 + survivalHash01(tuftIndex, blade, 21313) * 0.6;
-        const length = radius + Math.floor(survivalHash01(tuftIndex, blade, 21314) * 5);
-        const x0 = centerX + Math.round(Math.cos(angle) * 1.5);
-        const y0 = centerY + Math.round(Math.sin(angle) * 1.5);
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(
-          (x0 + Math.round(Math.cos(angle) * length) + canvas.width) % canvas.width,
-          (y0 + Math.round(Math.sin(angle) * length) + canvas.height) % canvas.height,
-        );
-        ctx.stroke();
-      }
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY);
+      ctx.lineTo(
+        (baseX + Math.cos(angle) * length + canvas.width) % canvas.width,
+        (baseY + Math.sin(angle) * length + canvas.height) % canvas.height,
+      );
+      ctx.stroke();
     }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(7, 7);
+  texture.repeat.set(12, 12);
   texture.magFilter = THREE.LinearFilter;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.generateMipmaps = true;
@@ -1574,28 +1575,24 @@ function getSurvivalTerrainColor(worldX: number, worldZ: number, height: number)
     const restoredFiber = Math.sin(worldX * 0.044 + worldZ * 0.022) * 0.26 +
       Math.cos(worldZ * 0.038 - worldX * 0.018) * 0.24;
     const restoredFine = Math.sin(worldX * 0.68 + worldZ * 0.41) * 0.5 + 0.5;
-    const restoredDark = hexToRgb("#477f2b");
-    const restoredMid = hexToRgb("#579932");
-    const restoredLight = hexToRgb("#68ae3a");
+    const restoredDark = hexToRgb("#394b28");
+    const restoredMid = hexToRgb("#506436");
+    const restoredLight = hexToRgb("#657744");
     const restoredBlend = smoothstepRange(-0.64, 1.12, restoredFiber);
     const restoredR = lerpNumber(lerpNumber(restoredDark.r, restoredMid.r, 0.58), restoredLight.r, restoredBlend * 0.24);
     const restoredG = lerpNumber(lerpNumber(restoredDark.g, restoredMid.g, 0.58), restoredLight.g, restoredBlend * 0.24);
     const restoredB = lerpNumber(lerpNumber(restoredDark.b, restoredMid.b, 0.58), restoredLight.b, restoredBlend * 0.24);
-    const restoredAmount = clamp01(restoredMeadowMask * (0.82 + restoredFine * 0.01));
+    const restoredAmount = clamp01(restoredMeadowMask * (0.52 + restoredFine * 0.04));
     r = lerpNumber(r, restoredR, restoredAmount);
     g = lerpNumber(g, restoredG, restoredAmount);
     b = lerpNumber(b, restoredB, restoredAmount);
   }
 
-  const routeMask = getSurvivalTownRouteMask(worldX, worldZ);
-  const rawVisibleRouteMask = restoredMeadowMask > 0.05
-    ? routeMask * smoothstepRange(0.72, 0.98, routeMask)
-    : routeMask;
-  const visibleRouteMask = restoredMeadowMask > 0.001 ? 0 : rawVisibleRouteMask;
   const strictDesertTerrain = desertWeight > SURVIVAL_BOTW_GRASS_STRICT_DESERT_WEIGHT &&
     restoredMeadowMask <= 0.015 &&
     meadowWeight < 0.12 &&
     grasslandWeight < 0.1;
+  const visibleRouteMask = 0;
   const routeGrassCover = smoothstepRange(0.16, 0.86, visibleRouteMask) *
     (1 - rockMix * 0.38) *
     (1 - peakMix * 0.66);
@@ -1623,12 +1620,14 @@ function getSurvivalTerrainColor(worldX: number, worldZ: number, height: number)
     if (surfaceCover > 0.001) {
       const coverFiber = Math.sin(worldX * 0.053 + worldZ * 0.031) * 0.5 +
         Math.cos(worldZ * 0.047 - worldX * 0.019) * 0.5;
-      const coverDark = hexToRgb("#4b8d2c");
-      const coverLight = hexToRgb("#6fba3b");
+      const restoredUndergrassMask = smoothstepRange(0.02, 0.18, restoredMeadowMask);
+      const coverDark = hexToRgb(restoredUndergrassMask > 0.001 ? "#3d512b" : "#4b8d2c");
+      const coverLight = hexToRgb(restoredUndergrassMask > 0.001 ? "#5d7041" : "#6fba3b");
       const coverBlend = smoothstepRange(-0.72, 0.9, coverFiber);
-      r = lerpNumber(r, lerpNumber(coverDark.r, coverLight.r, coverBlend), surfaceCover * 0.78);
-      g = lerpNumber(g, lerpNumber(coverDark.g, coverLight.g, coverBlend), surfaceCover * 0.78);
-      b = lerpNumber(b, lerpNumber(coverDark.b, coverLight.b, coverBlend), surfaceCover * 0.78);
+      const coverAmount = surfaceCover * lerpNumber(0.78, 0.46, restoredUndergrassMask);
+      r = lerpNumber(r, lerpNumber(coverDark.r, coverLight.r, coverBlend), coverAmount);
+      g = lerpNumber(g, lerpNumber(coverDark.g, coverLight.g, coverBlend), coverAmount);
+      b = lerpNumber(b, lerpNumber(coverDark.b, coverLight.b, coverBlend), coverAmount);
     }
   }
   const routePaintThreshold = restoredMeadowMask > 0.05 ? 0.48 : 0.22;
@@ -1657,15 +1656,18 @@ function getSurvivalTerrainColor(worldX: number, worldZ: number, height: number)
 
   const restoredSurfaceSmooth = smoothstepRange(0.001, 0.08, restoredMeadowMask);
   if (restoredSurfaceSmooth > 0.001) {
-    const smoothMeadow = hexToRgb("#5b9f34");
-    const fineVariation = Math.sin(worldX * 0.31 + worldZ * 0.19) * 0.004;
-    r = lerpNumber(r, smoothMeadow.r + fineVariation, restoredSurfaceSmooth * 0.9);
-    g = lerpNumber(g, smoothMeadow.g + fineVariation, restoredSurfaceSmooth * 0.9);
-    b = lerpNumber(b, smoothMeadow.b + fineVariation, restoredSurfaceSmooth * 0.9);
+    const meadowGround = hexToRgb("#465733");
+    const fineVariation =
+      Math.sin(worldX * 0.31 + worldZ * 0.19) * 0.012 +
+      Math.cos(worldZ * 0.53 - worldX * 0.17) * 0.008;
+    const restoredSurfaceAmount = restoredSurfaceSmooth * 0.32;
+    r = lerpNumber(r, meadowGround.r + fineVariation * 0.48, restoredSurfaceAmount);
+    g = lerpNumber(g, meadowGround.g + fineVariation * 0.42, restoredSurfaceAmount);
+    b = lerpNumber(b, meadowGround.b + fineVariation * 0.34, restoredSurfaceAmount);
   }
 
   const finalShade = restoredSurfaceSmooth > 0.001
-    ? lerpNumber(shade, 1, restoredSurfaceSmooth * 0.84)
+    ? lerpNumber(shade, 0.92, restoredSurfaceSmooth * 0.84)
     : shade;
   return new THREE.Color(clamp01(r * finalShade), clamp01(g * finalShade), clamp01(b * finalShade));
 }
@@ -1689,6 +1691,22 @@ function getSurvivalSmoothedTerrainColor(worldX: number, worldZ: number, height:
 
   if (totalWeight > 0) {
     color.multiplyScalar(1 / totalWeight);
+  }
+  return color;
+}
+
+function getSurvivalRenderedTerrainColor(worldX: number, worldZ: number, height: number) {
+  const color = getSurvivalSmoothedTerrainColor(worldX, worldZ, height);
+  const restoredMeadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
+  if (restoredMeadowMask > 0.02) {
+    const restoredGround = new THREE.Color("#3d742b");
+    const fineShade = Math.sin(worldX * 0.17 + worldZ * 0.29) * 0.025 +
+      Math.cos(worldZ * 0.23 - worldX * 0.11) * 0.018;
+    color.lerp(restoredGround, smoothstepRange(0.02, 0.18, restoredMeadowMask) * 0.34);
+    color.multiplyScalar(0.94 + fineShade);
+    color.r = clamp01(color.r);
+    color.g = clamp01(color.g);
+    color.b = clamp01(color.b);
   }
   return color;
 }
@@ -1778,7 +1796,7 @@ function isSurvivalGrasslandTerrainBiome(biome: SurvivalBiome) {
 }
 
 function getSurvivalTerrainDetailTextureForChunk(chunk: SurvivalChunkInfo) {
-  if (getSurvivalRestoredMeadowMask(chunk.x, chunk.z) > 0.02) {
+  if (isSurvivalRestoredMeadowWaterSuppressed(chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.72)) {
     return getSurvivalGrasslandTerrainDetailTexture();
   }
 
@@ -1826,6 +1844,11 @@ function shouldBuildSurvivalChunkColliders(chunk: Pick<SurvivalChunkInfo, "dista
 
 function shouldRenderSurvivalChunkSkirt(chunk: Pick<SurvivalChunkInfo, "distance">) {
   return chunk.distance > 0;
+}
+
+function shouldRenderSurvivalTerrainSkirt(chunk: SurvivalChunkInfo) {
+  return shouldRenderSurvivalChunkSkirt(chunk) &&
+    !isSurvivalRestoredMeadowWaterSuppressed(chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 1.08);
 }
 
 function hasSurvivalVillage(cx: number, cz: number) {
@@ -2181,7 +2204,7 @@ function reconcileSurvivalVisibleChunks(
     previousChunk.hasRiver === nextChunk.hasRiver &&
     previousChunk.riverVertical === nextChunk.riverVertical &&
     shouldBuildSurvivalChunkColliders(previousChunk) === shouldBuildSurvivalChunkColliders(nextChunk) &&
-    shouldRenderSurvivalChunkSkirt(previousChunk) === shouldRenderSurvivalChunkSkirt(nextChunk)
+    shouldRenderSurvivalTerrainSkirt(previousChunk) === shouldRenderSurvivalTerrainSkirt(nextChunk)
   );
 
   [...previousChunks]
@@ -2224,8 +2247,15 @@ function getImmediateSurvivalVisibleChunkKeys(chunks: SurvivalChunkInfo[]) {
   const targetKeys = new Set(chunks.map((chunk) => chunk.key));
   const playerChunk = getCurrentSurvivalPlayerChunkCoords();
   if (playerChunk) {
-    const playerKey = `${playerChunk.cx}:${playerChunk.cz}`;
-    if (targetKeys.has(playerKey)) immediateKeys.add(playerKey);
+    chunks.forEach((chunk) => {
+      const playerDistance = Math.max(
+        Math.abs(chunk.cx - playerChunk.cx),
+        Math.abs(chunk.cz - playerChunk.cz),
+      );
+      if (playerDistance <= SURVIVAL_NEAR_RADIUS && targetKeys.has(chunk.key)) {
+        immediateKeys.add(chunk.key);
+      }
+    });
   }
 
   if (immediateKeys.size === 0) immediateKeys.add(chunks[0].key);
@@ -2450,7 +2480,7 @@ function makeSurvivalRiverSurfaceGeometry(chunk: SurvivalChunkInfo) {
         isSurvivalRestoredMeadowWaterSuppressed(
           centerWorldX,
           centerWorldZ,
-          getSurvivalRiverWidthForBiome(chunk.biome) * 0.62 + 24,
+          getSurvivalRiverWidthForBiome(chunk.biome) * 0.62 + SURVIVAL_BLOCK_SIZE * 0.42,
         )
       ) continue;
 
@@ -2601,7 +2631,9 @@ function getSurvivalTerrainHeightForChunk(chunk: SurvivalChunkInfo, localX: numb
   let height = getSurvivalRawTerrainHeightAtWorld(worldX, worldZ);
 
   const riverCarve = getSurvivalRiverCarveAtWorld(worldX, worldZ);
-  const restoredMeadowRiverSuppression = smoothstepRange(0.08, 0.34, getSurvivalRestoredMeadowMask(worldX, worldZ));
+  const restoredMeadowRiverSuppression = isSurvivalRestoredMeadowWaterSuppressed(worldX, worldZ, 96)
+    ? 1
+    : smoothstepRange(0.02, 0.18, getSurvivalRestoredMeadowMask(worldX, worldZ));
   const riverCarveStrength = riverCarve.strength * (1 - restoredMeadowRiverSuppression);
   if (riverCarveStrength > 0) {
     height = lerpNumber(height, Math.min(height, riverCarve.bed), riverCarveStrength);
@@ -2638,7 +2670,7 @@ function getSurvivalTerrainHeightForChunk(chunk: SurvivalChunkInfo, localX: numb
   }
 
   const townRouteMask = getSurvivalTownRouteMask(worldX, worldZ);
-  if (townRouteMask > 0) {
+  if (townRouteMask > 0 && isStrictSurvivalDesertTerrainAtWorld(worldX, worldZ)) {
     const restoredMeadowRouteSuppression = smoothstepRange(0.001, 0.08, getSurvivalRestoredMeadowMask(worldX, worldZ));
     height -= smoothstepRange(0.72, 1, townRouteMask) * 0.06 * (1 - restoredMeadowRouteSuppression);
   }
@@ -2721,9 +2753,10 @@ function makeSurvivalEdgeSkirtGeometry(
 
   const addPoint = (localX: number, localZ: number) => {
     const { height, color } = sampleEdge(localX, localZ);
-    const bottom = color.clone().multiplyScalar(0.94);
+    const top = height - SURVIVAL_TERRAIN_SKIRT_TOP_INSET;
+    const bottom = color.clone().multiplyScalar(0.98);
 
-    positions.push(localX, height, localZ, localX, height - SURVIVAL_TERRAIN_SKIRT_DEPTH, localZ);
+    positions.push(localX, top, localZ, localX, top - SURVIVAL_TERRAIN_SKIRT_DEPTH, localZ);
     colors.push(
       color.r, color.g, color.b,
       bottom.r, bottom.g, bottom.b,
@@ -2776,6 +2809,8 @@ function makeSurvivalTerrainGeometry(chunk: SurvivalChunkInfo) {
   const pos = geo.attributes.position;
   const uv = geo.attributes.uv;
   const colors: number[] = [];
+  const halfBlock = SURVIVAL_BLOCK_SIZE / 2;
+  const edgeOverlap = 0;
 
   for (let i = 0; i < pos.count; i += 1) {
     const x = pos.getX(i);
@@ -2783,8 +2818,12 @@ function makeSurvivalTerrainGeometry(chunk: SurvivalChunkInfo) {
     const worldX = chunk.x + x;
     const worldZ = chunk.z + z;
     const y = getSurvivalTerrainHeightForChunk(chunk, x, z);
-    const color = getSurvivalSmoothedTerrainColor(worldX, worldZ, y);
+    const color = getSurvivalRenderedTerrainColor(worldX, worldZ, y);
+    const renderX = x <= -halfBlock ? x - edgeOverlap : x >= halfBlock ? x + edgeOverlap : x;
+    const renderZ = z <= -halfBlock ? z - edgeOverlap : z >= halfBlock ? z + edgeOverlap : z;
+    pos.setX(i, renderX);
     pos.setY(i, y);
+    pos.setZ(i, renderZ);
     uv.setXY(i, worldX / SURVIVAL_TERRAIN_DETAIL_UV_WORLD_SIZE, worldZ / SURVIVAL_TERRAIN_DETAIL_UV_WORLD_SIZE);
     colors.push(color.r, color.g, color.b);
   }
@@ -2825,7 +2864,7 @@ function makeSurvivalTerrainSkirtGeometry(chunk: SurvivalChunkInfo, edges: Survi
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
       const height = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
-      const color = getSurvivalSmoothedTerrainColor(worldX, worldZ, height);
+      const color = getSurvivalRenderedTerrainColor(worldX, worldZ, height);
       return { height, color };
     },
     edges,
@@ -2867,12 +2906,75 @@ function makeSurvivalTerrainCollisionGeometry(chunk: SurvivalChunkInfo) {
   return geo;
 }
 
+function applySurvivalRestoredMeadowTerrainFadeShader(shader: PlantLineShader) {
+  shader.uniforms.uSurvivalRestoredMeadowTerrainViewerXZ = survivalRestoredMeadowTerrainFadeUniforms.viewerXZ;
+
+  shader.vertexShader = `varying vec3 vSurvivalRestoredMeadowTerrainWorldPosition;
+${shader.vertexShader.replace(
+    "#include <begin_vertex>",
+    `#include <begin_vertex>
+              vSurvivalRestoredMeadowTerrainWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
+  )}`;
+
+  const blockSize = SURVIVAL_BLOCK_SIZE.toFixed(1);
+  const radius = SURVIVAL_RESTORED_MEADOW_TERRAIN_VISUAL_FADE_RADIUS.toFixed(1);
+  const radiusEnd = (
+    SURVIVAL_RESTORED_MEADOW_TERRAIN_VISUAL_FADE_RADIUS +
+    SURVIVAL_RESTORED_MEADOW_TERRAIN_VISUAL_FADE_WIDTH
+  ).toFixed(1);
+  const nearSolid = SURVIVAL_RESTORED_MEADOW_TERRAIN_VISUAL_NEAR_SOLID.toFixed(1);
+  const nearEnd = (
+    SURVIVAL_RESTORED_MEADOW_TERRAIN_VISUAL_NEAR_SOLID +
+    SURVIVAL_RESTORED_MEADOW_TERRAIN_VISUAL_NEAR_FADE
+  ).toFixed(1);
+  shader.fragmentShader = `uniform vec2 uSurvivalRestoredMeadowTerrainViewerXZ;
+varying vec3 vSurvivalRestoredMeadowTerrainWorldPosition;
+
+float survivalRestoredMeadowSmooth(float edge0, float edge1, float value) {
+  float t = clamp((value - edge0) / (edge1 - edge0), 0.0, 1.0);
+  return t * t * (3.0 - 2.0 * t);
+}
+
+float survivalRestoredMeadowCellMask(vec2 worldXZ, vec2 center) {
+  vec2 localXZ = worldXZ - center * ${blockSize};
+  float squareDistance = max(abs(localXZ.x), abs(localXZ.y));
+  float radialDistance = length(localXZ);
+  float squareMask = 1.0 - survivalRestoredMeadowSmooth(${(SURVIVAL_BLOCK_SIZE * 0.64).toFixed(1)}, ${(SURVIVAL_BLOCK_SIZE * 1.24).toFixed(1)}, squareDistance);
+  float radialMask = 1.0 - survivalRestoredMeadowSmooth(${(SURVIVAL_BLOCK_SIZE * 0.82).toFixed(1)}, ${(SURVIVAL_BLOCK_SIZE * 1.42).toFixed(1)}, radialDistance);
+  return clamp(squareMask * 0.72 + radialMask * 0.38, 0.0, 1.0);
+}
+
+float survivalRestoredMeadowMask(vec2 worldXZ) {
+  float mask = 0.0;
+  mask = max(mask, survivalRestoredMeadowCellMask(worldXZ, vec2(3.0, -3.0)));
+  mask = max(mask, survivalRestoredMeadowCellMask(worldXZ, vec2(3.0, -4.0)));
+  mask = max(mask, survivalRestoredMeadowCellMask(worldXZ, vec2(4.0, -3.0)));
+  mask = max(mask, survivalRestoredMeadowCellMask(worldXZ, vec2(5.0, -3.0)));
+  mask = max(mask, survivalRestoredMeadowCellMask(worldXZ, vec2(4.0, -4.0)));
+  mask = max(mask, survivalRestoredMeadowCellMask(worldXZ, vec2(5.0, -4.0)));
+  mask = max(mask, survivalRestoredMeadowCellMask(worldXZ, vec2(6.0, -3.0)));
+  mask = max(mask, survivalRestoredMeadowCellMask(worldXZ, vec2(6.0, -4.0)));
+  return clamp(mask, 0.0, 1.0);
+}
+
+${shader.fragmentShader.replace(
+    "#include <dithering_fragment>",
+    `float restoredMeadowTerrainMask = survivalRestoredMeadowMask(vSurvivalRestoredMeadowTerrainWorldPosition.xz);
+  float restoredMeadowViewerDistance = distance(vSurvivalRestoredMeadowTerrainWorldPosition.xz, uSurvivalRestoredMeadowTerrainViewerXZ);
+  float restoredMeadowMidfield = survivalRestoredMeadowSmooth(${nearSolid}, ${nearEnd}, restoredMeadowViewerDistance);
+  float restoredMeadowViewerCover = restoredMeadowMidfield * (1.0 - survivalRestoredMeadowSmooth(${radius}, ${radiusEnd}, restoredMeadowViewerDistance));
+  diffuseColor.a *= mix(1.0, 0.68, restoredMeadowTerrainMask * restoredMeadowViewerCover);
+  if (diffuseColor.a < 0.025) discard;
+  #include <dithering_fragment>`,
+  )}`;
+}
+
 function prewarmSurvivalChunkGeometry(chunk: SurvivalChunkInfo) {
   makeSurvivalTerrainGeometry(chunk);
   if (shouldBuildSurvivalChunkColliders(chunk)) {
     makeSurvivalTerrainCollisionGeometry(chunk);
   }
-  if (shouldRenderSurvivalChunkSkirt(chunk)) {
+  if (shouldRenderSurvivalTerrainSkirt(chunk)) {
     makeSurvivalTerrainSkirtGeometry(chunk, SURVIVAL_ALL_TERRAIN_SKIRT_EDGES);
   }
   if (chunk.hasRiver) {
@@ -2902,7 +3004,7 @@ function SurvivalTerrain({
     () => getSurvivalVisibleTerrainSkirtEdges(chunk, visibleChunkKeys),
     [chunk.cx, chunk.cz, visibleChunkKeys],
   );
-  const hasSkirt = shouldRenderSurvivalChunkSkirt(chunk) && hasAnySurvivalTerrainSkirtEdge(skirtEdges);
+  const hasSkirt = shouldRenderSurvivalTerrainSkirt(chunk) && hasAnySurvivalTerrainSkirtEdge(skirtEdges);
   const terrainSkirtGeometry = useMemo(
     () => hasSkirt ? makeSurvivalTerrainSkirtGeometry(chunk, skirtEdges) : null,
     [chunk.key, chunk.lod, hasSkirt, skirtEdges],
@@ -2914,8 +3016,12 @@ function SurvivalTerrain({
     [chunk.key, chunk.lod, hasCollision, terrainCollisionSegments],
   );
   const terrainTexture = useMemo(() => getSurvivalTerrainDetailTextureForChunk(chunk), [chunk.biome]);
+  const restoredMeadowTerrainFade = useMemo(
+    () => isSurvivalRestoredMeadowWaterSuppressed(chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 1.08),
+    [chunk.x, chunk.z],
+  );
 
-  useFrame(({ clock }) => {
+  useFrame(({ camera, clock }) => {
     const cycle = getSurvivalDayNightCycle(
       getEffectiveSurvivalCycleElapsedSeconds(survivalTimeOverrideSeconds, clock.elapsedTime),
     );
@@ -2925,12 +3031,29 @@ function SurvivalTerrain({
       .lerp(terrainDuskTint, cycle.duskAmount * 0.16);
     if (terrainMaterialRef.current) terrainMaterialRef.current.color.copy(terrainTint);
     if (terrainSkirtMaterialRef.current) terrainSkirtMaterialRef.current.color.copy(terrainTint);
+    if (restoredMeadowTerrainFade) {
+      const viewerPosition = getSurvivalLocalGrassViewerPosition(camera);
+      survivalRestoredMeadowTerrainFadeUniforms.viewerXZ.value.set(viewerPosition.x, viewerPosition.z);
+    }
   });
 
   const terrainMesh = (
     <>
       <mesh geometry={terrainGeometry} receiveShadow={hasCollision} dispose={null}>
-        <meshBasicMaterial ref={terrainMaterialRef} map={terrainTexture} vertexColors side={THREE.FrontSide} color="#ffffff" />
+        <meshBasicMaterial
+          ref={terrainMaterialRef}
+          map={terrainTexture}
+          vertexColors
+          side={THREE.FrontSide}
+          color="#ffffff"
+          transparent={restoredMeadowTerrainFade}
+          depthWrite={!restoredMeadowTerrainFade}
+          onBeforeCompile={restoredMeadowTerrainFade
+            ? (shader) => {
+              applySurvivalRestoredMeadowTerrainFadeShader(shader);
+            }
+            : undefined}
+        />
       </mesh>
       {terrainSkirtGeometry && (
         <mesh geometry={terrainSkirtGeometry} dispose={null}>
@@ -3345,8 +3468,8 @@ const SURVIVAL_LOCAL_GRASS_CELL_MOUNT_INTERVAL_MS = 190;
 const SURVIVAL_LOCAL_GRASS_MOBILE_CELL_MOUNT_INTERVAL_MS = 300;
 const SURVIVAL_GRASS_SYSTEM_ENABLED = true;
 const SURVIVAL_LEGACY_GRASS_SYSTEM_ENABLED = false;
-const SURVIVAL_BOTW_GRASS_RADIUS = 146;
-const SURVIVAL_BOTW_GRASS_AIR_RADIUS = 214;
+const SURVIVAL_BOTW_GRASS_RADIUS = 224;
+const SURVIVAL_BOTW_GRASS_AIR_RADIUS = 304;
 const SURVIVAL_BOTW_GRASS_EDGE_FADE = 34;
 const SURVIVAL_BOTW_GRASS_CENTER_STEP = 72;
 const SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE = 48;
@@ -3369,13 +3492,13 @@ const SURVIVAL_BOTW_GRASS_RECENTER_MIN_INTERVAL_SECONDS = 0.48;
 const SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE = SURVIVAL_BOTW_GRASS_RADIUS * 0.68;
 const SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE = SURVIVAL_BOTW_GRASS_RADIUS * 0.88;
 const SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE_INCREASE = 42;
-const SURVIVAL_BOTW_GRASS_RECENTER_EMERGENCY_VIEWER_DISTANCE = SURVIVAL_BOTW_GRASS_RADIUS * 1.36;
-const SURVIVAL_BOTW_GRASS_DESKTOP_COUNT = 20000;
-const SURVIVAL_BOTW_GRASS_MOBILE_COUNT = 9200;
-const SURVIVAL_BOTW_GRASS_CARPET_RADIUS = 384;
-const SURVIVAL_BOTW_GRASS_CARPET_AIR_RADIUS = 520;
-const SURVIVAL_BOTW_GRASS_CARPET_EDGE_FADE = 96;
-const SURVIVAL_BOTW_GRASS_CARPET_SEGMENTS = 224;
+const SURVIVAL_BOTW_GRASS_RECENTER_EMERGENCY_VIEWER_DISTANCE = SURVIVAL_BOTW_GRASS_RADIUS * 0.92;
+const SURVIVAL_BOTW_GRASS_DESKTOP_COUNT = 56000;
+const SURVIVAL_BOTW_GRASS_MOBILE_COUNT = 16800;
+const SURVIVAL_BOTW_GRASS_CARPET_RADIUS = 252;
+const SURVIVAL_BOTW_GRASS_CARPET_AIR_RADIUS = 326;
+const SURVIVAL_BOTW_GRASS_CARPET_EDGE_FADE = 68;
+const SURVIVAL_BOTW_GRASS_CARPET_SEGMENTS = 52;
 const SURVIVAL_BOTW_GRASS_STRICT_DESERT_WEIGHT = 0.9;
 const SURVIVAL_BOTW_GRASS_CARPET_ENABLED = false;
 const SURVIVAL_BOTW_GRASS_FOOTPRINT_SCALE = 0.66;
@@ -3390,32 +3513,47 @@ const SURVIVAL_BOTW_GRASS_FLOWER_DESKTOP_COUNT = 440;
 const SURVIVAL_BOTW_GRASS_FLOWER_MOBILE_COUNT = 210;
 const SURVIVAL_BOTW_GRASS_FLOWER_DESKTOP_RADIUS_SCALE = 0.72;
 const SURVIVAL_BOTW_GRASS_FLOWER_MOBILE_RADIUS_SCALE = 0.62;
-const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_CANDIDATES = 1700;
+const SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_RADIUS = SURVIVAL_BOTW_GRASS_RADIUS * 0.48;
+const SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_FADE = 64;
+const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_CANDIDATES = 3200;
 const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_CANDIDATES = 780;
-const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS = 4.2;
+const SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS = 5.8;
 const SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_MS = 3;
-const SURVIVAL_BOTW_GRASS_BUILD_SLICE_DELAY_MS = 1;
+const SURVIVAL_BOTW_GRASS_BUILD_SLICE_DELAY_MS = 0;
 const SURVIVAL_BOTW_GRASS_MAX_PENDING_PREWARMS = 2;
-const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH = 1800;
-const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH = 720;
-const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_INITIAL_BATCH = 9000;
-const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_INITIAL_BATCH = 3600;
+const SURVIVAL_BOTW_GRASS_BOOTSTRAP_DESKTOP_COUNT = 6200;
+const SURVIVAL_BOTW_GRASS_BOOTSTRAP_MOBILE_COUNT = 2400;
+const SURVIVAL_BOTW_GRASS_BOOTSTRAP_DESKTOP_RADIUS_SCALE = 0.63;
+const SURVIVAL_BOTW_GRASS_BOOTSTRAP_MOBILE_RADIUS_SCALE = 0.68;
+const SURVIVAL_BOTW_GRASS_BOOTSTRAP_CANDIDATE_MULTIPLIER = 1.78;
+const SURVIVAL_BOTW_GRASS_DESKTOP_PREVIEW_COUNT = 2800;
+const SURVIVAL_BOTW_GRASS_MOBILE_PREVIEW_COUNT = 1200;
+const SURVIVAL_BOTW_GRASS_DESKTOP_PREVIEW_MIN_COUNT = 1800;
+const SURVIVAL_BOTW_GRASS_MOBILE_PREVIEW_MIN_COUNT = 760;
+const SURVIVAL_BOTW_GRASS_PREVIEW_MAX_WAIT_MS = 620;
+const SURVIVAL_BOTW_GRASS_PREVIEW_REFRESH_COUNT = 2600;
+const SURVIVAL_BOTW_GRASS_PREVIEW_REFRESH_MS = 620;
+const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH = 820;
+const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH = 360;
+const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_INITIAL_BATCH = 1200;
+const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_INITIAL_BATCH = 920;
 const SURVIVAL_BOTW_GRASS_BUILD_CACHE_LIMIT = 18;
 const SURVIVAL_TUTORIAL_GRASS_CELL_SIZE = 58;
-const SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS = 270;
+const SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS = 324;
 const SURVIVAL_TUTORIAL_GRASS_AIR_RADIUS = 430;
-const SURVIVAL_TUTORIAL_GRASS_EDGE_FADE = 92;
+const SURVIVAL_TUTORIAL_GRASS_EDGE_FADE = 38;
 const SURVIVAL_TUTORIAL_GRASS_CELL_MARGIN = SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * Math.SQRT2 * 0.5;
 const SURVIVAL_TUTORIAL_GRASS_CENTER_HYSTERESIS = SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.72;
 const SURVIVAL_TUTORIAL_GRASS_CELL_MOUNT_INTERVAL_MS = 52;
 const SURVIVAL_TUTORIAL_GRASS_IDLE_TIMEOUT_MS = 260;
 const SURVIVAL_TUTORIAL_GRASS_INITIAL_CELL_MOUNT_COUNT = 10;
-const SURVIVAL_TUTORIAL_GRASS_STRAND_DISTANCE = 124;
+const SURVIVAL_TUTORIAL_GRASS_STRAND_DISTANCE = 170;
+const SURVIVAL_TUTORIAL_GRASS_MID_STRAND_DISTANCE = 318;
 const SURVIVAL_TUTORIAL_GRASS_BLADE_DENSITY_DISTANCE = 215;
-const SURVIVAL_TUTORIAL_GRASS_NEAR_BLADE_BASE_COUNT = 2200;
-const SURVIVAL_TUTORIAL_GRASS_NEAR_BLADE_EXTRA_COUNT = 4200;
-const SURVIVAL_TUTORIAL_GRASS_MID_BLADE_BASE_COUNT = 240;
-const SURVIVAL_TUTORIAL_GRASS_MID_BLADE_EXTRA_COUNT = 360;
+const SURVIVAL_TUTORIAL_GRASS_NEAR_BLADE_BASE_COUNT = 420;
+const SURVIVAL_TUTORIAL_GRASS_NEAR_BLADE_EXTRA_COUNT = 1080;
+const SURVIVAL_TUTORIAL_GRASS_MID_BLADE_BASE_COUNT = 280;
+const SURVIVAL_TUTORIAL_GRASS_MID_BLADE_EXTRA_COUNT = 760;
 const SURVIVAL_TUTORIAL_GRASS_NORMAL_UP_BIAS = 0.86;
 const SURVIVAL_GRASS_WATER_SURFACE_OFFSET = 0.16;
 const SURVIVAL_GRASS_WATER_MASK_FEATHER = 0.12;
@@ -3431,6 +3569,29 @@ const SURVIVAL_GRASS_WATER_FOOTPRINT_SAMPLE_DIRECTIONS: ReadonlyArray<readonly [
   [0.7071, -0.7071],
   [-0.7071, -0.7071],
 ];
+
+function isStrictSurvivalDesertTerrainAtWorld(worldX: number, worldZ: number) {
+  if (getSurvivalRestoredMeadowMask(worldX, worldZ) > 0.015) return false;
+
+  let desertWeight = 0;
+  let meadowWeight = 0;
+  let grasslandWeight = 0;
+  getSurvivalBiomeWeights(worldX, worldZ).forEach(({ biome, weight }) => {
+    if (biome === "desert") {
+      desertWeight += weight;
+      return;
+    }
+
+    meadowWeight += weight;
+    if (biome === "plains" || biome === "tallgrass" || biome === "jungle") {
+      grasslandWeight += weight;
+    }
+  });
+
+  return desertWeight > SURVIVAL_BOTW_GRASS_STRICT_DESERT_WEIGHT &&
+    meadowWeight < 0.12 &&
+    grasslandWeight < 0.1;
+}
 
 const SURVIVAL_BUSH_COLORS: Record<SurvivalBiome, string[]> = {
   plains: ["#416f2f", "#5e9341", "#7aad55"],
@@ -4329,7 +4490,9 @@ function isSurvivalGrassAllowedAtChunkPoint(
   localZ: number,
 ) {
   if (isSurvivalVillageGrassBlocked(chunk, localX, localZ)) return false;
-  return getSurvivalTownRouteMask(chunk.x + localX, chunk.z + localZ) < SURVIVAL_TOWN_ROUTE_GRASS_BLOCK_MASK;
+  const worldX = chunk.x + localX;
+  const worldZ = chunk.z + localZ;
+  return !shouldSkipSurvivalBotwGrassForTownRoute(worldX, worldZ, SURVIVAL_TOWN_ROUTE_GRASS_BLOCK_MASK);
 }
 
 function getSurvivalGrassSurfaceBiome(baseBiome: SurvivalBiome, worldX: number, worldZ: number, height: number): SurvivalBiome {
@@ -4392,6 +4555,7 @@ function isSurvivalGrassSubmergedAtWorldPoint(
       getSurvivalRiverCarveAtWorld(sampleWorldX, sampleWorldZ).strength,
     );
     const restoredMeadowMask = getSurvivalRestoredMeadowMask(sampleWorldX, sampleWorldZ);
+    if (isSurvivalRestoredMeadowWaterSuppressed(sampleWorldX, sampleWorldZ, 8)) return false;
     const effectiveRiverSurfaceThreshold = lerpNumber(SURVIVAL_RIVER_SURFACE_MASK_THRESHOLD, 0.62, restoredMeadowMask);
     const effectiveWaterMaskFeather = lerpNumber(SURVIVAL_GRASS_WATER_MASK_FEATHER, 0.04, restoredMeadowMask);
     const riverMaskMinimum = Math.max(0, effectiveRiverSurfaceThreshold - effectiveWaterMaskFeather);
@@ -5150,7 +5314,12 @@ function getSurvivalLocalGrassViewerPosition(camera: THREE.Camera) {
 
 function shouldRenderSurvivalFullVillageChunk(chunk: SurvivalChunkInfo) {
   if (!chunk.hasVillage || chunk.lod === "far") return false;
-  if (chunk.villageKind === "desert" && getSurvivalRestoredMeadowMask(chunk.x, chunk.z) > 0.02) return false;
+  if (
+    chunk.villageKind === "desert" &&
+    isSurvivalRestoredMeadowWaterSuppressed(chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.72)
+  ) {
+    return false;
+  }
 
   const playerPosition = getBrowserLocalPlayerPosition() ?? getQaSurvivalUrlPlayerWorldPosition();
   if (!playerPosition) return chunk.distance === 0;
@@ -5232,6 +5401,46 @@ function getSurvivalGrassDebugRejectionSummary(worldX: number, worldZ: number) {
   }
 
   return `${Object.entries(counts).map(([key, value]) => `${key}:${value}`).join(" ")} samples:${samples.join("|")}`;
+}
+
+function getSurvivalGrassDebugSampleAt(worldX: number, worldZ: number) {
+  const chunk = getSurvivalChunkInfoAtWorld(worldX, worldZ);
+  const localX = worldX - chunk.x;
+  const localZ = worldZ - chunk.z;
+  const terrainY = getSurvivalGrassSurfaceHeightForChunk(chunk, localX, localZ);
+  const terrainColor = getSurvivalRenderedTerrainColor(worldX, worldZ, terrainY);
+  const riverMask = Math.max(
+    getSurvivalChunkRiverMask(chunk, worldX, worldZ),
+    getSurvivalRiverCarveAtWorld(worldX, worldZ).strength,
+  );
+  return {
+    worldX: Math.round(worldX),
+    worldZ: Math.round(worldZ),
+    chunk: chunk.key,
+    biome: chunk.biome,
+    villageKind: chunk.villageKind,
+    localX: Math.round(localX),
+    localZ: Math.round(localZ),
+    terrainY: Math.round(terrainY * 10) / 10,
+    restoredMeadowMask: Math.round(getSurvivalRestoredMeadowMask(worldX, worldZ) * 1000) / 1000,
+    routeMask: Math.round(getSurvivalTownRouteMask(worldX, worldZ) * 1000) / 1000,
+    riverMask: Math.round(riverMask * 1000) / 1000,
+    waterY: Math.round(getSurvivalWaterLevelAtWorld(worldX, worldZ) * 10) / 10,
+    baseBlocked: isBaseVillageLocalGrassBlocked(worldX, worldZ),
+    villageBlocked: isSurvivalVillageGrassBlocked(chunk, localX, localZ),
+    submerged: isSurvivalGrassSubmergedAtWorldPoint(chunk, worldX, worldZ, terrainY, 0.018, 0),
+    botwPlacement: Boolean(getSurvivalBotwGrassPlacement(worldX, worldZ, 0.26)),
+    carpetPlacement: Boolean(getSurvivalBotwGrassCarpetPlacement(worldX, worldZ)),
+    terrainColor: `#${terrainColor.getHexString()}`,
+  };
+}
+
+function installSurvivalGrassDebugSampler() {
+  if (typeof window === "undefined") return;
+  const debugWindow = window as unknown as {
+    __wofSurvivalGrassDebugAt?: (worldX: number, worldZ: number) => ReturnType<typeof getSurvivalGrassDebugSampleAt>;
+  };
+  debugWindow.__wofSurvivalGrassDebugAt = getSurvivalGrassDebugSampleAt;
 }
 
 function applySurvivalLocalGrassShader(
@@ -5325,12 +5534,12 @@ function getSurvivalBotwGrassTexture() {
   if (!context) return null;
 
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "rgba(255, 255, 255, 0.001)";
+  context.fillStyle = "rgba(255, 255, 255, 0)";
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.lineCap = "round";
   context.lineJoin = "round";
 
-  for (let blade = 0; blade < 44; blade += 1) {
+  for (let blade = 0; blade < 96; blade += 1) {
     const seedX = blade * 19 + 3;
     const seedZ = blade * 31 + 7;
     const baseX = 10 + survivalHash01(seedX, seedZ, 3000) * 108;
@@ -5339,8 +5548,8 @@ function getSurvivalBotwGrassTexture() {
     const tipY = 12 + survivalHash01(seedX, seedZ, 3300) * 32;
     const controlX = (baseX + tipX) * 0.5 + (survivalHash01(seedX, seedZ, 3400) - 0.5) * 34;
     const controlY = (baseY + tipY) * 0.5 - 18 - survivalHash01(seedX, seedZ, 3500) * 18;
-    const width = 1.35 + survivalHash01(seedX, seedZ, 3600) * 2.05;
-    const alpha = 0.48 + survivalHash01(seedX, seedZ, 3700) * 0.44;
+    const width = 1.55 + survivalHash01(seedX, seedZ, 3600) * 2.45;
+    const alpha = 0.56 + survivalHash01(seedX, seedZ, 3700) * 0.42;
 
     context.strokeStyle = `rgba(255, 255, 255, ${alpha.toFixed(3)})`;
     context.lineWidth = width;
@@ -5352,9 +5561,12 @@ function getSurvivalBotwGrassTexture() {
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.generateMipmaps = false;
+  texture.premultiplyAlpha = true;
   texture.needsUpdate = true;
   cachedSurvivalBotwGrassTexture = texture;
   return texture;
@@ -5428,12 +5640,12 @@ function getSurvivalBotwGrassInstanceColor(
 
 function shouldKeepSurvivalBotwGrassBareForDesert(chunk: SurvivalChunkInfo, worldX: number, worldZ: number) {
   if (chunk.biome !== "desert") return false;
-  if (getSurvivalRestoredMeadowMask(worldX, worldZ) > 0.015) return false;
+  return isStrictSurvivalDesertTerrainAtWorld(worldX, worldZ);
+}
 
-  const desertWeight = getSurvivalBiomeWeights(worldX, worldZ)
-    .filter(({ biome }) => biome === "desert")
-    .reduce((sum, { weight }) => sum + weight, 0);
-  return desertWeight > SURVIVAL_BOTW_GRASS_STRICT_DESERT_WEIGHT;
+function shouldSkipSurvivalBotwGrassForTownRoute(worldX: number, worldZ: number, threshold = 0.78) {
+  return isStrictSurvivalDesertTerrainAtWorld(worldX, worldZ) &&
+    getSurvivalTownRouteMask(worldX, worldZ) > threshold;
 }
 
 function getSurvivalBotwGrassPlacement(worldX: number, worldZ: number, minNormalY = 0.28) {
@@ -5571,8 +5783,8 @@ function makeSurvivalBotwGrassCarpetGeometry(centerX: number, centerZ: number, m
   const uvs: number[] = [];
   const indices: number[] = [];
   const color = new THREE.Color();
-  const meadowDark = new THREE.Color("#458f2b");
-  const meadowLight = new THREE.Color("#68bb3c");
+  const meadowDark = new THREE.Color("#3d872b");
+  const meadowLight = new THREE.Color("#62b83a");
 
   const pushVertex = (worldX: number, worldZ: number, y: number, vertexColor: THREE.Color) => {
     const vertexIndex = positions.length / 3;
@@ -5593,13 +5805,17 @@ function makeSurvivalBotwGrassCarpetGeometry(centerX: number, centerZ: number, m
       if (!placement && meadowMask <= 0.001) continue;
       const terrainY = placement?.terrainY ?? getSurvivalGrassSurfaceHeightAtWorld(centerWorldX, centerWorldZ);
 
-      const footprintStats = getSurvivalBotwGrassFootprintStats(centerWorldX, centerWorldZ, Math.min(1.35, step * 0.18));
-      if (footprintStats.heightRange > (meadowMask > 0.001 ? 999 : 24)) continue;
-
       const terrainColor = getSurvivalSmoothedTerrainColor(centerWorldX, centerWorldZ, terrainY);
-      color.copy(meadowDark).lerp(meadowLight, 0.32);
-      color.lerp(terrainColor, meadowMask > 0.001 ? 0.035 : 0.18);
-      color.multiplyScalar(0.97);
+      const carpetFiber = (
+        Math.sin(centerWorldX * 0.12 + centerWorldZ * 0.047) +
+        Math.cos(centerWorldZ * 0.095 - centerWorldX * 0.031) +
+        Math.sin((centerWorldX + centerWorldZ) * 0.062)
+      ) / 3;
+      const carpetSpeckle = survivalHash01(Math.floor(centerWorldX * 0.42), Math.floor(centerWorldZ * 0.42), 39240);
+      const carpetBlend = clamp01(0.22 + smoothstepRange(-0.56, 0.78, carpetFiber) * 0.34 + carpetSpeckle * 0.16);
+      color.copy(meadowDark).lerp(meadowLight, carpetBlend);
+      color.lerp(terrainColor, meadowMask > 0.001 ? 0.018 : 0.12);
+      color.multiplyScalar((meadowMask > 0.001 ? 0.92 : 0.96) + (carpetSpeckle - 0.5) * 0.04);
       color.r = clamp01(color.r);
       color.g = clamp01(color.g);
       color.b = clamp01(color.b);
@@ -5608,10 +5824,10 @@ function makeSurvivalBotwGrassCarpetGeometry(centerX: number, centerZ: number, m
       const z0 = centerZ - radius + row * step;
       const x1 = x0 + step;
       const z1 = z0 + step;
-      const y00 = getSurvivalGrassSurfaceHeightAtWorld(x0, z0) + 0.024;
-      const y10 = getSurvivalGrassSurfaceHeightAtWorld(x1, z0) + 0.024;
-      const y01 = getSurvivalGrassSurfaceHeightAtWorld(x0, z1) + 0.024;
-      const y11 = getSurvivalGrassSurfaceHeightAtWorld(x1, z1) + 0.024;
+      const y00 = getSurvivalGrassSurfaceHeightAtWorld(x0, z0) + 0.085;
+      const y10 = getSurvivalGrassSurfaceHeightAtWorld(x1, z0) + 0.085;
+      const y01 = getSurvivalGrassSurfaceHeightAtWorld(x0, z1) + 0.085;
+      const y11 = getSurvivalGrassSurfaceHeightAtWorld(x1, z1) + 0.085;
       const quadMinY = Math.min(y00, y10, y01, y11);
       const quadMaxY = Math.max(y00, y10, y01, y11);
       if (quadMaxY - quadMinY > (meadowMask > 0.001 ? 999 : 22)) continue;
@@ -5631,6 +5847,65 @@ function makeSurvivalBotwGrassCarpetGeometry(centerX: number, centerZ: number, m
   geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
   geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function makeSurvivalBotwGrassFiberLineGeometry(centerX: number, centerZ: number, mobilePerformanceMode: boolean) {
+  const radius = SURVIVAL_BOTW_GRASS_CARPET_RADIUS;
+  const targetCount = mobilePerformanceMode ? 12800 : 32000;
+  const candidateCount = Math.round(targetCount * 1.42);
+  const centerSeedX = Math.floor(centerX * 0.18);
+  const centerSeedZ = Math.floor(centerZ * 0.18);
+  const angleOffset = survivalHash01(centerSeedX, centerSeedZ, 39610) * Math.PI * 2;
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const dark = new THREE.Color("#225f1d");
+  const mid = new THREE.Color("#4f9f31");
+  const lift = new THREE.Color("#93d84c");
+  const color = new THREE.Color();
+
+  for (let candidate = 0; candidate < candidateCount && positions.length / 6 < targetCount; candidate += 1) {
+    const radial = Math.sqrt((candidate + 0.5) / candidateCount);
+    const angle = angleOffset + candidate * 2.399963229728653;
+    const jitter = (survivalHash01(centerSeedX + candidate * 11, centerSeedZ - candidate * 13, 39620) - 0.5) * 3.2;
+    const worldX = centerX + Math.cos(angle) * (radius * radial + jitter);
+    const worldZ = centerZ + Math.sin(angle) * (radius * radial + jitter);
+    if (Math.hypot(worldX - centerX, worldZ - centerZ) > radius) continue;
+
+    const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
+    const placement = getSurvivalBotwGrassCarpetPlacement(worldX, worldZ);
+    if (!placement && meadowMask <= 0.001) continue;
+
+    const terrainY = placement?.terrainY ?? getSurvivalGrassSurfaceHeightAtWorld(worldX, worldZ);
+    const strokeLength = lerpNumber(2.8, 6.4, survivalHash01(centerSeedX - candidate * 17, centerSeedZ + candidate * 19, 39630));
+    const strokeYaw = -0.72 + (survivalHash01(centerSeedX + candidate * 23, centerSeedZ, 39640) - 0.5) * 1.68;
+    const dx = Math.cos(strokeYaw) * strokeLength * 0.5;
+    const dz = Math.sin(strokeYaw) * strokeLength * 0.5;
+    const x0 = worldX - dx;
+    const z0 = worldZ - dz;
+    const x1 = worldX + dx;
+    const z1 = worldZ + dz;
+    const y0 = getSurvivalGrassSurfaceHeightAtWorld(x0, z0) + 0.13;
+    const y1 = getSurvivalGrassSurfaceHeightAtWorld(x1, z1) + 0.13;
+    if (Math.abs(y1 - y0) > 3.4) continue;
+
+    const shade = survivalHash01(centerSeedX, centerSeedZ + candidate * 29, 39650);
+    color.copy(dark).lerp(mid, 0.34 + shade * 0.42).lerp(lift, smoothstepRange(0.72, 1, shade) * 0.3);
+    color.multiplyScalar(0.86 + survivalHash01(centerSeedX - candidate, centerSeedZ + candidate, 39660) * 0.22);
+    color.r = clamp01(color.r);
+    color.g = clamp01(color.g);
+    color.b = clamp01(color.b);
+
+    positions.push(x0, y0, z0, x1, y1, z1);
+    colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
+  }
+
+  if (positions.length === 0) return null;
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
   geometry.computeBoundingSphere();
   return geometry;
 }
@@ -5655,7 +5930,7 @@ function makeSurvivalBotwFlowerInstances(
     const jitter = (survivalHash01(centerSeedX + candidate * 13, centerSeedZ - candidate * 19, 4900) - 0.5) * 2.2;
     const worldX = centerX + Math.cos(angle) * (radius * radial + jitter);
     const worldZ = centerZ + Math.sin(angle) * (radius * radial + jitter);
-    if (getSurvivalTownRouteMask(worldX, worldZ) > 0.78) continue;
+    if (shouldSkipSurvivalBotwGrassForTownRoute(worldX, worldZ)) continue;
 
     const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, 0.38);
     if (!placement) continue;
@@ -5744,7 +6019,7 @@ function makeSurvivalBotwGrassBladeInstances(
 ) {
   const radius = mobilePerformanceMode ? SURVIVAL_BOTW_GRASS_RADIUS * 0.82 : SURVIVAL_BOTW_GRASS_RADIUS;
   const maxInstances = mobilePerformanceMode ? SURVIVAL_BOTW_GRASS_MOBILE_COUNT : SURVIVAL_BOTW_GRASS_DESKTOP_COUNT;
-  const candidateCount = Math.round(maxInstances * 2.35);
+  const candidateCount = maxInstances;
   const centerSeedX = Math.floor(centerX * 0.25);
   const centerSeedZ = Math.floor(centerZ * 0.25);
   const angleOffset = survivalHash01(centerSeedX, centerSeedZ, 1850) * Math.PI * 2;
@@ -5764,7 +6039,9 @@ function makeSurvivalBotwGrassBladeInstances(
     const color = getSurvivalBotwGrassInstanceColor(placement.biome, worldX, worldZ, placement.terrainY, variant);
     const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
     const slopeCompression = lerpNumber(1, 0.72, smoothstepRange(0.34, 0.78, 1 - placement.normal.y));
-    const routeCompression = lerpNumber(1, 0.78, smoothstepRange(0.28, 0.64, routeMask));
+    const routeCompression = shouldKeepSurvivalBotwGrassBareForDesert(placement.chunk, worldX, worldZ)
+      ? lerpNumber(1, 0.78, smoothstepRange(0.28, 0.64, routeMask))
+      : 1;
     const baseHeight = (1.02 + survivalHash01(centerSeedX + candidate * 31, centerSeedZ, 2500) * 0.3 + meadowMask * 0.08) * slopeCompression * routeCompression;
     const baseWidth = 1.18 + survivalHash01(centerSeedX, centerSeedZ + candidate * 37, 2700) * 0.38;
     const footprintStats = getSurvivalBotwGrassFootprintStatsForPlacement(
@@ -5781,13 +6058,16 @@ function makeSurvivalBotwGrassBladeInstances(
       smoothstepRange(36, radius, distanceFromCenter),
     );
     if (footprintStats.baseY - centerY > heightLimit) continue;
+    const midDistanceFill = meadowMask * smoothstepRange(28, radius * 0.82, distanceFromCenter);
     const footprintCompression = lerpNumber(
       1,
       0.68,
       smoothstepRange(1.2, SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, footprintStats.heightRange),
     );
-    const height = baseHeight * footprintCompression;
-    const width = baseWidth * lerpNumber(1, 0.82, smoothstepRange(1.2, SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, footprintStats.heightRange));
+    const height = baseHeight * footprintCompression * lerpNumber(1, 1.28, midDistanceFill);
+    const width = baseWidth *
+      lerpNumber(1, 0.82, smoothstepRange(1.2, SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, footprintStats.heightRange)) *
+      lerpNumber(1, 1.62, midDistanceFill);
 
     instances.push({
       x: worldX,
@@ -5838,7 +6118,7 @@ function getSurvivalBotwGrassBuildContext(
     centerZ,
     radius,
     maxInstances,
-    candidateCount: Math.round(maxInstances * 2.35),
+    candidateCount: maxInstances,
     centerSeedX,
     centerSeedZ,
     angleOffset: survivalHash01(centerSeedX, centerSeedZ, 1850) * Math.PI * 2,
@@ -5890,9 +6170,19 @@ function makeSurvivalBotwGrassBladeCandidate(
   const color = getSurvivalBotwGrassInstanceColor(placement.biome, worldX, worldZ, placement.terrainY, variant);
   const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
   const slopeCompression = lerpNumber(1, 0.72, smoothstepRange(0.34, 0.78, 1 - placement.normal.y));
-  const routeCompression = lerpNumber(1, 0.78, smoothstepRange(0.28, 0.64, routeMask));
-  const baseHeight = (1.02 + survivalHash01(context.centerSeedX + candidate * 31, context.centerSeedZ, 2500) * 0.3 + meadowMask * 0.08) * slopeCompression * routeCompression;
-  const baseWidth = 1.18 + survivalHash01(context.centerSeedX, context.centerSeedZ + candidate * 37, 2700) * 0.38;
+  const routeCompression = shouldKeepSurvivalBotwGrassBareForDesert(placement.chunk, worldX, worldZ)
+    ? lerpNumber(1, 0.78, smoothstepRange(0.28, 0.64, routeMask))
+    : 1;
+  const meadowCoverageBoost = lerpNumber(1, 1.42, meadowMask);
+  const baseHeight = (
+    1.1 +
+    survivalHash01(context.centerSeedX + candidate * 31, context.centerSeedZ, 2500) * 0.34 +
+    meadowMask * 0.12
+  ) * slopeCompression * routeCompression * lerpNumber(1, 1.16, meadowMask);
+  const baseWidth = (
+    1.42 +
+    survivalHash01(context.centerSeedX, context.centerSeedZ + candidate * 37, 2700) * 0.54
+  ) * meadowCoverageBoost;
   const footprintStats = getSurvivalBotwGrassFootprintStatsForPlacement(
     worldX,
     worldZ,
@@ -5907,13 +6197,16 @@ function makeSurvivalBotwGrassBladeCandidate(
     smoothstepRange(36, context.radius, distanceFromCenter),
   );
   if (footprintStats.baseY - context.centerY > heightLimit) return null;
+  const midDistanceFill = meadowMask * smoothstepRange(28, context.radius * 0.82, distanceFromCenter);
   const footprintCompression = lerpNumber(
     1,
     0.68,
     smoothstepRange(1.2, SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, footprintStats.heightRange),
   );
-  const height = baseHeight * footprintCompression;
-  const width = baseWidth * lerpNumber(1, 0.82, smoothstepRange(1.2, SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, footprintStats.heightRange));
+  const height = baseHeight * footprintCompression * lerpNumber(1, 1.28, midDistanceFill);
+  const width = baseWidth *
+    lerpNumber(1, 0.82, smoothstepRange(1.2, SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, footprintStats.heightRange)) *
+    lerpNumber(1, 1.62, midDistanceFill);
 
   return {
     x: worldX,
@@ -5929,6 +6222,35 @@ function makeSurvivalBotwGrassBladeCandidate(
   };
 }
 
+function makeSurvivalBotwGrassBootstrapPreview(
+  center: SurvivalBotwGrassCenter,
+  mobilePerformanceMode: boolean,
+) {
+  const context = getSurvivalBotwGrassBuildContext(center.x, center.y, center.z, mobilePerformanceMode);
+  const targetCount = mobilePerformanceMode
+    ? SURVIVAL_BOTW_GRASS_BOOTSTRAP_MOBILE_COUNT
+    : SURVIVAL_BOTW_GRASS_BOOTSTRAP_DESKTOP_COUNT;
+  const previewContext = {
+    ...context,
+    radius: context.radius * (
+      mobilePerformanceMode
+        ? SURVIVAL_BOTW_GRASS_BOOTSTRAP_MOBILE_RADIUS_SCALE
+        : SURVIVAL_BOTW_GRASS_BOOTSTRAP_DESKTOP_RADIUS_SCALE
+    ),
+    maxInstances: targetCount,
+    candidateCount: Math.round(targetCount * SURVIVAL_BOTW_GRASS_BOOTSTRAP_CANDIDATE_MULTIPLIER),
+  };
+  const candidateLimit = previewContext.candidateCount;
+  const instances: SurvivalBotwGrassBladeInstance[] = [];
+
+  for (let candidate = 0; candidate < candidateLimit && instances.length < targetCount; candidate += 1) {
+    const instance = makeSurvivalBotwGrassBladeCandidate(previewContext, candidate);
+    if (instance) instances.push(instance);
+  }
+
+  return instances;
+}
+
 function makeSurvivalBotwFlowerCandidate(
   context: SurvivalBotwFlowerBuildContext,
   candidate: number,
@@ -5938,7 +6260,7 @@ function makeSurvivalBotwFlowerCandidate(
   const jitter = (survivalHash01(context.centerSeedX + candidate * 13, context.centerSeedZ - candidate * 19, 4900) - 0.5) * 2.2;
   const worldX = context.centerX + Math.cos(angle) * (context.radius * radial + jitter);
   const worldZ = context.centerZ + Math.sin(angle) * (context.radius * radial + jitter);
-  if (getSurvivalTownRouteMask(worldX, worldZ) > 0.78) return null;
+  if (shouldSkipSurvivalBotwGrassForTownRoute(worldX, worldZ)) return null;
 
   const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, 0.38);
   if (!placement) return null;
@@ -6216,6 +6538,8 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
   const publishedGrassBuildKeyRef = useRef<string | null>(null);
   const activeGrassUploadKeyRef = useRef<string | null>(null);
   const completedGrassUploadKeyRef = useRef<string | null>(null);
+  const publishedGrassBuildCompleteRef = useRef(false);
+  const debugSampleSecondRef = useRef(-1);
   const uploadPriorityRef = useRef<SurvivalBotwGrassUploadPriority>({
     viewerX: initialCenter.x,
     viewerZ: initialCenter.z,
@@ -6244,7 +6568,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
   const fadeUniforms = useMemo<SurvivalLocalGrassFadeUniforms>(() => ({
     viewerXZ: { value: new THREE.Vector2(initialCenter.x, initialCenter.z) },
     viewerY: { value: initialCenter.y },
-    radius: { value: SURVIVAL_BOTW_GRASS_RADIUS },
+    radius: { value: SURVIVAL_BOTW_GRASS_RADIUS + SURVIVAL_BOTW_GRASS_EDGE_FADE * 0.72 },
     fadeWidth: { value: SURVIVAL_BOTW_GRASS_EDGE_FADE },
     altitudeFade: { value: 1 },
     verticalFadeStart: { value: SURVIVAL_BOTW_GRASS_VERTICAL_FADE_START },
@@ -6259,6 +6583,19 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     verticalFadeStart: { value: SURVIVAL_BOTW_GRASS_VERTICAL_FADE_START },
     verticalFadeEnd: { value: SURVIVAL_BOTW_GRASS_VERTICAL_FADE_END },
   }), [initialCenter.x, initialCenter.y, initialCenter.z]);
+  const flowerFadeUniforms = useMemo<SurvivalLocalGrassFadeUniforms>(() => ({
+    viewerXZ: { value: new THREE.Vector2(initialCenter.x, initialCenter.z) },
+    viewerY: { value: initialCenter.y },
+    radius: { value: SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_RADIUS },
+    fadeWidth: { value: SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_FADE },
+    altitudeFade: { value: 1 },
+    verticalFadeStart: { value: SURVIVAL_BOTW_GRASS_VERTICAL_FADE_START },
+    verticalFadeEnd: { value: SURVIVAL_BOTW_GRASS_VERTICAL_FADE_END },
+  }), [initialCenter.x, initialCenter.y, initialCenter.z]);
+
+  useEffect(() => {
+    installSurvivalGrassDebugSampler();
+  }, []);
 
   const bladeInstancesRef = useRef<SurvivalBotwGrassBladeInstance[]>([]);
   const [bladeUploadVersion, setBladeUploadVersion] = useState(0);
@@ -6266,6 +6603,10 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     () => enabled && SURVIVAL_BOTW_GRASS_CARPET_ENABLED
       ? makeSurvivalBotwGrassCarpetGeometry(center.x, center.z, mobilePerformanceMode)
       : null,
+    [center.x, center.z, enabled, mobilePerformanceMode],
+  );
+  const fiberLineGeometry = useMemo(
+    () => null,
     [center.x, center.z, enabled, mobilePerformanceMode],
   );
   const [flowerInstances, setFlowerInstances] = useState<SurvivalBotwFlowerInstance[]>([]);
@@ -6282,6 +6623,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       publishedGrassBuildKeyRef.current = null;
       activeGrassUploadKeyRef.current = null;
       completedGrassUploadKeyRef.current = null;
+      publishedGrassBuildCompleteRef.current = false;
       bladeUploadProgressRef.current = 0;
       setBladeUploadVersion((version) => version + 1);
       setFlowerInstances([]);
@@ -6304,9 +6646,12 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     const startedAt = performance.now();
     let bladeCandidate = 0;
     let flowerCandidate = 0;
+    let lastPreviewPublishCount = 0;
+    let lastPreviewPublishAt = 0;
 
     if (publishedGrassBuildKeyRef.current !== buildKey) {
       hasPublishedGrassBuildRef.current = false;
+      publishedGrassBuildCompleteRef.current = false;
       bladeUploadProgressRef.current = 0;
       if (typeof document !== "undefined") {
         document.documentElement.dataset.wofBotwGrassBuildState = "building";
@@ -6320,9 +6665,14 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       }
     };
 
-    const publishBuild = (result: SurvivalBotwGrassBuildResult, fromCache = false) => {
+    const publishBuild = (result: SurvivalBotwGrassBuildResult, fromCache = false, complete = true) => {
       if (cancelled) return;
-      if (publishedGrassBuildKeyRef.current === buildKey && bladeInstancesRef.current.length > 0) {
+      if (
+        complete &&
+        publishedGrassBuildKeyRef.current === buildKey &&
+        publishedGrassBuildCompleteRef.current &&
+        bladeInstancesRef.current.length > 0
+      ) {
         hasPublishedGrassBuildRef.current = true;
         if (typeof document !== "undefined") {
           document.documentElement.dataset.wofBotwGrassBuildState = "ready";
@@ -6332,12 +6682,15 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
 
       hasPublishedGrassBuildRef.current = true;
       publishedGrassBuildKeyRef.current = buildKey;
+      publishedGrassBuildCompleteRef.current = complete;
       activeGrassUploadKeyRef.current = buildKey;
       const uploadPriority = uploadPriorityRef.current;
-      const prioritizedBladeInstances = getSurvivalBotwGrassUploadPrioritizedInstances(
-        result.bladeInstances,
-        uploadPriority,
-      );
+      const prioritizedBladeInstances = complete
+        ? result.bladeInstances
+        : getSurvivalBotwGrassUploadPrioritizedInstances(
+          result.bladeInstances,
+          uploadPriority,
+        );
       bladeInstancesRef.current = prioritizedBladeInstances;
       startTransition(() => {
         setBladeUploadVersion((version) => version + 1);
@@ -6346,7 +6699,9 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       if (typeof document !== "undefined") {
         document.documentElement.dataset.wofBotwGrassBuildKey = buildKey;
         document.documentElement.dataset.wofBotwGrassBuildMs = String(Math.round(result.buildMs));
-        document.documentElement.dataset.wofBotwGrassBuildState = fromCache ? "cached" : "ready";
+        document.documentElement.dataset.wofBotwGrassBuildState = complete
+          ? fromCache ? "cached" : "ready"
+          : "preview";
       }
     };
 
@@ -6359,6 +6714,17 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       };
     }
 
+    const bootstrapBladeInstances = makeSurvivalBotwGrassBootstrapPreview(center, mobilePerformanceMode);
+    if (bootstrapBladeInstances.length > 0) {
+      lastPreviewPublishCount = bootstrapBladeInstances.length;
+      lastPreviewPublishAt = performance.now() - startedAt;
+      publishBuild({
+        bladeInstances: bootstrapBladeInstances,
+        flowerInstances: [],
+        buildMs: lastPreviewPublishAt,
+      }, false, false);
+    }
+
     const runSlice = () => {
       if (timer !== null) {
         window.clearTimeout(timer);
@@ -6368,6 +6734,12 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
 
       const sliceStartedAt = performance.now();
       let workCount = 0;
+      const previewCount = mobilePerformanceMode
+        ? SURVIVAL_BOTW_GRASS_MOBILE_PREVIEW_COUNT
+        : SURVIVAL_BOTW_GRASS_DESKTOP_PREVIEW_COUNT;
+      const previewMinCount = mobilePerformanceMode
+        ? SURVIVAL_BOTW_GRASS_MOBILE_PREVIEW_MIN_COUNT
+        : SURVIVAL_BOTW_GRASS_DESKTOP_PREVIEW_MIN_COUNT;
       while (
         bladeCandidate < bladeContext.candidateCount &&
         nextBladeInstances.length < bladeContext.maxInstances &&
@@ -6390,6 +6762,28 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
         if (instance) nextFlowerInstances.push(instance);
         flowerCandidate += 1;
         workCount += 1;
+      }
+
+      const elapsedBuildMs = performance.now() - startedAt;
+      const hasEnoughFirstPreview =
+        !hasPublishedGrassBuildRef.current &&
+        (
+          nextBladeInstances.length >= previewCount ||
+          (nextBladeInstances.length >= previewMinCount && elapsedBuildMs >= SURVIVAL_BOTW_GRASS_PREVIEW_MAX_WAIT_MS)
+        );
+      const hasEnoughPreviewRefresh =
+        hasPublishedGrassBuildRef.current &&
+        !publishedGrassBuildCompleteRef.current &&
+        nextBladeInstances.length >= lastPreviewPublishCount + SURVIVAL_BOTW_GRASS_PREVIEW_REFRESH_COUNT &&
+        elapsedBuildMs - lastPreviewPublishAt >= SURVIVAL_BOTW_GRASS_PREVIEW_REFRESH_MS;
+      if (hasEnoughFirstPreview || hasEnoughPreviewRefresh) {
+        lastPreviewPublishCount = nextBladeInstances.length;
+        lastPreviewPublishAt = elapsedBuildMs;
+        publishBuild({
+          bladeInstances: nextBladeInstances.slice(),
+          flowerInstances: [],
+          buildMs: performance.now() - startedAt,
+        }, false, false);
       }
 
       const doneBlades = bladeCandidate >= bladeContext.candidateCount || nextBladeInstances.length >= bladeContext.maxInstances;
@@ -6730,7 +7124,8 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
         const nextBuildKey = getSurvivalBotwGrassBuildKey(nextCenter, mobilePerformanceMode);
         const nextBuildReady = hasCachedSurvivalBotwGrassBuild(nextBuildKey) ||
           publishedGrassBuildKeyRef.current === nextBuildKey;
-        if (!nextBuildReady) continue;
+        const canEmergencyBootstrapViewerCenter = recenterEmergency && nextCenter === viewerCenter;
+        if (!nextBuildReady && !canEmergencyBootstrapViewerCenter) continue;
         const nextViewerDistance = Math.hypot(viewerPosition.x - nextCenter.x, viewerPosition.z - nextCenter.z);
         const nextTargetDistance = Math.hypot(predictedX - nextCenter.x, predictedZ - nextCenter.z);
         const centerMoveX = nextCenter.x - currentCenter.x;
@@ -6784,6 +7179,19 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       document.documentElement.dataset.wofBotwGrassTargetDistance = String(Math.round(targetDistanceFromGrassCenter));
       document.documentElement.dataset.wofBotwGrassViewerDistance = String(Math.round(viewerDistanceFromGrassCenter));
       document.documentElement.dataset.wofBotwGrassUploadRatio = bladeUploadProgressRef.current.toFixed(2);
+      if (window.location.search.includes("qaPerfStats=1") || window.location.search.includes("qaGrassView=1")) {
+        const debugSecond = Math.floor(clock.elapsedTime);
+        if (debugSampleSecondRef.current !== debugSecond) {
+          debugSampleSecondRef.current = debugSecond;
+          const offsets = [-40, -10, 15, 40, 70, 100, 135, 175, 220, 270];
+          document.documentElement.dataset.wofBotwGrassDebugLine = JSON.stringify(
+            offsets.map((offset) => ({
+              offset,
+              ...getSurvivalGrassDebugSampleAt(viewerPosition.x + offset, viewerPosition.z),
+            })),
+          );
+        }
+      }
     }
 
     const groundY = getSurvivalGrassSurfaceHeightAtWorld(viewerPosition.x, viewerPosition.z);
@@ -6791,7 +7199,11 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     const airMix = smoothstepRange(32, 180, altitude);
     fadeUniforms.viewerXZ.value.set(viewerPosition.x, viewerPosition.z);
     fadeUniforms.viewerY.value = viewerPosition.y;
-    fadeUniforms.radius.value = lerpNumber(SURVIVAL_BOTW_GRASS_RADIUS, SURVIVAL_BOTW_GRASS_AIR_RADIUS, airMix);
+    fadeUniforms.radius.value = lerpNumber(
+      SURVIVAL_BOTW_GRASS_RADIUS + SURVIVAL_BOTW_GRASS_EDGE_FADE * 0.72,
+      SURVIVAL_BOTW_GRASS_AIR_RADIUS + SURVIVAL_BOTW_GRASS_EDGE_FADE * 0.92,
+      airMix,
+    );
     fadeUniforms.fadeWidth.value = lerpNumber(SURVIVAL_BOTW_GRASS_EDGE_FADE, SURVIVAL_BOTW_GRASS_EDGE_FADE * 1.55, airMix);
     fadeUniforms.altitudeFade.value = 1 - smoothstepRange(
       SURVIVAL_LOCAL_GRASS_HIGH_ALTITUDE_FADE_START,
@@ -6803,6 +7215,19 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     carpetFadeUniforms.radius.value = lerpNumber(SURVIVAL_BOTW_GRASS_CARPET_RADIUS, SURVIVAL_BOTW_GRASS_CARPET_AIR_RADIUS, airMix);
     carpetFadeUniforms.fadeWidth.value = lerpNumber(SURVIVAL_BOTW_GRASS_CARPET_EDGE_FADE, SURVIVAL_BOTW_GRASS_CARPET_EDGE_FADE * 1.35, airMix);
     carpetFadeUniforms.altitudeFade.value = fadeUniforms.altitudeFade.value;
+    flowerFadeUniforms.viewerXZ.value.set(viewerPosition.x, viewerPosition.z);
+    flowerFadeUniforms.viewerY.value = viewerPosition.y;
+    flowerFadeUniforms.radius.value = lerpNumber(
+      SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_RADIUS,
+      SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_RADIUS * 1.36,
+      airMix,
+    );
+    flowerFadeUniforms.fadeWidth.value = lerpNumber(
+      SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_FADE,
+      SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_FADE * 1.22,
+      airMix,
+    );
+    flowerFadeUniforms.altitudeFade.value = fadeUniforms.altitudeFade.value;
   });
 
   if (!enabled) return null;
@@ -6823,18 +7248,33 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
             vertexColors
             side={THREE.FrontSide}
             transparent
-            opacity={1}
+            opacity={0.42}
             depthWrite={false}
             depthTest
             polygonOffset
-            polygonOffsetFactor={-2}
-            polygonOffsetUnits={-2}
+            polygonOffsetFactor={-5}
+            polygonOffsetUnits={-5}
             toneMapped={false}
             onBeforeCompile={(shader) => {
               applySurvivalLocalGrassShader(shader, carpetFadeUniforms);
             }}
           />
         </mesh>
+      )}
+      {fiberLineGeometry && (
+        <lineSegments geometry={fiberLineGeometry} renderOrder={3.4} frustumCulled={false} userData={HIDE_FROM_MINIMAP}>
+          <lineBasicMaterial
+            vertexColors
+            transparent
+            opacity={0.96}
+            depthWrite={false}
+            depthTest
+            toneMapped={false}
+            onBeforeCompile={(shader) => {
+              applySurvivalLocalGrassShader(shader, carpetFadeUniforms);
+            }}
+          />
+        </lineSegments>
       )}
       <instancedMesh
         ref={bladeMeshRef}
@@ -6849,7 +7289,7 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
           side={THREE.DoubleSide}
           transparent
           opacity={0.98}
-          alphaTest={0.18}
+          alphaTest={0.14}
           depthWrite={false}
           depthTest
           toneMapped={false}
@@ -6881,7 +7321,7 @@ ${shader.vertexShader}`;
               depthTest
               toneMapped={false}
               onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms);
+                applySurvivalLocalGrassShader(shader, flowerFadeUniforms);
               }}
             />
           </instancedMesh>
@@ -6894,7 +7334,7 @@ ${shader.vertexShader}`;
               depthTest
               toneMapped={false}
               onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
+                applySurvivalLocalGrassShader(shader, flowerFadeUniforms, "", 2, 12);
               }}
             />
           </instancedMesh>
@@ -6906,7 +7346,7 @@ ${shader.vertexShader}`;
               depthTest
               toneMapped={false}
               onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
+                applySurvivalLocalGrassShader(shader, flowerFadeUniforms, "", 2, 12);
               }}
             />
           </instancedMesh>
@@ -6918,7 +7358,7 @@ ${shader.vertexShader}`;
               depthTest
               toneMapped={false}
               onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
+                applySurvivalLocalGrassShader(shader, flowerFadeUniforms, "", 2, 12);
               }}
             />
           </instancedMesh>
@@ -6930,7 +7370,7 @@ ${shader.vertexShader}`;
               depthTest
               toneMapped={false}
               onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
+                applySurvivalLocalGrassShader(shader, flowerFadeUniforms, "", 2, 12);
               }}
             />
           </instancedMesh>
@@ -6942,7 +7382,7 @@ ${shader.vertexShader}`;
               depthTest
               toneMapped={false}
               onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
+                applySurvivalLocalGrassShader(shader, flowerFadeUniforms, "", 2, 12);
               }}
             />
           </instancedMesh>
@@ -8541,16 +8981,26 @@ function getCachedSurvivalTutorialGrassStrandGeometry(cell: SurvivalTutorialGras
 }
 
 function makeSurvivalTutorialGrassBladeGeometry(cell: SurvivalTutorialGrassCell) {
+  const cellMeadowMask = getSurvivalRestoredMeadowMask(
+    cell.x + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
+    cell.z + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
+  );
   const distanceFade = 1 - smoothstepRange(
     SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS,
     SURVIVAL_TUTORIAL_GRASS_AIR_RADIUS + SURVIVAL_TUTORIAL_GRASS_EDGE_FADE,
     cell.densityDistance,
   );
   const nearDensity = 1 - smoothstepRange(30, SURVIVAL_TUTORIAL_GRASS_BLADE_DENSITY_DISTANCE, cell.densityDistance);
+  const restoredDensityBoost = lerpNumber(
+    1,
+    cell.lod === "near" ? 1.34 : 1.68,
+    smoothstepRange(0.06, 0.36, cellMeadowMask),
+  );
   const targetCount = Math.round(
-    cell.lod === "near"
+    (cell.lod === "near"
       ? SURVIVAL_TUTORIAL_GRASS_NEAR_BLADE_BASE_COUNT + SURVIVAL_TUTORIAL_GRASS_NEAR_BLADE_EXTRA_COUNT * nearDensity
-      : SURVIVAL_TUTORIAL_GRASS_MID_BLADE_BASE_COUNT + SURVIVAL_TUTORIAL_GRASS_MID_BLADE_EXTRA_COUNT * distanceFade,
+      : SURVIVAL_TUTORIAL_GRASS_MID_BLADE_BASE_COUNT + SURVIVAL_TUTORIAL_GRASS_MID_BLADE_EXTRA_COUNT * distanceFade) *
+      restoredDensityBoost,
   );
   if (targetCount <= 0) return null;
 
@@ -8600,13 +9050,13 @@ function makeSurvivalTutorialGrassBladeGeometry(cell: SurvivalTutorialGrassCell)
     const localZ = ((row + jitterZ) / gridSize) * SURVIVAL_TUTORIAL_GRASS_CELL_SIZE;
     const worldX = cell.x + localX;
     const worldZ = cell.z + localZ;
-    const footprint = cell.lod === "near" ? 0.08 : 0.22;
-    const placement = getSurvivalLocalGrassPlacement(worldX, worldZ, 0.02, footprint, 0.48);
+    const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
+    const footprint = lerpNumber(cell.lod === "near" ? 0.08 : 0.22, 0.025, meadowMask);
+    const placement = getSurvivalLocalGrassPlacement(worldX, worldZ, 0.02, footprint, lerpNumber(0.48, 0.32, meadowMask));
     if (!placement) continue;
 
     const terrainY = placement.terrainY;
     const biome = placement.biome;
-    const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
     const variant = survivalHash01(cell.cellX, cell.cellZ, 45320 + index);
     const heightRoll = survivalHash01(cell.cellX, cell.cellZ, 45360 + index);
     const widthRoll = survivalHash01(cell.cellX, cell.cellZ, 45400 + index);
@@ -8817,8 +9267,7 @@ function makeSurvivalTutorialGrassCarpetGeometry(cell: SurvivalTutorialGrassCell
       const centerWorldZ = cell.z + (row + 0.5) * step;
       const placement = getSurvivalLocalGrassPlacement(centerWorldX, centerWorldZ, 0.025, Math.min(1.2, step * 0.12), 0.34);
       const meadowMask = getSurvivalRestoredMeadowMask(centerWorldX, centerWorldZ);
-      const routeMask = getSurvivalTownRouteMask(centerWorldX, centerWorldZ);
-      if (!placement && (meadowMask <= 0.18 || routeMask > 0.96)) continue;
+      if (!placement && meadowMask <= 0.18) continue;
       const terrainY = placement?.terrainY ?? getSurvivalGrassSurfaceHeightAtWorld(centerWorldX, centerWorldZ);
       const biome = placement?.biome ?? getSurvivalGrassSurfaceBiome(
         getSurvivalChunkInfoAtWorld(centerWorldX, centerWorldZ).biome,
@@ -8867,11 +9316,22 @@ function makeSurvivalTutorialGrassCarpetGeometry(cell: SurvivalTutorialGrassCell
 }
 
 function makeSurvivalTutorialGrassStrandGeometry(cell: SurvivalTutorialGrassCell) {
-  if (cell.lod !== "near") return null;
-
-  const nearDensity = 1 - smoothstepRange(20, SURVIVAL_TUTORIAL_GRASS_STRAND_DISTANCE, cell.densityDistance);
-  if (nearDensity <= 0) return null;
-  const targetCount = Math.round(lerpNumber(5200, 11200, nearDensity));
+  const cellMeadowMask = getSurvivalRestoredMeadowMask(
+    cell.x + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
+    cell.z + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
+  );
+  const meadowBoost = smoothstepRange(0.05, 0.36, cellMeadowMask);
+  const effectiveDensityDistance = cell.densityDistance * lerpNumber(1, 0.7, meadowBoost);
+  const strandDensity = cell.lod === "near"
+    ? 1 - smoothstepRange(20, SURVIVAL_TUTORIAL_GRASS_STRAND_DISTANCE, effectiveDensityDistance)
+    : 1 - smoothstepRange(118, SURVIVAL_TUTORIAL_GRASS_MID_STRAND_DISTANCE, effectiveDensityDistance);
+  if (strandDensity <= 0) return null;
+  const targetCount = Math.round(
+    (cell.lod === "near"
+      ? lerpNumber(520, 1360, strandDensity)
+      : lerpNumber(160, 640, strandDensity)) *
+    lerpNumber(1, 1.18, meadowBoost),
+  );
   const gridSize = Math.max(2, Math.ceil(Math.sqrt(targetCount * 1.04)));
   const attempts = gridSize * gridSize;
   const sampleOffset = Math.floor(survivalHash01(cell.cellX, cell.cellZ, 36520) * attempts);
@@ -8895,14 +9355,24 @@ function makeSurvivalTutorialGrassStrandGeometry(cell: SurvivalTutorialGrassCell
     const z = ((row + jitterZ) / gridSize) * SURVIVAL_TUTORIAL_GRASS_CELL_SIZE;
     const worldX = cell.x + x;
     const worldZ = cell.z + z;
-    const placement = getSurvivalLocalGrassPlacement(worldX, worldZ, 0.018, 0.12, 0.5);
+    const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
+    const placement = getSurvivalLocalGrassPlacement(
+      worldX,
+      worldZ,
+      0.018,
+      lerpNumber(cell.lod === "near" ? 0.12 : 0.2, 0.024, meadowMask),
+      lerpNumber(0.5, 0.32, meadowMask),
+    );
     if (!placement) continue;
 
     const terrainY = placement.terrainY;
     const biome = placement.biome;
-    const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
     const variant = survivalHash01(cell.cellX, cell.cellZ, 36640 + index);
-    const height = lerpNumber(0.34, 0.68, survivalHash01(cell.cellX, cell.cellZ, 36680 + index)) *
+    const height = (
+      cell.lod === "near"
+        ? lerpNumber(0.34, 0.68, survivalHash01(cell.cellX, cell.cellZ, 36680 + index))
+        : lerpNumber(0.32, 0.58, survivalHash01(cell.cellX, cell.cellZ, 36680 + index))
+    ) *
       lerpNumber(0.94, 1.08, meadowMask);
     const leanAngle = survivalHash01(cell.cellX, cell.cellZ, 36720 + index) * Math.PI * 2;
     const lean = lerpNumber(0.06, 0.26, survivalHash01(cell.cellX, cell.cellZ, 36760 + index));
@@ -8912,7 +9382,9 @@ function makeSurvivalTutorialGrassStrandGeometry(cell: SurvivalTutorialGrassCell
     const tipY = baseY + height;
     const sideX = Math.cos(leanAngle + Math.PI * 0.5);
     const sideZ = Math.sin(leanAngle + Math.PI * 0.5);
-    const width = lerpNumber(0.025, 0.075, survivalHash01(cell.cellX, cell.cellZ, 36780 + index));
+    const width = cell.lod === "near"
+      ? lerpNumber(0.025, 0.075, survivalHash01(cell.cellX, cell.cellZ, 36780 + index))
+      : lerpNumber(0.024, 0.058, survivalHash01(cell.cellX, cell.cellZ, 36780 + index));
     const midX = lerpNumber(worldX, tipX, 0.58) + sideX * (survivalHash01(cell.cellX, cell.cellZ, 36790 + index) - 0.5) * 0.058;
     const midY = lerpNumber(baseY, tipY, 0.62);
     const midZ = lerpNumber(worldZ, tipZ, 0.58) + sideZ * (survivalHash01(cell.cellX, cell.cellZ, 36795 + index) - 0.5) * 0.058;
@@ -9242,10 +9714,7 @@ function SurvivalTutorialGrassBatchTile({
     () => mergeSurvivalGrassGeometries(batch.cells.map((cell) => getCachedSurvivalTutorialGrassBladeGeometry(cell)), true),
     [batchSignature],
   );
-  const underpaintGeometry = useMemo(
-    () => mergeSurvivalGrassGeometries(batch.cells.map((cell) => getCachedSurvivalTutorialGrassCarpetGeometry(cell)), true),
-    [batchSignature],
-  );
+  const underpaintGeometry = null;
   const localFlowers = useMemo<SurvivalTutorialGrassFlowerInstance[]>(
     () => batch.cells.flatMap((cell) => getCachedSurvivalTutorialGrassFlowerInstances(cell, mobilePerformanceMode)),
     [batchSignature, mobilePerformanceMode],
@@ -9491,7 +9960,6 @@ function SurvivalTutorialGrassCellTile({
   fadeUniforms: SurvivalLocalGrassFadeUniforms;
   windUniform: { value: number };
 }) {
-  const carpetRef = useRef<THREE.Mesh>(null);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const flowerStemRef = useRef<THREE.InstancedMesh>(null);
   const flowerStarBloomRef = useRef<THREE.InstancedMesh>(null);
@@ -9502,19 +9970,14 @@ function SurvivalTutorialGrassCellTile({
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const normal = useMemo(() => new THREE.Vector3(0, 1, 0), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
-  const carpetTexture = useMemo(() => getSurvivalMeadowGrassCarpetTexture(), []);
-  const carpetGeometry = useMemo(
-    () => makeSurvivalTutorialGrassCarpetGeometry(cell),
-    [cell.cellX, cell.cellZ, cell.lod, cell.x, cell.z],
-  );
-  const strandGeometry = useMemo(
-    () => makeSurvivalTutorialGrassStrandGeometry(cell),
-    [cell.cellX, cell.cellZ, cell.densityDistance, cell.lod, cell.x, cell.z],
-  );
   const flowerStarGeometry = useMemo(() => getSurvivalLocalFlowerStarGeometry(7), []);
   const grassGeometry = useMemo(
     () => getSurvivalTutorialGrassTuftGeometry(cell.lod === "near" ? 8 : 5),
     [cell.lod],
+  );
+  const strandGeometry = useMemo(
+    () => getCachedSurvivalTutorialGrassStrandGeometry(cell),
+    [cell.cellX, cell.cellZ, cell.densityDistance, cell.lod, cell.x, cell.z],
   );
   const tufts = useMemo<SurvivalTutorialGrassTuft[]>(() => {
     const distanceFade = 1 - smoothstepRange(
@@ -9522,11 +9985,21 @@ function SurvivalTutorialGrassCellTile({
       SURVIVAL_TUTORIAL_GRASS_AIR_RADIUS + SURVIVAL_TUTORIAL_GRASS_EDGE_FADE,
       cell.densityDistance,
     );
-    const nearBoost = 1 - smoothstepRange(90, 205, cell.densityDistance);
-    const targetCount = Math.round(
-      (cell.lod === "near" ? 680 : 132) *
-      (0.46 + distanceFade * 0.9 + nearBoost * 0.54),
-    );
+  const nearBoost = 1 - smoothstepRange(90, 205, cell.densityDistance);
+  const cellMeadowMask = getSurvivalRestoredMeadowMask(
+    cell.x + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
+    cell.z + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
+  );
+  const restoredDensityBoost = lerpNumber(
+    1,
+    cell.lod === "near" ? 1.22 : 1.46,
+    smoothstepRange(0.06, 0.36, cellMeadowMask),
+  );
+  const targetCount = Math.round(
+    (cell.lod === "near" ? 740 : 500) *
+    (0.46 + distanceFade * 0.9 + nearBoost * 0.54) *
+    restoredDensityBoost,
+  );
     if (targetCount <= 0) return [];
 
     const generated: SurvivalTutorialGrassTuft[] = [];
@@ -9544,10 +10017,16 @@ function SurvivalTutorialGrassCellTile({
       const z = ((row + jitterZ) / gridSize) * SURVIVAL_TUTORIAL_GRASS_CELL_SIZE;
       const worldX = cell.x + x;
       const worldZ = cell.z + z;
-      const placement = getSurvivalLocalGrassPlacement(worldX, worldZ, 0.035, cell.lod === "near" ? 0.22 : 0.42, 0.36);
+      const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
+      const placement = getSurvivalLocalGrassPlacement(
+        worldX,
+        worldZ,
+        0.035,
+        lerpNumber(cell.lod === "near" ? 0.22 : 0.42, 0.045, meadowMask),
+        lerpNumber(0.36, 0.28, meadowMask),
+      );
       if (!placement) continue;
 
-      const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
       const variant = survivalHash01(cell.cellX, cell.cellZ, 36320 + index);
       const color = getSurvivalGrassBladeColor(placement.biome, worldX, worldZ, placement.terrainY, variant);
       if (placement.biome !== "desert" && placement.biome !== "swamp") {
@@ -9562,10 +10041,10 @@ function SurvivalTutorialGrassCellTile({
       const shape = survivalHash01(cell.cellX, cell.cellZ, 36400 + index);
       const height = (cell.lod === "near"
         ? lerpNumber(0.5, 0.9, shape)
-        : lerpNumber(0.42, 0.82, shape)) * lerpNumber(0.92, 1.12, meadowMask);
+        : lerpNumber(0.46, 0.86, shape)) * lerpNumber(0.92, 1.12, meadowMask);
       const width = (cell.lod === "near"
         ? lerpNumber(0.92, 1.75, survivalHash01(cell.cellX, cell.cellZ, 36440 + index))
-        : lerpNumber(1.3, 2.5, survivalHash01(cell.cellX, cell.cellZ, 36440 + index))) * lerpNumber(0.9, 1.16, meadowMask);
+        : lerpNumber(1.55, 2.9, survivalHash01(cell.cellX, cell.cellZ, 36440 + index))) * lerpNumber(0.9, 1.16, meadowMask);
 
       generated.push({
         x,
@@ -9826,7 +10305,7 @@ function SurvivalTutorialGrassCellTile({
     );
   }, [bellFlowers, cell.x, cell.z, dummy, localFlowers, normal, puffFlowers, roundFlowers, starFlowers]);
 
-  if (!carpetGeometry && !strandGeometry && tufts.length === 0 && localFlowers.length === 0) return null;
+  if (!strandGeometry && tufts.length === 0 && localFlowers.length === 0) return null;
 
   const flowerCapacity = Math.max(1, localFlowers.length);
   const starFlowerCapacity = Math.max(1, starFlowers.length);
@@ -9836,35 +10315,14 @@ function SurvivalTutorialGrassCellTile({
 
   return (
     <group name={`survival-tutorial-grass-cell-${cell.key}`} userData={HIDE_FROM_MINIMAP}>
-      {carpetGeometry && (
-        <mesh ref={carpetRef} geometry={carpetGeometry} renderOrder={2.4} frustumCulled={false}>
-          <meshBasicMaterial
-            map={carpetTexture}
-            color="#ffffff"
-            vertexColors
-            side={THREE.DoubleSide}
-            transparent
-            opacity={1}
-            depthWrite={false}
-            polygonOffset
-            polygonOffsetFactor={-1.5}
-            polygonOffsetUnits={-1.5}
-            toneMapped={false}
-            onBeforeCompile={(shader) => {
-              applySurvivalLocalGrassShader(shader, fadeUniforms);
-            }}
-          />
-        </mesh>
-      )}
       {strandGeometry && (
-        <mesh geometry={strandGeometry} renderOrder={3.6} frustumCulled={false} userData={HIDE_FROM_MINIMAP}>
+        <mesh geometry={strandGeometry} renderOrder={3.8} frustumCulled={false} userData={HIDE_FROM_MINIMAP}>
           <meshBasicMaterial
             color="#ffffff"
             vertexColors
             side={THREE.DoubleSide}
-            transparent
-            opacity={0.48}
-            depthWrite={false}
+            depthWrite
+            depthTest
             toneMapped={false}
             onBeforeCompile={(shader) => {
               applySurvivalLocalGrassShader(shader, fadeUniforms);
@@ -9878,9 +10336,8 @@ function SurvivalTutorialGrassCellTile({
             color="#ffffff"
             vertexColors
             side={THREE.DoubleSide}
-            transparent
-            opacity={0.82}
-            depthWrite={false}
+            depthWrite
+            depthTest
             toneMapped={false}
             onBeforeCompile={(shader) => {
               shader.uniforms.uTime = windUniform;
@@ -10003,7 +10460,7 @@ function SurvivalTutorialGrassField({ disabled = false }: { disabled?: boolean }
   const fadeUniforms = useMemo<SurvivalLocalGrassFadeUniforms>(() => ({
     viewerXZ: { value: new THREE.Vector2(initialCenter.x, initialCenter.z) },
     viewerY: { value: "y" in initialCenter && typeof initialCenter.y === "number" ? initialCenter.y : 12 },
-    radius: { value: SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS },
+    radius: { value: SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS + SURVIVAL_TUTORIAL_GRASS_EDGE_FADE * 0.85 },
     fadeWidth: { value: SURVIVAL_TUTORIAL_GRASS_EDGE_FADE },
     altitudeFade: { value: 1 },
     verticalFadeStart: { value: 32 },
@@ -10034,8 +10491,8 @@ function SurvivalTutorialGrassField({ disabled = false }: { disabled?: boolean }
     fadeUniforms.viewerXZ.value.set(worldX, worldZ);
     fadeUniforms.viewerY.value = viewerPosition.y;
     fadeUniforms.radius.value = lerpNumber(
-      SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS,
-      SURVIVAL_TUTORIAL_GRASS_AIR_RADIUS,
+      SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS + SURVIVAL_TUTORIAL_GRASS_EDGE_FADE * 0.85,
+      SURVIVAL_TUTORIAL_GRASS_AIR_RADIUS + SURVIVAL_TUTORIAL_GRASS_EDGE_FADE,
       airMix,
     );
     fadeUniforms.fadeWidth.value = lerpNumber(
@@ -12957,8 +13414,6 @@ function SurvivalScatterProps({ chunk }: { chunk: SurvivalChunkInfo }) {
   const showDenseSolidTrees = treeLoadStage >= 4;
   const showDetailTrees = treeLoadStage >= 5 && chunk.distance === 0 && !mobilePerformanceMode;
   const showAmbientLife = treeLoadStage >= 1;
-  const showRockOutcrops = treeLoadStage >= 1;
-  const showLandmarks = treeLoadStage >= 2;
   const localGrassOwnsMeadowDetail =
     SURVIVAL_GRASS_SYSTEM_ENABLED &&
     chunk.biome !== "desert" &&
@@ -12966,8 +13421,10 @@ function SurvivalScatterProps({ chunk }: { chunk: SurvivalChunkInfo }) {
       chunk.biome === "tallgrass" ||
       isSurvivalRestoredMeadowWaterSuppressed(chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.58)
     );
+  const showRockOutcrops = treeLoadStage >= 1 && !localGrassOwnsMeadowDetail;
+  const showLandmarks = treeLoadStage >= 2;
   const showChunkWildflowers = showAmbientLife && !SURVIVAL_GRASS_SYSTEM_ENABLED && !localGrassOwnsMeadowDetail;
-  const showAmbientInsects = showAmbientLife && !localGrassOwnsMeadowDetail;
+  const showAmbientInsects = false;
   const showFernClusters = showBushes && !localGrassOwnsMeadowDetail;
   const showBushClusters = showBushes && !localGrassOwnsMeadowDetail;
   const showBirds = false;
@@ -13165,8 +13622,7 @@ function SurvivalWaterFeatures({ chunk }: { chunk: SurvivalChunkInfo }) {
   const waterOpacity = getSurvivalWaterOpacityForBiome(chunk.biome);
   const shoreOpacity = getSurvivalShoreOpacityForBiome(chunk.biome);
   const suppressRestoredMeadowWater = SURVIVAL_GRASS_SYSTEM_ENABLED &&
-    chunk.biome !== "swamp" &&
-    isSurvivalRestoredMeadowWaterSuppressed(chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.72);
+    isSurvivalRestoredMeadowWaterSuppressed(chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 1.36);
   const riverGeometry = useMemo(
     () => chunk.hasRiver && !suppressRestoredMeadowWater ? makeSurvivalRiverSurfaceGeometry(chunk) : null,
     [chunk.key, chunk.hasRiver, suppressRestoredMeadowWater],
@@ -13687,7 +14143,10 @@ function DesertVillageSurface({
   chunk: SurvivalChunkInfo;
 }) {
   const sandTexture = useMemo(() => getDesertSandTexture(), []);
-  const isRestoredMeadowSurface = getSurvivalRestoredMeadowMask(chunk.x, chunk.z) > 0.02;
+  const hasMeadowOverlap = isSurvivalRestoredMeadowWaterSuppressed(chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.58);
+  const isStrictDesertSurface = chunk.biome === "desert" &&
+    isStrictSurvivalDesertTerrainAtWorld(chunk.x, chunk.z) &&
+    !hasMeadowOverlap;
   const northSouthRoadGeometry = useMemo(
     () => makeDesertVillageSurfaceStripGeometry(chunk, 48, SURVIVAL_BLOCK_SIZE - 4, 0, 0.18),
     [chunk],
@@ -13715,7 +14174,7 @@ function DesertVillageSurface({
     { key: "diagonal-b-right", geometry: makeDesertVillageSurfaceStripGeometry(chunk, 5, 360, -Math.PI / 4, 0.2, 18), opacity: 0.62 },
   ], [chunk]);
 
-  if (isRestoredMeadowSurface) {
+  if (!isStrictDesertSurface) {
     return null;
   }
 
@@ -13736,54 +14195,54 @@ function DesertVillageSurface({
         />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.08, 0]}>
-        <circleGeometry args={[66, 36]} />
-        <meshBasicMaterial map={sandTexture} color="#d7a15c" />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.16, 0]}>
-        <ringGeometry args={[67, 74, 36]} />
-        <meshBasicMaterial color="#4b3020" transparent opacity={0.66} depthWrite={false} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.1, 0]}>
-        <ringGeometry args={[118, 128, 56]} />
-        <meshBasicMaterial map={sandTexture} color="#cb8f4c" />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.17, 0]}>
-        <ringGeometry args={[110, 115, 56]} />
-        <meshBasicMaterial color="#4b3020" transparent opacity={0.68} depthWrite={false} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.18, 0]}>
-        <ringGeometry args={[131, 137, 56]} />
-        <meshBasicMaterial color="#4b3020" transparent opacity={0.64} depthWrite={false} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.11, 0]}>
-        <ringGeometry args={[188, 198, 72]} />
-        <meshBasicMaterial map={sandTexture} color="#c28749" />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.19, 0]}>
-        <ringGeometry args={[180, 184, 72]} />
-        <meshBasicMaterial color="#4b3020" transparent opacity={0.64} depthWrite={false} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.2, 0]}>
-        <ringGeometry args={[202, 207, 72]} />
-        <meshBasicMaterial color="#4b3020" transparent opacity={0.6} depthWrite={false} />
-      </mesh>
-      <mesh geometry={northSouthRoadGeometry}>
-        <meshBasicMaterial map={sandTexture} color="#d49f5d" />
-      </mesh>
-      <mesh geometry={eastWestRoadGeometry}>
-        <meshBasicMaterial map={sandTexture} color="#d49f5d" />
-      </mesh>
-      <mesh geometry={diagonalRoadAGeometry}>
-        <meshBasicMaterial map={sandTexture} color="#c9884b" transparent opacity={0.78} />
-      </mesh>
-      <mesh geometry={diagonalRoadBGeometry}>
-        <meshBasicMaterial map={sandTexture} color="#c9884b" transparent opacity={0.78} />
-      </mesh>
-      {sidewalkGeometries.map((sidewalk) => (
-        <mesh key={sidewalk.key} geometry={sidewalk.geometry}>
-          <meshBasicMaterial color="#3f281a" transparent opacity={sidewalk.opacity} depthWrite={false} />
-        </mesh>
-      ))}
+            <circleGeometry args={[66, 36]} />
+            <meshBasicMaterial map={sandTexture} color="#d7a15c" />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.16, 0]}>
+            <ringGeometry args={[67, 74, 36]} />
+            <meshBasicMaterial color="#4b3020" transparent opacity={0.66} depthWrite={false} />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.1, 0]}>
+            <ringGeometry args={[118, 128, 56]} />
+            <meshBasicMaterial map={sandTexture} color="#cb8f4c" />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.17, 0]}>
+            <ringGeometry args={[110, 115, 56]} />
+            <meshBasicMaterial color="#4b3020" transparent opacity={0.68} depthWrite={false} />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.18, 0]}>
+            <ringGeometry args={[131, 137, 56]} />
+            <meshBasicMaterial color="#4b3020" transparent opacity={0.64} depthWrite={false} />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.11, 0]}>
+            <ringGeometry args={[188, 198, 72]} />
+            <meshBasicMaterial map={sandTexture} color="#c28749" />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.19, 0]}>
+            <ringGeometry args={[180, 184, 72]} />
+            <meshBasicMaterial color="#4b3020" transparent opacity={0.64} depthWrite={false} />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, baseHeight + 0.2, 0]}>
+            <ringGeometry args={[202, 207, 72]} />
+            <meshBasicMaterial color="#4b3020" transparent opacity={0.6} depthWrite={false} />
+          </mesh>
+          <mesh geometry={northSouthRoadGeometry}>
+            <meshBasicMaterial map={sandTexture} color="#d49f5d" />
+          </mesh>
+          <mesh geometry={eastWestRoadGeometry}>
+            <meshBasicMaterial map={sandTexture} color="#d49f5d" />
+          </mesh>
+          <mesh geometry={diagonalRoadAGeometry}>
+            <meshBasicMaterial map={sandTexture} color="#c9884b" transparent opacity={0.78} />
+          </mesh>
+          <mesh geometry={diagonalRoadBGeometry}>
+            <meshBasicMaterial map={sandTexture} color="#c9884b" transparent opacity={0.78} />
+          </mesh>
+          {sidewalkGeometries.map((sidewalk) => (
+            <mesh key={sidewalk.key} geometry={sidewalk.geometry}>
+              <meshBasicMaterial color="#3f281a" transparent opacity={sidewalk.opacity} depthWrite={false} />
+            </mesh>
+          ))}
     </group>
   );
 }
@@ -26088,7 +26547,7 @@ function getSurvivalMeadowGrassCarpetTexture() {
   const ctx = canvas.getContext("2d");
   if (ctx) {
     ctx.imageSmoothingEnabled = true;
-    ctx.fillStyle = "#55a832";
+    ctx.fillStyle = "#3f8f2f";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     for (let grain = 0; grain < canvas.width * canvas.height; grain += 1) {
@@ -26097,15 +26556,15 @@ function getSurvivalMeadowGrassCarpetTexture() {
       const noise = getDarrelPetalNoise(grain, 21202);
       const alpha = 0.004 + noise * 0.014;
       ctx.fillStyle = noise > 0.54
-        ? `rgba(128,207,68,${alpha})`
-        : `rgba(40,111,34,${alpha})`;
+        ? `rgba(115,196,58,${alpha})`
+        : `rgba(28,88,28,${alpha})`;
       ctx.fillRect(x, y, 1, 1);
     }
 
-    for (let fiber = 0; fiber < 24000; fiber += 1) {
+    for (let fiber = 0; fiber < 36000; fiber += 1) {
       const baseX = getDarrelPetalNoise(fiber, 21210) * canvas.width;
       const baseY = getDarrelPetalNoise(fiber, 21211) * canvas.height;
-      const length = 6 + Math.pow(getDarrelPetalNoise(fiber, 21212), 0.8) * 24;
+      const length = 10 + Math.pow(getDarrelPetalNoise(fiber, 21212), 0.8) * 34;
       const angle = -Math.PI * 0.5 + (getDarrelPetalNoise(fiber, 21213) - 0.5) * 1.28;
       const bend = (getDarrelPetalNoise(fiber, 21214) - 0.5) * length * 0.28;
       const tipX = baseX + Math.cos(angle) * length + bend * 0.22;
@@ -26114,11 +26573,11 @@ function getSurvivalMeadowGrassCarpetTexture() {
       const midY = (baseY + tipY) * 0.5 - getDarrelPetalNoise(fiber, 21215) * 2.4;
       const bladeShade = getDarrelPetalNoise(fiber, 21216);
       ctx.strokeStyle = bladeShade > 0.72
-        ? `rgba(130,213,64,${0.1 + getDarrelPetalNoise(fiber, 21217) * 0.13})`
+        ? `rgba(152,225,70,${0.18 + getDarrelPetalNoise(fiber, 21217) * 0.2})`
         : bladeShade > 0.34
-          ? `rgba(82,172,48,${0.13 + getDarrelPetalNoise(fiber, 21218) * 0.13})`
-          : `rgba(34,112,32,${0.1 + getDarrelPetalNoise(fiber, 21221) * 0.12})`;
-      ctx.lineWidth = getDarrelPetalNoise(fiber, 21219) > 0.82 ? 1.05 : 0.64;
+          ? `rgba(78,170,44,${0.22 + getDarrelPetalNoise(fiber, 21218) * 0.18})`
+          : `rgba(20,78,24,${0.18 + getDarrelPetalNoise(fiber, 21221) * 0.18})`;
+      ctx.lineWidth = getDarrelPetalNoise(fiber, 21219) > 0.82 ? 1.28 : 0.82;
       ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(baseX, baseY);
@@ -27892,6 +28351,49 @@ function SurvivalProceduralWorld({ showBaseVillage }: { showBaseVillage: boolean
     () => makeSurvivalChunks(centerChunk.cx, centerChunk.cz, !showBaseVillage, chunkStreamRadius),
     [centerChunk, showBaseVillage, chunkStreamRadius],
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined" || chunks.length === 0) return undefined;
+
+    let cancelled = false;
+    let task: SurvivalScheduledBackgroundTask | null = null;
+    let timer: number | null = null;
+    let index = 0;
+    const chunksToPrewarm = chunks.slice();
+
+    const runPrewarmSlice = () => {
+      task = null;
+      if (cancelled) return;
+
+      const startedAt = performance.now();
+      let warmed = 0;
+      while (
+        index < chunksToPrewarm.length &&
+        warmed < 2 &&
+        performance.now() - startedAt < 3.5
+      ) {
+        prewarmSurvivalChunkGeometry(chunksToPrewarm[index]);
+        index += 1;
+        warmed += 1;
+      }
+
+      if (index < chunksToPrewarm.length) {
+        timer = window.setTimeout(() => {
+          timer = null;
+          task = scheduleSurvivalBackgroundTask(runPrewarmSlice, 900);
+        }, 90);
+      }
+    };
+
+    task = scheduleSurvivalBackgroundTask(runPrewarmSlice, 900);
+
+    return () => {
+      cancelled = true;
+      task?.cancel();
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [chunks]);
+
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
@@ -28033,6 +28535,7 @@ function SurvivalProceduralWorld({ showBaseVillage }: { showBaseVillage: boolean
         />
       ))}
       <SurvivalBotwGrassField disabled={isLilyCoilRealmCenter(centerChunk.cx, centerChunk.cz)} />
+      <SurvivalTutorialGrassField disabled={isLilyCoilRealmCenter(centerChunk.cx, centerChunk.cz)} />
       <SurvivalLocalGrassField disabled />
       <SurvivalWorldWillows centerChunk={centerChunk} />
     </group>

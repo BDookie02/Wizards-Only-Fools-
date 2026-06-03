@@ -30,6 +30,10 @@ const FLOOR_RECOVERY_RAY_DOWN = 28;
 const FLOOR_RECOVERY_TRIGGER_DEPTH = 0.22;
 const FLOOR_RECOVERY_MAX_LIFT = 24;
 const FLOOR_RECOVERY_VERTICAL_SETTLE = 0.08;
+const FLOOR_DEEP_RECOVERY_TRIGGER_Y = -12;
+const FLOOR_DEEP_RECOVERY_RAY_UP = 260;
+const FLOOR_DEEP_RECOVERY_RAY_DOWN = 420;
+const FLOOR_DEEP_RECOVERY_MAX_LIFT = 320;
 const GROUND_PROBE_ORIGIN_LIFT = 0.3;
 const GROUND_PROBE_CAST_DISTANCE = 0.76;
 const GROUND_PROBE_MAX_TOI = 0.68;
@@ -4333,7 +4337,26 @@ export function PlayerController() {
       if (isCrouching) setIsCrouching(false);
     }
 
-    if (!vclipActive && !climbingLadder && !hasGroundHit && velocity.y < -0.35 && !jumpHeld && !grabbedState.current) {
+    const survivalDeepRecoveryNeeded = isSurvivalGameMode(storeState.gameMode) && pos.y < FLOOR_DEEP_RECOVERY_TRIGGER_Y;
+    if (!vclipActive && !climbingLadder && !hasGroundHit && (velocity.y < -0.35 || survivalDeepRecoveryNeeded) && !jumpHeld && !grabbedState.current) {
+      const recoverToFloor = (floorY: number, maxLift: number) => {
+        const correctedY = floorY + PLAYER_FOOT_OFFSET + FLOOR_RECOVERY_VERTICAL_SETTLE;
+        const lift = correctedY - pos.y;
+        if (lift <= FLOOR_RECOVERY_TRIGGER_DEPTH || lift >= maxLift) return false;
+
+        rigidBody.current.setTranslation({ x: pos.x, y: correctedY, z: pos.z }, true);
+        rigidBody.current.setLinvel({ x: velocity.x, y: 0, z: velocity.z }, true);
+        camera.position.set(pos.x, correctedY + (isSliding ? PLAYER_SLIDE_CAMERA_HEIGHT : isCrouching ? PLAYER_CROUCH_CAMERA_HEIGHT : PLAYER_CAMERA_HEIGHT), pos.z);
+        (window as any).localPlayerPos = { x: pos.x, y: correctedY, z: pos.z };
+        window.dispatchEvent(new CustomEvent('player-state', {
+          detail: { isMoving: hasMovementInput, isSprinting, isSliding: false, isCrouching, isGrounded: true, isMeditating: false }
+        }));
+        window.dispatchEvent(new CustomEvent('player-moved', { detail: { x: pos.x, y: correctedY, z: pos.z, angle: yaw, isMoving: hasMovementInput, grounded: true } }));
+        if (isSliding) setIsSliding(false);
+        setJumps(0);
+        return true;
+      };
+
       const recoveryRayOriginY = pos.y + FLOOR_RECOVERY_RAY_UP;
       const recoveryRay = new rapier.Ray(
         { x: pos.x, y: recoveryRayOriginY, z: pos.z },
@@ -4353,20 +4376,30 @@ export function PlayerController() {
 
       if (recoveryHit) {
         const floorY = recoveryRayOriginY - recoveryHit.timeOfImpact;
-        const correctedY = floorY + PLAYER_FOOT_OFFSET + FLOOR_RECOVERY_VERTICAL_SETTLE;
-        const lift = correctedY - pos.y;
-        if (lift > FLOOR_RECOVERY_TRIGGER_DEPTH && lift < FLOOR_RECOVERY_MAX_LIFT) {
-          rigidBody.current.setTranslation({ x: pos.x, y: correctedY, z: pos.z }, true);
-          rigidBody.current.setLinvel({ x: velocity.x, y: 0, z: velocity.z }, true);
-          camera.position.set(pos.x, correctedY + (isSliding ? PLAYER_SLIDE_CAMERA_HEIGHT : isCrouching ? PLAYER_CROUCH_CAMERA_HEIGHT : PLAYER_CAMERA_HEIGHT), pos.z);
-          (window as any).localPlayerPos = { x: pos.x, y: correctedY, z: pos.z };
-          window.dispatchEvent(new CustomEvent('player-state', {
-            detail: { isMoving: hasMovementInput, isSprinting, isSliding: false, isCrouching, isGrounded: true, isMeditating: false }
-          }));
-          window.dispatchEvent(new CustomEvent('player-moved', { detail: { x: pos.x, y: correctedY, z: pos.z, angle: yaw, isMoving: hasMovementInput, grounded: true } }));
-          if (isSliding) setIsSliding(false);
-          setJumps(0);
-          return;
+        if (recoverToFloor(floorY, FLOOR_RECOVERY_MAX_LIFT)) return;
+      }
+
+      if (survivalDeepRecoveryNeeded) {
+        const deepRecoveryRayOriginY = pos.y + FLOOR_DEEP_RECOVERY_RAY_UP;
+        const deepRecoveryRay = new rapier.Ray(
+          { x: pos.x, y: deepRecoveryRayOriginY, z: pos.z },
+          { x: 0, y: -1, z: 0 },
+        );
+        // @ts-ignore - rapier exposes the collider predicate in this overload.
+        const deepRecoveryHit = world.castRay(
+          deepRecoveryRay,
+          FLOOR_DEEP_RECOVERY_RAY_UP + FLOOR_DEEP_RECOVERY_RAY_DOWN,
+          true,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          isSolidWorldCollider,
+        );
+
+        if (deepRecoveryHit) {
+          const floorY = deepRecoveryRayOriginY - deepRecoveryHit.timeOfImpact;
+          if (recoverToFloor(floorY, FLOOR_DEEP_RECOVERY_MAX_LIFT)) return;
         }
       }
     }
