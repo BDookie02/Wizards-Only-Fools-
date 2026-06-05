@@ -23,12 +23,12 @@ const PLAYER_COLLIDER_HALF_HEIGHT = 0.65;
 const PLAYER_COLLIDER_RADIUS = 0.5;
 const PLAYER_FOOT_OFFSET = PLAYER_COLLIDER_HALF_HEIGHT + PLAYER_COLLIDER_RADIUS;
 const PLAYER_CAMERA_HEIGHT = 1.08;
-const PLAYER_SLIDE_CAMERA_HEIGHT = 0.12;
+const PLAYER_SLIDE_CAMERA_HEIGHT = 0.52;
 const PLAYER_CROUCH_CAMERA_HEIGHT = 0.52;
-const FLOOR_RECOVERY_RAY_UP = 5.8;
-const FLOOR_RECOVERY_RAY_DOWN = 28;
-const FLOOR_RECOVERY_TRIGGER_DEPTH = 0.22;
-const FLOOR_RECOVERY_MAX_LIFT = 24;
+const FLOOR_RECOVERY_RAY_UP = 96;
+const FLOOR_RECOVERY_RAY_DOWN = 188;
+const FLOOR_RECOVERY_TRIGGER_DEPTH = 0.04;
+const FLOOR_RECOVERY_MAX_LIFT = 96;
 const FLOOR_RECOVERY_VERTICAL_SETTLE = 0.08;
 const FLOOR_DEEP_RECOVERY_TRIGGER_Y = -12;
 const FLOOR_DEEP_RECOVERY_RAY_UP = 260;
@@ -784,6 +784,15 @@ function isQaSurvivalWalkEnabled() {
   return new URLSearchParams(window.location.search).get("qaSurvivalWalk") === "1";
 }
 
+function getQaSurvivalWalkStartDelaySeconds() {
+  if (!import.meta.env.DEV || typeof window === "undefined") return 0;
+  const params = new URLSearchParams(window.location.search);
+  const rawDelay = params.get("qaSurvivalWalkDelay") ?? params.get("qaWalkDelay") ?? "0";
+  const delayMs = Number(rawDelay);
+  if (!Number.isFinite(delayMs) || delayMs <= 0) return 0;
+  return THREE.MathUtils.clamp(delayMs / 1000, 0, 60);
+}
+
 function getQaSurvivalRouteWaypoints() {
   if (!import.meta.env.DEV || typeof window === "undefined") return [] as QaSurvivalRouteWaypoint[];
   const params = new URLSearchParams(window.location.search);
@@ -916,6 +925,7 @@ export function PlayerController() {
   const getHealth = () => useGameStore.getState().health;
   const initialPlayerPosition = useMemo(() => getInitialPlayerPosition(), []);
   const qaSurvivalWalkEnabled = useMemo(() => isQaSurvivalWalkEnabled(), []);
+  const qaSurvivalWalkStartDelaySeconds = useMemo(() => getQaSurvivalWalkStartDelaySeconds(), []);
   const forcedSpawnKey = useRef<string | null>(null);
   const qaWalkStartTime = useRef<number | null>(null);
   const qaWalkYaw = useRef<number | null>(null);
@@ -2414,6 +2424,18 @@ export function PlayerController() {
       }
 
       const elapsed = state.clock.elapsedTime - qaWalkStartTime.current;
+      const qaTravelElapsed = Math.max(0, elapsed - qaSurvivalWalkStartDelaySeconds);
+      if (qaSurvivalWalkStartDelaySeconds > 0 && elapsed < qaSurvivalWalkStartDelaySeconds) {
+        qaWalkInputState.current = { forward: 0, strafe: 0, sprint: false, mode: "travel" };
+        if (typeof document !== "undefined") {
+          document.documentElement.dataset.wofQaWalkMode = "delay";
+          document.documentElement.dataset.wofQaWalkForward = "0.00";
+          document.documentElement.dataset.wofQaWalkStrafe = "0.00";
+          document.documentElement.dataset.wofQaWalkSprint = "0";
+          document.documentElement.dataset.wofQaWalkAction = `delay:${Math.max(0, qaSurvivalWalkStartDelaySeconds - elapsed).toFixed(1)}`;
+        }
+        return;
+      }
       const currentForward = new THREE.Vector3();
       camera.getWorldDirection(currentForward);
       const currentYaw = Math.atan2(currentForward.x, -currentForward.z);
@@ -2437,12 +2459,13 @@ export function PlayerController() {
       if (qaRouteActive && typeof document !== "undefined") {
         const grassUploadProgress = document.documentElement.dataset.wofBotwGrassUploadProgress;
         const grassUploadRatio = Number(document.documentElement.dataset.wofBotwGrassUploadRatio || 0);
-        const grassBuildState = document.documentElement.dataset.wofBotwGrassBuildState;
+        const progressMatch = grassUploadProgress?.match(/^(\d+)\/(\d+)$/);
+        const uploadedGrassCount = progressMatch ? Number(progressMatch[1]) : 0;
+        const expectedGrassCount = progressMatch ? Number(progressMatch[2]) : 0;
         const grassReady =
-          grassUploadProgress === "20000/20000" ||
           grassUploadRatio >= 0.98 ||
-          grassBuildState === "cached";
-        if (!grassReady && elapsed < 12) {
+          (expectedGrassCount > 0 && uploadedGrassCount >= expectedGrassCount);
+        if (!grassReady && qaTravelElapsed < 12) {
           qaWalkInputState.current = { forward: 0, strafe: 0, sprint: false, mode: "travel" };
           document.documentElement.dataset.wofQaWalkMode = "warmup";
           document.documentElement.dataset.wofQaWalkForward = "0.00";
@@ -4337,8 +4360,10 @@ export function PlayerController() {
       if (isCrouching) setIsCrouching(false);
     }
 
-    const survivalDeepRecoveryNeeded = isSurvivalGameMode(storeState.gameMode) && pos.y < FLOOR_DEEP_RECOVERY_TRIGGER_Y;
-    if (!vclipActive && !climbingLadder && !hasGroundHit && (velocity.y < -0.35 || survivalDeepRecoveryNeeded) && !jumpHeld && !grabbedState.current) {
+    const survivalModeActive = isSurvivalGameMode(storeState.gameMode);
+    const survivalDeepRecoveryNeeded = survivalModeActive && pos.y < FLOOR_DEEP_RECOVERY_TRIGGER_Y;
+    const survivalSurfaceRecoveryNeeded = survivalModeActive && !hasGroundHit;
+    if (!vclipActive && !climbingLadder && !hasGroundHit && (velocity.y < -0.35 || survivalDeepRecoveryNeeded || survivalSurfaceRecoveryNeeded) && !jumpHeld && !grabbedState.current) {
       const recoverToFloor = (floorY: number, maxLift: number) => {
         const correctedY = floorY + PLAYER_FOOT_OFFSET + FLOOR_RECOVERY_VERTICAL_SETTLE;
         const lift = correctedY - pos.y;
