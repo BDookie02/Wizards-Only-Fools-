@@ -1,0 +1,5796 @@
+[
+  {
+    "id": "darrel-patched",
+    "label": "Darrel Grove / dragon route patched",
+    "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1",
+    "sampleCount": 26,
+    "screenshots": {
+      "start": "C:\\Users\\jojos\\Desktop\\projects\\Wizards only fools\\wizards-only-fools! quen test\\playtest-screenshots\\full-sweep-darrel-patched-start.png",
+      "end": "C:\\Users\\jojos\\Desktop\\projects\\Wizards only fools\\wizards-only-fools! quen test\\playtest-screenshots\\full-sweep-darrel-patched-end.png"
+    },
+    "modes": [
+      "approach",
+      "act"
+    ],
+    "intents": [
+      "darrel-dragon:darrel-dragon:178",
+      "darrel-dragon:darrel-dragon:171",
+      "darrel-dragon:darrel-dragon:164",
+      "darrel-dragon:darrel-dragon:156",
+      "darrel-dragon:darrel-dragon:149",
+      "darrel-dragon:darrel-dragon:142",
+      "darrel-dragon:darrel-dragon:135",
+      "darrel-dragon:darrel-dragon:127",
+      "darrel-dragon:darrel-dragon:120",
+      "darrel-dragon:darrel-dragon:112",
+      "darrel-dragon:darrel-dragon:104",
+      "darrel-dragon:darrel-dragon:96",
+      "darrel-dragon:darrel-dragon:89",
+      "darrel-dragon:darrel-dragon:22",
+      "darrel-dragon:darrel-dragon:15",
+      "darrel-dragon:darrel-dragon:13",
+      "darrel-dragon:darrel-dragon:16",
+      "darrel-dragon:darrel-dragon:14",
+      "darrel-dragon:darrel-dragon:11"
+    ],
+    "abnormalities": [],
+    "recoveries": [],
+    "movementDistance": 187.48367928969185,
+    "speed": {
+      "min": 5.41,
+      "max": 8
+    },
+    "clearance": {
+      "min": 13.5,
+      "minView": 12.5,
+      "minOverhead": 4.8
+    },
+    "perf": {
+      "maxRecentMs": 764.9,
+      "stutter50Start": 12,
+      "stutter50End": 0,
+      "stutter100Start": 6,
+      "stutter100End": 0,
+      "last": {
+        "avgMs": 16.69,
+        "frames": 720,
+        "maxMs": 31.2,
+        "p95Ms": 16.9,
+        "recentMaxMs": 17.2,
+        "stutter100": 0,
+        "stutter50": 0
+      }
+    },
+    "grass": {
+      "center": "20,-21",
+      "localCells": 25,
+      "radius": 864,
+      "streamCenter": "12,-12",
+      "streamRadius": 5,
+      "survivalChunks": 97
+    },
+    "mana": {
+      "cooldowns": "",
+      "count": 62,
+      "lastCollect": "",
+      "ready": 62,
+      "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+    },
+    "dummies": {
+      "alive": 0,
+      "health": "",
+      "hits": null,
+      "lastHit": "",
+      "qaCast": ""
+    },
+    "firstQa": {
+      "abnormality": "",
+      "action": "",
+      "clearance": 13.5,
+      "intent": "darrel-dragon:darrel-dragon:178",
+      "lilyDirection": "",
+      "lilyT": "",
+      "localPos": "88.5,32.8,166.1",
+      "mode": "approach",
+      "observed": "mana:62|dummies:0|quests:0",
+      "overheadClearance": 4.8,
+      "pos": "6232.5,32.8,-5977.9",
+      "practiceCast": "",
+      "recoveryReason": "",
+      "speed": 8,
+      "stuckStrikes": 0,
+      "targetDistance": 178.3,
+      "viewClearance": 12.5,
+      "waypoint": "6154,-6138",
+      "yawError": 0.12
+    },
+    "lastQa": {
+      "abnormality": "",
+      "action": "dialog:darrel-close",
+      "clearance": 13.5,
+      "intent": "darrel-dragon:darrel-dragon:11",
+      "lilyDirection": "",
+      "lilyT": "",
+      "localPos": "12.3,33.6,-5.2",
+      "mode": "act",
+      "observed": "mana:62|dummies:0|quests:0",
+      "overheadClearance": 4.8,
+      "pos": "6156.3,33.6,-6149.2",
+      "practiceCast": "",
+      "recoveryReason": "",
+      "speed": 8,
+      "stuckStrikes": 0,
+      "targetDistance": 11.5,
+      "viewClearance": 12.5,
+      "waypoint": "6154,-6138",
+      "yawError": 0
+    },
+    "consoleIssues": [
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      }
+    ],
+    "samples": [
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 1,
+          "survivalChunks": 9
+        },
+        "localParts": [
+          88.5,
+          32.8,
+          166.1
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 137.95,
+          "frames": 16,
+          "maxMs": 764.9,
+          "p95Ms": 764.9,
+          "recentMaxMs": 764.9,
+          "stutter100": 6,
+          "stutter50": 12
+        },
+        "player": {
+          "position": "6232,33,-5978",
+          "x": 6232,
+          "y": 33,
+          "z": -5978
+        },
+        "posParts": [
+          6232.5,
+          32.8,
+          -5977.9
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:178",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "88.5,32.8,166.1",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6232.5,32.8,-5977.9",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 178.3,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0.12
+        },
+        "t": 1780175826431,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6232 Z:-5976",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-20",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 2,
+          "survivalChunks": 21
+        },
+        "localParts": [
+          89.1,
+          19.1,
+          157.9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 54.6,
+          "frames": 59,
+          "maxMs": 764.9,
+          "p95Ms": 170.3,
+          "recentMaxMs": 764.9,
+          "stutter100": 7,
+          "stutter50": 16
+        },
+        "player": {
+          "position": "6233,19,-5986",
+          "x": 6233,
+          "y": 19,
+          "z": -5986
+        },
+        "posParts": [
+          6233.1,
+          19.1,
+          -5986.1
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:171",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "89.1,19.1,157.9",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6233.1,19.1,-5986.1",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.92,
+          "stuckStrikes": 0,
+          "targetDistance": 171.2,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175827489,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6233 Z:-5985",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-20",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 3,
+          "survivalChunks": 37
+        },
+        "localParts": [
+          89.1,
+          19.1,
+          149.4
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 39.25,
+          "frames": 108,
+          "maxMs": 764.9,
+          "p95Ms": 104.9,
+          "recentMaxMs": 764.9,
+          "stutter100": 7,
+          "stutter50": 16
+        },
+        "player": {
+          "position": "6233,19,-5995",
+          "x": 6233,
+          "y": 19,
+          "z": -5995
+        },
+        "posParts": [
+          6233.1,
+          19.1,
+          -5994.6
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:164",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "89.1,19.1,149.4",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6233.1,19.1,-5994.6",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.92,
+          "stuckStrikes": 0,
+          "targetDistance": 163.8,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175828542,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6233 Z:-5994",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-20",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 3,
+          "survivalChunks": 37
+        },
+        "localParts": [
+          89,
+          19.1,
+          141.1
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 35.65,
+          "frames": 147,
+          "maxMs": 764.9,
+          "p95Ms": 99.6,
+          "recentMaxMs": 70.8,
+          "stutter100": 7,
+          "stutter50": 17
+        },
+        "player": {
+          "position": "6233,19,-6003",
+          "x": 6233,
+          "y": 19,
+          "z": -6003
+        },
+        "posParts": [
+          6233,
+          19.1,
+          -6002.9
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:156",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "89.0,19.1,141.1",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6233.0,19.1,-6002.9",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.91,
+          "stuckStrikes": 0,
+          "targetDistance": 156.5,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175829612,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6233 Z:-6001",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-20",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 4,
+          "survivalChunks": 61
+        },
+        "localParts": [
+          88.8,
+          19.1,
+          132.8
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 32.03,
+          "frames": 195,
+          "maxMs": 764.9,
+          "p95Ms": 77.2,
+          "recentMaxMs": 59.4,
+          "stutter100": 7,
+          "stutter50": 18
+        },
+        "player": {
+          "position": "6233,19,-6011",
+          "x": 6233,
+          "y": 19,
+          "z": -6011
+        },
+        "posParts": [
+          6232.8,
+          19.1,
+          -6011.2
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:149",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "88.8,19.1,132.8",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6232.8,19.1,-6011.2",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.91,
+          "stuckStrikes": 0,
+          "targetDistance": 149.2,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175830647,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6233 Z:-6011",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-20",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 4,
+          "survivalChunks": 61
+        },
+        "localParts": [
+          88.1,
+          19.1,
+          124.6
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 28.43,
+          "frames": 255,
+          "maxMs": 764.9,
+          "p95Ms": 64.2,
+          "recentMaxMs": 59.4,
+          "stutter100": 7,
+          "stutter50": 18
+        },
+        "player": {
+          "position": "6232,19,-6019",
+          "x": 6232,
+          "y": 19,
+          "z": -6019
+        },
+        "posParts": [
+          6232.1,
+          19.1,
+          -6019.4
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:142",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "88.1,19.1,124.6",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6232.1,19.1,-6019.4",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.9,
+          "stuckStrikes": 0,
+          "targetDistance": 142,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175831680,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6232 Z:-6019",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-20",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 4,
+          "survivalChunks": 61
+        },
+        "localParts": [
+          87.1,
+          19.1,
+          116.6
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 26.16,
+          "frames": 316,
+          "maxMs": 764.9,
+          "p95Ms": 52.6,
+          "recentMaxMs": 17.2,
+          "stutter100": 7,
+          "stutter50": 18
+        },
+        "player": {
+          "position": "6231,19,-6027",
+          "x": 6231,
+          "y": 19,
+          "z": -6027
+        },
+        "posParts": [
+          6231.1,
+          19.1,
+          -6027.4
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:135",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "87.1,19.1,116.6",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6231.1,19.1,-6027.4",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.9,
+          "stuckStrikes": 0,
+          "targetDistance": 134.8,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175832699,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6231 Z:-6027",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-20",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          85.4,
+          19.1,
+          108.4
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 24.62,
+          "frames": 377,
+          "maxMs": 764.9,
+          "p95Ms": 47.7,
+          "recentMaxMs": 22.3,
+          "stutter100": 7,
+          "stutter50": 18
+        },
+        "player": {
+          "position": "6229,19,-6036",
+          "x": 6229,
+          "y": 19,
+          "z": -6036
+        },
+        "posParts": [
+          6229.4,
+          19.1,
+          -6035.6
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:127",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "85.4,19.1,108.4",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6229.4,19.1,-6035.6",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.89,
+          "stuckStrikes": 0,
+          "targetDistance": 127.2,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175833745,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6230 Z:-6035",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          83.3,
+          19.1,
+          100.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 23.53,
+          "frames": 437,
+          "maxMs": 764.9,
+          "p95Ms": 43.4,
+          "recentMaxMs": 22.3,
+          "stutter100": 7,
+          "stutter50": 18
+        },
+        "player": {
+          "position": "6227,19,-6043",
+          "x": 6227,
+          "y": 19,
+          "z": -6043
+        },
+        "posParts": [
+          6227.3,
+          19.1,
+          -6043.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:120",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "83.3,19.1,100.5",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6227.3,19.1,-6043.5",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.9,
+          "stuckStrikes": 0,
+          "targetDistance": 119.6,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175834777,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6227 Z:-6043",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          80.9,
+          19.1,
+          92.7
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 22.69,
+          "frames": 498,
+          "maxMs": 764.9,
+          "p95Ms": 38.8,
+          "recentMaxMs": 18.7,
+          "stutter100": 7,
+          "stutter50": 18
+        },
+        "player": {
+          "position": "6225,19,-6051",
+          "x": 6225,
+          "y": 19,
+          "z": -6051
+        },
+        "posParts": [
+          6224.9,
+          19.1,
+          -6051.3
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:112",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "80.9,19.1,92.7",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6224.9,19.1,-6051.3",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.91,
+          "stuckStrikes": 0,
+          "targetDistance": 112,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175835814,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6225 Z:-6051",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          78,
+          21.4,
+          84.7
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 22.03,
+          "frames": 559,
+          "maxMs": 764.9,
+          "p95Ms": 35.6,
+          "recentMaxMs": 30.7,
+          "stutter100": 7,
+          "stutter50": 18
+        },
+        "player": {
+          "position": "6222,21,-6059",
+          "x": 6222,
+          "y": 21,
+          "z": -6059
+        },
+        "posParts": [
+          6222,
+          21.4,
+          -6059.3
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:104",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "78.0,21.4,84.7",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6222.0,21.4,-6059.3",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 104,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175836881,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6222 Z:-6059",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          74.3,
+          21.6,
+          77.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 21.62,
+          "frames": 616,
+          "maxMs": 764.9,
+          "p95Ms": 34.4,
+          "recentMaxMs": 50.2,
+          "stutter100": 7,
+          "stutter50": 19
+        },
+        "player": {
+          "position": "6218,22,-6066",
+          "x": 6218,
+          "y": 22,
+          "z": -6066
+        },
+        "posParts": [
+          6218.3,
+          21.6,
+          -6066.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:96",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "74.3,21.6,77.5",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6218.3,21.6,-6066.5",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 96.2,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175837913,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6219 Z:-6066",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          69.7,
+          21.6,
+          71.8
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 21.3,
+          "frames": 673,
+          "maxMs": 764.9,
+          "p95Ms": 34.4,
+          "recentMaxMs": 64.1,
+          "stutter100": 7,
+          "stutter50": 21
+        },
+        "player": {
+          "position": "6214,22,-6072",
+          "x": 6214,
+          "y": 22,
+          "z": -6072
+        },
+        "posParts": [
+          6213.7,
+          21.6,
+          -6072.2
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:89",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "69.7,21.6,71.8",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6213.7,21.6,-6072.2",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 88.8,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 1.17
+        },
+        "t": 1780175838945,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6214 Z:-6072",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          74.3,
+          23.9,
+          66.9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 18.7,
+          "frames": 720,
+          "maxMs": 170.3,
+          "p95Ms": 30.9,
+          "recentMaxMs": 64.1,
+          "stutter100": 3,
+          "stutter50": 12
+        },
+        "player": {
+          "position": "6218,24,-6077",
+          "x": 6218,
+          "y": 24,
+          "z": -6077
+        },
+        "posParts": [
+          6218.3,
+          23.9,
+          -6077.1
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:89",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "74.3,23.9,66.9",
+          "mode": "approach",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6218.3,23.9,-6077.1",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 88.6,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0.09
+        },
+        "t": 1780175839980,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6218 Z:-6076",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          3.9,
+          33.2,
+          -14.9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 17.8,
+          "frames": 720,
+          "maxMs": 64.1,
+          "p95Ms": 27.5,
+          "recentMaxMs": 23.9,
+          "stutter100": 0,
+          "stutter50": 5
+        },
+        "player": {
+          "position": "6148,33,-6159",
+          "x": 6148,
+          "y": 33,
+          "z": -6159
+        },
+        "posParts": [
+          6147.9,
+          33.2,
+          -6158.9
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:22",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "3.9,33.2,-14.9",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6147.9,33.2,-6158.9",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.92,
+          "stuckStrikes": 0,
+          "targetDistance": 21.8,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 2.29
+        },
+        "t": 1780175841029,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6148 Z:-6160\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          2.5,
+          35.5,
+          -7.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 17.35,
+          "frames": 720,
+          "maxMs": 64.1,
+          "p95Ms": 23.1,
+          "recentMaxMs": 31.2,
+          "stutter100": 0,
+          "stutter50": 5
+        },
+        "player": {
+          "position": "6146,36,-6152",
+          "x": 6146,
+          "y": 36,
+          "z": -6152
+        },
+        "posParts": [
+          6146.5,
+          35.5,
+          -6151.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:15",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "2.5,35.5,-7.5",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6146.5,35.5,-6151.5",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 15.5,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 1.18
+        },
+        "t": 1780175842048,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6147 Z:-6152\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          8.5,
+          35.4,
+          -7.3
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 16.87,
+          "frames": 720,
+          "maxMs": 64.1,
+          "p95Ms": 17.2,
+          "recentMaxMs": 31.2,
+          "stutter100": 0,
+          "stutter50": 3
+        },
+        "player": {
+          "position": "6153,35,-6151",
+          "x": 6153,
+          "y": 35,
+          "z": -6151
+        },
+        "posParts": [
+          6152.5,
+          35.4,
+          -6151.3
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:13",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "8.5,35.4,-7.3",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6152.5,35.4,-6151.3",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 13.4,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175843079,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6153 Z:-6151\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          16.5,
+          35.2,
+          -9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 16.85,
+          "frames": 720,
+          "maxMs": 64.1,
+          "p95Ms": 17.1,
+          "recentMaxMs": 17.3,
+          "stutter100": 0,
+          "stutter50": 3
+        },
+        "player": {
+          "position": "6160,35,-6153",
+          "x": 6160,
+          "y": 35,
+          "z": -6153
+        },
+        "posParts": [
+          6160.5,
+          35.2,
+          -6153
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:16",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "16.5,35.2,-9.0",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6160.5,35.2,-6153.0",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 16.3,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175844111,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6160 Z:-6153\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          13.8,
+          34.9,
+          -7.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 16.85,
+          "frames": 720,
+          "maxMs": 64.1,
+          "p95Ms": 17.1,
+          "recentMaxMs": 17.1,
+          "stutter100": 0,
+          "stutter50": 3
+        },
+        "player": {
+          "position": "6158,35,-6151",
+          "x": 6158,
+          "y": 35,
+          "z": -6151
+        },
+        "posParts": [
+          6157.8,
+          34.9,
+          -6151.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:14",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "13.8,34.9,-7.5",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6157.8,34.9,-6151.5",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 14,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175845142,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6158 Z:-6152\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          5.8,
+          34.6,
+          -7.7
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 16.85,
+          "frames": 720,
+          "maxMs": 64.1,
+          "p95Ms": 17,
+          "recentMaxMs": 17,
+          "stutter100": 0,
+          "stutter50": 3
+        },
+        "player": {
+          "position": "6150,35,-6152",
+          "x": 6150,
+          "y": 35,
+          "z": -6152
+        },
+        "posParts": [
+          6149.8,
+          34.6,
+          -6151.7
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:14",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "5.8,34.6,-7.7",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6149.8,34.6,-6151.7",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 14.4,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175846176,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6150 Z:-6152\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          6.1,
+          34.1,
+          -7.6
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 16.85,
+          "frames": 720,
+          "maxMs": 64.1,
+          "p95Ms": 17,
+          "recentMaxMs": 17,
+          "stutter100": 0,
+          "stutter50": 3
+        },
+        "player": {
+          "position": "6150,34,-6152",
+          "x": 6150,
+          "y": 34,
+          "z": -6152
+        },
+        "posParts": [
+          6150.1,
+          34.1,
+          -6151.6
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:14",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "6.1,34.1,-7.6",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6150.1,34.1,-6151.6",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 14.1,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175847199,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6149 Z:-6152\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          14.2,
+          33.8,
+          -7.3
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 16.85,
+          "frames": 720,
+          "maxMs": 64.1,
+          "p95Ms": 17,
+          "recentMaxMs": 17,
+          "stutter100": 0,
+          "stutter50": 3
+        },
+        "player": {
+          "position": "6158,34,-6151",
+          "x": 6158,
+          "y": 34,
+          "z": -6151
+        },
+        "posParts": [
+          6158.2,
+          33.8,
+          -6151.3
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:14",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "14.2,33.8,-7.3",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6158.2,33.8,-6151.3",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 14,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175848233,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6158 Z:-6151\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          17.1,
+          33.5,
+          -7.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 16.85,
+          "frames": 720,
+          "maxMs": 64.1,
+          "p95Ms": 16.9,
+          "recentMaxMs": 17.4,
+          "stutter100": 0,
+          "stutter50": 3
+        },
+        "player": {
+          "position": "6161,34,-6152",
+          "x": 6161,
+          "y": 34,
+          "z": -6152
+        },
+        "posParts": [
+          6161.1,
+          33.5,
+          -6151.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:15",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "17.1,33.5,-7.5",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6161.1,33.5,-6151.5",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 15.3,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0.2
+        },
+        "t": 1780175849278,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6162 Z:-6152\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          9.4,
+          33.2,
+          -5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 16.78,
+          "frames": 720,
+          "maxMs": 64.1,
+          "p95Ms": 16.9,
+          "recentMaxMs": 17.4,
+          "stutter100": 0,
+          "stutter50": 2
+        },
+        "player": {
+          "position": "6153,33,-6149",
+          "x": 6153,
+          "y": 33,
+          "z": -6149
+        },
+        "posParts": [
+          6153.4,
+          33.2,
+          -6149
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:11",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "9.4,33.2,-5.0",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6153.4,33.2,-6149.0",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.92,
+          "stuckStrikes": 0,
+          "targetDistance": 11,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175850312,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6154 Z:-6149\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          4.3,
+          33.2,
+          -6.1
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 16.69,
+          "frames": 720,
+          "maxMs": 31.2,
+          "p95Ms": 16.9,
+          "recentMaxMs": 16.9,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "6148,33,-6150",
+          "x": 6148,
+          "y": 33,
+          "z": -6150
+        },
+        "posParts": [
+          6148.3,
+          33.2,
+          -6150.1
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:13",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "4.3,33.2,-6.1",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6148.3,33.2,-6150.1",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 5.41,
+          "stuckStrikes": 0,
+          "targetDistance": 13.4,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175851362,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6148 Z:-6150\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "20,-21",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "12,-12",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          12.3,
+          33.6,
+          -5.2
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 62,
+          "lastCollect": "",
+          "ready": 62,
+          "sample": "mana-flower-11:-13:0:5486,14,-6814|mana-flower-11:-13:1:5464,13,-6783|mana-flower-11:-13:2:5832,16,-6726|mana-flower-11:-13:3:5679,18,-6551"
+        },
+        "perf": {
+          "avgMs": 16.69,
+          "frames": 720,
+          "maxMs": 31.2,
+          "p95Ms": 16.9,
+          "recentMaxMs": 17.2,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "6156,34,-6149",
+          "x": 6156,
+          "y": 34,
+          "z": -6149
+        },
+        "posParts": [
+          6156.3,
+          33.6,
+          -6149.2
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "dialog:darrel-close",
+          "clearance": 13.5,
+          "intent": "darrel-dragon:darrel-dragon:11",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "12.3,33.6,-5.2",
+          "mode": "act",
+          "observed": "mana:62|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "6156.3,33.6,-6149.2",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 11.5,
+          "viewClearance": 12.5,
+          "waypoint": "6154,-6138",
+          "yawError": 0
+        },
+        "t": 1780175852383,
+        "text": "DARREL\n!\nPRESS F / LMB / RMB\nSPEAK\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:6156 Z:-6149\n!\nPRESS F / LMB / RMB",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=12%2C-12&qaReload=full-sweep-darrel-patched-v1"
+      }
+    ]
+  },
+  {
+    "id": "dummy-patched",
+    "label": "Spell dummy combat patched",
+    "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1",
+    "sampleCount": 23,
+    "screenshots": {
+      "start": "C:\\Users\\jojos\\Desktop\\projects\\Wizards only fools\\wizards-only-fools! quen test\\playtest-screenshots\\full-sweep-dummy-patched-start.png",
+      "end": "C:\\Users\\jojos\\Desktop\\projects\\Wizards only fools\\wizards-only-fools! quen test\\playtest-screenshots\\full-sweep-dummy-patched-end.png"
+    },
+    "modes": [
+      "approach",
+      "inspect",
+      "recover",
+      "act"
+    ],
+    "intents": [
+      "mana-flower:mana-flower-3:1:4:261",
+      "mana-flower:mana-flower-3:1:4:267",
+      "mana-flower:mana-flower-3:1:4:250",
+      "mana-flower:mana-flower-3:1:4:238",
+      "mana-flower:mana-flower-3:1:4:231",
+      "mana-flower:mana-flower-3:1:4:220",
+      "mana-flower:mana-flower-3:1:4:210",
+      "spell-dummy:front:76",
+      "spell-dummy:front:74",
+      "spell-dummy:front:77",
+      "spell-dummy:front:71",
+      "spell-dummy:front:72",
+      "spell-dummy:front:75",
+      "spell-dummy:front:84",
+      "spell-dummy:front:82",
+      "spell-dummy:front:83",
+      "spell-dummy:front:88",
+      "spell-dummy:front:91",
+      "spell-dummy:front:98",
+      "spell-dummy:front:104"
+    ],
+    "abnormalities": [
+      "slow-input",
+      "low-clearance"
+    ],
+    "recoveries": [
+      "clear-exit"
+    ],
+    "movementDistance": 85.80093239586621,
+    "speed": {
+      "min": 0,
+      "max": 12.76
+    },
+    "clearance": {
+      "min": 7.9,
+      "minView": 12.3,
+      "minOverhead": 4.8
+    },
+    "perf": {
+      "maxRecentMs": 1254.6,
+      "stutter50Start": 9,
+      "stutter50End": 0,
+      "stutter100Start": 9,
+      "stutter100End": 0,
+      "last": {
+        "avgMs": 17.54,
+        "frames": 720,
+        "maxMs": 34.7,
+        "p95Ms": 22.5,
+        "recentMaxMs": 34.7,
+        "stutter100": 0,
+        "stutter50": 0
+      }
+    },
+    "grass": {
+      "center": "5,0",
+      "localCells": 37,
+      "radius": 1049,
+      "streamCenter": "3,0",
+      "streamRadius": 5,
+      "survivalChunks": 97
+    },
+    "mana": {
+      "cooldowns": "",
+      "count": 41,
+      "lastCollect": "",
+      "ready": 41,
+      "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+    },
+    "dummies": {
+      "alive": 4,
+      "health": "front:86|left:120|right:120|back:120",
+      "hits": 3,
+      "lastHit": "front:arcanebeam:34",
+      "qaCast": "arcanebeam"
+    },
+    "firstQa": {
+      "abnormality": "",
+      "action": "",
+      "clearance": 13.5,
+      "intent": "mana-flower:mana-flower-3:1:4:261",
+      "lilyDirection": "",
+      "lilyT": "",
+      "localPos": "-5.6,247.4,52.1",
+      "mode": "approach",
+      "observed": "mana:41|dummies:4|quests:0",
+      "overheadClearance": 4.8,
+      "pos": "1530.4,247.4,52.1",
+      "practiceCast": "",
+      "recoveryReason": "",
+      "speed": 8,
+      "stuckStrikes": 0,
+      "targetDistance": 261.1,
+      "viewClearance": 12.5,
+      "waypoint": "1448,57",
+      "yawError": 1.08
+    },
+    "lastQa": {
+      "abnormality": "",
+      "action": "cast:arcanebeam:front",
+      "clearance": 13.5,
+      "intent": "spell-dummy:front:98",
+      "lilyDirection": "",
+      "lilyT": "",
+      "localPos": "-6.0,170.3,137.9",
+      "mode": "approach",
+      "observed": "mana:41|dummies:4|quests:0",
+      "overheadClearance": 4.8,
+      "pos": "1530.0,170.3,137.9",
+      "practiceCast": "",
+      "recoveryReason": "",
+      "speed": 7.01,
+      "stuckStrikes": 0,
+      "targetDistance": 97.6,
+      "viewClearance": 12.5,
+      "waypoint": "1458,182",
+      "yawError": 1.84
+    },
+    "consoleIssues": [
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      }
+    ],
+    "samples": [
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:120|left:120|right:120|back:120",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "3,0",
+          "streamRadius": 1,
+          "survivalChunks": 9
+        },
+        "localParts": [
+          -5.6,
+          247.4,
+          52.1
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 222.46,
+          "frames": 16,
+          "maxMs": 1254.6,
+          "p95Ms": 1254.6,
+          "recentMaxMs": 1254.6,
+          "stutter100": 9,
+          "stutter50": 9
+        },
+        "player": {
+          "position": "1530,247,52",
+          "x": 1530,
+          "y": 247,
+          "z": 52
+        },
+        "posParts": [
+          1530.4,
+          247.4,
+          52.1
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "mana-flower:mana-flower-3:1:4:261",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-5.6,247.4,52.1",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1530.4,247.4,52.1",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 261.1,
+          "viewClearance": 12.5,
+          "waypoint": "1448,57",
+          "yawError": 1.08
+        },
+        "t": 1780175858060,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1531 Z:55",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:120|left:120|right:120|back:120",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "3,0",
+          "streamRadius": 1,
+          "survivalChunks": 9
+        },
+        "localParts": [
+          -2.2,
+          217.7,
+          47
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 181.8,
+          "frames": 26,
+          "maxMs": 1254.6,
+          "p95Ms": 565,
+          "recentMaxMs": 1254.6,
+          "stutter100": 13,
+          "stutter50": 14
+        },
+        "player": {
+          "position": "1534,218,47",
+          "x": 1534,
+          "y": 218,
+          "z": 47
+        },
+        "posParts": [
+          1533.8,
+          217.7,
+          47
+        ],
+        "qa": {
+          "abnormality": "slow-input",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "mana-flower:mana-flower-3:1:4:267",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-2.2,217.7,47.0",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1533.8,217.7,47.0",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 0,
+          "stuckStrikes": 0,
+          "targetDistance": 266.8,
+          "viewClearance": 12.5,
+          "waypoint": "1448,57",
+          "yawError": 0
+        },
+        "t": 1780175859131,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1531 Z:50",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:120|left:120|right:120|back:120",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "4,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 2,
+          "survivalChunks": 21
+        },
+        "localParts": [
+          0.9,
+          217.7,
+          64.6
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 99,
+          "frames": 58,
+          "maxMs": 1254.6,
+          "p95Ms": 409.1,
+          "recentMaxMs": 1254.6,
+          "stutter100": 14,
+          "stutter50": 15
+        },
+        "player": {
+          "position": "1537,218,65",
+          "x": 1537,
+          "y": 218,
+          "z": 65
+        },
+        "posParts": [
+          1536.9,
+          217.7,
+          64.6
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "mana-flower:mana-flower-3:1:4:250",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "0.9,217.7,64.6",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1536.9,217.7,64.6",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 12.56,
+          "stuckStrikes": 0,
+          "targetDistance": 250.4,
+          "viewClearance": 12.5,
+          "waypoint": "1518,132",
+          "yawError": 0
+        },
+        "t": 1780175860556,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1536 Z:59",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:120|left:120|right:120|back:120",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": "fireball"
+        },
+        "grass": {
+          "center": "4,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 3,
+          "survivalChunks": 37
+        },
+        "localParts": [
+          2.8,
+          217.7,
+          77.7
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 76.69,
+          "frames": 88,
+          "maxMs": 1254.6,
+          "p95Ms": 395.4,
+          "recentMaxMs": 1254.6,
+          "stutter100": 15,
+          "stutter50": 16
+        },
+        "player": {
+          "position": "1539,218,78",
+          "x": 1539,
+          "y": 218,
+          "z": 78
+        },
+        "posParts": [
+          1538.8,
+          217.7,
+          77.7
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:fireball:front",
+          "clearance": 13.5,
+          "intent": "mana-flower:mana-flower-3:1:4:238",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "2.8,217.7,77.7",
+          "mode": "inspect",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1538.8,217.7,77.7",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.75,
+          "stuckStrikes": 0,
+          "targetDistance": 238.3,
+          "viewClearance": 12.5,
+          "waypoint": "1518,132",
+          "yawError": 2.9
+        },
+        "t": 1780175861634,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1539 Z:77",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:96|left:120|right:120|back:120",
+          "hits": 1,
+          "lastHit": "front:fireball:24",
+          "qaCast": "fireball"
+        },
+        "grass": {
+          "center": "4,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 4,
+          "survivalChunks": 61
+        },
+        "localParts": [
+          5.9,
+          217.7,
+          86.6
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 64.78,
+          "frames": 127,
+          "maxMs": 1254.6,
+          "p95Ms": 395.2,
+          "recentMaxMs": 575.8,
+          "stutter100": 17,
+          "stutter50": 18
+        },
+        "player": {
+          "position": "1542,218,87",
+          "x": 1542,
+          "y": 218,
+          "z": 87
+        },
+        "posParts": [
+          1541.9,
+          217.7,
+          86.6
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:fireball:front",
+          "clearance": 13.5,
+          "intent": "mana-flower:mana-flower-3:1:4:231",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "5.9,217.7,86.6",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1541.9,217.7,86.6",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 12.53,
+          "stuckStrikes": 0,
+          "targetDistance": 230.6,
+          "viewClearance": 12.5,
+          "waypoint": "1518,132",
+          "yawError": 0
+        },
+        "t": 1780175862713,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1541 Z:84",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:96|left:120|right:120|back:120",
+          "hits": 1,
+          "lastHit": "front:fireball:24",
+          "qaCast": "fireball"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 4,
+          "survivalChunks": 61
+        },
+        "localParts": [
+          9.6,
+          216.8,
+          98.9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 50.72,
+          "frames": 182,
+          "maxMs": 1254.6,
+          "p95Ms": 294.8,
+          "recentMaxMs": 575.8,
+          "stutter100": 17,
+          "stutter50": 18
+        },
+        "player": {
+          "position": "1546,217,99",
+          "x": 1546,
+          "y": 217,
+          "z": 99
+        },
+        "posParts": [
+          1545.6,
+          216.8,
+          98.9
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:fireball:front",
+          "clearance": 13.5,
+          "intent": "mana-flower:mana-flower-3:1:4:220",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "9.6,216.8,98.9",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1545.6,216.8,98.9",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 12.76,
+          "stuckStrikes": 0,
+          "targetDistance": 220,
+          "viewClearance": 12.5,
+          "waypoint": "1518,132",
+          "yawError": 0
+        },
+        "t": 1780175863748,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1545 Z:98",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:96|left:120|right:120|back:120",
+          "hits": 1,
+          "lastHit": "front:fireball:24",
+          "qaCast": "fireball"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          14.7,
+          205.5,
+          111.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 46.55,
+          "frames": 220,
+          "maxMs": 1254.6,
+          "p95Ms": 294.8,
+          "recentMaxMs": 575.8,
+          "stutter100": 18,
+          "stutter50": 19
+        },
+        "player": {
+          "position": "1551,206,111",
+          "x": 1551,
+          "y": 206,
+          "z": 111
+        },
+        "posParts": [
+          1550.7,
+          205.5,
+          111.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:fireball:front",
+          "clearance": 13.5,
+          "intent": "mana-flower:mana-flower-3:1:4:210",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "14.7,205.5,111.5",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1550.7,205.5,111.5",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 12.76,
+          "stuckStrikes": 0,
+          "targetDistance": 209.9,
+          "viewClearance": 12.5,
+          "waypoint": "1518,132",
+          "yawError": 0
+        },
+        "t": 1780175864798,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1550 Z:111",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:96|left:120|right:120|back:120",
+          "hits": 1,
+          "lastHit": "front:fireball:24",
+          "qaCast": "fireball"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          17.6,
+          200.8,
+          115.9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 40.61,
+          "frames": 277,
+          "maxMs": 1254.6,
+          "p95Ms": 141.7,
+          "recentMaxMs": 377.8,
+          "stutter100": 18,
+          "stutter50": 19
+        },
+        "player": {
+          "position": "1554,201,116",
+          "x": 1554,
+          "y": 201,
+          "z": 116
+        },
+        "posParts": [
+          1553.6,
+          200.8,
+          115.9
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:fireball:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:76",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "17.6,200.8,115.9",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1553.6,200.8,115.9",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7,
+          "stuckStrikes": 0,
+          "targetDistance": 75.8,
+          "viewClearance": 12.5,
+          "waypoint": "1542,41",
+          "yawError": 1.79
+        },
+        "t": 1780175865832,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1553 Z:117",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:96|left:120|right:120|back:120",
+          "hits": 1,
+          "lastHit": "front:fireball:24",
+          "qaCast": "fireball"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          15.5,
+          204.4,
+          114
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 36.67,
+          "frames": 334,
+          "maxMs": 1254.6,
+          "p95Ms": 102.6,
+          "recentMaxMs": 47.2,
+          "stutter100": 18,
+          "stutter50": 19
+        },
+        "player": {
+          "position": "1551,204,114",
+          "x": 1551,
+          "y": 204,
+          "z": 114
+        },
+        "posParts": [
+          1551.5,
+          204.4,
+          114
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:fireball:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:74",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "15.5,204.4,114.0",
+          "mode": "recover",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1551.5,204.4,114.0",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 1,
+          "targetDistance": 73.6,
+          "viewClearance": 12.5,
+          "waypoint": "1542,41",
+          "yawError": 0
+        },
+        "t": 1780175866865,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1552 Z:114",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:96|left:120|right:120|back:120",
+          "hits": 1,
+          "lastHit": "front:fireball:24",
+          "qaCast": "fireball"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          13.8,
+          199.4,
+          117.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 33.75,
+          "frames": 393,
+          "maxMs": 1254.6,
+          "p95Ms": 47.2,
+          "recentMaxMs": 47.2,
+          "stutter100": 18,
+          "stutter50": 19
+        },
+        "player": {
+          "position": "1550,199,117",
+          "x": 1550,
+          "y": 199,
+          "z": 117
+        },
+        "posParts": [
+          1549.8,
+          199.4,
+          117.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:fireball:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:77",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "13.8,199.4,117.5",
+          "mode": "recover",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1549.8,199.4,117.5",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.31,
+          "stuckStrikes": 0,
+          "targetDistance": 76.8,
+          "viewClearance": 12.5,
+          "waypoint": "1473,144",
+          "yawError": 0
+        },
+        "t": 1780175867898,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1550 Z:118",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:96|left:120|right:120|back:120",
+          "hits": 1,
+          "lastHit": "front:fireball:24",
+          "qaCast": "fireball"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          14.3,
+          205.7,
+          111.4
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 31.56,
+          "frames": 452,
+          "maxMs": 1254.6,
+          "p95Ms": 42.3,
+          "recentMaxMs": 36.3,
+          "stutter100": 18,
+          "stutter50": 19
+        },
+        "player": {
+          "position": "1550,206,111",
+          "x": 1550,
+          "y": 206,
+          "z": 111
+        },
+        "posParts": [
+          1550.3,
+          205.7,
+          111.4
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:fireball:front",
+          "clearance": 11.6,
+          "intent": "spell-dummy:front:71",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "14.3,205.7,111.4",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1550.3,205.7,111.4",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 0,
+          "stuckStrikes": 0,
+          "targetDistance": 70.8,
+          "viewClearance": 12.5,
+          "waypoint": "1482,161",
+          "yawError": 1.32
+        },
+        "t": 1780175868943,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1550 Z:111",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:62|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "front:iceshard:34",
+          "qaCast": "iceshard"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          12.9,
+          204.3,
+          113.2
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 29.87,
+          "frames": 511,
+          "maxMs": 1254.6,
+          "p95Ms": 36.3,
+          "recentMaxMs": 28.9,
+          "stutter100": 18,
+          "stutter50": 19
+        },
+        "player": {
+          "position": "1549,204,113",
+          "x": 1549,
+          "y": 204,
+          "z": 113
+        },
+        "posParts": [
+          1548.9,
+          204.3,
+          113.2
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:iceshard:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:72",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "12.9,204.3,113.2",
+          "mode": "act",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1548.9,204.3,113.2",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.61,
+          "stuckStrikes": 0,
+          "targetDistance": 72.5,
+          "viewClearance": 12.5,
+          "waypoint": "1480,162",
+          "yawError": 1.71
+        },
+        "t": 1780175869966,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1549 Z:113",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:62|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "front:iceshard:34",
+          "qaCast": "iceshard"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          13.1,
+          202.1,
+          115.6
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 28.5,
+          "frames": 571,
+          "maxMs": 1254.6,
+          "p95Ms": 34.8,
+          "recentMaxMs": 28.1,
+          "stutter100": 18,
+          "stutter50": 19
+        },
+        "player": {
+          "position": "1549,202,116",
+          "x": 1549,
+          "y": 202,
+          "z": 116
+        },
+        "posParts": [
+          1549.1,
+          202.1,
+          115.6
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:iceshard:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:75",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "13.1,202.1,115.6",
+          "mode": "recover",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1549.1,202.1,115.6",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 1,
+          "targetDistance": 74.9,
+          "viewClearance": 12.5,
+          "waypoint": "1542,41",
+          "yawError": 0
+        },
+        "t": 1780175871000,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1549 Z:115",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:62|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "front:iceshard:34",
+          "qaCast": "iceshard"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          8.3,
+          202.2,
+          118.4
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 27.52,
+          "frames": 628,
+          "maxMs": 1254.6,
+          "p95Ms": 33,
+          "recentMaxMs": 33,
+          "stutter100": 18,
+          "stutter50": 19
+        },
+        "player": {
+          "position": "1544,202,118",
+          "x": 1544,
+          "y": 202,
+          "z": 118
+        },
+        "posParts": [
+          1544.3,
+          202.2,
+          118.4
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:iceshard:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:77",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "8.3,202.2,118.4",
+          "mode": "recover",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1544.3,202.2,118.4",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 77.3,
+          "viewClearance": 12.5,
+          "waypoint": "1467,135",
+          "yawError": 0
+        },
+        "t": 1780175872032,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1545 Z:118",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:62|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "front:iceshard:34",
+          "qaCast": "iceshard"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          5.2,
+          203.9,
+          117.8
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 26.64,
+          "frames": 687,
+          "maxMs": 1254.6,
+          "p95Ms": 32.5,
+          "recentMaxMs": 33,
+          "stutter100": 18,
+          "stutter50": 19
+        },
+        "player": {
+          "position": "1541,204,118",
+          "x": 1541,
+          "y": 204,
+          "z": 118
+        },
+        "posParts": [
+          1541.2,
+          203.9,
+          117.8
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:iceshard:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:77",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "5.2,203.9,117.8",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1541.2,203.9,117.8",
+          "practiceCast": "",
+          "recoveryReason": "clear-exit",
+          "speed": 7.99,
+          "stuckStrikes": 0,
+          "targetDistance": 76.8,
+          "viewClearance": 12.5,
+          "waypoint": "1470,160",
+          "yawError": 2.14
+        },
+        "t": 1780175873064,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1542 Z:118",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:62|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "front:iceshard:34",
+          "qaCast": "iceshard"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          4.4,
+          190.6,
+          124.9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 19.7,
+          "frames": 720,
+          "maxMs": 575.8,
+          "p95Ms": 27.7,
+          "recentMaxMs": 32.6,
+          "stutter100": 4,
+          "stutter50": 4
+        },
+        "player": {
+          "position": "1540,191,125",
+          "x": 1540,
+          "y": 191,
+          "z": 125
+        },
+        "posParts": [
+          1540.4,
+          190.6,
+          124.9
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:iceshard:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:84",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "4.4,190.6,124.9",
+          "mode": "recover",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1540.4,190.6,124.9",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.99,
+          "stuckStrikes": 0,
+          "targetDistance": 83.8,
+          "viewClearance": 12.5,
+          "waypoint": "1470,160",
+          "yawError": 0.2
+        },
+        "t": 1780175874117,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1541 Z:124",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:62|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "front:iceshard:34",
+          "qaCast": "iceshard"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          2,
+          193.5,
+          122.8
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 18.98,
+          "frames": 720,
+          "maxMs": 575.8,
+          "p95Ms": 26.7,
+          "recentMaxMs": 28.9,
+          "stutter100": 3,
+          "stutter50": 3
+        },
+        "player": {
+          "position": "1538,194,123",
+          "x": 1538,
+          "y": 194,
+          "z": 123
+        },
+        "posParts": [
+          1538,
+          193.5,
+          122.8
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:iceshard:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:82",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "2.0,193.5,122.8",
+          "mode": "recover",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1538.0,193.5,122.8",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.99,
+          "stuckStrikes": 0,
+          "targetDistance": 81.8,
+          "viewClearance": 12.5,
+          "waypoint": "1464,164",
+          "yawError": 0.1
+        },
+        "t": 1780175875162,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1538 Z:123",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:62|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "front:iceshard:34",
+          "qaCast": "iceshard"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          1.3,
+          199.7,
+          123.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 17.76,
+          "frames": 720,
+          "maxMs": 377.8,
+          "p95Ms": 24.1,
+          "recentMaxMs": 28.1,
+          "stutter100": 1,
+          "stutter50": 1
+        },
+        "player": {
+          "position": "1537,200,124",
+          "x": 1537,
+          "y": 200,
+          "z": 124
+        },
+        "posParts": [
+          1537.3,
+          199.7,
+          123.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:iceshard:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:83",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "1.3,199.7,123.5",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1537.3,199.7,123.5",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 82.6,
+          "viewClearance": 12.5,
+          "waypoint": "1465,159",
+          "yawError": 1.35
+        },
+        "t": 1780175876215,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1537 Z:122",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:62|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "front:iceshard:34",
+          "qaCast": "iceshard"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -1,
+          186.3,
+          129.3
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 17.74,
+          "frames": 720,
+          "maxMs": 377.8,
+          "p95Ms": 21.9,
+          "recentMaxMs": 32.5,
+          "stutter100": 1,
+          "stutter50": 1
+        },
+        "player": {
+          "position": "1535,186,129",
+          "x": 1535,
+          "y": 186,
+          "z": 129
+        },
+        "posParts": [
+          1535,
+          186.3,
+          129.3
+        ],
+        "qa": {
+          "abnormality": "low-clearance",
+          "action": "cast:iceshard:front",
+          "clearance": 7.9,
+          "intent": "spell-dummy:front:88",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-1.0,186.3,129.3",
+          "mode": "recover",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1535.0,186.3,129.3",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.99,
+          "stuckStrikes": 0,
+          "targetDistance": 88.5,
+          "viewClearance": 12.3,
+          "waypoint": "1453,135",
+          "yawError": 0.56
+        },
+        "t": 1780175877260,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1535 Z:129",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:62|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "front:iceshard:34",
+          "qaCast": "iceshard"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -4.5,
+          184.7,
+          131.1
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 17.23,
+          "frames": 720,
+          "maxMs": 47.2,
+          "p95Ms": 21.3,
+          "recentMaxMs": 33.1,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "1532,185,131",
+          "x": 1532,
+          "y": 185,
+          "z": 131
+        },
+        "posParts": [
+          1531.5,
+          184.7,
+          131.1
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:iceshard:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:91",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-4.5,184.7,131.1",
+          "mode": "recover",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1531.5,184.7,131.1",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 90.6,
+          "viewClearance": 12.5,
+          "waypoint": "1454,161",
+          "yawError": 0
+        },
+        "t": 1780175878298,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1532 Z:131",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:62|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "front:iceshard:34",
+          "qaCast": "iceshard"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -6.6,
+          182.4,
+          138.1
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 17.2,
+          "frames": 720,
+          "maxMs": 36.3,
+          "p95Ms": 20.7,
+          "recentMaxMs": 33.1,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "1529,182,138",
+          "x": 1529,
+          "y": 182,
+          "z": 138
+        },
+        "posParts": [
+          1529.4,
+          182.4,
+          138.1
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:iceshard:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:98",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-6.6,182.4,138.1",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1529.4,182.4,138.1",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 97.8,
+          "viewClearance": 12.5,
+          "waypoint": "1452,163",
+          "yawError": 1.2
+        },
+        "t": 1780175879354,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1529 Z:137",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:120|left:120|right:120|back:120",
+          "hits": 2,
+          "lastHit": "",
+          "qaCast": "arcanebeam"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -6.5,
+          159.2,
+          144.3
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 17.56,
+          "frames": 720,
+          "maxMs": 34.7,
+          "p95Ms": 22.5,
+          "recentMaxMs": 34.7,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "1530,159,144",
+          "x": 1530,
+          "y": 159,
+          "z": 144
+        },
+        "posParts": [
+          1529.5,
+          159.2,
+          144.3
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:arcanebeam:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:104",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-6.5,159.2,144.3",
+          "mode": "recover",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1529.5,159.2,144.3",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 3.47,
+          "stuckStrikes": 0,
+          "targetDistance": 104,
+          "viewClearance": 12.5,
+          "waypoint": "1447,137",
+          "yawError": 0.47
+        },
+        "t": 1780175880414,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1530 Z:144",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      },
+      {
+        "dummies": {
+          "alive": 4,
+          "health": "front:86|left:120|right:120|back:120",
+          "hits": 3,
+          "lastHit": "front:arcanebeam:34",
+          "qaCast": "arcanebeam"
+        },
+        "grass": {
+          "center": "5,0",
+          "localCells": 37,
+          "radius": 1049,
+          "streamCenter": "3,0",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -6,
+          170.3,
+          137.9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 41,
+          "lastCollect": "",
+          "ready": 41,
+          "sample": "mana-flower-2:-1:0:1212,7,-528|mana-flower-2:-1:1:893,22,-423|mana-flower-2:-1:2:811,21,-402|mana-flower-2:-1:3:1067,9,-308"
+        },
+        "perf": {
+          "avgMs": 17.54,
+          "frames": 720,
+          "maxMs": 34.7,
+          "p95Ms": 22.5,
+          "recentMaxMs": 34.7,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "1530,170,138",
+          "x": 1530,
+          "y": 170,
+          "z": 138
+        },
+        "posParts": [
+          1530,
+          170.3,
+          137.9
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "cast:arcanebeam:front",
+          "clearance": 13.5,
+          "intent": "spell-dummy:front:98",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-6.0,170.3,137.9",
+          "mode": "approach",
+          "observed": "mana:41|dummies:4|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "1530.0,170.3,137.9",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.01,
+          "stuckStrikes": 0,
+          "targetDistance": 97.6,
+          "viewClearance": 12.5,
+          "waypoint": "1458,182",
+          "yawError": 1.84
+        },
+        "t": 1780175881450,
+        "text": "+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:1530 Z:138",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=3%2C0&qaReload=full-sweep-dummy-patched-v1&qaSpellDummies=1"
+      }
+    ]
+  },
+  {
+    "id": "wilderness-patched",
+    "label": "Wilderness recovery telemetry patched",
+    "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1",
+    "sampleCount": 21,
+    "screenshots": {
+      "start": "C:\\Users\\jojos\\Desktop\\projects\\Wizards only fools\\wizards-only-fools! quen test\\playtest-screenshots\\full-sweep-wilderness-patched-start.png",
+      "end": "C:\\Users\\jojos\\Desktop\\projects\\Wizards only fools\\wizards-only-fools! quen test\\playtest-screenshots\\full-sweep-wilderness-patched-end.png"
+    },
+    "modes": [
+      "travel",
+      "recover",
+      "inspect"
+    ],
+    "intents": [
+      "roam"
+    ],
+    "abnormalities": [],
+    "recoveries": [],
+    "movementDistance": 106.72099137470563,
+    "speed": {
+      "min": 0,
+      "max": 12.8
+    },
+    "clearance": {
+      "min": 13.5,
+      "minView": 12.5,
+      "minOverhead": 4.8
+    },
+    "perf": {
+      "maxRecentMs": 945.3,
+      "stutter50Start": 10,
+      "stutter50End": 0,
+      "stutter100Start": 6,
+      "stutter100End": 0,
+      "last": {
+        "avgMs": 16.67,
+        "frames": 720,
+        "maxMs": 25.9,
+        "p95Ms": 16.9,
+        "recentMaxMs": 18,
+        "stutter100": 0,
+        "stutter50": 0
+      }
+    },
+    "grass": {
+      "center": "11,12",
+      "localCells": 25,
+      "radius": 864,
+      "streamCenter": "7,7",
+      "streamRadius": 5,
+      "survivalChunks": 97
+    },
+    "mana": {
+      "cooldowns": "",
+      "count": 55,
+      "lastCollect": "",
+      "ready": 55,
+      "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+    },
+    "dummies": {
+      "alive": 0,
+      "health": "",
+      "hits": null,
+      "lastHit": "",
+      "qaCast": ""
+    },
+    "firstQa": {
+      "abnormality": "",
+      "action": "",
+      "clearance": 13.5,
+      "intent": "roam",
+      "lilyDirection": "",
+      "lilyT": "",
+      "localPos": "-5.1,133.0,207.5",
+      "mode": "travel",
+      "observed": "mana:55|dummies:0|quests:0",
+      "overheadClearance": 4.8,
+      "pos": "3578.9,133.0,3791.5",
+      "practiceCast": "",
+      "recoveryReason": "",
+      "speed": 12.79,
+      "stuckStrikes": 0,
+      "targetDistance": 154.7,
+      "viewClearance": 12.5,
+      "waypoint": "3690,3684",
+      "yawError": 0
+    },
+    "lastQa": {
+      "abnormality": "",
+      "action": "",
+      "clearance": 13.5,
+      "intent": "roam",
+      "lilyDirection": "",
+      "lilyT": "",
+      "localPos": "-69.5,0.2,122.4",
+      "mode": "travel",
+      "observed": "mana:55|dummies:0|quests:0",
+      "overheadClearance": 4.8,
+      "pos": "3514.5,0.2,3706.4",
+      "practiceCast": "iceshard",
+      "recoveryReason": "",
+      "speed": 8,
+      "stuckStrikes": 0,
+      "targetDistance": 66.8,
+      "viewClearance": 12.5,
+      "waypoint": "3552,3651",
+      "yawError": 0
+    },
+    "consoleIssues": [
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      },
+      {
+        "level": "warn",
+        "message": "THREE.BufferGeometry.toNonIndexed(): BufferGeometry is already non-indexed."
+      }
+    ],
+    "samples": [
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 37,
+          "radius": 960,
+          "streamCenter": "7,7",
+          "streamRadius": 1,
+          "survivalChunks": 9
+        },
+        "localParts": [
+          -5.1,
+          133,
+          207.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 183.42,
+          "frames": 13,
+          "maxMs": 945.3,
+          "p95Ms": 945.3,
+          "recentMaxMs": 945.3,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3579,133,3792",
+          "x": 3579,
+          "y": 133,
+          "z": 3792
+        },
+        "posParts": [
+          3578.9,
+          133,
+          3791.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-5.1,133.0,207.5",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3578.9,133.0,3791.5",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 12.79,
+          "stuckStrikes": 0,
+          "targetDistance": 154.7,
+          "viewClearance": 12.5,
+          "waypoint": "3690,3684",
+          "yawError": 0
+        },
+        "t": 1780175885618,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3580 Z:3792",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 2,
+          "survivalChunks": 21
+        },
+        "localParts": [
+          -15.6,
+          105.1,
+          199.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 48.5,
+          "frames": 70,
+          "maxMs": 945.3,
+          "p95Ms": 139.4,
+          "recentMaxMs": 945.3,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3568,105,3783",
+          "x": 3568,
+          "y": 105,
+          "z": 3783
+        },
+        "posParts": [
+          3568.4,
+          105.1,
+          3783.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-15.6,105.1,199.5",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3568.4,105.1,3783.5",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 12.8,
+          "stuckStrikes": 0,
+          "targetDistance": 157.3,
+          "viewClearance": 12.5,
+          "waypoint": "3690,3684",
+          "yawError": 0
+        },
+        "t": 1780175886647,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3568 Z:3783",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 3,
+          "survivalChunks": 37
+        },
+        "localParts": [
+          -25.7,
+          55.8,
+          190.9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 33.71,
+          "frames": 131,
+          "maxMs": 945.3,
+          "p95Ms": 89.5,
+          "recentMaxMs": 59.6,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3558,56,3775",
+          "x": 3558,
+          "y": 56,
+          "z": 3775
+        },
+        "posParts": [
+          3558.3,
+          55.8,
+          3774.9
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-25.7,55.8,190.9",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3558.3,55.8,3774.9",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 12.8,
+          "stuckStrikes": 0,
+          "targetDistance": 160.2,
+          "viewClearance": 12.5,
+          "waypoint": "3690,3684",
+          "yawError": 0
+        },
+        "t": 1780175887687,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3559 Z:3775",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 3,
+          "survivalChunks": 37
+        },
+        "localParts": [
+          -36.9,
+          4.3,
+          183.9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 28.3,
+          "frames": 192,
+          "maxMs": 945.3,
+          "p95Ms": 50.4,
+          "recentMaxMs": 27.2,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3547,4,3768",
+          "x": 3547,
+          "y": 4,
+          "z": 3768
+        },
+        "posParts": [
+          3547.1,
+          4.3,
+          3767.9
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-36.9,4.3,183.9",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3547.1,4.3,3767.9",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 12.75,
+          "stuckStrikes": 0,
+          "targetDistance": 90.4,
+          "viewClearance": 12.5,
+          "waypoint": "3633,3740",
+          "yawError": 0
+        },
+        "t": 1780175888725,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3547 Z:3768",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 4,
+          "survivalChunks": 61
+        },
+        "localParts": [
+          -49,
+          4.6,
+          178.6
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 25.47,
+          "frames": 253,
+          "maxMs": 945.3,
+          "p95Ms": 29.3,
+          "recentMaxMs": 27.2,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3535,5,3763",
+          "x": 3535,
+          "y": 5,
+          "z": 3763
+        },
+        "posParts": [
+          3535,
+          4.6,
+          3762.6
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-49.0,4.6,178.6",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3535.0,4.6,3762.6",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 12.76,
+          "stuckStrikes": 0,
+          "targetDistance": 89.6,
+          "viewClearance": 12.5,
+          "waypoint": "3624,3750",
+          "yawError": 0
+        },
+        "t": 1780175889761,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3535 Z:3763",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 4,
+          "survivalChunks": 61
+        },
+        "localParts": [
+          -55.9,
+          4,
+          175.2
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 23.76,
+          "frames": 314,
+          "maxMs": 945.3,
+          "p95Ms": 26.7,
+          "recentMaxMs": 19.7,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3528,4,3759",
+          "x": 3528,
+          "y": 4,
+          "z": 3759
+        },
+        "posParts": [
+          3528.1,
+          4,
+          3759.2
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-55.9,4.0,175.2",
+          "mode": "recover",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3528.1,4.0,3759.2",
+          "practiceCast": "",
+          "recoveryReason": "",
+          "speed": 7.93,
+          "stuckStrikes": 1,
+          "targetDistance": 116.5,
+          "viewClearance": 12.5,
+          "waypoint": "3587,3659",
+          "yawError": 0.64
+        },
+        "t": 1780175890792,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3528 Z:3759",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 4,
+          "survivalChunks": 61
+        },
+        "localParts": [
+          -51.8,
+          4.5,
+          172.2
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 22.61,
+          "frames": 375,
+          "maxMs": 945.3,
+          "p95Ms": 25.4,
+          "recentMaxMs": 17.2,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3532,4,3756",
+          "x": 3532,
+          "y": 4,
+          "z": 3756
+        },
+        "posParts": [
+          3532.2,
+          4.5,
+          3756.2
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-51.8,4.5,172.2",
+          "mode": "recover",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3532.2,4.5,3756.2",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 7.92,
+          "stuckStrikes": 0,
+          "targetDistance": 140.8,
+          "viewClearance": 12.5,
+          "waypoint": "3529,3615",
+          "yawError": 0.48
+        },
+        "t": 1780175891828,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3532 Z:3756",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -54.1,
+          4.4,
+          167.8
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 21.79,
+          "frames": 435,
+          "maxMs": 945.3,
+          "p95Ms": 22.8,
+          "recentMaxMs": 21.9,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3530,4,3752",
+          "x": 3530,
+          "y": 4,
+          "z": 3752
+        },
+        "posParts": [
+          3529.9,
+          4.4,
+          3751.8
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-54.1,4.4,167.8",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3529.9,4.4,3751.8",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 12.76,
+          "stuckStrikes": 0,
+          "targetDistance": 86.8,
+          "viewClearance": 12.5,
+          "waypoint": "3608,3714",
+          "yawError": 0
+        },
+        "t": 1780175892862,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3531 Z:3752",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -56.2,
+          4.2,
+          163.5
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 21.17,
+          "frames": 495,
+          "maxMs": 945.3,
+          "p95Ms": 22.4,
+          "recentMaxMs": 21.9,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3528,4,3748",
+          "x": 3528,
+          "y": 4,
+          "z": 3748
+        },
+        "posParts": [
+          3527.8,
+          4.2,
+          3747.5
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-56.2,4.2,163.5",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3527.8,4.2,3747.5",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 12.77,
+          "stuckStrikes": 0,
+          "targetDistance": 85.3,
+          "viewClearance": 12.5,
+          "waypoint": "3606,3714",
+          "yawError": 0
+        },
+        "t": 1780175893891,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3529 Z:3748",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -56.1,
+          4.3,
+          161.3
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 20.67,
+          "frames": 556,
+          "maxMs": 945.3,
+          "p95Ms": 22.2,
+          "recentMaxMs": 16.9,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3528,4,3745",
+          "x": 3528,
+          "y": 4,
+          "z": 3745
+        },
+        "posParts": [
+          3527.9,
+          4.3,
+          3745.3
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-56.1,4.3,161.3",
+          "mode": "recover",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3527.9,4.3,3745.3",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 7.97,
+          "stuckStrikes": 0,
+          "targetDistance": 85.8,
+          "viewClearance": 12.5,
+          "waypoint": "3607,3713",
+          "yawError": 0
+        },
+        "t": 1780175894916,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3528 Z:3744",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -53.4,
+          4.6,
+          161.7
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 20.28,
+          "frames": 617,
+          "maxMs": 945.3,
+          "p95Ms": 21.7,
+          "recentMaxMs": 17.4,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3531,5,3746",
+          "x": 3531,
+          "y": 5,
+          "z": 3746
+        },
+        "posParts": [
+          3530.6,
+          4.6,
+          3745.7
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-53.4,4.6,161.7",
+          "mode": "recover",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3530.6,4.6,3745.7",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 7.93,
+          "stuckStrikes": 0,
+          "targetDistance": 79.8,
+          "viewClearance": 12.5,
+          "waypoint": "3606,3718",
+          "yawError": 0
+        },
+        "t": 1780175895945,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3530 Z:3746",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -58.5,
+          3.8,
+          162.1
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 19.96,
+          "frames": 677,
+          "maxMs": 945.3,
+          "p95Ms": 21.3,
+          "recentMaxMs": 17.4,
+          "stutter100": 6,
+          "stutter50": 10
+        },
+        "player": {
+          "position": "3525,4,3746",
+          "x": 3525,
+          "y": 4,
+          "z": 3746
+        },
+        "posParts": [
+          3525.5,
+          3.8,
+          3746.1
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-58.5,3.8,162.1",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3525.5,3.8,3746.1",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 12.72,
+          "stuckStrikes": 0,
+          "targetDistance": 81.7,
+          "viewClearance": 12.5,
+          "waypoint": "3505,3667",
+          "yawError": 0
+        },
+        "t": 1780175896975,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3525 Z:3747",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -53.5,
+          5,
+          153.4
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 16.65,
+          "frames": 720,
+          "maxMs": 29.3,
+          "p95Ms": 20.1,
+          "recentMaxMs": 17.1,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "3530,5,3737",
+          "x": 3530,
+          "y": 5,
+          "z": 3737
+        },
+        "posParts": [
+          3530.5,
+          5,
+          3737.4
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-53.5,5.0,153.4",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3530.5,5.0,3737.4",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 7.93,
+          "stuckStrikes": 0,
+          "targetDistance": 74.9,
+          "viewClearance": 12.5,
+          "waypoint": "3505,3667",
+          "yawError": 0
+        },
+        "t": 1780175898000,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3530 Z:3738",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -48.3,
+          5.8,
+          147.1
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 16.66,
+          "frames": 720,
+          "maxMs": 27.2,
+          "p95Ms": 19.5,
+          "recentMaxMs": 18.6,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "3536,6,3731",
+          "x": 3536,
+          "y": 6,
+          "z": 3731
+        },
+        "posParts": [
+          3535.7,
+          5.8,
+          3731.1
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-48.3,5.8,147.1",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3535.7,5.8,3731.1",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 7.95,
+          "stuckStrikes": 0,
+          "targetDistance": 71,
+          "viewClearance": 12.5,
+          "waypoint": "3505,3667",
+          "yawError": 0
+        },
+        "t": 1780175899028,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3536 Z:3731",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -46.4,
+          5.9,
+          145
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 16.67,
+          "frames": 720,
+          "maxMs": 27.2,
+          "p95Ms": 18.4,
+          "recentMaxMs": 18.6,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "3538,6,3729",
+          "x": 3538,
+          "y": 6,
+          "z": 3729
+        },
+        "posParts": [
+          3537.6,
+          5.9,
+          3729
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-46.4,5.9,145.0",
+          "mode": "inspect",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3537.6,5.9,3729.0",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 0,
+          "stuckStrikes": 0,
+          "targetDistance": 70,
+          "viewClearance": 12.5,
+          "waypoint": "3505,3667",
+          "yawError": 0.19
+        },
+        "t": 1780175900058,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3538 Z:3729",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -46.4,
+          5.9,
+          145
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 16.67,
+          "frames": 720,
+          "maxMs": 25.9,
+          "p95Ms": 16.9,
+          "recentMaxMs": 25.9,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "3538,6,3729",
+          "x": 3538,
+          "y": 6,
+          "z": 3729
+        },
+        "posParts": [
+          3537.6,
+          5.9,
+          3729
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-46.4,5.9,145.0",
+          "mode": "inspect",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3537.6,5.9,3729.0",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 0,
+          "stuckStrikes": 0,
+          "targetDistance": 70,
+          "viewClearance": 12.5,
+          "waypoint": "3505,3667",
+          "yawError": 0
+        },
+        "t": 1780175901082,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3538 Z:3729",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -49.3,
+          5.7,
+          147.8
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 16.67,
+          "frames": 720,
+          "maxMs": 25.9,
+          "p95Ms": 16.9,
+          "recentMaxMs": 25.9,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "3535,6,3732",
+          "x": 3535,
+          "y": 6,
+          "z": 3732
+        },
+        "posParts": [
+          3534.7,
+          5.7,
+          3731.8
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-49.3,5.7,147.8",
+          "mode": "recover",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3534.7,5.7,3731.8",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 7.97,
+          "stuckStrikes": 1,
+          "targetDistance": 150.1,
+          "viewClearance": 12.5,
+          "waypoint": "3568,3585",
+          "yawError": 0
+        },
+        "t": 1780175902111,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3535 Z:3731",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -53.9,
+          5.5,
+          141.3
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 16.67,
+          "frames": 720,
+          "maxMs": 25.9,
+          "p95Ms": 16.9,
+          "recentMaxMs": 17,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "3530,6,3725",
+          "x": 3530,
+          "y": 6,
+          "z": 3725
+        },
+        "posParts": [
+          3530.1,
+          5.5,
+          3725.3
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-53.9,5.5,141.3",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3530.1,5.5,3725.3",
+          "practiceCast": "fireball",
+          "recoveryReason": "",
+          "speed": 7.95,
+          "stuckStrikes": 0,
+          "targetDistance": 77.4,
+          "viewClearance": 12.5,
+          "waypoint": "3552,3651",
+          "yawError": 0
+        },
+        "t": 1780175903142,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3530 Z:3726",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -58.9,
+          3.6,
+          134.9
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 16.67,
+          "frames": 720,
+          "maxMs": 25.9,
+          "p95Ms": 16.9,
+          "recentMaxMs": 17,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "3525,4,3719",
+          "x": 3525,
+          "y": 4,
+          "z": 3719
+        },
+        "posParts": [
+          3525.1,
+          3.6,
+          3718.9
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-58.9,3.6,134.9",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3525.1,3.6,3718.9",
+          "practiceCast": "iceshard",
+          "recoveryReason": "",
+          "speed": 7.98,
+          "stuckStrikes": 0,
+          "targetDistance": 73,
+          "viewClearance": 12.5,
+          "waypoint": "3552,3651",
+          "yawError": 0
+        },
+        "t": 1780175904164,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3525 Z:3719",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -63.9,
+          1.5,
+          128.3
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 16.67,
+          "frames": 720,
+          "maxMs": 25.9,
+          "p95Ms": 16.9,
+          "recentMaxMs": 18,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "3520,1,3712",
+          "x": 3520,
+          "y": 1,
+          "z": 3712
+        },
+        "posParts": [
+          3520.1,
+          1.5,
+          3712.3
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-63.9,1.5,128.3",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3520.1,1.5,3712.3",
+          "practiceCast": "iceshard",
+          "recoveryReason": "",
+          "speed": 8.03,
+          "stuckStrikes": 0,
+          "targetDistance": 68.9,
+          "viewClearance": 12.5,
+          "waypoint": "3552,3651",
+          "yawError": 0
+        },
+        "t": 1780175905195,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3520 Z:3712",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      },
+      {
+        "dummies": {
+          "alive": 0,
+          "health": "",
+          "hits": null,
+          "lastHit": "",
+          "qaCast": ""
+        },
+        "grass": {
+          "center": "11,12",
+          "localCells": 25,
+          "radius": 864,
+          "streamCenter": "7,7",
+          "streamRadius": 5,
+          "survivalChunks": 97
+        },
+        "localParts": [
+          -69.5,
+          0.2,
+          122.4
+        ],
+        "mana": {
+          "cooldowns": "",
+          "count": 55,
+          "lastCollect": "",
+          "ready": 55,
+          "sample": "mana-flower-6:6:0:3259,19,2939|mana-flower-6:6:1:3164,27,2933|mana-flower-6:6:2:2909,9,3276|mana-flower-6:6:4:2859,23,3137"
+        },
+        "perf": {
+          "avgMs": 16.67,
+          "frames": 720,
+          "maxMs": 25.9,
+          "p95Ms": 16.9,
+          "recentMaxMs": 18,
+          "stutter100": 0,
+          "stutter50": 0
+        },
+        "player": {
+          "position": "3515,0,3706",
+          "x": 3515,
+          "y": 0,
+          "z": 3706
+        },
+        "posParts": [
+          3514.5,
+          0.2,
+          3706.4
+        ],
+        "qa": {
+          "abnormality": "",
+          "action": "",
+          "clearance": 13.5,
+          "intent": "roam",
+          "lilyDirection": "",
+          "lilyT": "",
+          "localPos": "-69.5,0.2,122.4",
+          "mode": "travel",
+          "observed": "mana:55|dummies:0|quests:0",
+          "overheadClearance": 4.8,
+          "pos": "3514.5,0.2,3706.4",
+          "practiceCast": "iceshard",
+          "recoveryReason": "",
+          "speed": 8,
+          "stuckStrikes": 0,
+          "targetDistance": 66.8,
+          "viewClearance": 12.5,
+          "waypoint": "3552,3651",
+          "yawError": 0
+        },
+        "t": 1780175906215,
+        "text": "DARREL\n+\nMANA\nGRIMOIRE\nL\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nR\n1\n2\n3\n4\n5\n6\n7\n8\n9\n0\nSPELLS\nL NO MANA\nR NO MANA\nVITALITY\nHEALTH\n100%\nARMOR\n0/50\nAETHER\nN\nS\nE\nW\nX:3515 Z:3706",
+        "url": "http://localhost:3000/?room=poop&disableDefaultQuestSpawn=1&quality=1&qaSurvivalWalk=1&qaPerfStats=1&qaHideMenu=1&qaSurvivalChunk=7%2C7&qaReload=full-sweep-wilderness-patched-v1"
+      }
+    ]
+  }
+]

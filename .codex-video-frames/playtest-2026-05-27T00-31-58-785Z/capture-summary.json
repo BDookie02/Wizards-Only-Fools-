@@ -1,0 +1,691 @@
+{
+  "root": "C:\\Users\\jojos\\Desktop\\projects\\Wizards only fools\\wizards-only-fools! quen test\\.codex-video-frames\\playtest-2026-05-27T00-31-58-785Z",
+  "startedAt": "2026-05-27T00:31:58.808Z",
+  "frame": 0,
+  "samples": [],
+  "errors": [
+    {
+      "t": 1779841919810,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841920825,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841921829,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841922836,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841923838,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841924844,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841925846,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841926861,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841927863,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841928863,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841929867,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841930870,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841931878,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841932892,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841933907,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841934907,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841935914,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841936918,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841937930,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841938941,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841939947,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841940959,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841941971,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841942985,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841943998,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841945011,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841946022,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841947031,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841948034,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841949047,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841950060,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841951073,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841952076,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841953090,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841954104,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841955117,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841956117,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841957130,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841958133,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841959145,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841960146,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841961160,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841962163,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841963164,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841964167,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841965171,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841966179,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841967194,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841968200,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841969211,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841970224,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841971239,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841972250,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841973263,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841974276,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841975290,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841976293,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841977303,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841978305,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841979316,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841980332,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841981332,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841982343,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841983354,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841984354,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841985363,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841986365,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841987378,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841988381,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841989381,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841990392,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841991392,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841992400,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841993403,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841994416,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841995428,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841996443,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841997454,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841998469,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779841999479,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842000492,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842001494,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842002505,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842003509,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842004523,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842005525,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842006527,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842007538,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842008548,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842009549,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842010563,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842011568,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842012579,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842013578,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842014592,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842015605,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842016622,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842017637,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842018637,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842019649,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842020657,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842021667,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842022681,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842023696,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842024710,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842025710,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842026722,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842027733,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842028743,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842029756,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842030765,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842031777,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842032788,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842033801,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842034814,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842035815,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842036829,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842037840,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842038854,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842039864,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842040875,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842041876,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842042888,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842043898,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842044899,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842045899,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842046915,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842047917,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842048931,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842049935,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842050948,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842051950,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842052964,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842053964,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842054978,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842055990,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842057004,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842058018,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842059033,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842060038,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842061047,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842062061,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842063063,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842064076,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842065076,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842066076,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842067079,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842068083,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842069089,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842070093,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842071100,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842072103,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842073117,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842074125,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842075132,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842076134,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842077147,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842078148,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842079149,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842080163,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842081178,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842082178,
+      "message": "node_repl exec context not found"
+    },
+    {
+      "t": 1779842083193,
+      "message": "node_repl exec context not found"
+    }
+  ],
+  "busy": false,
+  "stopped": true,
+  "logsBefore": [
+    {
+      "level": "warn",
+      "message": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+      "timestamp": "2026-05-26T04:57:47.165Z",
+      "url": "http://localhost:5174/node_modules/.vite/deps/chunk-CF2J4OT6.js?v=128ce769"
+    },
+    {
+      "level": "warn",
+      "message": "using deprecated parameters for the initialization function; pass a single object instead",
+      "timestamp": "2026-05-26T04:57:47.165Z",
+      "url": "http://localhost:5174/node_modules/.vite/deps/chunk-LLEILHP5.js?v=128ce769"
+    }
+  ],
+  "endedAt": "2026-05-27T00:34:44.045Z",
+  "logsAfter": [
+    {
+      "level": "warn",
+      "message": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+      "timestamp": "2026-05-26T04:57:47.165Z",
+      "url": "http://localhost:5174/node_modules/.vite/deps/chunk-CF2J4OT6.js?v=128ce769"
+    },
+    {
+      "level": "warn",
+      "message": "using deprecated parameters for the initialization function; pass a single object instead",
+      "timestamp": "2026-05-26T04:57:47.165Z",
+      "url": "http://localhost:5174/node_modules/.vite/deps/chunk-LLEILHP5.js?v=128ce769"
+    }
+  ]
+}

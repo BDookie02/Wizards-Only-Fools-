@@ -1,0 +1,21 @@
+{
+  "startedAt": "2026-05-26T04:12:07.808Z",
+  "endedAt": "2026-05-26T04:13:50.269Z",
+  "startIndex": 276,
+  "frameCount": 91,
+  "captureErrors": [],
+  "logs": [
+    {
+      "level": "warn",
+      "message": "THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+      "timestamp": "2026-05-26T04:12:07.672Z",
+      "url": "http://localhost:5174/node_modules/.vite/deps/chunk-CF2J4OT6.js?v=128ce769"
+    },
+    {
+      "level": "warn",
+      "message": "using deprecated parameters for the initialization function; pass a single object instead",
+      "timestamp": "2026-05-26T04:12:07.675Z",
+      "url": "http://localhost:5174/node_modules/.vite/deps/chunk-LLEILHP5.js?v=128ce769"
+    }
+  ]
+}
