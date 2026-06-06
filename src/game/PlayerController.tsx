@@ -2127,6 +2127,7 @@ export function PlayerController() {
       bodyPos: { x: number; y: number; z: number },
       eyeY: number,
       cameraHeight: number,
+      clearPlanarVelocity: boolean,
     ) => {
       const probe = cameraAntiClipProbe.current.set(bodyPos.x, eyeY, bodyPos.z);
       const projection = world.projectPoint(
@@ -2138,11 +2139,12 @@ export function PlayerController() {
         undefined,
         isSolidWorldCollider,
       );
-      let nextX = bodyPos.x;
-      let nextY = bodyPos.y;
-      let nextZ = bodyPos.z;
+      let cameraX = bodyPos.x;
+      let bodyY = bodyPos.y;
+      let cameraZ = bodyPos.z;
       let nextEyeY = eyeY;
-      let moved = false;
+      let cameraAdjusted = false;
+      let bodyLifted = false;
       const push = cameraAntiClipPush.current;
       if (projection) {
         const verticalSeparation = Math.abs(projection.point.y - probe.y);
@@ -2170,9 +2172,9 @@ export function PlayerController() {
                 : Math.min(CAMERA_WALL_PUSH_MAX, CAMERA_WALL_CLEARANCE - horizontalDistance);
               if (pushDistance > 0) {
                 push.multiplyScalar(pushDistance / horizontalDistance);
-                nextX += push.x;
-                nextZ += push.z;
-                moved = true;
+                cameraX += push.x;
+                cameraZ += push.z;
+                cameraAdjusted = true;
               }
             }
           }
@@ -2182,9 +2184,10 @@ export function PlayerController() {
           const targetEyeY = projection.point.y + CAMERA_TERRAIN_EYE_CLEARANCE;
           const lift = targetEyeY - nextEyeY;
           if (lift > FLOOR_RECOVERY_TRIGGER_DEPTH && lift < CAMERA_TERRAIN_MAX_BODY_LIFT) {
-            nextY += lift;
+            bodyY += lift;
             nextEyeY += lift;
-            moved = true;
+            cameraAdjusted = true;
+            bodyLifted = true;
           }
         }
       }
@@ -2192,7 +2195,7 @@ export function PlayerController() {
       if (survivalModeActive) {
         const terrainProbeY = nextEyeY + CAMERA_TERRAIN_RAY_UP;
         const terrainRay = new rapier.Ray(
-          { x: nextX, y: terrainProbeY, z: nextZ },
+          { x: cameraX, y: terrainProbeY, z: cameraZ },
           { x: 0, y: -1, z: 0 },
         );
         // @ts-ignore - rapier exposes the collider predicate in this overload.
@@ -2208,7 +2211,7 @@ export function PlayerController() {
         );
         if (terrainHit) {
           const surfaceY = terrainProbeY - terrainHit.timeOfImpact;
-          const surfaceAboveBody = surfaceY - nextY;
+          const surfaceAboveBody = surfaceY - bodyY;
           const targetEyeY = surfaceY + CAMERA_TERRAIN_EYE_CLEARANCE;
           const lift = targetEyeY - nextEyeY;
           if (
@@ -2217,20 +2220,27 @@ export function PlayerController() {
             surfaceAboveBody > -PLAYER_FOOT_OFFSET &&
             surfaceAboveBody < CAMERA_TERRAIN_MAX_SURFACE_ABOVE_BODY
           ) {
-            nextY += lift;
-            nextEyeY = nextY + cameraHeight;
-            moved = true;
+            bodyY += lift;
+            nextEyeY = bodyY + cameraHeight;
+            cameraAdjusted = true;
+            bodyLifted = true;
           }
         }
       }
 
-      if (!moved) return null;
+      if (!cameraAdjusted && !bodyLifted) return null;
 
-      rigidBody.current?.setTranslation({ x: nextX, y: nextY, z: nextZ }, true);
-      if (nextY > bodyPos.y + FLOOR_RECOVERY_TRIGGER_DEPTH) {
-        rigidBody.current?.setLinvel({ x: velocity.x, y: Math.max(0, velocity.y), z: velocity.z }, true);
+      if (bodyLifted) {
+        rigidBody.current?.setTranslation({ x: bodyPos.x, y: bodyY, z: bodyPos.z }, true);
       }
-      return { x: nextX, y: nextY, z: nextZ, eyeY: nextEyeY };
+      if (bodyLifted && bodyY > bodyPos.y + FLOOR_RECOVERY_TRIGGER_DEPTH) {
+        rigidBody.current?.setLinvel({
+          x: clearPlanarVelocity ? 0 : velocity.x,
+          y: Math.max(0, velocity.y),
+          z: clearPlanarVelocity ? 0 : velocity.z,
+        }, true);
+      }
+      return { x: cameraX, y: bodyY, z: cameraZ, eyeY: nextEyeY };
     };
     (window as any).localPlayerPos = pos;
     (window as any).__wofLastPlayerPosition = {
@@ -4365,7 +4375,8 @@ export function PlayerController() {
       direction.z *= 0.22;
     }
     
-    if (pullFrames.current > 0) {
+    const hasActiveExternalPull = pullFrames.current > 0;
+    if (hasActiveExternalPull) {
       direction.x += pullVelocity.current.x;
       direction.z += pullVelocity.current.z;
       velocity.y = pullVelocity.current.y;
@@ -4409,6 +4420,15 @@ export function PlayerController() {
     );
     const climbingLadder = ladderActive && !vclipActive;
     let effectiveGrounded = grounded || climbingLadder;
+    const idleGroundedPlanarLock =
+      !vclipActive &&
+      effectiveGrounded &&
+      !climbingLadder &&
+      !grabbedState.current &&
+      !hasMovementInput &&
+      !slideHeld &&
+      !isSliding &&
+      !hasActiveExternalPull;
     const crouchAllowed =
       crouchInputHeld &&
       effectiveGrounded &&
@@ -4438,7 +4458,11 @@ export function PlayerController() {
         if (lift <= FLOOR_RECOVERY_TRIGGER_DEPTH || lift >= maxLift) return false;
 
         rigidBody.current.setTranslation({ x: pos.x, y: correctedY, z: pos.z }, true);
-        rigidBody.current.setLinvel({ x: velocity.x, y: 0, z: velocity.z }, true);
+        rigidBody.current.setLinvel({
+          x: idleGroundedPlanarLock ? 0 : velocity.x,
+          y: 0,
+          z: idleGroundedPlanarLock ? 0 : velocity.z,
+        }, true);
         camera.position.set(pos.x, correctedY + (isSliding ? PLAYER_SLIDE_CAMERA_HEIGHT : isCrouching ? PLAYER_CROUCH_CAMERA_HEIGHT : PLAYER_CAMERA_HEIGHT), pos.z);
         (window as any).localPlayerPos = { x: pos.x, y: correctedY, z: pos.z };
         window.dispatchEvent(new CustomEvent('player-state', {
@@ -4558,10 +4582,12 @@ export function PlayerController() {
 
     // Applying x/z movement
     const ladderVelocityY = ladderVerticalInput === 0 ? LADDER_IDLE_HOLD_SPEED : ladderVerticalInput * LADDER_CLIMB_SPEED;
+    const outputVelocityX = idleGroundedPlanarLock ? 0 : direction.x;
+    const outputVelocityZ = idleGroundedPlanarLock ? 0 : direction.z;
     rigidBody.current.setLinvel({
-      x: direction.x,
+      x: outputVelocityX,
       y: vclipActive ? direction.y : climbingLadder ? ladderVelocityY : velocity.y,
-      z: direction.z
+      z: outputVelocityZ
     }, true);
 
     const fuel = useGameStore.getState().thrusterFuel;
@@ -4575,7 +4601,11 @@ export function PlayerController() {
     if (!vclipActive && !sleepActive && !climbingLadder && jumpHeld) {
       if (grounded && velocity.y <= GROUND_JUMP_MAX_UPWARD_VELOCITY) {
         if (jumpRequested) {
-          rigidBody.current.setLinvel({ x: velocity.x, y: JUMP_FORCE * (jumpBoostActive ? JUMP_BOOST_MULTIPLIER : 1), z: velocity.z }, true);
+          rigidBody.current.setLinvel({
+            x: idleGroundedPlanarLock ? 0 : velocity.x,
+            y: JUMP_FORCE * (jumpBoostActive ? JUMP_BOOST_MULTIPLIER : 1),
+            z: idleGroundedPlanarLock ? 0 : velocity.z,
+          }, true);
           setJumps(1);
           thrusterLocked.current = false; // reset lock
         }
@@ -4608,7 +4638,7 @@ export function PlayerController() {
         : PLAYER_CAMERA_HEIGHT;
     const targetY = pos.y + cameraHeight;
     const cameraClearancePosition = (!vclipActive && !climbingLadder)
-      ? resolveCameraWallPush(pos, targetY, cameraHeight)
+      ? resolveCameraWallPush(pos, targetY, cameraHeight, idleGroundedPlanarLock)
       : null;
     const cameraBasePosition = cameraClearancePosition ?? pos;
     const resolvedTargetY = cameraClearancePosition?.eyeY ?? targetY;
