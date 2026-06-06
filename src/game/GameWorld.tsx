@@ -1071,6 +1071,7 @@ function getBiomeMountainField(biome: SurvivalBiome, worldX: number, worldZ: num
 let cachedDesertSandTexture: THREE.CanvasTexture | null = null;
 let cachedSurvivalTerrainDetailTexture: THREE.CanvasTexture | null = null;
 let cachedSurvivalGrasslandTerrainDetailTexture: THREE.CanvasTexture | null = null;
+let cachedMountainVillageTerrainDetailTexture: THREE.CanvasTexture | null = null;
 let cachedDesertAdobeWallTexture: THREE.CanvasTexture | null = null;
 
 function getDesertSandTexture() {
@@ -1179,6 +1180,74 @@ function getSurvivalTerrainDetailTexture() {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.needsUpdate = true;
   cachedSurvivalTerrainDetailTexture = texture;
+  return texture;
+}
+
+function getMountainVillageTerrainDetailTexture() {
+  if (cachedMountainVillageTerrainDetailTexture) return cachedMountainVillageTerrainDetailTexture;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+
+  if (ctx) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = "#f4f7ec";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let y = 0; y < canvas.height; y += 2) {
+      for (let x = 0; x < canvas.width; x += 2) {
+        const contour = Math.abs(((y + Math.sin(x * 0.07) * 9 + Math.sin((x + y) * 0.025) * 13) % 34) - 17);
+        const scratch = Math.sin(x * 0.21 + y * 0.09) + Math.cos(y * 0.18 - x * 0.06);
+        const grain = Math.sin(x * 17.13 + y * 63.77) * 43758.5453;
+        const speckle = grain - Math.floor(grain);
+
+        if (contour < 1.35) {
+          ctx.fillStyle = "rgba(88, 98, 70, 0.1)";
+          ctx.fillRect(x, y, 2, 2);
+        } else if (contour < 3.2 && speckle > 0.38) {
+          ctx.fillStyle = "rgba(112, 126, 82, 0.06)";
+          ctx.fillRect(x, y, 2, 2);
+        } else if (scratch > 1.38 && speckle > 0.42) {
+          ctx.fillStyle = "rgba(255, 255, 242, 0.12)";
+          ctx.fillRect(x, y, 2, 2);
+        } else if (scratch < -1.32 && speckle > 0.42) {
+          ctx.fillStyle = "rgba(61, 71, 52, 0.08)";
+          ctx.fillRect(x, y, 2, 2);
+        } else if (speckle > 0.988) {
+          ctx.fillStyle = "rgba(66, 75, 58, 0.1)";
+          ctx.fillRect(x, y, 2, 2);
+        }
+      }
+    }
+
+    for (let streak = 0; streak < 72; streak += 1) {
+      const baseX = survivalHash01(streak, 0, 61700) * canvas.width;
+      const baseY = survivalHash01(streak, 1, 61701) * canvas.height;
+      const length = 18 + survivalHash01(streak, 2, 61702) * 38;
+      const drift = (survivalHash01(streak, 3, 61703) - 0.5) * 18;
+      ctx.strokeStyle = survivalHash01(streak, 4, 61704) > 0.52
+        ? "rgba(81, 103, 62, 0.08)"
+        : "rgba(127, 118, 78, 0.07)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(baseX, baseY);
+      ctx.lineTo((baseX + drift + canvas.width) % canvas.width, (baseY + length) % canvas.height);
+      ctx.stroke();
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(7, 9);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  cachedMountainVillageTerrainDetailTexture = texture;
   return texture;
 }
 
@@ -22331,6 +22400,8 @@ const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_Y_OFFSET = 1.55;
 const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_START_RADIUS = MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS - 0.65;
 const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_END_RADIUS = MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS + 8.5;
 const MOUNTAIN_WATERFALL_CAMERA_HIDE_FAR = 56;
+const MOUNTAIN_VILLAGE_SLOPE_GRASS_NEAR_COUNT = 1080;
+const MOUNTAIN_VILLAGE_SLOPE_GRASS_MID_COUNT = 380;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -22433,6 +22504,19 @@ type MountainVillageCliffPatch = {
   thickness: number;
   color: string;
   opacity: number;
+};
+
+type MountainSlopeGrassTuft = {
+  localX: number;
+  localZ: number;
+  y: number;
+  normalX: number;
+  normalY: number;
+  normalZ: number;
+  yaw: number;
+  width: number;
+  height: number;
+  color: THREE.Color;
 };
 
 type MountainVillageLayout = {
@@ -22555,7 +22639,11 @@ function getMountainVillageTerrainColor(
   const moss = new THREE.Color("#405a3d");
   const slopeGrass = new THREE.Color("#48673a");
   const sunlitGrass = new THREE.Color("#6f8f48");
+  const deepGrass = new THREE.Color("#354d32");
+  const dryGrass = new THREE.Color("#8b8f59");
+  const lichen = new THREE.Color("#9ca36f");
   const slopeSoil = new THREE.Color("#5f5137");
+  const rootDirt = new THREE.Color("#3f3426");
   const trailDirt = new THREE.Color("#5f4e35");
   const trailStone = new THREE.Color("#3e342b");
   const snowMix = smoothstepRange(MOUNTAIN_VILLAGE_HEIGHT * 0.82, MOUNTAIN_VILLAGE_HEIGHT * 1.02, lift);
@@ -22570,6 +22658,16 @@ function getMountainVillageTerrainColor(
     Math.cos(worldX * 0.43 - worldZ * 0.17) +
     Math.sin(radius * 0.56 + localX * 0.09)
   ) / 3 * 0.5 + 0.5);
+  const broadGrassPatch = clamp01((
+    Math.sin(localX * 0.046 + localZ * 0.021 + radius * 0.052) +
+    Math.cos(localZ * 0.057 - localX * 0.034) +
+    Math.sin(Math.atan2(localX, localZ) * 5.6 + radius * 0.033)
+  ) / 3 * 0.5 + 0.5);
+  const hillsideScratch = clamp01((
+    Math.sin(localX * 0.18 - localZ * 0.07 + lift * 0.05) +
+    Math.cos(localZ * 0.14 + radius * 0.12)
+  ) * 0.5 + 0.5);
+  const contourBand = Math.pow(Math.max(0, Math.sin(lift * 0.24 + radius * 0.16 + Math.atan2(localX, localZ) * 2.4)), 2.4);
   const snowScour = Math.max(0, Math.sin(localX * 0.42 - localZ * 0.29 + radius * 0.12));
   const exposedCliff = smoothstepRange(MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 10, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 78, radius) * snowMix;
   const snowCoverage = clamp01(snowMix * (0.2 + plateauMix * 0.58 - exposedCliff * 0.24));
@@ -22577,21 +22675,29 @@ function getMountainVillageTerrainColor(
     (1 - smoothstepRange(MOUNTAIN_VILLAGE_RADIUS - 10, MOUNTAIN_VILLAGE_RADIUS + 34, radius)) *
     (1 - snowCoverage) *
     (1 - trailMask);
-  const grassMottle = clamp01(0.18 + grain * 0.58 - vein * 0.24 + strata * 0.12);
-  const sunFleck = lowerSlopeGrass * Math.max(0, grain - 0.68);
+  const grassMottle = clamp01(0.16 + grain * 0.42 + broadGrassPatch * 0.36 - vein * 0.22 + strata * 0.1);
+  const grassPatch = lowerSlopeGrass * smoothstepRange(0.28, 0.88, broadGrassPatch + grassMottle * 0.34);
+  const dryPatch = lowerSlopeGrass * smoothstepRange(0.6, 0.94, hillsideScratch + contourBand * 0.18) * (1 - plateauMix * 0.6);
+  const shadowRavine = lowerSlopeGrass * smoothstepRange(0.58, 0.96, vein) * smoothstepRange(18, 104, lift);
+  const shelfBand = lowerSlopeGrass * contourBand * smoothstepRange(0.24, 0.8, grassMottle);
+  const sunFleck = lowerSlopeGrass * Math.max(0, grain - 0.62);
   const baseSurfaceColor = naturalColor
     .clone()
-    .lerp(alpineBase, (1 - edgeBlend) * 0.86)
-    .lerp(alpineBright, (1 - edgeBlend) * grain * 0.12);
+    .lerp(alpineBase, (1 - edgeBlend) * 0.72)
+    .lerp(alpineBright, (1 - edgeBlend) * (grain * 0.12 + broadGrassPatch * 0.08));
 
   if (!showTrailSurface) {
     const distantShellColor = baseSurfaceColor
       .clone()
       .lerp(moss, 0.1 * (1 - cliffMix))
-      .lerp(stone, cliffMix * 0.46 + lowerSlopeGrass * 0.08)
-      .lerp(slopeSoil, lowerSlopeGrass * (1 - grassMottle) * 0.08)
-      .lerp(slopeGrass, lowerSlopeGrass * (0.18 + grassMottle * 0.22))
-      .lerp(sunlitGrass, sunFleck * 0.12)
+      .lerp(stone, cliffMix * 0.36 + lowerSlopeGrass * 0.04)
+      .lerp(rootDirt, shadowRavine * 0.12)
+      .lerp(slopeSoil, lowerSlopeGrass * (1 - grassMottle) * 0.14 + shelfBand * 0.08)
+      .lerp(deepGrass, grassPatch * 0.22 + shadowRavine * 0.08)
+      .lerp(slopeGrass, lowerSlopeGrass * (0.16 + grassMottle * 0.18))
+      .lerp(dryGrass, dryPatch * 0.18)
+      .lerp(lichen, shelfBand * 0.12)
+      .lerp(sunlitGrass, sunFleck * 0.18)
       .lerp(paleStone, grain * cliffMix * 0.05)
       .lerp(darkStone, vein * cliffMix * 0.06)
       .lerp(summitStone, plateauMix * 0.22)
@@ -22608,10 +22714,14 @@ function getMountainVillageTerrainColor(
   const color = baseSurfaceColor
     .clone()
     .lerp(moss, 0.12 * (1 - cliffMix))
-    .lerp(stone, cliffMix * 0.56 + lowerSlopeGrass * 0.08)
-    .lerp(slopeSoil, lowerSlopeGrass * (1 - grassMottle) * 0.1)
-    .lerp(slopeGrass, lowerSlopeGrass * (0.24 + grassMottle * 0.28))
-    .lerp(sunlitGrass, sunFleck * 0.14)
+    .lerp(stone, cliffMix * 0.4 + lowerSlopeGrass * 0.04)
+    .lerp(rootDirt, shadowRavine * 0.16)
+    .lerp(slopeSoil, lowerSlopeGrass * (1 - grassMottle) * 0.16 + shelfBand * 0.1)
+    .lerp(deepGrass, grassPatch * 0.26 + shadowRavine * 0.1)
+    .lerp(slopeGrass, lowerSlopeGrass * (0.18 + grassMottle * 0.22))
+    .lerp(dryGrass, dryPatch * 0.22)
+    .lerp(lichen, shelfBand * 0.16)
+    .lerp(sunlitGrass, sunFleck * 0.22)
     .lerp(paleStone, grain * cliffMix * 0.1)
     .lerp(darkStone, vein * cliffMix * 0.12)
     .lerp(darkStone, strata * exposedCliff * 0.18)
@@ -22626,7 +22736,7 @@ function getMountainVillageTerrainColor(
 }
 
 function getMountainVillageTerrainSegments(chunk: SurvivalChunkInfo) {
-  if (chunk.lod === "near") return 72;
+  if (chunk.lod === "near") return 104;
   if (chunk.lod === "mid") return 56;
   return 40;
 }
@@ -22680,6 +22790,164 @@ function makeMountainVillageTerrainGeometry(chunk: SurvivalChunkInfo, cutMinesha
   }
   geo.computeVertexNormals();
   return geo;
+}
+
+function getMountainVillageSurfaceNormal(chunk: SurvivalChunkInfo, localX: number, localZ: number, baseHeight: number) {
+  const step = 3.2;
+  const left = getMountainVillageHeight(chunk, localX - step, localZ, baseHeight);
+  const right = getMountainVillageHeight(chunk, localX + step, localZ, baseHeight);
+  const down = getMountainVillageHeight(chunk, localX, localZ - step, baseHeight);
+  const up = getMountainVillageHeight(chunk, localX, localZ + step, baseHeight);
+  return new THREE.Vector3(left - right, step * 2, down - up).normalize();
+}
+
+function makeMountainVillageSlopeGrassTufts(chunk: SurvivalChunkInfo, baseHeight: number): MountainSlopeGrassTuft[] {
+  if (chunk.lod === "far") return [];
+
+  const targetCount = chunk.lod === "near"
+    ? MOUNTAIN_VILLAGE_SLOPE_GRASS_NEAR_COUNT
+    : MOUNTAIN_VILLAGE_SLOPE_GRASS_MID_COUNT;
+  const generated: MountainSlopeGrassTuft[] = [];
+  const gridSize = Math.ceil(Math.sqrt(targetCount * 2.15));
+  const attempts = gridSize * gridSize;
+  const halfSize = SURVIVAL_BLOCK_SIZE * 0.5;
+  const deepGrass = new THREE.Color("#4f723b");
+  const lightGrass = new THREE.Color("#829a52");
+  const dryGrass = new THREE.Color("#9a965d");
+  const terrainTint = new THREE.Color();
+
+  for (let index = 0; index < attempts && generated.length < targetCount; index += 1) {
+    const sampleIndex = (index * 1543 + Math.floor(survivalHash01(chunk.cx, chunk.cz, 61900) * attempts)) % attempts;
+    const col = sampleIndex % gridSize;
+    const row = Math.floor(sampleIndex / gridSize);
+    const jitterX = 0.18 + survivalHash01(chunk.cx + col, chunk.cz - row, 61920 + index) * 0.64;
+    const jitterZ = 0.18 + survivalHash01(chunk.cx - row, chunk.cz + col, 61950 + index) * 0.64;
+    const localX = -halfSize + ((col + jitterX) / gridSize) * SURVIVAL_BLOCK_SIZE;
+    const localZ = -halfSize + ((row + jitterZ) / gridSize) * SURVIVAL_BLOCK_SIZE;
+    const radius = Math.hypot(localX, localZ);
+    if (radius < MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 20 || radius > MOUNTAIN_VILLAGE_RADIUS - 16) continue;
+
+    const trailMask = getMountainVillageTrailSurfaceMask(chunk, localX, localZ);
+    if (trailMask > 0.16) continue;
+
+    const y = getMountainVillageHeight(chunk, localX, localZ, baseHeight);
+    const lift = y - baseHeight;
+    if (lift < 18 || lift > MOUNTAIN_VILLAGE_HEIGHT * 0.84) continue;
+
+    const normal = getMountainVillageSurfaceNormal(chunk, localX, localZ, baseHeight);
+    if (normal.y < 0.34) continue;
+
+    const angle = Math.atan2(localX, localZ);
+    const broadPatch = clamp01((
+      Math.sin(localX * 0.045 + localZ * 0.023 + radius * 0.052) +
+      Math.cos(localZ * 0.052 - localX * 0.031) +
+      Math.sin(angle * 5.4 + radius * 0.036)
+    ) / 3 * 0.5 + 0.5);
+    const slopeMix = smoothstepRange(0.04, 0.42, 1 - normal.y);
+    const radialBand = smoothstepRange(MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 26, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 86, radius) *
+      (1 - smoothstepRange(MOUNTAIN_VILLAGE_RADIUS - 54, MOUNTAIN_VILLAGE_RADIUS - 10, radius));
+    const keepChance = clamp01((0.24 + broadPatch * 0.58 + slopeMix * 0.16) * radialBand);
+    if (survivalHash01(chunk.cx + col, chunk.cz + row, 61980 + index) > keepChance) continue;
+
+    const dryMix = smoothstepRange(0.62, 0.96, broadPatch + survivalHash01(col, row, 62010) * 0.18);
+    const terrainColor = getMountainVillageTerrainColor(chunk, localX, localZ, y, baseHeight, true);
+    terrainTint.copy(deepGrass)
+      .lerp(lightGrass, smoothstepRange(0.38, 0.9, broadPatch) * 0.42)
+      .lerp(dryGrass, dryMix * 0.24)
+      .lerp(terrainColor, 0.24)
+      .multiplyScalar(0.88 + survivalHash01(col, row, 62040) * 0.16);
+    terrainTint.r = clamp01(terrainTint.r);
+    terrainTint.g = clamp01(terrainTint.g);
+    terrainTint.b = clamp01(terrainTint.b);
+
+    generated.push({
+      localX,
+      localZ,
+      y,
+      normalX: normal.x,
+      normalY: normal.y,
+      normalZ: normal.z,
+      yaw: angle + (survivalHash01(row, col, 62070) - 0.5) * 1.4,
+      width: lerpNumber(0.96, 1.86, survivalHash01(col, row, 62100)) * lerpNumber(1, 0.82, slopeMix),
+      height: lerpNumber(1.08, 2.08, survivalHash01(row, col, 62130)) * lerpNumber(1, 0.76, slopeMix),
+      color: terrainTint.clone(),
+    });
+  }
+
+  return generated;
+}
+
+function MountainSlopeGrass({
+  chunk,
+  baseHeight,
+  active,
+}: {
+  chunk: SurvivalChunkInfo;
+  baseHeight: number;
+  active: boolean;
+}) {
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const normal = useMemo(() => new THREE.Vector3(0, 1, 0), []);
+  const grassGeometry = useMemo(() => getSurvivalTutorialGrassTuftGeometry(6), []);
+  const tufts = useMemo(
+    () => active ? makeMountainVillageSlopeGrassTufts(chunk, baseHeight) : [],
+    [active, baseHeight, chunk],
+  );
+
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh || tufts.length === 0) return;
+
+    ensureSurvivalInstancedMeshColors(mesh, tufts.length);
+    tufts.forEach((tuft, index) => {
+      normal.set(tuft.normalX, tuft.normalY, tuft.normalZ).normalize();
+      dummy.position
+        .set(tuft.localX, tuft.y, tuft.localZ)
+        .addScaledVector(normal, 0.08);
+      dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
+      dummy.rotateY(tuft.yaw);
+      dummy.scale.set(tuft.width, tuft.height, tuft.width);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+      mesh.setColorAt(index, tuft.color);
+    });
+
+    mesh.count = tufts.length;
+    mesh.instanceMatrix.needsUpdate = true;
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.wofMountainSlopeGrass = String(tufts.length);
+    }
+    finalizeSurvivalInstancedMeshColors(mesh);
+    finalizeSurvivalInstancedMesh(
+      mesh,
+      0,
+      0,
+      MOUNTAIN_VILLAGE_RADIUS + 34,
+      baseHeight + MOUNTAIN_VILLAGE_HEIGHT * 0.48,
+    );
+  }, [baseHeight, dummy, normal, tufts]);
+
+  if (tufts.length === 0) return null;
+
+  return (
+    <instancedMesh
+      ref={meshRef}
+      args={[grassGeometry, undefined, Math.max(1, tufts.length)]}
+      renderOrder={5.1}
+      frustumCulled
+      userData={HIDE_FROM_MINIMAP}
+    >
+      <meshBasicMaterial
+        color="#ffffff"
+        vertexColors
+        side={THREE.DoubleSide}
+        depthWrite
+        depthTest
+        toneMapped={false}
+      />
+    </instancedMesh>
+  );
 }
 
 function makeMountainVillageCliffPatches(chunk: SurvivalChunkInfo, baseHeight: number): MountainVillageCliffPatch[] {
@@ -25476,7 +25744,7 @@ function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
     () => hasColliders ? makeMountainVillageLayout(chunk, baseHeight) : null,
     [chunk, baseHeight, hasColliders],
   );
-  const terrainTexture = useMemo(() => getSurvivalTerrainDetailTexture(), []);
+  const terrainTexture = useMemo(() => getMountainVillageTerrainDetailTexture(), []);
 
   return (
     <>
@@ -25492,6 +25760,7 @@ function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
         <mesh geometry={terrainGeometry} receiveShadow={showDetails} dispose={null}>
           <meshBasicMaterial map={terrainTexture} vertexColors color="#ffffff" />
         </mesh>
+        <MountainSlopeGrass chunk={chunk} baseHeight={baseHeight} active={showDetails} />
         {layout && (
           <>
             <MountainCliffBreakup patches={layout.cliffPatches} showDetails={showTrailAndCabinDetails} />
