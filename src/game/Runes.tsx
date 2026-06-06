@@ -209,22 +209,63 @@ const manaFlowerStemGeometry = new THREE.CylinderGeometry(0.09, 0.14, 1, 6);
 const manaFlowerLeafGeometry = new THREE.ConeGeometry(0.26, 0.72, 5);
 const manaFlowerStemMaterial = new THREE.MeshBasicMaterial({ color: "#52c15d", toneMapped: false });
 const manaFlowerLeafMaterial = new THREE.MeshBasicMaterial({ color: "#72dd6f", toneMapped: false });
-const manaFlowerHeadMaterial = new THREE.MeshStandardMaterial({
-  color: "#ff4fd8",
-  emissive: "#b026ff",
-  emissiveIntensity: 2.8,
-  toneMapped: false,
-  transparent: true,
-  opacity: 0.92,
-});
-const manaFlowerGlowMaterial = new THREE.MeshBasicMaterial({
-  color: "#f0abfc",
-  transparent: true,
-  opacity: 0.28,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false,
-  toneMapped: false,
-});
+let cachedManaFlowerBillboardTexture: THREE.CanvasTexture | null = null;
+
+function getManaFlowerBillboardTexture() {
+  if (cachedManaFlowerBillboardTexture) return cachedManaFlowerBillboardTexture;
+  if (typeof document === "undefined") return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const gradient = ctx.createRadialGradient(64, 66, 4, 64, 66, 54);
+  gradient.addColorStop(0, "rgba(244, 114, 255, 0.42)");
+  gradient.addColorStop(0.52, "rgba(168, 85, 247, 0.2)");
+  gradient.addColorStop(1, "rgba(168, 85, 247, 0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let petal = 0; petal < 7; petal += 1) {
+    const angle = (petal / 7) * Math.PI * 2 - Math.PI * 0.5;
+    const x = 64 + Math.cos(angle) * 24;
+    const y = 66 + Math.sin(angle) * 22;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    const petalGradient = ctx.createLinearGradient(-16, 0, 18, 0);
+    petalGradient.addColorStop(0, "rgba(252, 231, 243, 0.9)");
+    petalGradient.addColorStop(0.5, "rgba(244, 114, 182, 0.96)");
+    petalGradient.addColorStop(1, "rgba(168, 85, 247, 0.88)");
+    ctx.fillStyle = petalGradient;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 21, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.fillStyle = "rgba(254, 240, 138, 0.98)";
+  ctx.beginPath();
+  ctx.arc(64, 66, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+  ctx.beginPath();
+  ctx.arc(60, 61, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  texture.premultiplyAlpha = true;
+  texture.needsUpdate = true;
+  cachedManaFlowerBillboardTexture = texture;
+  return texture;
+}
 
 function isPlayerManaCollector(event: { other: { rigidBodyObject?: { name?: string } | null } }) {
   return event.other.rigidBodyObject?.name === "player";
@@ -368,9 +409,11 @@ function ManaFlower({
   collectedUntil: number;
   onCollect: () => boolean;
 }) {
-  const headRef = useRef<THREE.Group>(null);
+  const headRef = useRef<THREE.Sprite>(null);
+  const glowRef = useRef<THREE.Sprite>(null);
   const collectedUntilRef = useRef(collectedUntil);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
+  const headTexture = useMemo(() => getManaFlowerBillboardTexture(), []);
   const ready = collectedUntil <= Date.now();
 
   useEffect(() => {
@@ -386,9 +429,18 @@ function ManaFlower({
 
   useFrame((state, delta) => {
     const head = headRef.current;
+    const glow = glowRef.current;
+    const localHeadY = source.stemHeight + 0.46 + Math.sin(state.clock.elapsedTime * 2.9 + source.x * 0.01) * 0.06;
+    const pulse = 1 + Math.sin(state.clock.elapsedTime * 2.4 + source.x * 0.01) * 0.045;
     if (head) {
-      head.rotation.y += delta * 1.35;
-      head.position.y = source.y + source.stemHeight + 0.45 + Math.sin(state.clock.elapsedTime * 2.9 + source.x * 0.01) * 0.08;
+      head.position.y = localHeadY;
+      head.scale.set(source.headScale * 1.42 * pulse, source.headScale * 1.42 * pulse, 1);
+      const material = head.material as THREE.SpriteMaterial;
+      material.rotation += delta * 0.28;
+    }
+    if (glow) {
+      glow.position.y = localHeadY;
+      glow.scale.set(source.headScale * 2.05 * pulse, source.headScale * 2.05 * pulse, 1);
     }
 
     if (collectedUntilRef.current > Date.now()) return;
@@ -440,10 +492,41 @@ function ManaFlower({
           />
         ))}
         {ready && (
-          <group ref={headRef} position={[0, source.stemHeight + 0.45, 0]} scale={[source.headScale, source.headScale, source.headScale]}>
-            <mesh castShadow={!mobilePerformanceMode} geometry={runeGeometry} material={manaFlowerHeadMaterial} />
-            <mesh scale={[1.75, 1.75, 1.75]} geometry={runeGeometry} material={manaFlowerGlowMaterial} />
-          </group>
+          <>
+            <sprite
+              ref={headRef}
+              position={[0, source.stemHeight + 0.46, 0]}
+              scale={[source.headScale * 1.42, source.headScale * 1.42, 1]}
+              renderOrder={7}
+            >
+              <spriteMaterial
+                map={headTexture ?? undefined}
+                color="#ffffff"
+                transparent
+                opacity={0.96}
+                depthWrite={false}
+                depthTest
+                toneMapped={false}
+              />
+            </sprite>
+            <sprite
+              ref={glowRef}
+              position={[0, source.stemHeight + 0.46, 0]}
+              scale={[source.headScale * 2.05, source.headScale * 2.05, 1]}
+              renderOrder={6.9}
+            >
+              <spriteMaterial
+                map={headTexture ?? undefined}
+                color="#f0abfc"
+                transparent
+                opacity={0.18}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+                depthTest
+                toneMapped={false}
+              />
+            </sprite>
+          </>
         )}
       </group>
     </RigidBody>

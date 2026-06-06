@@ -3640,6 +3640,8 @@ const SURVIVAL_BOTW_GRASS_SLOPE_FOOTPRINT_RANGE = 1.35;
 const SURVIVAL_BOTW_FLOWER_FLUSH_FOOTPRINT_RANGE = 1.28;
 const SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y = 0.72;
 const SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE = 7.4;
+const SURVIVAL_BOTW_HILLSIDE_GRASS_START_Y = 18;
+const SURVIVAL_BOTW_HILLSIDE_GRASS_FULL_Y = 58;
 const SURVIVAL_BOTW_GRASS_BLADE_NEAR_HEIGHT_LIMIT = 56;
 const SURVIVAL_BOTW_GRASS_BLADE_FAR_HEIGHT_LIMIT = 42;
 const SURVIVAL_BOTW_GRASS_VERTICAL_FADE_START = 54;
@@ -3647,9 +3649,9 @@ const SURVIVAL_BOTW_GRASS_VERTICAL_FADE_END = 132;
 const SURVIVAL_BOTW_GRASS_FLAT_NORMAL_Y = 0.992;
 const SURVIVAL_BOTW_FLOWER_NEAR_HEIGHT_LIMIT = 34;
 const SURVIVAL_BOTW_FLOWER_FAR_HEIGHT_LIMIT = 24;
-const SURVIVAL_BOTW_GRASS_FLOWER_DESKTOP_COUNT = 1760;
+const SURVIVAL_BOTW_GRASS_FLOWER_DESKTOP_COUNT = 760;
 const SURVIVAL_BOTW_GRASS_FLOWER_MOBILE_COUNT = SURVIVAL_BOTW_GRASS_FLOWER_DESKTOP_COUNT;
-const SURVIVAL_BOTW_GRASS_TALL_FLOWER_FEATURE_COUNT = 96;
+const SURVIVAL_BOTW_GRASS_TALL_FLOWER_FEATURE_COUNT = 18;
 const SURVIVAL_BOTW_GRASS_FLOWER_DESKTOP_RADIUS_SCALE = 0.84;
 const SURVIVAL_BOTW_GRASS_FLOWER_MOBILE_RADIUS_SCALE = SURVIVAL_BOTW_GRASS_FLOWER_DESKTOP_RADIUS_SCALE;
 const SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_RADIUS = SURVIVAL_BOTW_GRASS_RADIUS * 0.78;
@@ -3694,6 +3696,50 @@ const SURVIVAL_BOTW_GRASS_NEIGHBOR_PREWARM_OFFSETS: ReadonlyArray<readonly [numb
   [-2, 0],
   [0, -2],
 ];
+const SURVIVAL_BOTW_HILLSIDE_GRASS_MUTE_COLOR = new THREE.Color("#667f43");
+const SURVIVAL_BOTW_HILLSIDE_GRASS_DRY_COLOR = new THREE.Color("#89925a");
+
+function getSurvivalBotwHillsideVegetationMix(
+  terrainY: number,
+  normalY: number,
+  footprintHeightRange = 0,
+) {
+  const elevationMix = smoothstepRange(
+    SURVIVAL_BOTW_HILLSIDE_GRASS_START_Y,
+    SURVIVAL_BOTW_HILLSIDE_GRASS_FULL_Y,
+    terrainY,
+  );
+  const slopeMix = smoothstepRange(0.025, 0.18, 1 - normalY);
+  const roughnessMix = smoothstepRange(0.65, 4.8, footprintHeightRange);
+  return clamp01(Math.max(elevationMix * 0.88, slopeMix, roughnessMix * 0.78));
+}
+
+function getSurvivalBotwHillsideKeepChance(hillsideMix: number, floor = 0.46) {
+  return lerpNumber(1, floor, clamp01(hillsideMix));
+}
+
+function tintSurvivalBotwHillsideGrassColor(
+  color: THREE.Color,
+  worldX: number,
+  worldZ: number,
+  terrainY: number,
+  hillsideMix: number,
+) {
+  if (hillsideMix <= 0.001) return color;
+
+  const terrainColor = getSurvivalSmoothedTerrainColor(worldX, worldZ, terrainY);
+  const dryNoise = survivalHash01(Math.floor(worldX * 0.08), Math.floor(worldZ * 0.08), 8440);
+  color
+    .lerp(terrainColor, hillsideMix * 0.18)
+    .lerp(SURVIVAL_BOTW_HILLSIDE_GRASS_MUTE_COLOR, hillsideMix * 0.28)
+    .lerp(SURVIVAL_BOTW_HILLSIDE_GRASS_DRY_COLOR, hillsideMix * smoothstepRange(0.55, 1, dryNoise) * 0.12)
+    .multiplyScalar(lerpNumber(1, 0.86, hillsideMix));
+  color.r = clamp01(color.r);
+  color.g = clamp01(color.g);
+  color.b = clamp01(color.b);
+  return color;
+}
+
 const SURVIVAL_TUTORIAL_GRASS_CELL_SIZE = 58;
 const SURVIVAL_TUTORIAL_GRASS_GROUND_RADIUS = 324;
 const SURVIVAL_TUTORIAL_GRASS_AIR_RADIUS = 430;
@@ -6672,6 +6718,9 @@ function makeSurvivalBotwGrassBladeInstances(
     const routeMask = getSurvivalTownRouteMask(worldX, worldZ);
     const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, SURVIVAL_BOTW_GRASS_BLADE_MIN_NORMAL_Y);
     if (!placement) continue;
+    const earlyHillsideMix = getSurvivalBotwHillsideVegetationMix(placement.terrainY, placement.normal.y);
+    const hillsideKeepRoll = survivalHash01(centerSeedX - candidate * 13, centerSeedZ + candidate * 17, 2860);
+    if (hillsideKeepRoll > getSurvivalBotwHillsideKeepChance(earlyHillsideMix, 0.5)) continue;
 
     const variant = survivalHash01(centerSeedX + candidate * 23, centerSeedZ - candidate * 29, 2300);
     const color = getSurvivalBotwGrassInstanceColor(placement.biome, worldX, worldZ, placement.terrainY, variant);
@@ -6690,6 +6739,8 @@ function makeSurvivalBotwGrassBladeInstances(
     );
     const flushFootprintLimit = getSurvivalBotwGrassFlushFootprintLimit(placement.normal.y, meadowMask);
     if (footprintStats.heightRange > Math.min(SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, flushFootprintLimit)) continue;
+    const hillsideMix = getSurvivalBotwHillsideVegetationMix(placement.terrainY, placement.normal.y, footprintStats.heightRange);
+    tintSurvivalBotwHillsideGrassColor(color, worldX, worldZ, placement.terrainY, hillsideMix);
     const distanceFromCenter = Math.hypot(worldX - centerX, worldZ - centerZ);
     const midDistanceFill = meadowMask * smoothstepRange(28, radius * 0.82, distanceFromCenter);
     const footprintCompression = lerpNumber(
@@ -6704,11 +6755,13 @@ function makeSurvivalBotwGrassBladeInstances(
   const height = baseHeight *
     footprintCompression *
     lerpNumber(1, 1.28, midDistanceFill) *
-    lerpNumber(1, 0.78, slopeSurfaceTuck);
+    lerpNumber(1, 0.78, slopeSurfaceTuck) *
+    lerpNumber(1, 0.48, hillsideMix);
   const width = baseWidth *
     lerpNumber(1, 0.82, smoothstepRange(1.2, SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, footprintStats.heightRange)) *
       lerpNumber(1, 1.62, midDistanceFill) *
-      lerpNumber(1, 0.46, slopeSurfaceTuck);
+      lerpNumber(1, 0.46, slopeSurfaceTuck) *
+      lerpNumber(1, 0.58, hillsideMix);
 
     instances.push({
       x: worldX,
@@ -6806,6 +6859,9 @@ function makeSurvivalBotwGrassBladeCandidate(
   const routeMask = getSurvivalTownRouteMask(worldX, worldZ);
   const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, SURVIVAL_BOTW_GRASS_BLADE_MIN_NORMAL_Y);
   if (!placement) return null;
+  const earlyHillsideMix = getSurvivalBotwHillsideVegetationMix(placement.terrainY, placement.normal.y);
+  const hillsideKeepRoll = survivalHash01(context.centerSeedX - candidate * 13, context.centerSeedZ + candidate * 17, 2860);
+  if (hillsideKeepRoll > getSurvivalBotwHillsideKeepChance(earlyHillsideMix, 0.5)) return null;
 
   const variant = survivalHash01(context.centerSeedX + candidate * 23, context.centerSeedZ - candidate * 29, 2300);
   const color = getSurvivalBotwGrassInstanceColor(placement.biome, worldX, worldZ, placement.terrainY, variant);
@@ -6832,6 +6888,8 @@ function makeSurvivalBotwGrassBladeCandidate(
   );
   const flushFootprintLimit = getSurvivalBotwGrassFlushFootprintLimit(placement.normal.y, meadowMask);
   if (footprintStats.heightRange > Math.min(SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, flushFootprintLimit)) return null;
+  const hillsideMix = getSurvivalBotwHillsideVegetationMix(placement.terrainY, placement.normal.y, footprintStats.heightRange);
+  tintSurvivalBotwHillsideGrassColor(color, worldX, worldZ, placement.terrainY, hillsideMix);
   const distanceFromCenter = Math.hypot(worldX - context.centerX, worldZ - context.centerZ);
   const midDistanceFill = meadowMask * smoothstepRange(28, context.radius * 0.82, distanceFromCenter);
   const footprintCompression = lerpNumber(
@@ -6846,11 +6904,13 @@ function makeSurvivalBotwGrassBladeCandidate(
   const height = baseHeight *
     footprintCompression *
     lerpNumber(1, 1.28, midDistanceFill) *
-    lerpNumber(1, 0.78, slopeSurfaceTuck);
+    lerpNumber(1, 0.78, slopeSurfaceTuck) *
+    lerpNumber(1, 0.48, hillsideMix);
   const width = baseWidth *
     lerpNumber(1, 0.82, smoothstepRange(1.2, SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, footprintStats.heightRange)) *
     lerpNumber(1, 1.62, midDistanceFill) *
-    lerpNumber(1, 0.46, slopeSurfaceTuck);
+    lerpNumber(1, 0.46, slopeSurfaceTuck) *
+    lerpNumber(1, 0.58, hillsideMix);
 
   return {
     x: worldX,
@@ -6904,7 +6964,7 @@ function makeSurvivalBotwFlowerCandidate(
   const jitter = (survivalHash01(context.centerSeedX + candidate * 13, context.centerSeedZ - candidate * 19, 4900) - 0.5) * 2.2;
   const sampleX = context.centerX + Math.cos(angle) * (context.radius * radial + jitter);
   const sampleZ = context.centerZ + Math.sin(angle) * (context.radius * radial + jitter);
-  const clusterSize = 54;
+  const clusterSize = 82;
   const clusterCellX = Math.floor(sampleX / clusterSize);
   const clusterCellZ = Math.floor(sampleZ / clusterSize);
   const clusterWave =
@@ -6912,18 +6972,18 @@ function makeSurvivalBotwFlowerCandidate(
     Math.cos(clusterCellZ * 1.29 - clusterCellX * 0.37) * 0.62;
   const clusterMask = smoothstepRange(-0.34, 1.06, clusterWave);
   const clusterRoll = survivalHash01(clusterCellX, clusterCellZ, 5310);
-  if (clusterRoll > lerpNumber(0.3, 0.72, clusterMask)) return null;
+  if (clusterRoll > lerpNumber(0.18, 0.42, clusterMask)) return null;
 
   const clusterCenterX = (clusterCellX + 0.5) * clusterSize +
-    (survivalHash01(clusterCellX, clusterCellZ, 5320) - 0.5) * clusterSize * 0.7;
+    (survivalHash01(clusterCellX, clusterCellZ, 5320) - 0.5) * clusterSize * 0.48;
   const clusterCenterZ = (clusterCellZ + 0.5) * clusterSize +
-    (survivalHash01(clusterCellX, clusterCellZ, 5330) - 0.5) * clusterSize * 0.7;
+    (survivalHash01(clusterCellX, clusterCellZ, 5330) - 0.5) * clusterSize * 0.48;
   const clusterAngle = survivalHash01(context.centerSeedX + candidate * 13, context.centerSeedZ - candidate * 19, 5340) * Math.PI * 2;
-  const clusterRadius = lerpNumber(18, 34, survivalHash01(clusterCellX, clusterCellZ, 5350));
+  const clusterRadius = lerpNumber(10, 22, survivalHash01(clusterCellX, clusterCellZ, 5350));
   const clusterDistance = Math.sqrt(survivalHash01(context.centerSeedX - candidate * 17, context.centerSeedZ + candidate * 23, 5360)) * clusterRadius;
   const clusteredX = clusterCenterX + Math.cos(clusterAngle) * clusterDistance;
   const clusteredZ = clusterCenterZ + Math.sin(clusterAngle) * clusterDistance;
-  const clusterInfluence = lerpNumber(0.16, 0.38, clusterMask);
+  const clusterInfluence = lerpNumber(0.06, 0.2, clusterMask);
   const worldX = lerpNumber(sampleX, clusteredX, clusterInfluence);
   const worldZ = lerpNumber(sampleZ, clusteredZ, clusterInfluence);
   if (Math.hypot(worldX - context.centerX, worldZ - context.centerZ) > context.radius) return null;
@@ -6938,6 +6998,9 @@ function makeSurvivalBotwFlowerCandidate(
     getSurvivalBotwGrassFlushFootprintLimit(placement.normal.y, getSurvivalRestoredMeadowMask(worldX, worldZ)) * 0.7,
   );
   if (footprintStats.heightRange > flushFootprintLimit) return null;
+  const hillsideMix = getSurvivalBotwHillsideVegetationMix(placement.terrainY, placement.normal.y, footprintStats.heightRange);
+  const hillsideKeepRoll = survivalHash01(context.centerSeedX + candidate * 19, context.centerSeedZ - candidate * 29, 5382);
+  if (hillsideKeepRoll > getSurvivalBotwHillsideKeepChance(hillsideMix, 0.42)) return null;
   const distanceFromCenter = Math.hypot(worldX - context.centerX, worldZ - context.centerZ);
   const patchWave =
     Math.sin(worldX * 0.041 + context.centerSeedX * 0.013) +
@@ -6974,9 +7037,9 @@ function makeSurvivalBotwFlowerCandidate(
     : "round";
   const distanceFade = smoothstepRange(context.radius * 0.42, context.radius, distanceFromCenter);
   const bloomBase = (
-    lerpNumber(1.02, 1.32, meadowMask) +
+    lerpNumber(0.72, 0.98, meadowMask) +
     survivalHash01(context.centerSeedX, context.centerSeedZ + candidate * 43, 5020) * 0.16
-  ) * lerpNumber(0.92, 1.06, patchMask) * lerpNumber(1, 0.9, distanceFade);
+  ) * lerpNumber(0.92, 1.04, patchMask) * lerpNumber(1, 0.9, distanceFade) * lerpNumber(1, 0.74, hillsideMix);
   const widthRoll = survivalHash01(context.centerSeedX - candidate * 47, context.centerSeedZ, 5060);
   const heightRoll = survivalHash01(context.centerSeedX, context.centerSeedZ - candidate * 53, 5100);
   const sizeFamily = survivalHash01(context.centerSeedX + candidate * 7, context.centerSeedZ - candidate * 5, 5124);
@@ -6989,17 +7052,13 @@ function makeSurvivalBotwFlowerCandidate(
           ? 0.94
           : 0.8
   ) * (bloomType === "bell" ? 0.88 : bloomType === "puff" ? 1.04 : 1);
-  const largeBatchRoll = survivalHash01(clusterCellX, clusterCellZ, 5376);
-  const largeBloomRoll = survivalHash01(context.centerSeedX + candidate * 109, context.centerSeedZ - candidate * 113, 5388);
-  const largeBatchActive = largeBatchRoll > 0.68 && clusterMask > 0.28;
-  const largeBatchCore = clusterDistance < clusterRadius * 0.38;
-  const largeBloomScale = largeBatchActive && (largeBatchCore || largeBloomRoll > 0.56)
-    ? lerpNumber(1.42, 1.82, survivalHash01(clusterCellX - candidate * 3, clusterCellZ + candidate * 5, 5396))
+  const largeBloomScale = survivalHash01(clusterCellX, clusterCellZ, 5376) > 0.94 && clusterMask > 0.62
+    ? lerpNumber(1.08, 1.18, survivalHash01(clusterCellX - candidate * 3, clusterCellZ + candidate * 5, 5396))
     : 1;
   const scaledBloomSize = bloomSize * largeBloomScale;
-  const largeFlowerAmount = smoothstepRange(1, 1.82, largeBloomScale);
-  const largeStemScale = lerpNumber(1, 1.42, largeFlowerAmount);
-  const largeLeafScale = lerpNumber(1, 1.32, largeFlowerAmount);
+  const largeFlowerAmount = smoothstepRange(1, 1.18, largeBloomScale) * 0.28;
+  const largeStemScale = lerpNumber(1, 1.08, largeFlowerAmount);
+  const largeLeafScale = lerpNumber(1, 1.06, largeFlowerAmount);
   const color = new THREE.Color(palette[Math.floor((variant + typeRoll * 0.23) * palette.length) % palette.length]);
   color.lerp(new THREE.Color("#fffbea"), survivalHash01(context.centerSeedX - candidate * 11, context.centerSeedZ + candidate * 13, 5134) * 0.04);
   if (largeFlowerAmount > 0.001) {
@@ -7032,11 +7091,12 @@ function makeSurvivalBotwFlowerCandidate(
     normalZ: placement.normal.z,
     yaw: survivalHash01(context.centerSeedX + candidate * 59, context.centerSeedZ - candidate * 61, 5180) * Math.PI * 2,
     stemHeight: (
-      (lerpNumber(0.84, 1.24, variant) + meadowMask * 0.08) *
+      (lerpNumber(0.58, 0.96, variant) + meadowMask * 0.06) *
       lerpNumber(0.94, 1.04, patchMask) *
       lerpNumber(1, 0.94, distanceFade) *
+      lerpNumber(1, 0.76, hillsideMix) *
       largeStemScale
-    ) + largeFlowerAmount * 0.18,
+    ) + largeFlowerAmount * 0.08,
     stemRadius: (0.032 + survivalHash01(context.centerSeedX - candidate * 67, context.centerSeedZ + candidate * 71, 5220) * 0.01) * lerpNumber(1, 1.18, largeFlowerAmount),
     leafCount: largeFlowerAmount > 0.001 ? (typeRoll > 0.42 ? 3 : 2) : variant > 0.24 ? (typeRoll > 0.62 ? 2 : 1) : 0,
     leafWidth: (0.08 + survivalHash01(context.centerSeedX + candidate * 73, context.centerSeedZ, 5232) * 0.06) * (bloomType === "bell" ? 1.12 : 1) * largeLeafScale,
@@ -7100,6 +7160,8 @@ function makeSurvivalBotwTallFeatureFlower(
     getSurvivalBotwGrassFlushFootprintLimit(placement.normal.y, getSurvivalRestoredMeadowMask(worldX, worldZ)) * 0.72,
   );
   if (footprintStats.heightRange > flushFootprintLimit) return null;
+  const hillsideMix = getSurvivalBotwHillsideVegetationMix(placement.terrainY, placement.normal.y, footprintStats.heightRange);
+  if (hillsideMix > 0.38) return null;
   if (footprintStats.baseY - context.centerY > SURVIVAL_BOTW_FLOWER_NEAR_HEIGHT_LIMIT) return null;
 
   const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
@@ -7126,8 +7188,8 @@ function makeSurvivalBotwTallFeatureFlower(
     : typeRoll > 0.32
       ? "round"
       : "puff";
-  const bloomSize = lerpNumber(1.08, 1.36, variant) * lerpNumber(0.94, 1.04, meadowMask);
-  const stemHeight = lerpNumber(1.18, 1.48, variant) + meadowMask * 0.1;
+  const bloomSize = lerpNumber(0.86, 1.08, variant) * lerpNumber(0.94, 1.02, meadowMask);
+  const stemHeight = lerpNumber(0.92, 1.16, variant) + meadowMask * 0.08;
 
   return {
     x: worldX,
@@ -7148,7 +7210,7 @@ function makeSurvivalBotwTallFeatureFlower(
     bloomSize,
     bloomType,
     petalCount: bloomType === "star" ? 6 : 5,
-    largeBloomAmount: 0.32,
+    largeBloomAmount: 0.08,
     bloomWidth: bloomSize * (
       bloomType === "star" ? 1.22
         : bloomType === "puff" ? 1.0
@@ -7914,9 +7976,9 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
       flowers.forEach((flower) => {
         normalScratch.set(flower.normalX, flower.normalY, flower.normalZ).normalize();
         const batchBloomBoost = flower.largeBloomAmount ?? 0;
-        const blossomY = flower.stemHeight + Math.max(0.06, flower.bloomHeight) * 0.06 + 0.1 + batchBloomBoost * 0.16;
-        const headWidth = Math.min(2.35, flower.bloomWidth * (widthScale * 1.72 + batchBloomBoost * 0.18));
-        const headHeight = Math.min(2.2, flower.bloomHeight * (heightScale * 1.64 + batchBloomBoost * 0.16));
+        const blossomY = flower.stemHeight + Math.max(0.06, flower.bloomHeight) * 0.05 + 0.08 + batchBloomBoost * 0.08;
+        const headWidth = Math.min(1.35, flower.bloomWidth * (widthScale * 1.08 + batchBloomBoost * 0.08));
+        const headHeight = Math.min(1.28, flower.bloomHeight * (heightScale * 1.04 + batchBloomBoost * 0.08));
         const bloomYaw = flower.yaw;
 
         flowerForwardScratch.set(center.x - flower.x, 0, center.z - flower.z);
