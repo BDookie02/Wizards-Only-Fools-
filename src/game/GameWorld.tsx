@@ -5760,8 +5760,14 @@ function getSurvivalLocalGrassViewerPosition(camera: THREE.Camera) {
   return { x: camera.position.x, y: camera.position.y, z: camera.position.z };
 }
 
+function shouldRenderSurvivalMountainVillageShellChunk(chunk: SurvivalChunkInfo) {
+  return chunk.villageKind === "mountain" && chunk.distance <= SURVIVAL_RENDER_RADIUS;
+}
+
 function shouldRenderSurvivalFullVillageChunk(chunk: SurvivalChunkInfo) {
-  if (!chunk.hasVillage || chunk.lod === "far") return false;
+  if (!chunk.hasVillage) return false;
+  if (shouldRenderSurvivalMountainVillageShellChunk(chunk)) return true;
+  if (chunk.lod === "far") return false;
   if (
     chunk.villageKind === "desert" &&
     isSurvivalRestoredMeadowWaterSuppressed(chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.72)
@@ -25184,8 +25190,15 @@ function useMountainVillageDetailPhase(active: boolean, chunkKey: string) {
 function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
   const baseHeight = useMemo(() => getSurvivalVillageBaseHeight(chunk), [chunk]);
   const terrainGeometry = useMemo(() => makeMountainVillageTerrainGeometry(chunk), [chunk]);
-  const terrainColliderGeometry = useMemo(() => makeMountainVillageTerrainColliderGeometry(chunk), [chunk]);
-  const layout = useMemo(() => makeMountainVillageLayout(chunk, baseHeight), [chunk, baseHeight]);
+  const hasColliders = shouldBuildSurvivalChunkColliders(chunk);
+  const terrainColliderGeometry = useMemo(
+    () => hasColliders ? makeMountainVillageTerrainColliderGeometry(chunk) : null,
+    [chunk, hasColliders],
+  );
+  const layout = useMemo(
+    () => hasColliders ? makeMountainVillageLayout(chunk, baseHeight) : null,
+    [chunk, baseHeight, hasColliders],
+  );
   const terrainTexture = useMemo(() => getSurvivalTerrainDetailTexture(), []);
   const showDetails = chunk.distance === 0;
   const detailPhase = useMountainVillageDetailPhase(showDetails, chunk.key);
@@ -25196,36 +25209,42 @@ function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
 
   return (
     <>
-      <MountainVillageColliders
-        chunk={chunk}
-        terrainColliderGeometry={terrainColliderGeometry}
-        layout={layout}
-        showInteriorColliders={!showDetails || detailPhase >= 3}
-      />
+      {layout && terrainColliderGeometry && (
+        <MountainVillageColliders
+          chunk={chunk}
+          terrainColliderGeometry={terrainColliderGeometry}
+          layout={layout}
+          showInteriorColliders={!showDetails || detailPhase >= 3}
+        />
+      )}
       <group name={`survival-mountain-village-${chunk.key}`} position={[chunk.x, 0, chunk.z]}>
         <mesh geometry={terrainGeometry} receiveShadow={showDetails} dispose={null}>
           <meshStandardMaterial map={terrainTexture} vertexColors roughness={1} metalness={0} />
         </mesh>
-        <MountainCliffBreakup patches={layout.cliffPatches} showDetails={showTrailAndCabinDetails} />
-        <MountainSnowCap summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
-        <MountainVillageTrail layout={layout} showDetails={showTrailAndCabinDetails} />
-        <MountainWaterfall waterfall={layout.waterfall} summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
-        {showMineshaftShell && (
+        {layout && (
           <>
-            <MountainMineshaftOpening
-              baseHeight={layout.baseHeight}
-              summitY={layout.summitY}
-              exitLadder={layout.interiorLadders[layout.interiorLadders.length - 1]}
-              showDetails={showMineshaftInterior}
-            />
-            {showMineshaftInterior && <MountainMineshaftInterior layout={layout} showDetails={showFinishingDetails} />}
+            <MountainCliffBreakup patches={layout.cliffPatches} showDetails={showTrailAndCabinDetails} />
+            <MountainSnowCap summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
+            <MountainVillageTrail layout={layout} showDetails={showTrailAndCabinDetails} />
+            <MountainWaterfall waterfall={layout.waterfall} summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
+            {showMineshaftShell && (
+              <>
+                <MountainMineshaftOpening
+                  baseHeight={layout.baseHeight}
+                  summitY={layout.summitY}
+                  exitLadder={layout.interiorLadders[layout.interiorLadders.length - 1]}
+                  showDetails={showMineshaftInterior}
+                />
+                {showMineshaftInterior && <MountainMineshaftInterior layout={layout} showDetails={showFinishingDetails} />}
+              </>
+            )}
+            {layout.cabins.map((cabin) => (
+              <MountainCabin key={cabin.key} cabin={cabin} summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
+            ))}
           </>
         )}
-        {layout.cabins.map((cabin) => (
-          <MountainCabin key={cabin.key} cabin={cabin} summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
-        ))}
       </group>
-      {showFinishingDetails && (
+      {layout && showFinishingDetails && (
         <Villagers
           key={`survival-mountain-villagers-${chunk.key}`}
           huts={layout.hutInfos}
@@ -29578,12 +29597,16 @@ function SurvivalProceduralWorld({ showBaseVillage }: { showBaseVillage: boolean
 
   useEffect(() => {
     if (typeof document === "undefined") return;
+    const visibleMountainShells = visibleChunks
+      .filter((chunk) => shouldRenderSurvivalMountainVillageShellChunk(chunk))
+      .map((chunk) => `${chunk.key}:${chunk.lod}:${chunk.distance}`);
     document.documentElement.dataset.wofSurvivalStreamCenter = `${centerChunk.cx},${centerChunk.cz}`;
     document.documentElement.dataset.wofSurvivalStreamRadius = String(chunkStreamRadius);
     document.documentElement.dataset.wofSurvivalRenderedChunks = String(visibleChunks.length);
     document.documentElement.dataset.wofSurvivalTargetChunks = String(chunks.length);
     document.documentElement.dataset.wofSurvivalPendingChunks = String(Math.max(0, chunks.length - visibleChunks.length));
-  }, [centerChunk.cx, centerChunk.cz, chunkStreamRadius, chunks.length, visibleChunks.length]);
+    document.documentElement.dataset.wofSurvivalMountainShells = visibleMountainShells.join("|");
+  }, [centerChunk.cx, centerChunk.cz, chunkStreamRadius, chunks.length, visibleChunks]);
 
   return (
     <group name="survival-procedural-world">
