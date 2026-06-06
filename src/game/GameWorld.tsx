@@ -4861,6 +4861,14 @@ function isSurvivalDesertVillageBuildingGrassBlocked(chunk: SurvivalChunkInfo, l
   return false;
 }
 
+function isSurvivalMountainVillageGrassBlocked(chunk: SurvivalChunkInfo, localX: number, localZ: number) {
+  const radius = Math.hypot(localX, localZ);
+  const insideConstructedMountain = radius < MOUNTAIN_VILLAGE_RADIUS + MOUNTAIN_VILLAGE_GRASS_CLEAR_PADDING;
+  if (insideConstructedMountain) return true;
+
+  return getMountainVillageTrailSurfaceMask(chunk, localX, localZ) > 0.08;
+}
+
 function isSurvivalVillageGrassBlocked(chunk: SurvivalChunkInfo, localX: number, localZ: number) {
   if (!chunk.hasVillage || !chunk.villageKind) return false;
   if (chunk.villageKind === "lily-coil") return true;
@@ -4908,11 +4916,7 @@ function isSurvivalVillageGrassBlocked(chunk: SurvivalChunkInfo, localX: number,
   }
 
   if (chunk.villageKind === "mountain") {
-    return (
-      radius < 88 ||
-      isSurvivalGrassVillageRingBlocked(localX, localZ, 142, 36) ||
-      getMountainVillageTrailSurfaceMask(chunk, localX, localZ) > 0.16
-    );
+    return isSurvivalMountainVillageGrassBlocked(chunk, localX, localZ);
   }
 
   if (chunk.villageKind === "darrel-grove") {
@@ -5880,6 +5884,9 @@ function getSurvivalGrassDebugSampleAt(worldX: number, worldZ: number) {
     waterY: Math.round(getSurvivalWaterLevelAtWorld(worldX, worldZ) * 10) / 10,
     baseBlocked: isBaseVillageLocalGrassBlocked(worldX, worldZ),
     villageBlocked: isSurvivalVillageGrassBlocked(chunk, localX, localZ),
+    mountainVillageGrassBlocked: chunk.villageKind === "mountain"
+      ? isSurvivalMountainVillageGrassBlocked(chunk, localX, localZ)
+      : false,
     usesGrassSurfaceOverride: surface.usesGrassSurfaceOverride,
     submerged: isSurvivalGrassSubmergedAtWorldPoint(chunk, worldX, worldZ, grassY, 0.018, 0),
     botwPlacement: Boolean(getSurvivalBotwGrassPlacement(worldX, worldZ, 0.26)),
@@ -22096,6 +22103,7 @@ function SurvivalGraveyardVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
 }
 
 const MOUNTAIN_VILLAGE_RADIUS = SURVIVAL_BLOCK_SIZE * 0.49;
+const MOUNTAIN_VILLAGE_GRASS_CLEAR_PADDING = 18;
 const MOUNTAIN_VILLAGE_EDGE_BLEND_START = SURVIVAL_BLOCK_SIZE * 0.43;
 const MOUNTAIN_VILLAGE_HEIGHT = 214;
 const MOUNTAIN_VILLAGE_PLATEAU_RADIUS = 92;
