@@ -22266,6 +22266,7 @@ const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH = 8.6;
 const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_Y_OFFSET = 1.55;
 const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_START_RADIUS = MOUNTAIN_VILLAGE_MINESHAFT_LADDER_RING_RADIUS - 0.65;
 const MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_END_RADIUS = MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS + 8.5;
+const MOUNTAIN_WATERFALL_CAMERA_HIDE_FAR = 56;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -22464,7 +22465,14 @@ function getMountainVillageTrailSurfaceMask(chunk: SurvivalChunkInfo, localX: nu
   return clamp01(widthMask * endFade);
 }
 
-function getMountainVillageTerrainColor(chunk: SurvivalChunkInfo, localX: number, localZ: number, height: number, baseHeight: number) {
+function getMountainVillageTerrainColor(
+  chunk: SurvivalChunkInfo,
+  localX: number,
+  localZ: number,
+  height: number,
+  baseHeight: number,
+  showTrailSurface: boolean,
+) {
   const worldX = chunk.x + localX;
   const worldZ = chunk.z + localZ;
   const radius = Math.hypot(localX, localZ);
@@ -22485,7 +22493,7 @@ function getMountainVillageTerrainColor(chunk: SurvivalChunkInfo, localX: number
   const cliffMix = smoothstepRange(20, 130, lift);
   const plateauMix = 1 - smoothstepRange(MOUNTAIN_VILLAGE_PLATEAU_RADIUS - 8, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 18, radius);
   const edgeBlend = smoothstepRange(MOUNTAIN_VILLAGE_EDGE_BLEND_START, SURVIVAL_BLOCK_SIZE / 2, radius);
-  const trailMask = getMountainVillageTrailSurfaceMask(chunk, localX, localZ);
+  const trailMask = showTrailSurface ? getMountainVillageTrailSurfaceMask(chunk, localX, localZ) : 0;
   const vein = Math.max(0, Math.sin(radius * 0.21 + localX * 0.018 - localZ * 0.024));
   const strata = Math.max(0, Math.sin(radius * 0.33 + Math.atan2(localX, localZ) * 7.2));
   const grain = clamp01((
@@ -22497,6 +22505,20 @@ function getMountainVillageTerrainColor(chunk: SurvivalChunkInfo, localX: number
   const exposedCliff = smoothstepRange(MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 10, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 78, radius) * snowMix;
   const snowCoverage = clamp01(snowMix * (0.54 + plateauMix * 0.28 - exposedCliff * 0.22));
 
+  if (!showTrailSurface) {
+    const distantShellColor = naturalColor
+      .clone()
+      .lerp(moss, 0.12 * (1 - cliffMix))
+      .lerp(stone, cliffMix * 0.56)
+      .lerp(paleStone, grain * cliffMix * 0.05)
+      .lerp(darkStone, vein * cliffMix * 0.06)
+      .lerp(summitStone, plateauMix * 0.22)
+      .lerp(snow, snowCoverage * 0.38)
+      .lerp(stone, exposedCliff * snowScour * 0.12);
+
+    return distantShellColor.lerp(naturalColor, edgeBlend * 0.8);
+  }
+
   const trailColor = trailDirt
     .clone()
     .lerp(trailStone, cliffMix * 0.34)
@@ -22506,8 +22528,8 @@ function getMountainVillageTerrainColor(chunk: SurvivalChunkInfo, localX: number
     .lerp(moss, 0.18 * (1 - cliffMix))
     .lerp(stone, cliffMix * 0.78)
     .lerp(paleStone, grain * cliffMix * 0.1)
-    .lerp(darkStone, vein * cliffMix * 0.18)
-    .lerp(darkStone, strata * exposedCliff * 0.34)
+    .lerp(darkStone, vein * cliffMix * 0.12)
+    .lerp(darkStone, strata * exposedCliff * 0.18)
     .lerp(summitStone, plateauMix * 0.42)
     .lerp(snow, snowCoverage * 0.82)
     .lerp(stone, exposedCliff * snowScour * 0.28)
@@ -22519,7 +22541,9 @@ function getMountainVillageTerrainColor(chunk: SurvivalChunkInfo, localX: number
 }
 
 function getMountainVillageTerrainSegments(chunk: SurvivalChunkInfo) {
-  return chunk.lod === "near" ? 72 : 32;
+  if (chunk.lod === "near") return 72;
+  if (chunk.lod === "mid") return 56;
+  return 40;
 }
 
 function getMountainVillageTrailWidth(t: number) {
@@ -22548,7 +22572,7 @@ function cutCircularHoleFromPlaneGeometry(geo: THREE.BufferGeometry, radius: num
   geo.setIndex(nextIndices);
 }
 
-function makeMountainVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
+function makeMountainVillageTerrainGeometry(chunk: SurvivalChunkInfo, cutMineshaftOpening: boolean, showTrailSurface: boolean) {
   const segments = getMountainVillageTerrainSegments(chunk);
   const baseHeight = getSurvivalVillageBaseHeight(chunk);
   const geo = new THREE.PlaneGeometry(SURVIVAL_BLOCK_SIZE, SURVIVAL_BLOCK_SIZE, segments, segments);
@@ -22560,13 +22584,15 @@ function makeMountainVillageTerrainGeometry(chunk: SurvivalChunkInfo) {
     const localX = pos.getX(i);
     const localZ = pos.getZ(i);
     const height = getMountainVillageHeight(chunk, localX, localZ, baseHeight);
-    const color = getMountainVillageTerrainColor(chunk, localX, localZ, height, baseHeight);
+    const color = getMountainVillageTerrainColor(chunk, localX, localZ, height, baseHeight, showTrailSurface);
     pos.setY(i, height);
     colors.push(color.r, color.g, color.b);
   }
 
   geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-  cutCircularHoleFromPlaneGeometry(geo, MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS);
+  if (cutMineshaftOpening) {
+    cutCircularHoleFromPlaneGeometry(geo, MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS);
+  }
   geo.computeVertexNormals();
   return geo;
 }
@@ -22609,8 +22635,8 @@ function makeMountainVillageCliffPatches(chunk: SurvivalChunkInfo, baseHeight: n
   });
 }
 
-function makeMountainVillageTerrainColliderGeometry(chunk: SurvivalChunkInfo) {
-  const segments = chunk.lod === "near" ? 36 : 20;
+function makeMountainVillageTerrainColliderGeometry(chunk: SurvivalChunkInfo, cutMineshaftOpening: boolean) {
+  const segments = getMountainVillageTerrainSegments(chunk);
   const baseHeight = getSurvivalVillageBaseHeight(chunk);
   const geo = new THREE.PlaneGeometry(SURVIVAL_BLOCK_SIZE, SURVIVAL_BLOCK_SIZE, segments, segments);
   geo.rotateX(-Math.PI / 2);
@@ -22620,7 +22646,9 @@ function makeMountainVillageTerrainColliderGeometry(chunk: SurvivalChunkInfo) {
     pos.setY(i, getMountainVillageColliderHeight(chunk, pos.getX(i), pos.getZ(i), baseHeight));
   }
 
-  cutCircularHoleFromPlaneGeometry(geo, MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS);
+  if (cutMineshaftOpening) {
+    cutCircularHoleFromPlaneGeometry(geo, MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS);
+  }
   geo.computeVertexNormals();
   return geo;
 }
@@ -25025,7 +25053,44 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
   );
 }
 
-function MountainWaterfall({ waterfall, summitY, showDetails }: { waterfall: MountainVillageWaterfall; summitY: number; showDetails: boolean }) {
+function shouldHideMountainWaterfallForCamera(chunk: SurvivalChunkInfo, waterfall: MountainVillageWaterfall) {
+  const player = getBrowserLocalPlayerPosition();
+  if (!player || typeof player.y !== "number") return false;
+
+  const localX = player.x - chunk.x;
+  const localZ = player.z - chunk.z;
+  const distanceToFall = getDistanceToSegment2D(
+    localX,
+    localZ,
+    waterfall.topX,
+    waterfall.topZ,
+    waterfall.bottomX,
+    waterfall.bottomZ,
+  );
+  const isInsideFallHeight = player.y >= waterfall.bottomY - 16 && player.y <= waterfall.topY + 20;
+
+  return isInsideFallHeight && distanceToFall < MOUNTAIN_WATERFALL_CAMERA_HIDE_FAR;
+}
+
+function MountainWaterfall({
+  chunk,
+  waterfall,
+  summitY,
+  showDetails,
+}: {
+  chunk: SurvivalChunkInfo;
+  waterfall: MountainVillageWaterfall;
+  summitY: number;
+  showDetails: boolean;
+}) {
+  const waterfallRef = useRef<THREE.Group>(null);
+
+  useFrame(() => {
+    const group = waterfallRef.current;
+    if (!group) return;
+    group.visible = !shouldHideMountainWaterfallForCamera(chunk, waterfall);
+  });
+
   if (!showDetails) return null;
 
   const surfaceOffset = 3.6;
@@ -25037,14 +25102,14 @@ function MountainWaterfall({ waterfall, summitY, showDetails }: { waterfall: Mou
   const midY = waterfall.bottomY + height / 2;
 
   return (
-    <group name="mountain-village-waterfall">
+    <group ref={waterfallRef} name="mountain-village-waterfall">
       <mesh position={[midX, midY, midZ]} rotation={[0, waterfall.angle, 0]}>
         <planeGeometry args={[waterfall.width, height]} />
-        <meshBasicMaterial color="#89e9ff" transparent opacity={0.48} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#89e9ff" transparent opacity={0.48} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <mesh position={[midX + outwardX * 0.18, midY + height * 0.04, midZ + outwardZ * 0.18]} rotation={[0, waterfall.angle, 0]}>
         <planeGeometry args={[waterfall.width * 0.36, height * 0.96]} />
-        <meshBasicMaterial color="#effdff" transparent opacity={0.28} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#effdff" transparent opacity={0.28} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       {[-1, 1].map((side) => {
         const sideOffset = side * waterfall.width * 0.43;
@@ -25055,17 +25120,17 @@ function MountainWaterfall({ waterfall, summitY, showDetails }: { waterfall: Mou
             rotation={[0, waterfall.angle, 0]}
           >
             <planeGeometry args={[waterfall.width * 0.12, height * 0.92]} />
-            <meshBasicMaterial color="#16596d" transparent opacity={0.2} side={THREE.DoubleSide} />
+            <meshBasicMaterial color="#16596d" transparent opacity={0.2} side={THREE.DoubleSide} depthWrite={false} />
           </mesh>
         );
       })}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[waterfall.topX * 0.74 + outwardX * 0.35, summitY + 0.98, waterfall.topZ * 0.74 + outwardZ * 0.35]} scale={[28, 9, 1]}>
         <circleGeometry args={[1, 18]} />
-        <meshBasicMaterial color="#b9f1ff" transparent opacity={0.48} />
+        <meshBasicMaterial color="#b9f1ff" transparent opacity={0.48} depthWrite={false} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[waterfall.bottomX + outwardX, waterfall.bottomY + 0.32, waterfall.bottomZ + outwardZ]} scale={[35, 24, 1]}>
         <circleGeometry args={[1, 24]} />
-        <meshBasicMaterial color="#5bbbd4" transparent opacity={0.56} />
+        <meshBasicMaterial color="#5bbbd4" transparent opacity={0.56} depthWrite={false} />
       </mesh>
       {Array.from({ length: 10 }, (_, index) => {
         const t = index / 9;
@@ -25075,7 +25140,7 @@ function MountainWaterfall({ waterfall, summitY, showDetails }: { waterfall: Mou
         return (
           <mesh key={`mountain-fall-spray-${index}`} position={[x, y, z]} scale={[1.8 + (index % 3), 0.7, 1.8 + (index % 2)]} castShadow={false}>
             <sphereGeometry args={[1, 6, 4]} />
-            <meshBasicMaterial color="#dffaff" transparent opacity={0.26} />
+            <meshBasicMaterial color="#dffaff" transparent opacity={0.26} depthWrite={false} />
           </mesh>
         );
       })}
@@ -25307,23 +25372,26 @@ function useMountainVillageDetailPhase(active: boolean, chunkKey: string) {
 
 function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
   const baseHeight = useMemo(() => getSurvivalVillageBaseHeight(chunk), [chunk]);
-  const terrainGeometry = useMemo(() => makeMountainVillageTerrainGeometry(chunk), [chunk]);
-  const hasColliders = shouldBuildSurvivalChunkColliders(chunk);
-  const terrainColliderGeometry = useMemo(
-    () => hasColliders ? makeMountainVillageTerrainColliderGeometry(chunk) : null,
-    [chunk, hasColliders],
-  );
-  const layout = useMemo(
-    () => hasColliders ? makeMountainVillageLayout(chunk, baseHeight) : null,
-    [chunk, baseHeight, hasColliders],
-  );
-  const terrainTexture = useMemo(() => getSurvivalTerrainDetailTexture(), []);
   const showDetails = chunk.distance === 0;
   const detailPhase = useMountainVillageDetailPhase(showDetails, chunk.key);
   const showTrailAndCabinDetails = showDetails && detailPhase >= 1;
   const showMineshaftShell = showDetails && detailPhase >= 2;
   const showMineshaftInterior = showDetails && detailPhase >= 3;
   const showFinishingDetails = showDetails && detailPhase >= 4;
+  const terrainGeometry = useMemo(
+    () => makeMountainVillageTerrainGeometry(chunk, showMineshaftShell, showTrailAndCabinDetails),
+    [chunk, showMineshaftShell, showTrailAndCabinDetails],
+  );
+  const hasColliders = shouldBuildSurvivalChunkColliders(chunk);
+  const terrainColliderGeometry = useMemo(
+    () => hasColliders ? makeMountainVillageTerrainColliderGeometry(chunk, showMineshaftShell) : null,
+    [chunk, hasColliders, showMineshaftShell],
+  );
+  const layout = useMemo(
+    () => hasColliders ? makeMountainVillageLayout(chunk, baseHeight) : null,
+    [chunk, baseHeight, hasColliders],
+  );
+  const terrainTexture = useMemo(() => getSurvivalTerrainDetailTexture(), []);
 
   return (
     <>
@@ -25344,7 +25412,7 @@ function SurvivalMountainVillage({ chunk }: { chunk: SurvivalChunkInfo }) {
             <MountainCliffBreakup patches={layout.cliffPatches} showDetails={showTrailAndCabinDetails} />
             <MountainSnowCap summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
             <MountainVillageTrail layout={layout} showDetails={showTrailAndCabinDetails} />
-            <MountainWaterfall waterfall={layout.waterfall} summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
+            <MountainWaterfall chunk={chunk} waterfall={layout.waterfall} summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
             {showMineshaftShell && (
               <>
                 <MountainMineshaftOpening
