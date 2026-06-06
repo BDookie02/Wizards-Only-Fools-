@@ -3633,6 +3633,10 @@ const SURVIVAL_BOTW_GRASS_STRICT_DESERT_WEIGHT = 0.9;
 const SURVIVAL_BOTW_GRASS_CARPET_ENABLED = false;
 const SURVIVAL_BOTW_GRASS_FOOTPRINT_SCALE = 0.66;
 const SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE = 24;
+const SURVIVAL_BOTW_GRASS_BLADE_MIN_NORMAL_Y = 0.68;
+const SURVIVAL_BOTW_GRASS_FLOWER_MIN_NORMAL_Y = 0.64;
+const SURVIVAL_BOTW_GRASS_FLUSH_FOOTPRINT_RANGE = 4.2;
+const SURVIVAL_BOTW_GRASS_SLOPE_FOOTPRINT_RANGE = 1.35;
 const SURVIVAL_BOTW_GRASS_BLADE_NEAR_HEIGHT_LIMIT = 56;
 const SURVIVAL_BOTW_GRASS_BLADE_FAR_HEIGHT_LIMIT = 42;
 const SURVIVAL_BOTW_GRASS_VERTICAL_FADE_START = 54;
@@ -5123,6 +5127,27 @@ function SurvivalGrassGroundCover({ chunk, loadStage = 4 }: { chunk: SurvivalChu
       )) continue;
 
       const terrainNormal = getSurvivalGrassSurfaceNormalForChunk(chunk, localX, localZ, isFarLod ? 7.5 : 3.2);
+      const width = widthBase + survivalHash01(chunk.cx, chunk.cz, 8400 + index) * widthRange;
+      const depth = depthBase + survivalHash01(chunk.cx, chunk.cz, 8500 + index) * depthRange;
+      const footprintStats = getSurvivalBotwGrassFootprintStats(
+        worldX,
+        worldZ,
+        Math.max(width, depth) * (isFarLod ? 0.42 : 0.5),
+      );
+      const maxFootprintRange = isFarLod ? 5.2 : chunk.lod === "mid" ? 3.4 : 2.6;
+      const minNormalY = isFarLod ? 0.78 : chunk.lod === "mid" ? 0.82 : 0.84;
+      if (footprintStats.heightRange > maxFootprintRange || terrainNormal.y < minNormalY) continue;
+
+      const slopeTuck = clamp01(Math.max(
+        smoothstepRange(0.7, maxFootprintRange, footprintStats.heightRange),
+        smoothstepRange(0.02, 1 - minNormalY, 1 - terrainNormal.y),
+      ));
+      const terrainLift = isFarLod ? 0.12 : 0.095;
+      const tuckedY = Math.min(
+        terrainY + terrainLift,
+        footprintStats.baseY + lerpNumber(0.045, -0.035, slopeTuck),
+      );
+      const slopeSizeScale = lerpNumber(1, isFarLod ? 0.62 : 0.72, slopeTuck);
       const variant = survivalHash01(chunk.cx, chunk.cz, 8200 + index);
       const grassBiome = getSurvivalGrassSurfaceBiome(chunk.biome, worldX, worldZ, terrainY);
       const color = getSurvivalGrassBladeColor(grassBiome, worldX, worldZ, terrainY, variant);
@@ -5131,14 +5156,14 @@ function SurvivalGrassGroundCover({ chunk, loadStage = 4 }: { chunk: SurvivalChu
       color.multiplyScalar(isFarLod ? 1.3 : chunk.lod === "mid" ? 1.28 : 1.26);
       generated.push({
         x: localX,
-        y: terrainY + (isFarLod ? 0.12 : 0.095),
+        y: tuckedY,
         z: localZ,
         normalX: terrainNormal.x,
         normalY: terrainNormal.y,
         normalZ: terrainNormal.z,
         yaw: survivalHash01(chunk.cx, chunk.cz, 8300 + index) * Math.PI * 2,
-        width: widthBase + survivalHash01(chunk.cx, chunk.cz, 8400 + index) * widthRange,
-        depth: depthBase + survivalHash01(chunk.cx, chunk.cz, 8500 + index) * depthRange,
+        width: width * slopeSizeScale,
+        depth: depth * slopeSizeScale,
         color,
       });
     }
@@ -5895,7 +5920,7 @@ function getSurvivalGrassDebugSampleAt(worldX: number, worldZ: number) {
       : false,
     usesGrassSurfaceOverride: surface.usesGrassSurfaceOverride,
     submerged: isSurvivalGrassSubmergedAtWorldPoint(chunk, worldX, worldZ, grassY, 0.018, 0),
-    botwPlacement: Boolean(getSurvivalBotwGrassPlacement(worldX, worldZ, 0.26)),
+    botwPlacement: Boolean(getSurvivalBotwGrassPlacement(worldX, worldZ, SURVIVAL_BOTW_GRASS_BLADE_MIN_NORMAL_Y)),
     carpetPlacement: Boolean(getSurvivalBotwGrassCarpetPlacement(worldX, worldZ)),
     terrainColor: `#${terrainColor.getHexString()}`,
   };
@@ -6195,6 +6220,16 @@ function getSurvivalBotwGrassFootprintStats(worldX: number, worldZ: number, radi
     baseY: lerpNumber(centerY + 0.004, minY - 0.08, slopeTuck),
     heightRange,
   };
+}
+
+function getSurvivalBotwGrassFlushFootprintLimit(normalY: number, restoredMeadowMask: number) {
+  const slopeT = smoothstepRange(0.08, 0.38, 1 - normalY);
+  const meadowRelax = lerpNumber(1, 1.55, clamp01(restoredMeadowMask));
+  return lerpNumber(
+    SURVIVAL_BOTW_GRASS_FLUSH_FOOTPRINT_RANGE,
+    SURVIVAL_BOTW_GRASS_SLOPE_FOOTPRINT_RANGE,
+    slopeT,
+  ) * meadowRelax;
 }
 
 function getSurvivalBotwGrassFootprintStatsForPlacement(
@@ -6596,7 +6631,7 @@ function makeSurvivalBotwGrassBladeInstances(
     const worldX = centerX + Math.cos(angle) * (radius * radial + jitter);
     const worldZ = centerZ + Math.sin(angle) * (radius * radial + jitter);
     const routeMask = getSurvivalTownRouteMask(worldX, worldZ);
-    const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, 0.26);
+    const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, SURVIVAL_BOTW_GRASS_BLADE_MIN_NORMAL_Y);
     if (!placement) continue;
 
     const variant = survivalHash01(centerSeedX + candidate * 23, centerSeedZ - candidate * 29, 2300);
@@ -6614,7 +6649,8 @@ function makeSurvivalBotwGrassBladeInstances(
       Math.min(2.1, baseWidth * SURVIVAL_BOTW_GRASS_FOOTPRINT_SCALE * 1.72),
       placement,
     );
-    if (footprintStats.heightRange > SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE) continue;
+    const flushFootprintLimit = getSurvivalBotwGrassFlushFootprintLimit(placement.normal.y, meadowMask);
+    if (footprintStats.heightRange > Math.min(SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, flushFootprintLimit)) continue;
     const distanceFromCenter = Math.hypot(worldX - centerX, worldZ - centerZ);
     const midDistanceFill = meadowMask * smoothstepRange(28, radius * 0.82, distanceFromCenter);
     const footprintCompression = lerpNumber(
@@ -6729,7 +6765,7 @@ function makeSurvivalBotwGrassBladeCandidate(
   const worldX = context.centerX + Math.cos(angle) * (context.radius * radial + jitter);
   const worldZ = context.centerZ + Math.sin(angle) * (context.radius * radial + jitter);
   const routeMask = getSurvivalTownRouteMask(worldX, worldZ);
-  const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, 0.26);
+  const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, SURVIVAL_BOTW_GRASS_BLADE_MIN_NORMAL_Y);
   if (!placement) return null;
 
   const variant = survivalHash01(context.centerSeedX + candidate * 23, context.centerSeedZ - candidate * 29, 2300);
@@ -6755,7 +6791,8 @@ function makeSurvivalBotwGrassBladeCandidate(
     Math.min(2.1, baseWidth * SURVIVAL_BOTW_GRASS_FOOTPRINT_SCALE * 1.72),
     placement,
   );
-  if (footprintStats.heightRange > SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE) return null;
+  const flushFootprintLimit = getSurvivalBotwGrassFlushFootprintLimit(placement.normal.y, meadowMask);
+  if (footprintStats.heightRange > Math.min(SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, flushFootprintLimit)) return null;
   const distanceFromCenter = Math.hypot(worldX - context.centerX, worldZ - context.centerZ);
   const midDistanceFill = meadowMask * smoothstepRange(28, context.radius * 0.82, distanceFromCenter);
   const footprintCompression = lerpNumber(
@@ -6853,7 +6890,7 @@ function makeSurvivalBotwFlowerCandidate(
   if (Math.hypot(worldX - context.centerX, worldZ - context.centerZ) > context.radius) return null;
   if (shouldSkipSurvivalBotwGrassForTownRoute(worldX, worldZ)) return null;
 
-  const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, 0.38);
+  const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, SURVIVAL_BOTW_GRASS_FLOWER_MIN_NORMAL_Y);
   if (!placement) return null;
 
   const footprintStats = getSurvivalBotwFlowerFootprintStatsForPlacement(worldX, worldZ, 0.36, placement);
@@ -7011,7 +7048,7 @@ function makeSurvivalBotwTallFeatureFlower(
   const worldZ = clusterZ + Math.sin(memberAngle) * memberRadius;
   if (shouldSkipSurvivalBotwGrassForTownRoute(worldX, worldZ)) return null;
 
-  const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, 0.4);
+  const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, SURVIVAL_BOTW_GRASS_FLOWER_MIN_NORMAL_Y);
   if (!placement) return null;
 
   const footprintStats = getSurvivalBotwFlowerFootprintStatsForPlacement(worldX, worldZ, 0.38, placement);
