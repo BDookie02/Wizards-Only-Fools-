@@ -850,8 +850,8 @@ const SURVIVAL_TERRAIN_CENTER_SEGMENTS = 32;
 const SURVIVAL_TERRAIN_NEAR_SEGMENTS = 32;
 const SURVIVAL_TERRAIN_MID_SEGMENTS = 12;
 const SURVIVAL_TERRAIN_FAR_SEGMENTS = 4;
-const SURVIVAL_TERRAIN_CENTER_COLLISION_SEGMENTS = 20;
-const SURVIVAL_TERRAIN_NEAR_COLLISION_SEGMENTS = 14;
+const SURVIVAL_TERRAIN_CENTER_COLLISION_SEGMENTS = SURVIVAL_TERRAIN_CENTER_SEGMENTS;
+const SURVIVAL_TERRAIN_NEAR_COLLISION_SEGMENTS = SURVIVAL_TERRAIN_NEAR_SEGMENTS;
 const SURVIVAL_VILLAGE_PAD_SEGMENTS = 18;
 const SURVIVAL_TERRAIN_SKIRT_DEPTH = 44;
 const SURVIVAL_TERRAIN_SKIRT_TOP_INSET = 0.04;
@@ -3634,9 +3634,12 @@ const SURVIVAL_BOTW_GRASS_CARPET_ENABLED = false;
 const SURVIVAL_BOTW_GRASS_FOOTPRINT_SCALE = 0.66;
 const SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE = 24;
 const SURVIVAL_BOTW_GRASS_BLADE_MIN_NORMAL_Y = 0.68;
-const SURVIVAL_BOTW_GRASS_FLOWER_MIN_NORMAL_Y = 0.64;
+const SURVIVAL_BOTW_GRASS_FLOWER_MIN_NORMAL_Y = 0.84;
 const SURVIVAL_BOTW_GRASS_FLUSH_FOOTPRINT_RANGE = 4.2;
 const SURVIVAL_BOTW_GRASS_SLOPE_FOOTPRINT_RANGE = 1.35;
+const SURVIVAL_BOTW_FLOWER_FLUSH_FOOTPRINT_RANGE = 1.28;
+const SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y = 0.72;
+const SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE = 7.4;
 const SURVIVAL_BOTW_GRASS_BLADE_NEAR_HEIGHT_LIMIT = 56;
 const SURVIVAL_BOTW_GRASS_BLADE_FAR_HEIGHT_LIMIT = 42;
 const SURVIVAL_BOTW_GRASS_VERTICAL_FADE_START = 54;
@@ -3672,9 +3675,9 @@ const SURVIVAL_BOTW_GRASS_MOBILE_PREVIEW_MIN_COUNT = SURVIVAL_BOTW_GRASS_DESKTOP
 const SURVIVAL_BOTW_GRASS_PREVIEW_MAX_WAIT_MS = 620;
 const SURVIVAL_BOTW_GRASS_PREVIEW_REFRESH_COUNT = 6000;
 const SURVIVAL_BOTW_GRASS_PREVIEW_REFRESH_MS = 720;
-const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH = 1100;
+const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH = 1800;
 const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH = 2400;
-const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_INITIAL_BATCH = 6400;
+const SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_INITIAL_BATCH = 9800;
 const SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_INITIAL_BATCH = 9000;
 const SURVIVAL_BOTW_GRASS_BUILD_CACHE_LIMIT = 36;
 const SURVIVAL_BOTW_GRASS_NEIGHBOR_PREWARM_OFFSETS: ReadonlyArray<readonly [number, number]> = [
@@ -4808,6 +4811,25 @@ function getSurvivalUnifiedTerrainSurfaceSampleAtWorld(
     worldZ - chunk.z,
     sampleDistance,
   );
+}
+
+function getSurvivalDecorationSurfaceQuality(
+  chunk: SurvivalChunkInfo,
+  localX: number,
+  localZ: number,
+  footprintRadius: number,
+  sampleDistance = 4.2,
+) {
+  const worldX = chunk.x + localX;
+  const worldZ = chunk.z + localZ;
+  const surface = getSurvivalUnifiedTerrainSurfaceSampleForChunk(chunk, localX, localZ, sampleDistance);
+  const footprintStats = getSurvivalBotwGrassFootprintStats(worldX, worldZ, footprintRadius);
+
+  return {
+    y: Math.min(surface.terrainY, footprintStats.baseY),
+    normal: surface.terrainNormal,
+    heightRange: footprintStats.heightRange,
+  };
 }
 
 function isSurvivalGrassVillageAxisPathBlocked(localX: number, localZ: number, halfWidth: number, reach = BASE_VILLAGE_HALF_SIZE + 72) {
@@ -6182,7 +6204,10 @@ function getSurvivalBotwGrassPlacement(worldX: number, worldZ: number, minNormal
     };
   }
 
-  const effectiveMinNormalY = lerpNumber(minNormalY, 0.03, restoredMeadowMask);
+  const meadowRelaxedMinNormalY = minNormalY <= 0.42
+    ? 0.03
+    : Math.max(minNormalY, SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y);
+  const effectiveMinNormalY = lerpNumber(minNormalY, meadowRelaxedMinNormalY, restoredMeadowMask);
   if (normal.y < effectiveMinNormalY) return null;
 
   return { chunk, localX, localZ, terrainY, biome: biome === "desert" ? "plains" : biome, normal };
@@ -6281,14 +6306,22 @@ function getSurvivalBotwFlowerFootprintStatsForPlacement(
 ) {
   const restoredMeadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
   if (restoredMeadowMask > 0.02 && placement.biome !== "swamp") {
+    const renderedFootprintStats = getSurvivalBotwGrassFootprintStats(worldX, worldZ, radius);
     const slopeTuck = smoothstepRange(
       1 - SURVIVAL_BOTW_GRASS_FLAT_NORMAL_Y,
       0.055,
       1 - placement.normal.y,
     );
+    const hillFootprintTuck = Math.max(
+      slopeTuck,
+      smoothstepRange(0.24, 1.65, renderedFootprintStats.heightRange),
+    );
     return {
-      baseY: placement.terrainY + lerpNumber(0.004, -0.026, slopeTuck),
-      heightRange: slopeTuck * 0.48,
+      baseY: Math.min(
+        placement.terrainY + lerpNumber(0.004, -0.026, slopeTuck),
+        renderedFootprintStats.baseY - hillFootprintTuck * 0.02,
+      ),
+      heightRange: Math.max(renderedFootprintStats.heightRange, hillFootprintTuck * 0.62),
     };
   }
 
@@ -6524,11 +6557,15 @@ function makeSurvivalBotwFlowerInstances(
     const worldZ = centerZ + Math.sin(angle) * (radius * radial + jitter);
     if (shouldSkipSurvivalBotwGrassForTownRoute(worldX, worldZ)) continue;
 
-    const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, 0.38);
+    const placement = getSurvivalBotwGrassPlacement(worldX, worldZ, SURVIVAL_BOTW_GRASS_FLOWER_MIN_NORMAL_Y);
     if (!placement) continue;
 
     const footprintStats = getSurvivalBotwFlowerFootprintStatsForPlacement(worldX, worldZ, 0.36, placement);
-    if (footprintStats.heightRange > 2.15) continue;
+    const flushFootprintLimit = Math.min(
+      SURVIVAL_BOTW_FLOWER_FLUSH_FOOTPRINT_RANGE,
+      getSurvivalBotwGrassFlushFootprintLimit(placement.normal.y, getSurvivalRestoredMeadowMask(worldX, worldZ)) * 0.7,
+    );
+    if (footprintStats.heightRange > flushFootprintLimit) continue;
     const distanceFromCenter = Math.hypot(worldX - centerX, worldZ - centerZ);
     const heightLimit = lerpNumber(
       SURVIVAL_BOTW_FLOWER_NEAR_HEIGHT_LIMIT,
@@ -6894,7 +6931,11 @@ function makeSurvivalBotwFlowerCandidate(
   if (!placement) return null;
 
   const footprintStats = getSurvivalBotwFlowerFootprintStatsForPlacement(worldX, worldZ, 0.36, placement);
-  if (footprintStats.heightRange > 2.15) return null;
+  const flushFootprintLimit = Math.min(
+    SURVIVAL_BOTW_FLOWER_FLUSH_FOOTPRINT_RANGE,
+    getSurvivalBotwGrassFlushFootprintLimit(placement.normal.y, getSurvivalRestoredMeadowMask(worldX, worldZ)) * 0.7,
+  );
+  if (footprintStats.heightRange > flushFootprintLimit) return null;
   const distanceFromCenter = Math.hypot(worldX - context.centerX, worldZ - context.centerZ);
   const patchWave =
     Math.sin(worldX * 0.041 + context.centerSeedX * 0.013) +
@@ -7052,7 +7093,11 @@ function makeSurvivalBotwTallFeatureFlower(
   if (!placement) return null;
 
   const footprintStats = getSurvivalBotwFlowerFootprintStatsForPlacement(worldX, worldZ, 0.38, placement);
-  if (footprintStats.heightRange > 2.35) return null;
+  const flushFootprintLimit = Math.min(
+    SURVIVAL_BOTW_FLOWER_FLUSH_FOOTPRINT_RANGE,
+    getSurvivalBotwGrassFlushFootprintLimit(placement.normal.y, getSurvivalRestoredMeadowMask(worldX, worldZ)) * 0.72,
+  );
+  if (footprintStats.heightRange > flushFootprintLimit) return null;
   if (footprintStats.baseY - context.centerY > SURVIVAL_BOTW_FLOWER_NEAR_HEIGHT_LIMIT) return null;
 
   const meadowMask = getSurvivalRestoredMeadowMask(worldX, worldZ);
@@ -7660,7 +7705,10 @@ function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolean }) {
     const mesh = bladeMeshRef.current;
     if (!mesh) return;
 
-    const bladeInstances = bladeInstancesRef.current;
+    const bladeInstances = getSurvivalBotwGrassUploadPrioritizedInstances(
+      bladeInstancesRef.current,
+      uploadPriorityRef.current,
+    );
     const count = Math.min(bladeInstances.length, bladeCapacity);
     const batchSize = mobilePerformanceMode
       ? SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH
@@ -11875,7 +11923,9 @@ function SurvivalWildflowers({ chunk }: { chunk: SurvivalChunkInfo }) {
       if (Math.max(Math.abs(localX), Math.abs(localZ)) > SURVIVAL_BLOCK_SIZE * 0.48) continue;
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const terrainY = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+      const surfaceQuality = getSurvivalDecorationSurfaceQuality(chunk, localX, localZ, 1.25, 2.8);
+      if (surfaceQuality.normal.y < 0.82 || surfaceQuality.heightRange > 1.6) continue;
+      const terrainY = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
       if (terrainY < waterY + 0.1) continue;
 
@@ -11883,7 +11933,7 @@ function SurvivalWildflowers({ chunk }: { chunk: SurvivalChunkInfo }) {
       if (chunk.biome === "desert" && patch < 0.42) continue;
       if (chunk.biome === "swamp" && patch < 0.16) continue;
 
-      const terrainNormal = getSurvivalTerrainNormalForChunk(chunk, localX, localZ, 2.6);
+      const terrainNormal = surfaceQuality.normal;
       const variant = survivalHash01(chunk.cx, chunk.cz, 6300 + index);
       const stemHeight = (chunk.biome === "tallgrass" ? 0.74 : chunk.biome === "desert" ? 0.44 : 0.58) + variant * (chunk.biome === "tallgrass" ? 0.54 : 0.42);
       const bloomSize = (chunk.biome === "mushroom" ? 0.72 : 0.58) + survivalHash01(chunk.cx, chunk.cz, 6400 + index) * (chunk.biome === "tallgrass" ? 0.46 : 0.34);
@@ -12199,7 +12249,12 @@ function SurvivalBushClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const terrainY = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+      const surfaceQuality = getSurvivalDecorationSurfaceQuality(chunk, localX, localZ, 6.6, 4.8);
+      if (
+        surfaceQuality.normal.y < 0.68 ||
+        surfaceQuality.heightRange > SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE
+      ) continue;
+      const terrainY = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
       if (terrainY < waterY + 0.18) continue;
 
@@ -12332,7 +12387,9 @@ function SurvivalFernClusters({ chunk }: { chunk: SurvivalChunkInfo }) {
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
       if (getSurvivalTownRouteMask(worldX, worldZ) > 0.12) continue;
-      const y = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+      const surfaceQuality = getSurvivalDecorationSurfaceQuality(chunk, localX, localZ, 2.6, 3.4);
+      if (surfaceQuality.normal.y < 0.78 || surfaceQuality.heightRange > 2.4) continue;
+      const y = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
       if (y < waterY + 0.08) continue;
 
@@ -12467,7 +12524,12 @@ function SurvivalSolidTreeGroves({ chunk, dense = false }: { chunk: SurvivalChun
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const y = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+      const surfaceQuality = getSurvivalDecorationSurfaceQuality(chunk, localX, localZ, 8.5, 5.2);
+      if (
+        surfaceQuality.normal.y < SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y ||
+        surfaceQuality.heightRange > SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE
+      ) continue;
+      const y = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
       if (y < waterY + 0.2) continue;
 
@@ -12584,7 +12646,12 @@ function SurvivalFastGroves({ chunk }: { chunk: SurvivalChunkInfo }) {
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const y = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+      const surfaceQuality = getSurvivalDecorationSurfaceQuality(chunk, localX, localZ, 8.5, 5.2);
+      if (
+        surfaceQuality.normal.y < SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y ||
+        surfaceQuality.heightRange > SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE
+      ) continue;
+      const y = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
       if (y < waterY + 0.2) continue;
 
@@ -13069,7 +13136,12 @@ function SurvivalRoofForests({ chunk }: { chunk: SurvivalChunkInfo }) {
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const y = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+      const surfaceQuality = getSurvivalDecorationSurfaceQuality(chunk, localX, localZ, 9.5, 5.8);
+      if (
+        surfaceQuality.normal.y < SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y ||
+        surfaceQuality.heightRange > SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE
+      ) continue;
+      const y = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
       if (y < waterY + 0.26) continue;
 
@@ -13440,7 +13512,9 @@ function SurvivalHobbitHuts({ chunk }: { chunk: SurvivalChunkInfo }) {
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const y = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+      const surfaceQuality = getSurvivalDecorationSurfaceQuality(chunk, localX, localZ, 13.5, 7.2);
+      if (surfaceQuality.normal.y < 0.82 || surfaceQuality.heightRange > 5.8) continue;
+      const y = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
       if (y < waterY + 0.42) continue;
 
@@ -14288,7 +14362,9 @@ function SurvivalRockOutcrops({ chunk }: { chunk: SurvivalChunkInfo }) {
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const y = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+      const surfaceQuality = getSurvivalDecorationSurfaceQuality(chunk, localX, localZ, 5.6, 4.8);
+      if (surfaceQuality.normal.y < 0.62 || surfaceQuality.heightRange > 7.8) continue;
+      const y = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
       if (y < waterY + 0.24) continue;
 
@@ -14540,7 +14616,12 @@ function SurvivalScatterProps({ chunk }: { chunk: SurvivalChunkInfo }) {
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const y = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
+      const surfaceQuality = getSurvivalDecorationSurfaceQuality(chunk, localX, localZ, 8.8, 5.2);
+      if (
+        surfaceQuality.normal.y < SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y ||
+        surfaceQuality.heightRange > SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE
+      ) continue;
+      const y = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
       if (y < waterY + 0.18) continue;
 

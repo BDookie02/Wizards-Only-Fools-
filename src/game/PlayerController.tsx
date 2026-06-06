@@ -53,10 +53,15 @@ const GROUND_PROBE_OFFSETS = [
   { x: -GROUND_PROBE_DIAGONAL_RADIUS, z: -GROUND_PROBE_DIAGONAL_RADIUS },
 ] as const;
 const CAMERA_WALL_CLEARANCE = 0.64;
-const CAMERA_WALL_PUSH_MAX = 0.34;
+const CAMERA_WALL_PUSH_MAX = 0.54;
 const CAMERA_WALL_INSIDE_EXTRA = 0.12;
 const CAMERA_WALL_MIN_HORIZONTAL_PUSH_SQ = 0.0009;
-const CAMERA_WALL_MAX_VERTICAL_SEPARATION = 0.9;
+const CAMERA_WALL_MAX_VERTICAL_SEPARATION = 2.4;
+const CAMERA_TERRAIN_EYE_CLEARANCE = 0.42;
+const CAMERA_TERRAIN_RAY_UP = 3.8;
+const CAMERA_TERRAIN_RAY_DOWN = 7.2;
+const CAMERA_TERRAIN_MAX_BODY_LIFT = 4.8;
+const CAMERA_TERRAIN_MAX_SURFACE_ABOVE_BODY = PLAYER_CAMERA_HEIGHT + 0.95;
 const SLIDE_START_MIN_SPEED_SQ = 0.55;
 const SLIDE_RESTART_COOLDOWN_MS = 250;
 const SPELL_SPAWN_FORWARD_OFFSET = 1.55;
@@ -2112,12 +2117,17 @@ export function PlayerController() {
     }
     const controllerInputActive = controllerModeReady && controllerGameplayArmed.current;
     const gameplayInputActive = Boolean(mouseGameplayRequested || storeState.isTouchControlsActive || controllerInputActive);
+    const survivalModeActive = isSurvivalGameMode(storeState.gameMode);
     const isSolidWorldCollider = (collider: any) => {
       const parent = typeof collider.parent === "function" ? collider.parent() : null;
       const isSensor = typeof collider.isSensor === "function" ? collider.isSensor() : collider.isSensor === true;
       return parent?.handle !== rigidBody.current?.handle && !isSensor;
     };
-    const resolveCameraWallPush = (bodyPos: { x: number; y: number; z: number }, eyeY: number) => {
+    const resolveCameraWallPush = (
+      bodyPos: { x: number; y: number; z: number },
+      eyeY: number,
+      cameraHeight: number,
+    ) => {
       const probe = cameraAntiClipProbe.current.set(bodyPos.x, eyeY, bodyPos.z);
       const projection = world.projectPoint(
         probe,
@@ -2128,40 +2138,99 @@ export function PlayerController() {
         undefined,
         isSolidWorldCollider,
       );
-      if (!projection) return null;
-      if (Math.abs(projection.point.y - probe.y) > CAMERA_WALL_MAX_VERTICAL_SEPARATION) return null;
-
+      let nextX = bodyPos.x;
+      let nextY = bodyPos.y;
+      let nextZ = bodyPos.z;
+      let nextEyeY = eyeY;
+      let moved = false;
       const push = cameraAntiClipPush.current;
-      if (projection.isInside) {
-        push.set(
-          projection.point.x - probe.x,
-          0,
-          projection.point.z - probe.z,
-        );
-      } else {
-        push.set(
-          probe.x - projection.point.x,
-          0,
-          probe.z - projection.point.z,
-        );
+      if (projection) {
+        const verticalSeparation = Math.abs(projection.point.y - probe.y);
+        if (verticalSeparation <= CAMERA_WALL_MAX_VERTICAL_SEPARATION) {
+          if (projection.isInside) {
+            push.set(
+              projection.point.x - probe.x,
+              0,
+              projection.point.z - probe.z,
+            );
+          } else {
+            push.set(
+              probe.x - projection.point.x,
+              0,
+              probe.z - projection.point.z,
+            );
+          }
+
+          const horizontalDistanceSq = push.lengthSq();
+          if (horizontalDistanceSq >= CAMERA_WALL_MIN_HORIZONTAL_PUSH_SQ) {
+            const horizontalDistance = Math.sqrt(horizontalDistanceSq);
+            if (projection.isInside || horizontalDistance < CAMERA_WALL_CLEARANCE) {
+              const pushDistance = projection.isInside
+                ? Math.min(CAMERA_WALL_PUSH_MAX, horizontalDistance + CAMERA_WALL_INSIDE_EXTRA)
+                : Math.min(CAMERA_WALL_PUSH_MAX, CAMERA_WALL_CLEARANCE - horizontalDistance);
+              if (pushDistance > 0) {
+                push.multiplyScalar(pushDistance / horizontalDistance);
+                nextX += push.x;
+                nextZ += push.z;
+                moved = true;
+              }
+            }
+          }
+        }
+
+        if (projection.isInside) {
+          const targetEyeY = projection.point.y + CAMERA_TERRAIN_EYE_CLEARANCE;
+          const lift = targetEyeY - nextEyeY;
+          if (lift > FLOOR_RECOVERY_TRIGGER_DEPTH && lift < CAMERA_TERRAIN_MAX_BODY_LIFT) {
+            nextY += lift;
+            nextEyeY += lift;
+            moved = true;
+          }
+        }
       }
 
-      const horizontalDistanceSq = push.lengthSq();
-      if (horizontalDistanceSq < CAMERA_WALL_MIN_HORIZONTAL_PUSH_SQ) return null;
+      if (survivalModeActive) {
+        const terrainProbeY = nextEyeY + CAMERA_TERRAIN_RAY_UP;
+        const terrainRay = new rapier.Ray(
+          { x: nextX, y: terrainProbeY, z: nextZ },
+          { x: 0, y: -1, z: 0 },
+        );
+        // @ts-ignore - rapier exposes the collider predicate in this overload.
+        const terrainHit = world.castRay(
+          terrainRay,
+          CAMERA_TERRAIN_RAY_UP + CAMERA_TERRAIN_RAY_DOWN,
+          true,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          isSolidWorldCollider,
+        );
+        if (terrainHit) {
+          const surfaceY = terrainProbeY - terrainHit.timeOfImpact;
+          const surfaceAboveBody = surfaceY - nextY;
+          const targetEyeY = surfaceY + CAMERA_TERRAIN_EYE_CLEARANCE;
+          const lift = targetEyeY - nextEyeY;
+          if (
+            lift > FLOOR_RECOVERY_TRIGGER_DEPTH &&
+            lift < CAMERA_TERRAIN_MAX_BODY_LIFT &&
+            surfaceAboveBody > -PLAYER_FOOT_OFFSET &&
+            surfaceAboveBody < CAMERA_TERRAIN_MAX_SURFACE_ABOVE_BODY
+          ) {
+            nextY += lift;
+            nextEyeY = nextY + cameraHeight;
+            moved = true;
+          }
+        }
+      }
 
-      const horizontalDistance = Math.sqrt(horizontalDistanceSq);
-      if (!projection.isInside && horizontalDistance >= CAMERA_WALL_CLEARANCE) return null;
+      if (!moved) return null;
 
-      const pushDistance = projection.isInside
-        ? Math.min(CAMERA_WALL_PUSH_MAX, horizontalDistance + CAMERA_WALL_INSIDE_EXTRA)
-        : Math.min(CAMERA_WALL_PUSH_MAX, CAMERA_WALL_CLEARANCE - horizontalDistance);
-      if (pushDistance <= 0) return null;
-
-      push.multiplyScalar(pushDistance / horizontalDistance);
-      const nextX = bodyPos.x + push.x;
-      const nextZ = bodyPos.z + push.z;
-      rigidBody.current?.setTranslation({ x: nextX, y: bodyPos.y, z: nextZ }, true);
-      return { x: nextX, y: bodyPos.y, z: nextZ };
+      rigidBody.current?.setTranslation({ x: nextX, y: nextY, z: nextZ }, true);
+      if (nextY > bodyPos.y + FLOOR_RECOVERY_TRIGGER_DEPTH) {
+        rigidBody.current?.setLinvel({ x: velocity.x, y: Math.max(0, velocity.y), z: velocity.z }, true);
+      }
+      return { x: nextX, y: nextY, z: nextZ, eyeY: nextEyeY };
     };
     (window as any).localPlayerPos = pos;
     (window as any).__wofLastPlayerPosition = {
@@ -4360,7 +4429,6 @@ export function PlayerController() {
       if (isCrouching) setIsCrouching(false);
     }
 
-    const survivalModeActive = isSurvivalGameMode(storeState.gameMode);
     const survivalDeepRecoveryNeeded = survivalModeActive && pos.y < FLOOR_DEEP_RECOVERY_TRIGGER_Y;
     const survivalSurfaceRecoveryNeeded = survivalModeActive && !hasGroundHit;
     if (!vclipActive && !climbingLadder && !hasGroundHit && (velocity.y < -0.35 || survivalDeepRecoveryNeeded || survivalSurfaceRecoveryNeeded) && !jumpHeld && !grabbedState.current) {
@@ -4539,10 +4607,12 @@ export function PlayerController() {
         ? PLAYER_CROUCH_CAMERA_HEIGHT
         : PLAYER_CAMERA_HEIGHT;
     const targetY = pos.y + cameraHeight;
-    const cameraBasePosition = (!vclipActive && !climbingLadder)
-      ? resolveCameraWallPush(pos, targetY) ?? pos
-      : pos;
-    camera.position.lerp(cameraTargetPosition.current.set(cameraBasePosition.x, targetY, cameraBasePosition.z), 0.2);
+    const cameraClearancePosition = (!vclipActive && !climbingLadder)
+      ? resolveCameraWallPush(pos, targetY, cameraHeight)
+      : null;
+    const cameraBasePosition = cameraClearancePosition ?? pos;
+    const resolvedTargetY = cameraClearancePosition?.eyeY ?? targetY;
+    camera.position.lerp(cameraTargetPosition.current.set(cameraBasePosition.x, resolvedTargetY, cameraBasePosition.z), 0.2);
     applyScreenShake();
 
     // Fall logic
