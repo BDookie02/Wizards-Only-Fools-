@@ -175,6 +175,15 @@ for (let index = 0; index < 8; index += 1) {
   const angle = (index / 8) * Math.PI * 2;
   CHAPEL_CHANDELIER_CANDLE_POSITIONS.push([Math.cos(angle) * 6.2, 0, Math.sin(angle) * 6.2]);
 }
+const CHAPEL_CANDLE_DRIP_ANGLES = [0.2, 2.45, 4.1] as const;
+const CHAPEL_INTERIOR_CANDLE_SPOTS: Array<[number, number, number]> = [
+  [-45, 0.9, 54], [45, 0.9, 54], [-45, 0.9, 18], [45, 0.9, 18],
+  [-45, 0.9, -18], [45, 0.9, -18], [-28, 0.9, -66], [28, 0.9, -66],
+  [-104, 0.9, 34], [104, 0.9, 34], [-104, 0.9, -34], [104, 0.9, -34],
+  [-6, 1.3, -66], [6, 1.3, -66],
+];
+const CHAPEL_ALTAR_GRAIN_X = [-7.2, 0, 7.2] as const;
+const CHAPEL_PULPIT_GRAIN_X = [-2.4, 0, 2.4] as const;
 
 function makeChapelRampColliderGeometry(baseHeight: number) {
   const exitCount = CHAPEL_EXIT_RAMP_DEFINITIONS.length;
@@ -354,7 +363,11 @@ function getGraveyardChapelFootprintMask(localX: number, localZ: number) {
   return Math.max(centralHall, westWing, eastWing);
 }
 
+let chapelWallSegmentsCache: ChapelWallSegment[] | null = null;
+
 function getChapelWallSegments(): ChapelWallSegment[] {
+  if (chapelWallSegmentsCache) return chapelWallSegmentsCache;
+
   const t = CHAPEL_WALL_THICKNESS;
   const h = CHAPEL_WALL_HEIGHT;
   const y = CHAPEL_WALL_HALF_HEIGHT;
@@ -374,7 +387,7 @@ function getChapelWallSegments(): ChapelWallSegment[] {
   const wingDoorSideDepth = CHAPEL_SIDE_WING_HALF_DEPTH - CHAPEL_SIDE_EXIT_HALF_WIDTH;
   const wingDoorSideZ = CHAPEL_SIDE_EXIT_HALF_WIDTH + wingDoorSideDepth * 0.5;
 
-  return [
+  const segments: ChapelWallSegment[] = [
     { key: "central-north-west-outer", position: [-rearOuterWallX, y, -CHAPEL_CENTER_HALF_DEPTH], size: [rearOuterWallWidth, h, t] },
     { key: "central-north-center", position: [0, y, -CHAPEL_CENTER_HALF_DEPTH], size: [rearCenterWallWidth, h, t] },
     { key: "central-north-east-outer", position: [rearOuterWallX, y, -CHAPEL_CENTER_HALF_DEPTH], size: [rearOuterWallWidth, h, t] },
@@ -398,6 +411,8 @@ function getChapelWallSegments(): ChapelWallSegment[] {
     { key: "west-wing-side-door-lintel", position: [-CHAPEL_OUTER_HALF_WIDTH, sideLintelY, 0], size: [t, sideLintelHeight, CHAPEL_SIDE_EXIT_HALF_WIDTH * 2 + 5] },
     { key: "east-wing-side-door-lintel", position: [CHAPEL_OUTER_HALF_WIDTH, sideLintelY, 0], size: [t, sideLintelHeight, CHAPEL_SIDE_EXIT_HALF_WIDTH * 2 + 5] },
   ];
+  chapelWallSegmentsCache = segments;
+  return segments;
 }
 
 function getGraveyardPathMask(localX: number, localZ: number) {
@@ -1964,8 +1979,6 @@ function ChapelWallCross() {
 }
 
 function ChapelCandle({ position, scale = 1, light = false }: { position: [number, number, number]; scale?: number; light?: boolean }) {
-  const dripAngles = [0.2, 2.45, 4.1];
-
   return (
     <group position={position} scale={[scale, scale, scale]}>
       <mesh position={[0, 0.12, 0]} castShadow={false}>
@@ -1984,7 +1997,7 @@ function ChapelCandle({ position, scale = 1, light = false }: { position: [numbe
         <cylinderGeometry args={[0.32, 0.34, 0.12, 12]} />
         <meshBasicMaterial color="#fff1ca" />
       </mesh>
-      {dripAngles.map((angle, index) => (
+      {CHAPEL_CANDLE_DRIP_ANGLES.map((angle, index) => (
         <mesh key={`chapel-candle-drip-${index}`} position={[Math.cos(angle) * 0.3, 1.24 - index * 0.14, Math.sin(angle) * 0.3]} rotation={[0, angle, 0]} castShadow={false}>
           <boxGeometry args={[0.1, 0.44 + index * 0.08, 0.08]} />
           <meshBasicMaterial color="#fff3cf" />
@@ -2041,12 +2054,6 @@ function ChapelChandelier({ z, light = false }: { z: number; light?: boolean }) 
 }
 
 function ChapelInterior({ showDetails }: { showDetails: boolean }) {
-  const candleSpots: Array<[number, number, number]> = [
-    [-45, 0.9, 54], [45, 0.9, 54], [-45, 0.9, 18], [45, 0.9, 18],
-    [-45, 0.9, -18], [45, 0.9, -18], [-28, 0.9, -66], [28, 0.9, -66],
-    [-104, 0.9, 34], [104, 0.9, 34], [-104, 0.9, -34], [104, 0.9, -34],
-    [-6, 1.3, -66], [6, 1.3, -66],
-  ];
   const sideWingPews = getChapelSideWingPewLayout();
 
   return (
@@ -2055,7 +2062,7 @@ function ChapelInterior({ showDetails }: { showDetails: boolean }) {
         <boxGeometry args={[CHAPEL_CENTER_HALF_WIDTH * 2 + 8, 0.18, CHAPEL_CENTER_HALF_DEPTH * 2 - 12]} />
         <meshBasicMaterial color="#242019" />
       </mesh>
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <mesh key={`chapel-wing-floor-${side}`} position={[side * CHAPEL_SIDE_WING_CENTER_X, 1.02, 0]} castShadow={false} receiveShadow>
           <boxGeometry args={[CHAPEL_SIDE_WING_HALF_WIDTH * 2 + 6, 0.18, CHAPEL_SIDE_WING_HALF_DEPTH * 2 - 6]} />
           <meshBasicMaterial color="#211d17" />
@@ -2086,7 +2093,7 @@ function ChapelInterior({ showDetails }: { showDetails: boolean }) {
           <boxGeometry args={[21, 1.2, 8.6]} />
           <meshBasicMaterial color="#7a4928" />
         </mesh>
-        {[-7.2, 0, 7.2].map((x, index) => (
+        {CHAPEL_ALTAR_GRAIN_X.map((x, index) => (
           <mesh key={`chapel-altar-grain-${x}`} position={[x, 4.7, 4.18]} castShadow={false}>
             <boxGeometry args={[4.2, 0.22, 0.2]} />
             <meshBasicMaterial color={index % 2 === 0 ? "#b06d36" : "#2a170e"} transparent opacity={0.66} />
@@ -2107,7 +2114,7 @@ function ChapelInterior({ showDetails }: { showDetails: boolean }) {
           <boxGeometry args={[8.2, 1, 5.6]} />
           <meshBasicMaterial color="#724526" />
         </mesh>
-        {[-2.4, 0, 2.4].map((x) => (
+        {CHAPEL_PULPIT_GRAIN_X.map((x) => (
           <mesh key={`chapel-pulpit-grain-${x}`} position={[x, 4.96, 2.02]} castShadow={false}>
             <boxGeometry args={[1.6, 0.18, 0.18]} />
             <meshBasicMaterial color="#af7038" transparent opacity={0.64} />
@@ -2123,7 +2130,7 @@ function ChapelInterior({ showDetails }: { showDetails: boolean }) {
           <ChapelPewNpcs />
           <ChapelSideWingPewNpcs pews={sideWingPews} />
           <ChapelPopeAtPulpit />
-          {candleSpots.map((position, index) => (
+          {CHAPEL_INTERIOR_CANDLE_SPOTS.map((position, index) => (
             <ChapelCandle key={`chapel-candle-${index}`} position={position} scale={index > 7 ? 1.28 : 1} light={false} />
           ))}
           <ChapelChandelier z={-48} />
