@@ -105,6 +105,7 @@ import {
   getSurvivalBotwFlowerHeadGeometry,
   getSurvivalBotwFlowerHeadTexture,
 } from "./survivalGrassGeometry";
+import { splitSurvivalFlowersByBloomType } from "./survivalFlowerGrouping";
 import {
   ensureSurvivalInstancedMeshColors,
   finalizeSurvivalInstancedMeshColors,
@@ -183,12 +184,36 @@ type SurvivalBotwGrassNeighborPrewarmState = {
   seenOffsets: Array<[number, number]>;
 };
 
+type SurvivalBotwGrassUploadScratch = {
+  dummy: THREE.Object3D;
+  normal: THREE.Vector3;
+  normalQuaternion: THREE.Quaternion;
+  yawQuaternion: THREE.Quaternion;
+  color: THREE.Color;
+};
+
+function createSurvivalBotwGrassUploadScratch(): SurvivalBotwGrassUploadScratch {
+  return {
+    dummy: new THREE.Object3D(),
+    normal: new THREE.Vector3(),
+    normalQuaternion: new THREE.Quaternion(),
+    yawQuaternion: new THREE.Quaternion(),
+    color: new THREE.Color(),
+  };
+}
+
 function makeOffsetScratch(count: number): Array<[number, number]> {
   const offsets: Array<[number, number]> = [];
   for (let index = 0; index < count; index += 1) {
     offsets.push([0, 0]);
   }
   return offsets;
+}
+
+function clearSurvivalFlowerMesh(mesh: THREE.InstancedMesh) {
+  mesh.count = 0;
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.frustumCulled = false;
 }
 
 function getSurvivalLocalGrassViewerPositionInto(camera: THREE.Camera, target: SurvivalBotwGrassViewerPosition) {
@@ -505,8 +530,7 @@ function ActiveSurvivalBotwGrassField() {
   const flowerRightScratch = useMemo(() => new THREE.Vector3(), []);
   const flowerBasisScratch = useMemo(() => new THREE.Matrix4(), []);
   const flowerColorScratch = useMemo(() => new THREE.Color(), []);
-  const normalQuaternion = useMemo(() => new THREE.Quaternion(), []);
-  const yawQuaternion = useMemo(() => new THREE.Quaternion(), []);
+  const uploadScratch = useMemo(createSurvivalBotwGrassUploadScratch, []);
   const bladeGeometry = useMemo(() => getSurvivalBotwGrassClusterGeometry(), []);
   const bladeTexture = useMemo(() => getSurvivalBotwGrassTexture(), []);
   const meadowCarpetTexture = useMemo(() => getSurvivalMeadowGrassCarpetTexture(), []);
@@ -577,25 +601,7 @@ function ActiveSurvivalBotwGrassField() {
     [center.x, center.z, enabled, mobilePerformanceMode],
   );
   const [flowerInstances, setFlowerInstances] = useState<SurvivalBotwFlowerInstance[]>([]);
-  const flowerGroups = useMemo(() => {
-    const star: SurvivalBotwFlowerInstance[] = [];
-    const round: SurvivalBotwFlowerInstance[] = [];
-    const bell: SurvivalBotwFlowerInstance[] = [];
-    const puff: SurvivalBotwFlowerInstance[] = [];
-    for (let index = 0; index < flowerInstances.length; index += 1) {
-      const flower = flowerInstances[index];
-      if (flower.bloomType === "star") {
-        star.push(flower);
-      } else if (flower.bloomType === "bell") {
-        bell.push(flower);
-      } else if (flower.bloomType === "puff") {
-        puff.push(flower);
-      } else {
-        round.push(flower);
-      }
-    }
-    return { bell, puff, round, star };
-  }, [flowerInstances]);
+  const flowerGroups = useMemo(() => splitSurvivalFlowersByBloomType(flowerInstances), [flowerInstances]);
   const starFlowers = flowerGroups.star;
   const roundFlowers = flowerGroups.round;
   const bellFlowers = flowerGroups.bell;
@@ -818,11 +824,11 @@ function ActiveSurvivalBotwGrassField() {
     let cancelled = false;
     let frameId: number | null = null;
     let uploadIndex = 0;
-    const uploadDummy = new THREE.Object3D();
-    const uploadNormal = new THREE.Vector3();
-    const uploadNormalQuaternion = new THREE.Quaternion();
-    const uploadYawQuaternion = new THREE.Quaternion();
-    const uploadColor = new THREE.Color();
+    const uploadDummy = uploadScratch.dummy;
+    const uploadNormal = uploadScratch.normal;
+    const uploadNormalQuaternion = uploadScratch.normalQuaternion;
+    const uploadYawQuaternion = uploadScratch.yawQuaternion;
+    const uploadColor = uploadScratch.color;
 
     if (count <= 0) {
       mesh.count = 0;
@@ -912,6 +918,7 @@ function ActiveSurvivalBotwGrassField() {
     center.x,
     center.z,
     mobilePerformanceMode,
+    uploadScratch,
   ]);
 
   useEffect(() => {
@@ -926,13 +933,10 @@ function ActiveSurvivalBotwGrassField() {
       return;
     }
 
-    const bloomMeshes = [starMesh, roundMesh, bellMesh, puffMesh];
-    for (let meshIndex = 0; meshIndex < bloomMeshes.length; meshIndex += 1) {
-      const mesh = bloomMeshes[meshIndex];
-      mesh.count = 0;
-      mesh.instanceMatrix.needsUpdate = true;
-      mesh.frustumCulled = false;
-    }
+    clearSurvivalFlowerMesh(starMesh);
+    clearSurvivalFlowerMesh(roundMesh);
+    clearSurvivalFlowerMesh(bellMesh);
+    clearSurvivalFlowerMesh(puffMesh);
 
     for (let index = 0; index < flowerInstances.length; index += 1) {
       const flower = flowerInstances[index];
