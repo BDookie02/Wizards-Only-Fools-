@@ -58,6 +58,13 @@ type LilyCoilHighlight = {
   z: number;
 };
 
+type LilyCoilFrame = {
+  center: THREE.Vector3;
+  tangent: THREE.Vector3;
+  up: THREE.Vector3;
+  side: THREE.Vector3;
+};
+
 function isLilyCoilFloraTAllowed(t: number) {
   return t > LILY_COIL_EYE_CAP_FLORA_CLEAR_T && t < 1 - LILY_COIL_EYE_CAP_FLORA_CLEAR_T;
 }
@@ -110,25 +117,38 @@ function makeLilyCoilPoint(t: number) {
   );
 }
 
-function makeLilyCoilFrame(t: number) {
+function createLilyCoilFrame(): LilyCoilFrame {
+  return {
+    center: new THREE.Vector3(),
+    tangent: new THREE.Vector3(),
+    up: new THREE.Vector3(),
+    side: new THREE.Vector3(),
+  };
+}
+
+function writeLilyCoilFrameInto(t: number, target: LilyCoilFrame) {
   const clampedT = THREE.MathUtils.clamp(t, 0, 1);
   const angleRate = Math.PI * 2 * LILY_COIL_RAMP_TURNS;
   const angle = LILY_COIL_RAMP_START_ANGLE + angleRate * clampedT;
-  const center = new THREE.Vector3(
+  target.center.set(
     Math.cos(angle) * LILY_COIL_RAMP_RADIUS,
     LILY_COIL_RAMP_START_Y + LILY_COIL_RAMP_RISE * clampedT + LILY_COIL_TUBE_CENTER_OFFSET_Y,
     Math.sin(angle) * LILY_COIL_RAMP_RADIUS,
   );
-  const tangent = new THREE.Vector3(
+  target.tangent.set(
     -Math.sin(angle) * LILY_COIL_RAMP_RADIUS * angleRate,
     LILY_COIL_RAMP_RISE,
     Math.cos(angle) * LILY_COIL_RAMP_RADIUS * angleRate,
   ).normalize();
-  const up = new THREE.Vector3(0, 1, 0).addScaledVector(tangent, -tangent.y);
-  if (up.lengthSq() < 0.0001) up.set(1, 0, 0);
-  up.normalize();
-  const side = new THREE.Vector3().crossVectors(tangent, up).normalize();
-  return { center, tangent, up, side };
+  target.up.set(0, 1, 0).addScaledVector(target.tangent, -target.tangent.y);
+  if (target.up.lengthSq() < 0.0001) target.up.set(1, 0, 0);
+  target.up.normalize();
+  target.side.crossVectors(target.tangent, target.up).normalize();
+  return target;
+}
+
+function makeLilyCoilFrame(t: number) {
+  return writeLilyCoilFrameInto(t, createLilyCoilFrame());
 }
 
 function LilyCoilEndEyeCap({
@@ -510,6 +530,7 @@ function LilyCoilTunnelFlora() {
     up: new THREE.Vector3(),
   }), []);
   const floraUploadScratch = useMemo(() => ({
+    frame: createLilyCoilFrame(),
     radial: new THREE.Vector3(),
     inward: new THREE.Vector3(),
     around: new THREE.Vector3(),
@@ -855,6 +876,7 @@ function LilyCoilTunnelFlora() {
 
   useEffect(() => {
     const {
+      frame,
       radial,
       inward,
       around,
@@ -874,7 +896,7 @@ function LilyCoilTunnelFlora() {
       }
       for (let index = 0; index < grass.length; index += 1) {
         const tuft = grass[index];
-        const frame = makeLilyCoilFrame(tuft.t);
+        writeLilyCoilFrameInto(tuft.t, frame);
         radial.copy(frame.up).multiplyScalar(Math.cos(tuft.angle)).addScaledVector(frame.side, Math.sin(tuft.angle)).normalize();
         inward.copy(radial).multiplyScalar(-1);
         around.copy(frame.up).multiplyScalar(-Math.sin(tuft.angle)).addScaledVector(frame.side, Math.cos(tuft.angle)).normalize();
@@ -910,7 +932,7 @@ function LilyCoilTunnelFlora() {
     const glowMesh = glowRef.current;
     for (let index = 0; index < lilies.length; index += 1) {
       const lily = lilies[index];
-      const frame = makeLilyCoilFrame(lily.t);
+      writeLilyCoilFrameInto(lily.t, frame);
       radial.copy(frame.up).multiplyScalar(Math.cos(lily.angle)).addScaledVector(frame.side, Math.sin(lily.angle)).normalize();
       inward.copy(radial).multiplyScalar(-1);
       around.crossVectors(frame.tangent, inward).normalize();
@@ -1061,11 +1083,12 @@ function LilyCoilTunnelFlora() {
   }, [lilies]);
   const tubeLilyLightPositions = useMemo(() => {
     const positions: Array<[number, number, number]> = [];
+    const frame = createLilyCoilFrame();
     const radial = new THREE.Vector3();
     const position = new THREE.Vector3();
     for (let index = 0; index < tubeLilyLights.length; index += 1) {
       const lily = tubeLilyLights[index];
-      const frame = makeLilyCoilFrame(lily.t);
+      writeLilyCoilFrameInto(lily.t, frame);
       radial.copy(frame.up).multiplyScalar(Math.cos(lily.angle)).addScaledVector(frame.side, Math.sin(lily.angle)).normalize();
       position.copy(frame.center).addScaledVector(radial, LILY_COIL_TUBE_RADIUS - 8);
       positions.push([position.x, position.y, position.z]);
