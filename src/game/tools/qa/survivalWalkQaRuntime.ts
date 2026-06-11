@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { useLazyRef } from "../../systems/react/useLazyRef";
 import {
   getQaSurvivalWalkStartDelaySeconds,
   isQaSurvivalWalkEnabled,
@@ -38,8 +39,8 @@ export function useQaSurvivalWalkRuntimeState() {
   const qaWalkLastDecisionAt = useRef(0);
   const qaWalkLastProgressAt = useRef(0);
   const qaWalkLastProgressPos = useLazyVector3Ref();
-  const qaWalkInputState = useRef<QaSurvivalWalkInputState>({ ...DEFAULT_QA_WALK_INPUT });
-  const qaWalkWaypoint = useRef({ x: 0, z: 0, expiresAt: 0 });
+  const qaWalkInputState = useLazyRef<QaSurvivalWalkInputState>(() => ({ ...DEFAULT_QA_WALK_INPUT }));
+  const qaWalkWaypoint = useLazyRef(() => ({ x: 0, z: 0, expiresAt: 0 }));
   const qaWalkNextDecisionAt = useRef(0);
   const qaWalkInspectUntil = useRef(0);
   const qaWalkNextInspectAt = useRef(0);
@@ -65,7 +66,7 @@ export function useQaSurvivalWalkRuntimeState() {
   const qaWalkIntent = useRef<QaSurvivalIntent | null>(null);
   const qaWalkNextIntentAt = useRef(0);
   const qaWalkLastInteractionAt = useRef(0);
-  const qaWalkInterestMemory = useRef<Record<string, number>>({});
+  const qaWalkInterestMemory = useLazyRef<Record<string, number>>(() => ({}));
   const qaWalkLastDialogActionAt = useRef(0);
   const qaWalkLastTelemetryAt = useRef(0);
   const qaWalkLastTelemetryPos = useLazyVector3Ref();

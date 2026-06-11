@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useLazyRef } from "../../systems/react/useLazyRef";
 import { shouldMountCurrentQaPerfStatsProbe } from "./appQaTelemetryRoutes";
 import {
   QA_PERF_RECENT_SAMPLE_COUNT,
@@ -21,8 +22,8 @@ export function QaPerfStatsProbe() {
 
 function QaPerfStatsSampler() {
   const startedAtRef = useRef(Date.now());
-  const samplesRef = useRef<number[]>([]);
-  const sampleScratchRef = useRef<number[]>([]);
+  const samplesRef = useLazyRef<number[]>(() => []);
+  const sampleScratchRef = useLazyRef<number[]>(() => []);
   const sampleWriteIndexRef = useRef(0);
   const sampleCountRef = useRef(0);
   const lastPublishRef = useRef(0);
@@ -82,7 +83,7 @@ function QaPerfStatsSampler() {
 
     const resetStats = () => {
       startedAtRef.current = Date.now();
-      samplesRef.current = [];
+      samplesRef.current.length = 0;
       sampleScratchRef.current.length = 0;
       sampleWriteIndexRef.current = 0;
       sampleCountRef.current = 0;

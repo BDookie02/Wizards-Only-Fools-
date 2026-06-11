@@ -14,6 +14,7 @@ import {
   getMagicGlassOrbSignal,
   type MagicGlassOrbSignal,
 } from "./magicHandSpellEffectsRuntime";
+import { useLazyRef } from "../../systems/react/useLazyRef";
 import { useMagicHandEquipScale } from "./useMagicHandEquipScale";
 
 const MAGIC_GLASS_ORB_SIGNAL_REFRESH_MS = 160;
@@ -322,7 +323,7 @@ export function MagicGlassOrbCanvas({
 }: ThreeSpellEffectProps & { align: "left" | "right" }) {
   const equipScale = useMagicHandEquipScale(isActive);
   const [signal, setSignal] = useState<MagicGlassOrbSignal | null>(null);
-  const poseRef = useRef({ x: 0, z: 30, angle: 0 });
+  const poseRef = useLazyRef(() => ({ x: 0, z: 30, angle: 0 }));
 
   useEffect(() => {
     if (!isActive) return undefined;

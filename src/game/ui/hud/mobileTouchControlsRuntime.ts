@@ -1,5 +1,6 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import type { HandType } from "../../../store/gameStore";
+import { useLazyRef } from "../../systems/react/useLazyRef";
 import {
   emitMobileCast,
   emitMobileControl,
@@ -71,12 +72,12 @@ export function useMobileTouchControlRuntime({
 }) {
   const joystickPointerRef = useRef<number | null>(null);
   const lookPointerRef = useRef<number | null>(null);
-  const lastLookRef = useRef({ x: 0, y: 0 });
-  const pendingMoveRef = useRef<MobileStickVector>({ x: 0, y: 0 });
+  const lastLookRef = useLazyRef(() => ({ x: 0, y: 0 }));
+  const pendingMoveRef = useLazyRef<MobileStickVector>(() => ({ x: 0, y: 0 }));
   const hasPendingMoveRef = useRef(false);
-  const stickVectorRef = useRef<MobileStickVector>({ x: 0, y: 0 });
+  const stickVectorRef = useLazyRef<MobileStickVector>(() => ({ x: 0, y: 0 }));
   const moveRafRef = useRef<number | null>(null);
-  const pendingLookRef = useRef({ dx: 0, dy: 0 });
+  const pendingLookRef = useLazyRef(() => ({ dx: 0, dy: 0 }));
   const lookRafRef = useRef<number | null>(null);
 
   const setStickVisual = (x: number, y: number) => {
