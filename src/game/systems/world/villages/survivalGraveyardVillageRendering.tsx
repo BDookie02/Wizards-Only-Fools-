@@ -1812,6 +1812,60 @@ const CHAPEL_POPE_CHARACTER: CharacterCustomization = {
   mouthStyle: "neutral",
 };
 
+type ChapelNpcPlacement = {
+  key: string;
+  position: [number, number, number];
+  yaw: number;
+  character: CharacterCustomization;
+};
+
+const CHAPEL_CENTER_NPC_SEAT_Y = 2.98 + NPC_AVATAR_GROUND_LIFT;
+const CHAPEL_SIDE_WING_NPC_SEAT_Y = 2.78 + NPC_AVATAR_GROUND_LIFT;
+
+function buildChapelCenterNpcPlacements(): ChapelNpcPlacement[] {
+  const placements: ChapelNpcPlacement[] = [];
+  for (let rowIndex = 0; rowIndex < CHAPEL_CENTER_PEW_ROWS.length; rowIndex += 1) {
+    const z = CHAPEL_CENTER_PEW_ROWS[rowIndex];
+    for (let sideIndex = 0; sideIndex < CHAPEL_SIDE_SIGNS.length; sideIndex += 1) {
+      const side = CHAPEL_SIDE_SIGNS[sideIndex];
+      for (let seatIndex = 0; seatIndex < CHAPEL_CENTER_NPC_SEAT_OFFSETS.length; seatIndex += 1) {
+        const seat = CHAPEL_CENTER_NPC_SEAT_OFFSETS[seatIndex];
+        const [seatX, seatZ] = clampChapelNpcSeatPosition(side * seat.x, z + seat.z);
+        placements.push({
+          key: `chapel-pew-npc-${rowIndex}-${side}-${seatIndex}`,
+          position: [seatX, CHAPEL_CENTER_NPC_SEAT_Y, seatZ],
+          yaw: getAvatarYawFacingTarget(seatX, seatZ, CHAPEL_POPE_TARGET.x, CHAPEL_POPE_TARGET.z),
+          character: CHAPEL_NPC_CHARACTERS[(rowIndex * 4 + (side > 0 ? 2 : 0) + seatIndex) % CHAPEL_NPC_CHARACTERS.length],
+        });
+      }
+    }
+  }
+  return placements;
+}
+
+function buildChapelSideWingNpcPlacements(): ChapelNpcPlacement[] {
+  const placements: ChapelNpcPlacement[] = [];
+  for (let pewIndex = 0; pewIndex < CHAPEL_SIDE_WING_PEW_LAYOUT.length; pewIndex += 1) {
+    const pew = CHAPEL_SIDE_WING_PEW_LAYOUT[pewIndex];
+    const yaw = getYawForPewFacingTarget(pew.x, pew.z, CHAPEL_POPE_TARGET.x, CHAPEL_POPE_TARGET.z);
+    for (let seatIndex = 0; seatIndex < CHAPEL_SIDE_NPC_SEAT_OFFSETS.length; seatIndex += 1) {
+      const offset = CHAPEL_SIDE_NPC_SEAT_OFFSETS[seatIndex];
+      const [rawSeatX, rawSeatZ] = getRotatedChapelSeatPosition(pew.x, pew.z, offset * pew.width, -0.42, yaw);
+      const [seatX, seatZ] = clampChapelNpcSeatPosition(rawSeatX, rawSeatZ);
+      placements.push({
+        key: `chapel-side-pew-npc-${pew.key}-${seatIndex}`,
+        position: [seatX, CHAPEL_SIDE_WING_NPC_SEAT_Y, seatZ],
+        yaw: getAvatarYawFacingTarget(seatX, seatZ, CHAPEL_POPE_TARGET.x, CHAPEL_POPE_TARGET.z),
+        character: CHAPEL_NPC_CHARACTERS[(pewIndex * 3 + seatIndex + 7) % CHAPEL_NPC_CHARACTERS.length],
+      });
+    }
+  }
+  return placements;
+}
+
+const CHAPEL_CENTER_NPC_PLACEMENTS = buildChapelCenterNpcPlacements();
+const CHAPEL_SIDE_WING_NPC_PLACEMENTS = buildChapelSideWingNpcPlacements();
+
 function ChapelSeatedNpc({
   position,
   yaw,
@@ -1829,52 +1883,31 @@ function ChapelSeatedNpc({
 }
 
 function ChapelPewNpcs() {
-  const seatY = 2.98 + NPC_AVATAR_GROUND_LIFT;
-
   return (
     <group name="chapel-pew-npcs">
-      {CHAPEL_CENTER_PEW_ROWS.flatMap((z, rowIndex) => (
-        CHAPEL_SIDE_SIGNS.flatMap((side) => (
-          CHAPEL_CENTER_NPC_SEAT_OFFSETS.map((seat, seatIndex) => {
-            const character = CHAPEL_NPC_CHARACTERS[(rowIndex * 4 + (side > 0 ? 2 : 0) + seatIndex) % CHAPEL_NPC_CHARACTERS.length];
-            const [seatX, seatZ] = clampChapelNpcSeatPosition(side * seat.x, z + seat.z);
-            return (
-              <ChapelSeatedNpc
-                key={`chapel-pew-npc-${rowIndex}-${side}-${seatIndex}`}
-                position={[seatX, seatY, seatZ]}
-                yaw={getAvatarYawFacingTarget(seatX, seatZ, CHAPEL_POPE_TARGET.x, CHAPEL_POPE_TARGET.z)}
-                character={character}
-              />
-            );
-          })
-        ))
+      {CHAPEL_CENTER_NPC_PLACEMENTS.map((seat) => (
+        <ChapelSeatedNpc
+          key={seat.key}
+          position={seat.position}
+          yaw={seat.yaw}
+          character={seat.character}
+        />
       ))}
     </group>
   );
 }
 
-function ChapelSideWingPewNpcs({ pews }: { pews: ChapelSideWingPewPlacement[] }) {
-  const seatY = 2.78 + NPC_AVATAR_GROUND_LIFT;
-
+function ChapelSideWingPewNpcs() {
   return (
     <group name="chapel-side-wing-pew-npcs">
-      {pews.flatMap((pew, pewIndex) => {
-        const yaw = getYawForPewFacingTarget(pew.x, pew.z, CHAPEL_POPE_TARGET.x, CHAPEL_POPE_TARGET.z);
-        return CHAPEL_SIDE_NPC_SEAT_OFFSETS.map((offset, seatIndex) => {
-          const [rawSeatX, rawSeatZ] = getRotatedChapelSeatPosition(pew.x, pew.z, offset * pew.width, -0.42, yaw);
-          const [seatX, seatZ] = clampChapelNpcSeatPosition(rawSeatX, rawSeatZ);
-          const character = CHAPEL_NPC_CHARACTERS[(pewIndex * 3 + seatIndex + 7) % CHAPEL_NPC_CHARACTERS.length];
-
-          return (
-            <ChapelSeatedNpc
-              key={`chapel-side-pew-npc-${pew.key}-${seatIndex}`}
-              position={[seatX, seatY, seatZ]}
-              yaw={getAvatarYawFacingTarget(seatX, seatZ, CHAPEL_POPE_TARGET.x, CHAPEL_POPE_TARGET.z)}
-              character={character}
-            />
-          );
-        });
-      })}
+      {CHAPEL_SIDE_WING_NPC_PLACEMENTS.map((seat) => (
+        <ChapelSeatedNpc
+          key={seat.key}
+          position={seat.position}
+          yaw={seat.yaw}
+          character={seat.character}
+        />
+      ))}
     </group>
   );
 }
@@ -2128,7 +2161,7 @@ function ChapelInterior({ showDetails }: { showDetails: boolean }) {
       {showDetails && (
         <>
           <ChapelPewNpcs />
-          <ChapelSideWingPewNpcs pews={sideWingPews} />
+          <ChapelSideWingPewNpcs />
           <ChapelPopeAtPulpit />
           {CHAPEL_INTERIOR_CANDLE_SPOTS.map((position, index) => (
             <ChapelCandle key={`chapel-candle-${index}`} position={position} scale={index > 7 ? 1.28 : 1} light={false} />
