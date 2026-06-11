@@ -1508,7 +1508,7 @@ function ChapelPew({ z, side }: { z: number; side: -1 | 1 }) {
         <boxGeometry args={[18, 1.2, 3.8]} />
         <meshBasicMaterial color="#5a321c" />
       </mesh>
-      {[-5.6, 0, 5.6].map((grainX, index) => (
+      {CHAPEL_PEW_SEAT_GRAIN_X.map((grainX, index) => (
         <mesh key={`chapel-pew-seat-grain-${grainX}`} position={[grainX, 1.78, 0.2 - index * 0.28]} castShadow={false}>
           <boxGeometry args={[3.7, 0.12, 0.18]} />
           <meshBasicMaterial color={index % 2 === 0 ? "#9a6132" : "#2b160b"} transparent opacity={0.68} />
@@ -1518,13 +1518,13 @@ function ChapelPew({ z, side }: { z: number; side: -1 | 1 }) {
         <boxGeometry args={[18.4, 2.05, 0.9]} />
         <meshBasicMaterial color="#3a2115" />
       </mesh>
-      {[-6.5, 0, 6.5].map((grainX) => (
+      {CHAPEL_PEW_BACK_GRAIN_X.map((grainX) => (
         <mesh key={`chapel-pew-back-grain-${grainX}`} position={[grainX, 2.64, 1.95]} rotation={[-0.14, 0, 0]} castShadow={false}>
           <boxGeometry args={[4.2, 0.18, 0.16]} />
           <meshBasicMaterial color="#8d552c" transparent opacity={0.58} />
         </mesh>
       ))}
-      {[-7.2, 7.2].map((legX) => (
+      {CHAPEL_PEW_LEG_X.map((legX) => (
         <Fragment key={`pew-leg-${legX}`}>
           <mesh position={[legX, 0.55, -1.1]} castShadow={false}>
             <boxGeometry args={[0.78, 1.1, 0.78]} />
@@ -1559,16 +1559,31 @@ const CHAPEL_POPE_TARGET = { x: 0, z: -68.6 };
 const CHAPEL_CENTER_PEW_X = 17.2;
 const CHAPEL_CENTER_PEW_SEATS = [12.1, 19.2];
 const CHAPEL_CENTER_PEW_ROWS = [-32, -20, -8, 4, 16];
+const CHAPEL_SIDE_SIGNS = [-1, 1] as const;
+const CHAPEL_PEW_SEAT_GRAIN_X = [-5.6, 0, 5.6] as const;
+const CHAPEL_PEW_BACK_GRAIN_X = [-6.5, 0, 6.5] as const;
+const CHAPEL_PEW_LEG_X = [-7.2, 7.2] as const;
+const CHAPEL_DIAGONAL_PEW_PLANK_OFFSETS = [-0.28, 0.28] as const;
+const CHAPEL_DIAGONAL_PEW_BACK_OFFSETS = [-0.38, 0, 0.38] as const;
+const CHAPEL_DIAGONAL_PEW_LEG_OFFSETS = [-0.42, 0.42] as const;
+const CHAPEL_CENTER_NPC_SEAT_OFFSETS = [
+  { x: CHAPEL_CENTER_PEW_SEATS[0], z: -0.92 },
+  { x: CHAPEL_CENTER_PEW_SEATS[1], z: -0.22 },
+] as const;
+const CHAPEL_SIDE_NPC_SEAT_OFFSETS = [-0.24, 0.24] as const;
+const CHAPEL_NAVE_CEILING_BEAM_ROWS = [-66, -44, -22, 0, 22, 44, 66] as const;
+const CHAPEL_WING_CEILING_BEAM_ROWS = [-42, -21, 0, 21, 42] as const;
+const CHAPEL_SIDE_WING_PEW_LAYOUT: ChapelSideWingPewPlacement[] = CHAPEL_SIDE_SIGNS.flatMap((side) => ([
+  { key: `${side}-rear-outer`, x: side * 94, z: -44, width: 16 },
+  { key: `${side}-rear-inner`, x: side * 76, z: -34, width: 18 },
+  { key: `${side}-rear-mid`, x: side * 94, z: -22, width: 16 },
+  { key: `${side}-front-mid`, x: side * 94, z: 22, width: 16 },
+  { key: `${side}-front-inner`, x: side * 76, z: 34, width: 18 },
+  { key: `${side}-front-outer`, x: side * 94, z: 44, width: 16 },
+]));
 
 function getChapelSideWingPewLayout(): ChapelSideWingPewPlacement[] {
-  return [-1, 1].flatMap((side) => ([
-    { key: `${side}-rear-outer`, x: side * 94, z: -44, width: 16 },
-    { key: `${side}-rear-inner`, x: side * 76, z: -34, width: 18 },
-    { key: `${side}-rear-mid`, x: side * 94, z: -22, width: 16 },
-    { key: `${side}-front-mid`, x: side * 94, z: 22, width: 16 },
-    { key: `${side}-front-inner`, x: side * 76, z: 34, width: 18 },
-    { key: `${side}-front-outer`, x: side * 94, z: 44, width: 16 },
-  ]));
+  return CHAPEL_SIDE_WING_PEW_LAYOUT;
 }
 
 function ChapelDiagonalPew({
@@ -1590,19 +1605,19 @@ function ChapelDiagonalPew({
         <boxGeometry args={[width + 0.5, 1.8, 0.78]} />
         <meshBasicMaterial color="#321d12" />
       </mesh>
-      {[-0.28, 0.28].map((offset, index) => (
+      {CHAPEL_DIAGONAL_PEW_PLANK_OFFSETS.map((offset, index) => (
         <mesh key={`chapel-diagonal-pew-plank-${offset}`} position={[0, 1.62, offset]} castShadow={false}>
           <boxGeometry args={[width - 1.7, 0.11, 0.16]} />
           <meshBasicMaterial color={index % 2 === 0 ? "#9a6132" : "#2b160b"} transparent opacity={0.62} />
         </mesh>
       ))}
-      {[-0.38, 0, 0.38].map((offset) => (
+      {CHAPEL_DIAGONAL_PEW_BACK_OFFSETS.map((offset) => (
         <mesh key={`chapel-diagonal-pew-back-grain-${offset}`} position={[offset * width, 2.44, 1.74]} rotation={[-0.14, 0, 0]} castShadow={false}>
           <boxGeometry args={[width * 0.22, 0.15, 0.14]} />
           <meshBasicMaterial color="#8d552c" transparent opacity={0.56} />
         </mesh>
       ))}
-      {[-0.42, 0.42].map((offset) => (
+      {CHAPEL_DIAGONAL_PEW_LEG_OFFSETS.map((offset) => (
         <Fragment key={`chapel-diagonal-pew-leg-${offset}`}>
           <mesh position={[offset * width, 0.48, -0.95]} castShadow={false}>
             <boxGeometry args={[0.7, 0.96, 0.7]} />
@@ -1800,22 +1815,18 @@ function ChapelSeatedNpc({
 
 function ChapelPewNpcs() {
   const seatY = 2.98 + NPC_AVATAR_GROUND_LIFT;
-  const seatPlacements = [
-    { x: CHAPEL_CENTER_PEW_SEATS[0], y: seatY, z: -0.92 },
-    { x: CHAPEL_CENTER_PEW_SEATS[1], y: seatY, z: -0.22 },
-  ];
 
   return (
     <group name="chapel-pew-npcs">
       {CHAPEL_CENTER_PEW_ROWS.flatMap((z, rowIndex) => (
-        [-1, 1].flatMap((side) => (
-          seatPlacements.map((seat, seatIndex) => {
+        CHAPEL_SIDE_SIGNS.flatMap((side) => (
+          CHAPEL_CENTER_NPC_SEAT_OFFSETS.map((seat, seatIndex) => {
             const character = CHAPEL_NPC_CHARACTERS[(rowIndex * 4 + (side > 0 ? 2 : 0) + seatIndex) % CHAPEL_NPC_CHARACTERS.length];
             const [seatX, seatZ] = clampChapelNpcSeatPosition(side * seat.x, z + seat.z);
             return (
               <ChapelSeatedNpc
                 key={`chapel-pew-npc-${rowIndex}-${side}-${seatIndex}`}
-                position={[seatX, seat.y, seatZ]}
+                position={[seatX, seatY, seatZ]}
                 yaw={getAvatarYawFacingTarget(seatX, seatZ, CHAPEL_POPE_TARGET.x, CHAPEL_POPE_TARGET.z)}
                 character={character}
               />
@@ -1829,13 +1840,12 @@ function ChapelPewNpcs() {
 
 function ChapelSideWingPewNpcs({ pews }: { pews: ChapelSideWingPewPlacement[] }) {
   const seatY = 2.78 + NPC_AVATAR_GROUND_LIFT;
-  const seatOffsets = [-0.24, 0.24];
 
   return (
     <group name="chapel-side-wing-pew-npcs">
       {pews.flatMap((pew, pewIndex) => {
         const yaw = getYawForPewFacingTarget(pew.x, pew.z, CHAPEL_POPE_TARGET.x, CHAPEL_POPE_TARGET.z);
-        return seatOffsets.map((offset, seatIndex) => {
+        return CHAPEL_SIDE_NPC_SEAT_OFFSETS.map((offset, seatIndex) => {
           const [rawSeatX, rawSeatZ] = getRotatedChapelSeatPosition(pew.x, pew.z, offset * pew.width, -0.42, yaw);
           const [seatX, seatZ] = clampChapelNpcSeatPosition(rawSeatX, rawSeatZ);
           const character = CHAPEL_NPC_CHARACTERS[(pewIndex * 3 + seatIndex + 7) % CHAPEL_NPC_CHARACTERS.length];
@@ -2324,28 +2334,25 @@ function ChapelDoubleDoor({
 }
 
 function ChapelCeiling({ darkStoneMap }: { darkStoneMap: THREE.Texture }) {
-  const naveBeamRows = [-66, -44, -22, 0, 22, 44, 66];
-  const wingBeamRows = [-42, -21, 0, 21, 42];
-
   return (
     <group name="chapel-roof-and-ceiling-fill">
       <mesh position={[0, CHAPEL_WALL_HEIGHT + 0.6, 0]} castShadow={false} receiveShadow>
         <boxGeometry args={[CHAPEL_CENTER_HALF_WIDTH * 2 - 5, 2.4, CHAPEL_CENTER_HALF_DEPTH * 2 - 6]} />
         <meshBasicMaterial map={darkStoneMap} side={THREE.DoubleSide} />
       </mesh>
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <mesh key={`chapel-wing-ceiling-${side}`} position={[side * CHAPEL_SIDE_WING_CENTER_X, CHAPEL_WALL_HEIGHT + 0.3, 0]} castShadow={false} receiveShadow>
           <boxGeometry args={[CHAPEL_SIDE_WING_HALF_WIDTH * 2 - 4, 2.1, CHAPEL_SIDE_WING_HALF_DEPTH * 2 - 5]} />
           <meshBasicMaterial map={darkStoneMap} side={THREE.DoubleSide} />
         </mesh>
       ))}
-      {naveBeamRows.map((z, index) => (
+      {CHAPEL_NAVE_CEILING_BEAM_ROWS.map((z, index) => (
         <mesh key={`chapel-nave-ceiling-beam-${z}`} position={[0, CHAPEL_WALL_HEIGHT - 1.15, z]} castShadow={false}>
           <boxGeometry args={[CHAPEL_CENTER_HALF_WIDTH * 2 - 8, 2.1, 1.8]} />
           <meshBasicMaterial color={index % 2 === 0 ? "#171017" : "#241821"} />
         </mesh>
       ))}
-      {[-1, 1].flatMap((side) => wingBeamRows.map((z, index) => (
+      {CHAPEL_SIDE_SIGNS.flatMap((side) => CHAPEL_WING_CEILING_BEAM_ROWS.map((z, index) => (
         <mesh key={`chapel-wing-ceiling-beam-${side}-${z}`} position={[side * CHAPEL_SIDE_WING_CENTER_X, CHAPEL_WALL_HEIGHT - 1.35, z]} castShadow={false}>
           <boxGeometry args={[CHAPEL_SIDE_WING_HALF_WIDTH * 2 - 8, 1.7, 1.55]} />
           <meshBasicMaterial color={index % 2 === 0 ? "#171017" : "#241821"} />
@@ -2633,7 +2640,7 @@ function GraveyardVillageColliders({
         <CuboidCollider args={[CHAPEL_SIDE_WING_HALF_WIDTH, 0.56, CHAPEL_SIDE_WING_HALF_DEPTH]} position={[-CHAPEL_SIDE_WING_CENTER_X, baseHeight + 0.54, 0]} />
         <CuboidCollider args={[CHAPEL_SIDE_WING_HALF_WIDTH, 0.56, CHAPEL_SIDE_WING_HALF_DEPTH]} position={[CHAPEL_SIDE_WING_CENTER_X, baseHeight + 0.54, 0]} />
         {CHAPEL_CENTER_PEW_ROWS.flatMap((z) => (
-          [-1, 1].map((side) => (
+          CHAPEL_SIDE_SIGNS.map((side) => (
             <CuboidCollider
               key={`chapel-center-pew-collider-${side}-${z}`}
               args={[9.5, 1.75, 2.55]}
