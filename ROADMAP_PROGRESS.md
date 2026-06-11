@@ -400,9 +400,11 @@ Done:
 - Improved the engine menu catalog surface with search, live category counts, compact tag/footprint metadata, empty search feedback, and selected-object details.
 - Improved the spell menu with family filters, visible spell counts, binding/left/right status strips, per-card family/current metadata, and desktop/touch responsive catalog grids while preserving the existing hotbar binding behavior.
 - Improved the expanded map with a responsive topbar, compact page tabs, safer full-map/live-map frame sizing, route-selectable map pages, compressed world-map status/village controls, and compact minimap compass/player marker sizing.
+- Improved the command console with a runtime-owned suggestion catalog, touch-friendly command chips, safer app-viewport sizing, and clearer input text.
+- Improved the settings panel with shared readability class hooks, larger tab/card/control text floors, two-column tab wrapping on narrow panels, and mobile overrides that no longer force 7px tabs.
 
 Next:
-- Upgrade settings, pause/game menus, and command UI for readability on PC and mobile.
+- Upgrade pause/game menus for readability on PC and mobile.
 
 ## 6. Optimization And Smoothness
 
@@ -824,6 +826,9 @@ Next:
 
 ## Latest Verification
 
+- Focused settings readability check: `SettingsPanel.tsx` now uses settings-owned tab/card/hint/control class hooks, `src/index.css` owns the readable PC/mobile sizing variables, and the narrow/mobile settings overrides keep tabs and controls legible without changing controller focus indexes.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the settings-panel visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the settings readability pass. Current warning remains chunk size only; `SettingsPanel` is about 20.29 kB / 5.69 kB gzip, `HUD` is about 81.14 kB / 24.18 kB gzip, and CSS is about 163.92 kB / 23.99 kB gzip.
 - Focused command-console readability check: `CommandConsole.tsx` now uses a HUD-runtime command suggestion catalog, touch-friendly command chips, safer app-viewport width constraints, and larger readable input text so PC and mobile command entry share one isolated HUD surface.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the command-console visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the command-console readability pass. Current warning remains chunk size only; `CommandConsole` is about 2.94 kB / 1.45 kB gzip and `HUD` is about 81.14 kB / 24.18 kB gzip.

@@ -507,6 +507,95 @@ html.wizards-touch-layout .magic-hands-fill-offset {
 
 .settings-panel {
   overflow: hidden;
+  container-type: size;
+  --settings-title-font-size: 1.05rem;
+  --settings-tab-font-size: 0.72rem;
+  --settings-body-font-size: 0.72rem;
+  --settings-small-font-size: 0.62rem;
+  --settings-hint-font-size: 0.56rem;
+  --settings-card-padding: 0.65rem;
+}
+
+.settings-panel-title {
+  line-height: 1.15;
+  letter-spacing: 0 !important;
+}
+
+.settings-tab-grid {
+  align-items: stretch;
+}
+
+.settings-tab-button {
+  display: flex;
+  min-height: 2.35rem;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.15;
+  letter-spacing: 0 !important;
+}
+
+.settings-choice-button {
+  min-height: 2.35rem;
+  line-height: 1.2;
+  letter-spacing: 0 !important;
+}
+
+.settings-card {
+  min-width: 0;
+  padding: var(--settings-card-padding);
+}
+
+.settings-card-title,
+.settings-section-title,
+.settings-small-row,
+.settings-control-row,
+.settings-card-hint,
+.settings-status-line,
+.settings-mini-button,
+.settings-hex-input,
+.settings-nudge-button {
+  letter-spacing: 0 !important;
+}
+
+.settings-card-title {
+  font-size: var(--settings-body-font-size);
+  line-height: 1.25;
+}
+
+.settings-section-title {
+  font-size: var(--settings-small-font-size);
+  line-height: 1.3;
+}
+
+.settings-small-row,
+.settings-control-row,
+.settings-status-line,
+.settings-hex-input,
+.settings-mini-button {
+  font-size: var(--settings-small-font-size) !important;
+  line-height: 1.35;
+}
+
+.settings-card-hint {
+  font-size: var(--settings-hint-font-size);
+  line-height: 1.35;
+}
+
+.settings-control-row {
+  min-height: 2.35rem;
+  align-items: center;
+}
+
+.settings-mini-button {
+  min-height: 1.9rem;
+  white-space: nowrap;
+}
+
+.settings-nudge-button {
+  min-height: 1.45rem;
+  font-size: var(--settings-hint-font-size) !important;
+  line-height: 1;
 }
 
 .character-menu-grid {
@@ -546,6 +635,10 @@ html.wizards-touch-layout .magic-hands-fill-offset {
 }
 
 @container (max-width: 700px) {
+  .settings-tab-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .character-control-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -555,6 +648,18 @@ html.wizards-touch-layout .magic-hands-fill-offset {
   .settings-panel {
     gap: 0.35rem;
     border-width: 2px;
+    --settings-title-font-size: 0.9rem;
+    --settings-tab-font-size: 0.62rem;
+    --settings-body-font-size: 0.66rem;
+    --settings-small-font-size: 0.56rem;
+    --settings-hint-font-size: 0.5rem;
+    --settings-card-padding: 0.45rem;
+  }
+
+  .settings-tab-button,
+  .settings-choice-button,
+  .settings-control-row {
+    min-height: 2rem;
   }
 
   .character-menu-grid {
@@ -1581,20 +1686,27 @@ html.wizards-touch-layout .magic-hands-fill-offset {
     max-height: calc(var(--app-vh, 100dvh) - 14px) !important;
     padding: 6px !important;
     gap: 4px !important;
+    --settings-title-font-size: 0.9rem;
+    --settings-tab-font-size: 0.62rem;
+    --settings-body-font-size: 0.66rem;
+    --settings-small-font-size: 0.56rem;
+    --settings-hint-font-size: 0.5rem;
+    --settings-card-padding: 0.45rem;
   }
 
-  .settings-panel h2 {
-    font-size: 12px !important;
+  .settings-panel-title {
+    font-size: var(--settings-title-font-size) !important;
     margin-bottom: 0 !important;
   }
 
-  .settings-panel > .grid {
+  .settings-tab-grid {
     gap: 4px !important;
   }
 
-  .settings-panel > .grid button {
-    padding: 4px 5px !important;
-    font-size: 7px !important;
+  .settings-tab-button {
+    min-height: 30px !important;
+    padding: 5px 6px !important;
+    font-size: var(--settings-tab-font-size) !important;
   }
 
   .settings-panel .menu-scroll-panel {

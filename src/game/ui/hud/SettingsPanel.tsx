@@ -66,6 +66,9 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const focusedMenuClass = "ring-2 ring-yellow-200 ring-offset-2 ring-offset-black shadow-[0_0_20px_rgba(250,204,21,0.55)] brightness-125";
+const settingsCardClass = "settings-card border text-left transition-all";
+const settingsTitleRowClass = "settings-card-title flex items-center justify-between gap-3 tracking-widest";
+const settingsHintClass = "settings-card-hint leading-4 tracking-widest";
 
 type SettingsPanelProps = {
   settingsPane: SettingsPane;
@@ -119,11 +122,11 @@ function TabButton({ index, label, active, activeClassName, onSelect, isFocused,
     <button
       data-settings-index={index}
       className={cn(
-        "border px-2 py-1 text-left font-mono tracking-widest uppercase transition-all",
+        "settings-tab-button border px-2 py-1 text-left font-mono tracking-widest uppercase transition-all",
         active ? activeClassName : "border-gray-600 text-gray-300 hover:border-gray-400",
         isFocused ? focusedMenuClass : ""
       )}
-      style={{ fontSize: "clamp(0.68rem, 1.7vmin, 0.9rem)" }}
+      style={{ fontSize: "var(--settings-tab-font-size)" }}
       onMouseEnter={onFocus}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
@@ -172,13 +175,13 @@ function RangeCard({
     <div
       data-settings-index={index}
       className={cn(
-        "border p-2 text-left transition-all",
+        settingsCardClass,
         isFocused ? focusedMenuClass : "border-cyan-300/25 bg-cyan-400/5"
       )}
       onMouseEnter={onFocus}
       onClick={onReset}
     >
-      <div className="flex items-center justify-between gap-3 text-[9px] tracking-widest text-cyan-100">
+      <div className={cn(settingsTitleRowClass, "text-cyan-100")}>
         <span>{title}</span>
         <span>{valueText}</span>
       </div>
@@ -193,7 +196,7 @@ function RangeCard({
         onClick={(e) => e.stopPropagation()}
         onChange={(e) => onChange(Number(e.currentTarget.value))}
       />
-      <div className="mt-1 text-[7px] tracking-widest text-cyan-100/45">{hint}</div>
+      <div className={cn("mt-1 text-cyan-100/45", settingsHintClass)}>{hint}</div>
     </div>
   );
 }
@@ -261,11 +264,11 @@ export function SettingsPanel({
       className="settings-panel pointer-events-auto flex flex-col items-center gap-2 border-[3px] border-purple-500 bg-[#120c16] shadow-[0_0_28px_rgba(168,85,247,0.28)]"
       style={settingsMenuStyle}
     >
-      <h2 className="font-bold tracking-widest text-white" style={{ fontSize: "clamp(0.9rem, 2.8vmin, 1.3rem)", marginBottom: "clamp(0.05rem, 0.45vmin, 0.5rem)" }}>
+      <h2 className="settings-panel-title font-bold tracking-widest text-white" style={{ fontSize: "var(--settings-title-font-size)", marginBottom: "clamp(0.05rem, 0.45vmin, 0.5rem)" }}>
         SETTINGS
       </h2>
 
-      <div className="grid w-full grid-cols-4 gap-2">
+      <div className="settings-tab-grid grid w-full grid-cols-4 gap-2">
         <TabButton index={0} label="Video" active={settingsPane === "video"} activeClassName="border-yellow-400 bg-yellow-400/10 text-yellow-300" isFocused={settingsFocus(0)} onFocus={() => setPauseMenuIndex(0)} onSelect={() => selectPane("video", 0)} />
         <TabButton index={1} label="Keybinds" active={settingsPane === "keybinds"} activeClassName="border-cyan-300 bg-cyan-300/10 text-cyan-100" isFocused={settingsFocus(1)} onFocus={() => setPauseMenuIndex(1)} onSelect={() => selectPane("keybinds", 1)} />
         <TabButton index={2} label="Voice" active={settingsPane === "voice"} activeClassName="border-emerald-300 bg-emerald-300/10 text-emerald-100" isFocused={settingsFocus(2)} onFocus={() => setPauseMenuIndex(2)} onSelect={() => selectPane("voice", 2)} />
@@ -274,7 +277,7 @@ export function SettingsPanel({
 
       {settingsPane === "video" ? (
         <div className="flex w-full flex-col gap-1">
-          <div className="text-gray-400" style={{ fontSize: "clamp(0.6rem, 1.45vmin, 0.8rem)" }}>Aspect Ratio</div>
+          <div className="settings-section-title text-gray-400">Aspect Ratio</div>
           <div className="flex flex-col gap-1">
             {aspectRatioOptions.map((ratio, index) => {
               const settingIndex = index + videoAspectStartIndex;
@@ -283,11 +286,11 @@ export function SettingsPanel({
                   key={ratio}
                   data-settings-index={settingIndex}
                   className={cn(
-                    "border px-2 py-0.5 text-left font-mono transition-all",
+                    "settings-choice-button border px-2 py-0.5 text-left font-mono transition-all",
                     aspectRatio === ratio ? "border-yellow-400 bg-yellow-400/10 text-yellow-400" : "border-gray-600 text-gray-300 hover:border-gray-400",
                     settingsFocus(settingIndex) ? focusedMenuClass : ""
                   )}
-                  style={{ fontSize: "clamp(0.72rem, 1.9vmin, 0.95rem)" }}
+                  style={{ fontSize: "var(--settings-body-font-size)" }}
                   onMouseEnter={() => setPauseMenuIndex(settingIndex)}
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
@@ -304,7 +307,7 @@ export function SettingsPanel({
         </div>
       ) : settingsPane === "keybinds" ? (
         <div ref={settingsScrollRef} className="menu-scroll-panel w-full overflow-y-auto pr-1" style={settingsScrollPanelStyle}>
-          <div className="mb-2 text-[9px] tracking-widest text-cyan-100/60">CONTROLS / REMAP</div>
+          <div className="settings-section-title mb-2 tracking-widest text-cyan-100/60">CONTROLS / REMAP</div>
           <div className="mb-2 grid gap-2 md:grid-cols-3">
             <RangeCard
               index={keybindSensitivityStartIndex}
@@ -337,30 +340,30 @@ export function SettingsPanel({
             <button
               data-settings-index={keybindArrowLookIndex}
               className={cn(
-                "border p-2 text-left transition-all",
+                settingsCardClass,
                 settingsFocus(keybindArrowLookIndex) ? focusedMenuClass : "border-cyan-300/25 bg-cyan-400/5 hover:border-cyan-200/70"
               )}
               onMouseEnter={() => setPauseMenuIndex(keybindArrowLookIndex)}
               onClick={() => setKeyboardArrowLookEnabled(!keyboardArrowLookEnabled)}
             >
-              <div className="flex items-center justify-between gap-3 text-[9px] tracking-widest text-cyan-100">
+              <div className={cn(settingsTitleRowClass, "text-cyan-100")}>
                 <span>Arrow Key Look</span>
                 <span className={keyboardArrowLookEnabled ? "text-lime-200" : "text-red-200"}>{keyboardArrowLookEnabled ? "Enabled" : "Disabled"}</span>
               </div>
-              <div className="mt-2 text-[8px] leading-4 tracking-widest text-cyan-100/55">
+              <div className={cn("mt-2 text-cyan-100/55", settingsHintClass)}>
                 Uses keyboard arrows to turn and aim while the mouse is locked in-game.
               </div>
-              <div className="mt-1 text-[7px] tracking-widest text-cyan-100/45">Enter/A toggles, D-pad left/right toggles</div>
+              <div className={cn("mt-1 text-cyan-100/45", settingsHintClass)}>Enter/A toggles, D-pad left/right toggles</div>
             </button>
           </div>
 
           <div className="grid gap-2 md:grid-cols-[0.82fr_1.18fr]">
             {keyboardKeybindRows.map((group) => (
-              <div key={group.title} className="border border-cyan-300/25 bg-cyan-400/5 p-2">
-                <div className="mb-1 border-b border-cyan-300/20 pb-1 text-[9px] tracking-[0.2em] text-cyan-100">{group.title}</div>
+              <div key={group.title} className="settings-card border border-cyan-300/25 bg-cyan-400/5 p-2">
+                <div className="settings-section-title mb-1 border-b border-cyan-300/20 pb-1 tracking-[0.2em] text-cyan-100">{group.title}</div>
                 <div className="flex flex-col gap-1">
                   {group.rows.map(([action, bind]) => (
-                    <div key={`${group.title}-${action}`} className="grid grid-cols-[0.9fr_1.25fr] gap-2 text-[8px] leading-4">
+                    <div key={`${group.title}-${action}`} className="settings-small-row grid grid-cols-[0.9fr_1.25fr] gap-2 leading-4">
                       <span className="truncate text-cyan-100/55">{action}</span>
                       <span className="text-right text-white/85">{bind}</span>
                     </div>
@@ -369,8 +372,8 @@ export function SettingsPanel({
               </div>
             ))}
 
-            <div className="border border-cyan-300/25 bg-cyan-400/5 p-2">
-              <div className="mb-1 border-b border-cyan-300/20 pb-1 text-[9px] tracking-[0.2em] text-cyan-100">Controller Remap</div>
+            <div className="settings-card border border-cyan-300/25 bg-cyan-400/5 p-2">
+              <div className="settings-section-title mb-1 border-b border-cyan-300/20 pb-1 tracking-[0.2em] text-cyan-100">Controller Remap</div>
               <div className="flex flex-col gap-1">
                 {controllerActionRows.map((row, index) => {
                   const settingIndex = keybindControlStartIndex + index;
@@ -380,7 +383,7 @@ export function SettingsPanel({
                       key={row.action}
                       data-settings-index={settingIndex}
                       className={cn(
-                        "grid grid-cols-[1fr_auto] gap-2 border px-2 py-1 text-left text-[8px] leading-4 transition-all",
+                        "settings-control-row grid grid-cols-[1fr_auto] gap-2 border px-2 py-1 text-left leading-4 transition-all",
                         isRemapping
                           ? "border-pink-300 bg-pink-400/15 text-pink-50 shadow-[0_0_16px_rgba(244,114,182,0.45)]"
                           : settingsFocus(settingIndex)
@@ -406,39 +409,39 @@ export function SettingsPanel({
         </div>
       ) : settingsPane === "voice" ? (
         <div ref={settingsScrollRef} className="menu-scroll-panel w-full overflow-y-auto pr-1" style={settingsScrollPanelStyle}>
-          <div className="mb-2 text-[9px] tracking-widest text-emerald-100/65">PROXIMITY VOICE / MIC</div>
+          <div className="settings-section-title mb-2 tracking-widest text-emerald-100/65">PROXIMITY VOICE / MIC</div>
           {voiceNeedsSecureOrigin && (
-            <div className="mb-2 border border-yellow-300/60 bg-yellow-300/10 p-2 text-[8px] leading-4 tracking-widest text-yellow-100">
+            <div className={cn("settings-card mb-2 border border-yellow-300/60 bg-yellow-300/10 p-2 text-yellow-100", settingsHintClass)}>
               LAN mic access needs HTTPS. Restart with `npm run dev:https`, then join from the other PC using the HTTPS LAN URL.
             </div>
           )}
           <div className="grid gap-2 md:grid-cols-2">
             <button
               data-settings-index={voiceEnabledIndex}
-              className={cn("border p-3 text-left transition-all", settingsFocus(voiceEnabledIndex) ? focusedMenuClass : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70")}
+              className={cn(settingsCardClass, settingsFocus(voiceEnabledIndex) ? focusedMenuClass : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70")}
               onMouseEnter={() => setPauseMenuIndex(voiceEnabledIndex)}
               onClick={() => setVoiceChatEnabled(!voiceChatEnabled)}
             >
-              <div className="flex items-center justify-between gap-3 text-[10px] tracking-widest text-emerald-50">
+              <div className={cn(settingsTitleRowClass, "text-emerald-50")}>
                 <span>Voice Chat</span>
                 <span className={voiceChatEnabled ? "text-lime-200" : "text-red-200"}>{getVoiceEnabledLabel(voiceChatEnabled)}</span>
               </div>
-              <div className="mt-2 text-[8px] leading-4 tracking-widest text-emerald-100/45">
+              <div className={cn("mt-2 text-emerald-100/45", settingsHintClass)}>
                 Turns your microphone and nearby player voices on or off.
               </div>
             </button>
 
             <button
               data-settings-index={voiceInputModeIndex}
-              className={cn("border p-3 text-left transition-all", settingsFocus(voiceInputModeIndex) ? focusedMenuClass : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70")}
+              className={cn(settingsCardClass, settingsFocus(voiceInputModeIndex) ? focusedMenuClass : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70")}
               onMouseEnter={() => setPauseMenuIndex(voiceInputModeIndex)}
               onClick={toggleVoiceInputMode}
             >
-              <div className="flex items-center justify-between gap-3 text-[10px] tracking-widest text-emerald-50">
+              <div className={cn(settingsTitleRowClass, "text-emerald-50")}>
                 <span>Input Mode</span>
                 <span className="text-yellow-100">{getVoiceInputModeLabel(voiceInputMode)}</span>
               </div>
-              <div className="mt-2 text-[8px] leading-4 tracking-widest text-emerald-100/45">
+              <div className={cn("mt-2 text-emerald-100/45", settingsHintClass)}>
                 D-pad left/right or A toggles between open mic and press-to-talk.
               </div>
             </button>
@@ -446,7 +449,7 @@ export function SettingsPanel({
             <button
               data-settings-index={voicePushToTalkKeyIndex}
               className={cn(
-                "border p-3 text-left transition-all",
+                settingsCardClass,
                 remappingVoiceKey
                   ? "border-pink-300 bg-pink-400/15 text-pink-50 shadow-[0_0_16px_rgba(244,114,182,0.45)]"
                   : settingsFocus(voicePushToTalkKeyIndex)
@@ -456,13 +459,13 @@ export function SettingsPanel({
               onMouseEnter={() => setPauseMenuIndex(voicePushToTalkKeyIndex)}
               onClick={beginVoiceKeyRemap}
             >
-              <div className="flex items-center justify-between gap-3 text-[10px] tracking-widest text-emerald-50">
+              <div className={cn(settingsTitleRowClass, "text-emerald-50")}>
                 <span>Press-To-Talk Key</span>
                 <span className="border border-yellow-200/50 bg-yellow-200/10 px-2 py-0.5 text-yellow-100">
                   {getVoicePushToTalkKeyLabel(remappingVoiceKey, voicePushToTalkKey)}
                 </span>
               </div>
-              <div className="mt-2 text-[8px] leading-4 tracking-widest text-emerald-100/45">
+              <div className={cn("mt-2 text-emerald-100/45", settingsHintClass)}>
                 Controller press-to-talk is remapped from the Keybinds tab.
               </div>
             </button>
@@ -499,18 +502,18 @@ export function SettingsPanel({
               hint="Nearby voices fade out smoothly with distance."
             />
 
-            <div className="border border-emerald-300/25 bg-black/30 p-3 text-left">
-              <div className="flex items-center justify-between gap-3 text-[10px] tracking-widest text-emerald-50">
+            <div className="settings-card border border-emerald-300/25 bg-black/30 p-3 text-left">
+              <div className={cn(settingsTitleRowClass, "text-emerald-50")}>
                 <span>Mic Status</span>
                 <span className={isVoiceSpeaking ? "text-lime-200" : "text-emerald-100/45"}>{getVoiceActivityLabel(isVoiceSpeaking, voiceChatEnabled)}</span>
               </div>
               <div className="mt-2 h-2 overflow-hidden border border-emerald-200/30 bg-black">
                 <div className={cn("h-full transition-all duration-100", isVoiceSpeaking ? "bg-lime-300 shadow-[0_0_12px_rgba(190,242,100,0.85)]" : "bg-emerald-900")} style={{ width: getVoiceActivityMeterWidth(isVoiceSpeaking, voiceChatEnabled) }} />
               </div>
-              <div className="mt-2 text-[8px] leading-4 tracking-widest text-emerald-100/45">
+              <div className={cn("mt-2 text-emerald-100/45", settingsHintClass)}>
                 Speaking animation is driven by detected mic volume, then synced to other players.
               </div>
-              <div className={cn("mt-2 border px-2 py-1 text-[8px] leading-4 tracking-widest", voiceError ? "border-red-300/50 bg-red-500/10 text-red-100" : "border-emerald-300/20 bg-emerald-400/5 text-emerald-100/65")}>
+              <div className={cn("settings-status-line mt-2 border px-2 py-1 leading-4 tracking-widest", voiceError ? "border-red-300/50 bg-red-500/10 text-red-100" : "border-emerald-300/20 bg-emerald-400/5 text-emerald-100/65")}>
                 {getVoiceStatusText(voiceError, voiceStatus)}
               </div>
             </div>
@@ -518,13 +521,13 @@ export function SettingsPanel({
         </div>
       ) : (
         <div ref={settingsScrollRef} className="menu-scroll-panel w-full overflow-y-auto pr-1" style={settingsScrollPanelStyle}>
-          <div className="mb-2 text-[9px] tracking-widest text-pink-100/65">CHARACTER CUSTOMIZATION / BASE SPRITE</div>
+          <div className="settings-section-title mb-2 tracking-widest text-pink-100/65">CHARACTER CUSTOMIZATION / BASE SPRITE</div>
           <div className="character-menu-grid grid gap-3">
-            <div className="character-preview-card border border-pink-300/25 bg-pink-400/5 p-2">
+            <div className="settings-card character-preview-card border border-pink-300/25 bg-pink-400/5 p-2">
               <div className="mb-2 flex items-center justify-between gap-2 border-b border-pink-300/20 pb-1">
-                <div className="text-[9px] tracking-[0.2em] text-pink-100">Live Character View</div>
+                <div className="settings-section-title tracking-[0.2em] text-pink-100">Live Character View</div>
                 <button
-                  className="border border-yellow-200/40 bg-yellow-200/10 px-2 py-1 text-[8px] tracking-widest text-yellow-100 hover:bg-yellow-200/20"
+                  className="settings-mini-button border border-yellow-200/40 bg-yellow-200/10 px-2 py-1 tracking-widest text-yellow-100 hover:bg-yellow-200/20"
                   onClick={() => setCharacterCustomization(getDefaultCharacterCustomization())}
                 >
                   Reset Base
@@ -533,14 +536,14 @@ export function SettingsPanel({
               <Suspense fallback={null}>
                 <LazyCharacterPreview character={characterCustomization} />
               </Suspense>
-              <div className="mt-2 text-[8px] leading-4 tracking-widest text-pink-100/50">
+              <div className={cn("mt-2 text-pink-100/50", settingsHintClass)}>
                 Placeholder clothes and hair are procedural today; later sprite sheets can slot into these same style categories.
               </div>
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="border border-pink-300/25 bg-pink-400/5 p-2">
-                <div className="mb-2 border-b border-pink-300/20 pb-1 text-[9px] tracking-[0.2em] text-pink-100">Colors</div>
+              <div className="settings-card border border-pink-300/25 bg-pink-400/5 p-2">
+                <div className="settings-section-title mb-2 border-b border-pink-300/20 pb-1 tracking-[0.2em] text-pink-100">Colors</div>
                 <div className="character-control-grid grid gap-1.5">
                   {characterColorRows.map((row, index) => {
                     const settingIndex = characterColorStartIndex + index;
@@ -551,11 +554,11 @@ export function SettingsPanel({
                         role="button"
                         tabIndex={0}
                         data-settings-index={settingIndex}
-                        className={cn("border bg-black/25 p-1.5 transition-all", settingsFocus(settingIndex) ? focusedMenuClass : "border-pink-300/20 hover:border-pink-200/60")}
+                        className={cn("settings-card border bg-black/25 p-1.5 transition-all", settingsFocus(settingIndex) ? focusedMenuClass : "border-pink-300/20 hover:border-pink-200/60")}
                         onMouseEnter={() => setPauseMenuIndex(settingIndex)}
                         onClick={() => cycleCharacterColor(row.key, 1)}
                       >
-                        <div className="mb-1 flex items-center justify-between gap-2 text-[8px] tracking-widest">
+                        <div className="settings-small-row mb-1 flex items-center justify-between gap-2 tracking-widest">
                           <span className="text-pink-50">{row.label}</span>
                           <span className={colorInput.valid ? "text-pink-100/50" : "text-red-200"}>{row.hint}</span>
                         </div>
@@ -571,7 +574,7 @@ export function SettingsPanel({
                           />
                           <input
                             aria-label={`${row.label} hex color`}
-                            className={cn("min-w-0 border bg-black/55 px-2 text-[10px] tracking-widest outline-none", colorInput.valid ? "border-pink-300/25 text-pink-50 focus:border-yellow-200" : "border-red-300/70 text-red-100")}
+                            className={cn("settings-hex-input min-w-0 border bg-black/55 px-2 tracking-widest outline-none", colorInput.valid ? "border-pink-300/25 text-pink-50 focus:border-yellow-200" : "border-red-300/70 text-red-100")}
                             value={colorInput.rawValue}
                             spellCheck={false}
                             onMouseDown={(e) => e.stopPropagation()}
@@ -581,7 +584,7 @@ export function SettingsPanel({
                         </div>
                         <div className="mt-1 grid grid-cols-[18px_1fr_18px] items-center gap-1">
                           <button
-                            className="border border-pink-200/30 bg-pink-200/10 text-[8px] text-pink-50 hover:bg-pink-200/20"
+                            className="settings-nudge-button border border-pink-200/30 bg-pink-200/10 text-pink-50 hover:bg-pink-200/20"
                             onMouseDown={(e) => e.stopPropagation()}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -600,7 +603,7 @@ export function SettingsPanel({
                             ))}
                           </div>
                           <button
-                            className="border border-pink-200/30 bg-pink-200/10 text-[8px] text-pink-50 hover:bg-pink-200/20"
+                            className="settings-nudge-button border border-pink-200/30 bg-pink-200/10 text-pink-50 hover:bg-pink-200/20"
                             onMouseDown={(e) => e.stopPropagation()}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -610,7 +613,7 @@ export function SettingsPanel({
                             &gt;
                           </button>
                         </div>
-                        <div className="mt-1 text-[7px] tracking-widest text-pink-100/45">
+                        <div className={cn("mt-1 text-pink-100/45", settingsHintClass)}>
                           Controller: A or D-pad left/right cycles presets. Keyboard/mouse: type exact hex.
                         </div>
                       </div>
@@ -619,8 +622,8 @@ export function SettingsPanel({
                 </div>
               </div>
 
-              <div className="border border-cyan-300/25 bg-cyan-400/5 p-2">
-                <div className="mb-2 border-b border-cyan-300/20 pb-1 text-[9px] tracking-[0.2em] text-cyan-100">Body, Hair & Eyes</div>
+              <div className="settings-card border border-cyan-300/25 bg-cyan-400/5 p-2">
+                <div className="settings-section-title mb-2 border-b border-cyan-300/20 pb-1 tracking-[0.2em] text-cyan-100">Body, Hair & Eyes</div>
                 <div className="character-control-grid grid gap-1.5">
                   {characterStyleRows.map((row, index) => {
                     const settingIndex = characterStyleStartIndex + index;
@@ -629,7 +632,7 @@ export function SettingsPanel({
                       <button
                         key={row.key}
                         data-settings-index={settingIndex}
-                        className={cn("grid grid-cols-[1fr_auto] gap-2 border px-2 py-1.5 text-left text-[8px] leading-4 transition-all", settingsFocus(settingIndex) ? focusedMenuClass : "border-cyan-300/20 bg-black/25 text-cyan-100/85 hover:border-cyan-200/60")}
+                        className={cn("settings-control-row grid grid-cols-[1fr_auto] gap-2 border px-2 py-1.5 text-left leading-4 transition-all", settingsFocus(settingIndex) ? focusedMenuClass : "border-cyan-300/20 bg-black/25 text-cyan-100/85 hover:border-cyan-200/60")}
                         onMouseEnter={() => setPauseMenuIndex(settingIndex)}
                         onClick={() => cycleCharacterStyle(row.key, row.options, 1)}
                       >
@@ -643,8 +646,8 @@ export function SettingsPanel({
                 </div>
               </div>
 
-              <div className="border border-yellow-200/30 bg-yellow-200/10 p-2 shadow-[0_0_18px_rgba(250,204,21,0.08)]">
-                <div className="mb-2 border-b border-yellow-200/25 pb-1 text-[9px] tracking-[0.2em] text-yellow-100">Mouth</div>
+              <div className="settings-card border border-yellow-200/30 bg-yellow-200/10 p-2 shadow-[0_0_18px_rgba(250,204,21,0.08)]">
+                <div className="settings-section-title mb-2 border-b border-yellow-200/25 pb-1 tracking-[0.2em] text-yellow-100">Mouth</div>
                 <div className="character-control-grid grid gap-1.5">
                   {characterMouthRows.map((row, index) => {
                     const settingIndex = characterMouthStartIndex + index;
@@ -653,7 +656,7 @@ export function SettingsPanel({
                       <button
                         key={row.key}
                         data-settings-index={settingIndex}
-                        className={cn("grid grid-cols-[1fr_auto] gap-2 border px-2 py-1.5 text-left text-[8px] leading-4 transition-all", settingsFocus(settingIndex) ? focusedMenuClass : "border-yellow-200/25 bg-black/30 text-yellow-100/85 hover:border-yellow-100/70")}
+                        className={cn("settings-control-row grid grid-cols-[1fr_auto] gap-2 border px-2 py-1.5 text-left leading-4 transition-all", settingsFocus(settingIndex) ? focusedMenuClass : "border-yellow-200/25 bg-black/30 text-yellow-100/85 hover:border-yellow-100/70")}
                         onMouseEnter={() => setPauseMenuIndex(settingIndex)}
                         onClick={() => cycleCharacterStyle(row.key, row.options, 1)}
                       >
@@ -677,7 +680,7 @@ export function SettingsPanel({
           "mt-1 w-full border-[3px] border-gray-600 bg-gray-800 px-5 py-0.5 font-mono tracking-widest text-white uppercase transition-all hover:bg-gray-700",
           settingsFocus(settingsBackIndex) ? focusedMenuClass : ""
         )}
-        style={{ fontSize: "clamp(0.78rem, 2vmin, 1rem)" }}
+        style={{ fontSize: "var(--settings-body-font-size)" }}
         onMouseEnter={() => setPauseMenuIndex(settingsBackIndex)}
         onClick={onBack}
       >
