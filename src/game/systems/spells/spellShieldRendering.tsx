@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useMemo, useRef, type MutableRefObject } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import { BallCollider, CylinderCollider, interactionGroups, RapierRigidBody, RigidBody } from "@react-three/rapier";
@@ -21,6 +21,12 @@ import {
 const DISC_SHIELD_TEXTURE_URL = getSpriteUrl("/sprites/shields/disc_shield.png") || "/sprites/shields/disc_shield.png";
 const MOBILE_DISC_SHIELD_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 30;
 
+function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
+  const ref = useRef<T | null>(null);
+  if (ref.current === null) ref.current = factory();
+  return ref as MutableRefObject<T>;
+}
+
 function DiscShieldMaterial() {
   const texture = useTexture(DISC_SHIELD_TEXTURE_URL);
   texture.magFilter = THREE.NearestFilter;
@@ -40,7 +46,7 @@ function DiscShieldMaterial() {
 export function DiscShield({ projectile }: { projectile: Projectile }) {
   useProjectileLifetime(projectile.id, 10000);
   const meshRef = useRef<THREE.Mesh>(null);
-  const rotationScratch = useRef(createDiscShieldRotationScratch()).current;
+  const rotationScratch = useMemo(createDiscShieldRotationScratch, []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const lastMobileVisualUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
 
@@ -98,9 +104,9 @@ export function OrbShield({ projectile }: { projectile: Projectile }) {
   }), []);
 
   const floatY = useRef(projectile.pos.y);
-  const targetPointRef = useRef(createShieldPoint(projectile.pos));
-  const floatingTargetRef = useRef(createShieldPoint(projectile.pos));
-  const baseTargetRef = useRef(createShieldPoint(projectile.pos));
+  const targetPointRef = useLazyRef(() => createShieldPoint(projectile.pos));
+  const floatingTargetRef = useLazyRef(() => createShieldPoint(projectile.pos));
+  const baseTargetRef = useLazyRef(() => createShieldPoint(projectile.pos));
 
   useFrame(({ clock }) => {
     if (meshRef.current) {
