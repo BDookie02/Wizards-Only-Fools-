@@ -25,6 +25,7 @@ export type RunePowerDecayResult = RunePowerState & {
 };
 
 const RUNE_ACTIVE_RATIO = 2 / 3;
+const runeSelectionPoolScratch: RuneHutSource[] = [];
 let manaRenderClockEpochOffsetMs: number | null = null;
 let cachedManaQaSearch = "";
 let cachedHideManaFlowersForQa = false;
@@ -58,14 +59,21 @@ export function pickActiveRuneIds(
   random = Math.random,
 ) {
   const targetCount = Math.floor(hutPositions.length * RUNE_ACTIVE_RATIO);
-  const availableHuts: RuneHutSource[] = [];
+  let availableCount = 0;
 
   for (let index = 0; index < hutPositions.length; index += 1) {
     const hut = hutPositions[index];
-    if (!previousRuneIds.has(hut.id)) availableHuts.push(hut);
+    if (!previousRuneIds.has(hut.id)) availableCount += 1;
   }
 
-  const pool = availableHuts.length < targetCount ? hutPositions.slice() : availableHuts;
+  const includePreviousRunes = availableCount < targetCount;
+  const pool = runeSelectionPoolScratch;
+  pool.length = 0;
+  for (let index = 0; index < hutPositions.length; index += 1) {
+    const hut = hutPositions[index];
+    if (includePreviousRunes || !previousRuneIds.has(hut.id)) pool.push(hut);
+  }
+
   const limit = Math.min(targetCount, pool.length);
   const selected = new Array<string>(limit);
 
@@ -77,6 +85,7 @@ export function pickActiveRuneIds(
     selected[index] = picked.id;
   }
 
+  pool.length = 0;
   return selected;
 }
 
