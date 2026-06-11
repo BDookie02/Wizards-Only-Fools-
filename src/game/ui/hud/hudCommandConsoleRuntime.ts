@@ -16,75 +16,38 @@ export type HudCommandSuggestion = {
   sample: string;
   label: string;
   aliases: string[];
+  normalizedSample: string;
+  normalizedLabel: string;
 };
 
+function createHudCommandSuggestion(
+  command: string,
+  sample: string,
+  label: string,
+  aliases: string[]
+): HudCommandSuggestion {
+  return {
+    command,
+    sample,
+    label,
+    aliases,
+    normalizedSample: sample.toLowerCase(),
+    normalizedLabel: label.toLowerCase(),
+  };
+}
+
 export const HUD_COMMAND_SUGGESTIONS: HudCommandSuggestion[] = [
-  {
-    command: "engine",
-    sample: "/engine",
-    label: "Engine menu",
-    aliases: ["devmenu", "placemenu", "place"],
-  },
-  {
-    command: "place",
-    sample: "/place hut-log-cabin",
-    label: "Place object",
-    aliases: ["hut", "spawn", "object"],
-  },
-  {
-    command: "inventory",
-    sample: "/inventory",
-    label: "Inventory",
-    aliases: ["inv", "bag", "items"],
-  },
-  {
-    command: "questdev",
-    sample: "/questdev on",
-    label: "Quest dev",
-    aliases: ["npcdev", "devquests", "quest"],
-  },
-  {
-    command: "vclip",
-    sample: "/vclip on",
-    label: "VCLIP",
-    aliases: ["noclip", "clip"],
-  },
-  {
-    command: "day",
-    sample: "/day",
-    label: "Force day",
-    aliases: ["sun", "morning"],
-  },
-  {
-    command: "night",
-    sample: "/night",
-    label: "Force night",
-    aliases: ["dark", "moon"],
-  },
-  {
-    command: "navrecord",
-    sample: "/navrecord start",
-    label: "Nav record",
-    aliases: ["nav", "record", "path"],
-  },
-  {
-    command: "forage",
-    sample: "/forage leaves",
-    label: "Forage",
-    aliases: ["leaves", "berries", "roots"],
-  },
-  {
-    command: "brew",
-    sample: "/brew",
-    label: "Brew potion",
-    aliases: ["drink", "draught", "potion"],
-  },
-  {
-    command: "darrelspawnhere",
-    sample: "/darrelspawnhere",
-    label: "Darrel spawn",
-    aliases: ["darrel", "setdarrelquestspawn"],
-  },
+  createHudCommandSuggestion("engine", "/engine", "Engine menu", ["devmenu", "placemenu", "place"]),
+  createHudCommandSuggestion("place", "/place hut-log-cabin", "Place object", ["hut", "spawn", "object"]),
+  createHudCommandSuggestion("inventory", "/inventory", "Inventory", ["inv", "bag", "items"]),
+  createHudCommandSuggestion("questdev", "/questdev on", "Quest dev", ["npcdev", "devquests", "quest"]),
+  createHudCommandSuggestion("vclip", "/vclip on", "VCLIP", ["noclip", "clip"]),
+  createHudCommandSuggestion("day", "/day", "Force day", ["sun", "morning"]),
+  createHudCommandSuggestion("night", "/night", "Force night", ["dark", "moon"]),
+  createHudCommandSuggestion("navrecord", "/navrecord start", "Nav record", ["nav", "record", "path"]),
+  createHudCommandSuggestion("forage", "/forage leaves", "Forage", ["leaves", "berries", "roots"]),
+  createHudCommandSuggestion("brew", "/brew", "Brew potion", ["drink", "draught", "potion"]),
+  createHudCommandSuggestion("darrelspawnhere", "/darrelspawnhere", "Darrel spawn", ["darrel", "setdarrelquestspawn"]),
 ];
 
 export function getHudCommandSuggestions(value: string, maxCount = 5) {
@@ -109,8 +72,8 @@ export function getHudCommandSuggestions(value: string, maxCount = 5) {
 
     if (
       suggestion.command.startsWith(firstToken) ||
-      suggestion.sample.toLowerCase().includes(firstToken) ||
-      suggestion.label.toLowerCase().includes(firstToken)
+      suggestion.normalizedSample.includes(firstToken) ||
+      suggestion.normalizedLabel.includes(firstToken)
     ) {
       suggestions.push(suggestion);
       continue;
