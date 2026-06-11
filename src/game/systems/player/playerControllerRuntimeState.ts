@@ -1,4 +1,4 @@
-import { useMemo, useRef, type MutableRefObject } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { HandType } from "../../../store/gameStore";
 import type { TouchButtonName } from "../input/playerInputState";
@@ -15,6 +15,7 @@ import {
 } from "../world/villages/lilyCoilTubeMotion";
 import type { PlayerScreenShakeState } from "./playerScreenShakeRuntime";
 import type { PlayerToxicDamageState } from "./playerToxicDamageRuntime";
+import { useLazyRef } from "../react/useLazyRef";
 
 export type GrabbedPlayerState = {
   casterId: string;
@@ -25,12 +26,6 @@ export type GrabbedPlayerState = {
   lastControlAt: number;
   until: number;
 };
-
-function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
-  const ref = useRef<T | null>(null);
-  if (ref.current === null) ref.current = factory();
-  return ref as MutableRefObject<T>;
-}
 
 export function usePlayerControllerRuntimeState() {
   const activeLadderZones = useLazyRef(() => new Set<string>());

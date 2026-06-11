@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { useEffect, useRef, useMemo, type MutableRefObject } from "react";
 import { useGameStore } from "../store/gameStore";
 import { isMobilePerformanceMode } from "./systems/input/performanceMode";
+import { useLazyRef } from "./systems/react/useLazyRef";
 import {
   createLiveMiniMapHiddenObjectCache,
   getCachedHiddenMiniMapObjects,
@@ -20,12 +21,6 @@ import { getPublishedLastPlayerYaw, getPublishedLocalPlayerPosition } from "./sy
 import { isMapUiBlockedByModal } from "./ui/hud/mapVisibilityRuntime";
 
 type LiveMiniMapPlayerPositionRef = MutableRefObject<{ x: number; z: number; angle: number; offsetX: number; offsetZ: number }>;
-
-function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
-  const ref = useRef<T | null>(null);
-  if (ref.current === null) ref.current = factory();
-  return ref as MutableRefObject<T>;
-}
 
 function syncLiveMiniMapPlayerFromPublishedState(playerPos: LiveMiniMapPlayerPositionRef["current"]) {
   const publishedPosition = getPublishedLocalPlayerPosition();

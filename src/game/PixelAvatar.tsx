@@ -14,6 +14,7 @@ import {
 } from "./systems/rendering/avatar/avatarTextureFactory";
 import { getNextAvatarFrameTick } from "./systems/rendering/avatar/avatarAnimationRuntime";
 import { isMobilePerformanceMode } from "./systems/input/performanceMode";
+import { useLazyRef } from "./systems/react/useLazyRef";
 
 const MOBILE_AVATAR_DIRECTION_UPDATE_MS = 160;
 const AVATAR_BLINK_DELAY_BASE_MS = 2400;
@@ -151,7 +152,7 @@ export function AvatarBillboard({
   const [isBlinking, setIsBlinking] = useState(false);
   const frameRef = useRef(0);
   const lastFrameAdvanceAtRef = useRef<number | null>(null);
-  const worldPositionRef = useRef(new THREE.Vector3());
+  const worldPositionRef = useLazyRef(() => new THREE.Vector3());
   const lastDirectionRef = useRef(0);
   const lastDirectionCheckRef = useRef(0);
   const blinkStartAtRef = useRef<number | null>(null);

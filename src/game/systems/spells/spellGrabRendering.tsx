@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { Projectile, useGameStore } from "../../../store/gameStore";
@@ -18,6 +18,7 @@ import {
   GRAB_MAX_REACH,
   GRAB_TARGET_RADIUS,
 } from "./spellProjectileTuning";
+import { useLazyRef } from "../react/useLazyRef";
 
 const GRAB_ARM_SEGMENTS = 7;
 const GRAB_FINGER_OFFSETS = [-0.42, -0.2, 0.02, 0.24, 0.44] as const;
@@ -34,12 +35,6 @@ function makeGrabPathPoints(): THREE.Vector3[] {
 
 const GRAB_ARM_INDICES = getCachedIndexRange(GRAB_ARM_SEGMENTS);
 const GRAB_FINGER_INDICES = getCachedIndexRange(GRAB_FINGER_OFFSETS.length);
-
-function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
-  const ref = useRef<T | null>(null);
-  if (ref.current === null) ref.current = factory();
-  return ref as MutableRefObject<T>;
-}
 
 export function GrabSpell({ projectile }: { projectile: Projectile }) {
   const isRelease = projectile.grabPhase === "release";

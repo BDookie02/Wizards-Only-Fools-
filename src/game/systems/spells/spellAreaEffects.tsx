@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { Projectile } from "../../../store/gameStore";
@@ -34,6 +34,7 @@ import {
   TORNADO_ORBIT_PIXEL_COUNT,
   TORNADO_RADIUS,
 } from "./spellProjectileTuning";
+import { useLazyRef } from "../react/useLazyRef";
 
 type TornadoBandConfig = {
   boxes: TornadoBoxInstance[];
@@ -59,12 +60,6 @@ type MeteorConfig = {
   impactRadius: number;
   particles: MeteorExplosionParticle[];
 };
-
-function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
-  const ref = useRef<T | null>(null);
-  if (ref.current === null) ref.current = factory();
-  return ref as MutableRefObject<T>;
-}
 
 function makeTornadoBandConfigs(): TornadoBandConfig[] {
   const bands: TornadoBandConfig[] = [];

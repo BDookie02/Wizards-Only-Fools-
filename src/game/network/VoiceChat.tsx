@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { socket } from "./socket";
 import {
   DEFAULT_VOICE_OUTPUT_VOLUME,
@@ -17,6 +17,7 @@ import { isMobilePerformanceMode } from "../systems/input/performanceMode";
 import { getPublishedLocalPlayerPosition } from "../systems/player/playerEventBridge";
 import { getNetworkPlayerIdsKey, hasRemoteNetworkPlayerId, visitNetworkPlayerIdsKey } from "./gameNetworkClient";
 import { readCurrentVoiceChatRouteFlags } from "./voiceChatRouteFlags";
+import { useLazyRef } from "../systems/react/useLazyRef";
 
 type VoiceDescriptionSignal = {
   fromId: string;
@@ -59,12 +60,6 @@ const SOUNDBOARD_BLIP_NOTES: readonly { frequency: number; offset: number; durat
   { frequency: 523.25, offset: 0.18, duration: 0.18 },
   { frequency: 659.25, offset: 0.39, duration: 0.2 },
 ];
-
-function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
-  const ref = useRef<T | null>(null);
-  if (ref.current === null) ref.current = factory();
-  return ref as MutableRefObject<T>;
-}
 
 function stopMediaStreamTracks(stream: MediaStream | null | undefined) {
   if (!stream) return;

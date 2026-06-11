@@ -8,6 +8,7 @@ import { AvatarBillboard, NPC_AVATAR_GROUND_LIFT, NPC_AVATAR_SCALE } from "./Pix
 import { isMobilePerformanceMode } from "./systems/input/performanceMode";
 import { absoluteAngleDeltaRadians } from "./systems/math/angleMath";
 import { getPublishedLocalPlayerPosition } from "./systems/player/playerEventBridge";
+import { useLazyRef } from "./systems/react/useLazyRef";
 import { getEpochMsFromRenderClock } from "./systems/rendering/renderClockEpoch";
 
 interface VillagerInfo {
@@ -692,7 +693,7 @@ export function Villagers({
   const [clockMs, setClockMs] = useState(0);
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
   const visibleIdsRef = useRef(visibleIds);
-  const visibleIdsScratchRef = useRef(new Set<string>());
+  const visibleIdsScratchRef = useLazyRef(() => new Set<string>());
   const insideHutIdRef = useRef<string | null>(null);
   const reactionsRef = useRef(reactions);
   const reactionCountRef = useRef(0);
@@ -700,12 +701,12 @@ export function Villagers({
   const lastQuestInteractionRef = useRef<Record<string, number>>({});
   const lastVisibilityUpdateRef = useRef(0);
   const lastInsideCheckAtRef = useRef(Number.NEGATIVE_INFINITY);
-  const lastInsideCheckPositionRef = useRef(new THREE.Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY));
+  const lastInsideCheckPositionRef = useLazyRef(() => new THREE.Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY));
   const lastReactionTickRef = useRef(0);
   const lastVillagerRuntimeTickAtRef = useRef(Number.NEGATIVE_INFINITY);
   const villagerRuntimeEpochOffsetRef = useRef<number | null>(null);
   const latestFrameClockMsRef = useRef(0);
-  const cameraPositionRef = useRef(new THREE.Vector3());
+  const cameraPositionRef = useLazyRef(() => new THREE.Vector3());
   const renderDistance = mobilePerformanceMode ? 58 : 90;
 
   useEffect(() => {

@@ -25,6 +25,7 @@ import {
 } from "./spellDummyQaSceneRuntime";
 import { getLocalProjectileCreatorId } from "./spellProjectileOwnership";
 import { getPublishedLastPlayerYaw } from "../player/playerEventBridge";
+import { useLazyRef } from "../react/useLazyRef";
 import { subscribeEnginePlaceableEvent } from "../placeables/enginePlaceableEvents";
 import { isCurrentSpellDummyQaRouteEnabled } from "../../tools/qa/spellDummyQaRoutes";
 
@@ -69,7 +70,7 @@ function ActiveDevSpellTestDummies() {
   const dummiesRef = useRef<SpellTestDummy[]>(dummies);
   const enabledRef = useRef(enabled);
   const qaSpellIndexRef = useRef(0);
-  const qaDirectHitProjectileIdsRef = useRef(new Set<string>());
+  const qaDirectHitProjectileIdsRef = useLazyRef(() => new Set<string>());
 
   useEffect(() => {
     dummiesRef.current = dummies;

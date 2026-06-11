@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { BallCollider, CuboidCollider, RapierRigidBody, RigidBody } from "@react-three/rapier";
 import { Billboard, Html } from "@react-three/drei";
@@ -46,6 +46,7 @@ import {
   RINGSOFPOWER_SPEED,
 } from "./spellProjectileTuning";
 import { getStatusEffectExpiryMs } from "./spellStatusRuntime";
+import { useLazyRef } from "../react/useLazyRef";
 
 const UNIT_Y = new THREE.Vector3(0, 1, 0);
 const kunaiDirectionScratch = new THREE.Vector3();
@@ -101,12 +102,6 @@ const OPAQUE_TEXTURE_FRAGMENT_SHADER = `
     gl_FragColor = vec4(texColor.rgb, 1.0);
   }
 `;
-
-function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
-  const ref = useRef<T | null>(null);
-  if (ref.current === null) ref.current = factory();
-  return ref as MutableRefObject<T>;
-}
 
 function getKunaiRotationTuple(dir: { x: number; y: number; z: number }): [number, number, number] {
   kunaiDirectionScratch.set(dir.x, dir.y, dir.z).normalize();

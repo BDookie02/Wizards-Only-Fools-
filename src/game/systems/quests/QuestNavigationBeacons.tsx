@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { getActiveQuestNavigationTargets, type QuestNavigationTarget, useGameStore } from "../../../store/gameStore";
 import { isMobilePerformanceMode } from "../input/performanceMode";
+import { useLazyRef } from "../react/useLazyRef";
 
 let cachedQuestBeaconTexture: THREE.CanvasTexture | null = null;
 const MOBILE_QUEST_BEACON_UPDATE_INTERVAL_SECONDS = 1 / 24;
@@ -119,7 +120,7 @@ export function QuestNavigationBeacons() {
 function ActiveQuestNavigationBeacons({ targets }: { targets: QuestNavigationTarget[] }) {
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const lastMobileUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
-  const beaconNodesRef = useRef(new Map<string, QuestBeaconNodes>());
+  const beaconNodesRef = useLazyRef(() => new Map<string, QuestBeaconNodes>());
 
   const registerNode = useCallback((targetId: string, nodeKey: QuestBeaconNodeKey, node: THREE.Object3D | null) => {
     const beaconNodes = beaconNodesRef.current;

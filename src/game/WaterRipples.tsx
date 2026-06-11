@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useRef, type MutableRefObjec
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { isMobilePerformanceMode } from './systems/input/performanceMode';
+import { useLazyRef } from './systems/react/useLazyRef';
 import {
   BASE_VILLAGE_WATER_Y,
   WATER_RIPPLE_LIFETIME_MS,
@@ -166,7 +167,7 @@ function ActiveRippleMeshes({
   geometry: THREE.RingGeometry;
   mobilePerformanceMode: boolean;
 }) {
-  const rippleNodesRef = useRef(new Map<number, RippleNodes>());
+  const rippleNodesRef = useLazyRef(() => new Map<number, RippleNodes>());
 
   const registerRippleNode = useCallback((rippleId: number, nodeKey: RippleNodeKey, node: RippleNode | null) => {
     const rippleNodes = rippleNodesRef.current;
