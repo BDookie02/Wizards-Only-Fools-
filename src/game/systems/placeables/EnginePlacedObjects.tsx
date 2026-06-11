@@ -340,9 +340,16 @@ function EnginePlacementPreviewVisual({ preview }: { preview: EnginePlacementPre
 export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolean }) {
   const [objects, setObjects] = useState<EnginePlacedObject[]>(() => loadStoredEngineObjects(getEnginePlacementStorage()));
   const [preview, setPreview] = useState<EnginePlacementPreview | null>(null);
+  const objectsRef = useRef(objects);
   const appliedNetworkSnapshotAtRef = useRef(0);
 
+  const commitEnginePlacedObjects = (nextObjects: EnginePlacedObject[]) => {
+    objectsRef.current = nextObjects;
+    setObjects(nextObjects);
+  };
+
   useEffect(() => {
+    objectsRef.current = objects;
     saveStoredEngineObjects(getEnginePlacementStorage(), objects);
     publishEnginePlacedObjectList(objects);
   }, [objects]);
@@ -362,7 +369,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       const playerSnapshot = getPlayerSnapshot(detail);
       const previewPlan = planEnginePlacementPreview(placeable, getGroundY, detail, playerSnapshot);
       if (previewPlan.ok) {
-        const collision = findEnginePlacementCollision(placeable, previewPlan.x, previewPlan.z, objects, detail?.replaceInstanceId, previewPlan.yaw);
+        const collision = findEnginePlacementCollision(placeable, previewPlan.x, previewPlan.z, objectsRef.current, detail?.replaceInstanceId, previewPlan.yaw);
         if (collision) {
           previewPlan.ok = false;
           previewPlan.reason = `overlaps ${collision.label}`;
@@ -376,7 +383,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       publishEnginePlacementPreviewResult({ ok: false, reason: "preview cleared" });
     };
     const handleClearPlacedObjects = () => {
-      setObjects([]);
+      commitEnginePlacedObjects([]);
       publishEnginePlacementResult({ ok: true, label: "cleared placements", count: 0 });
       emitEnginePlaceableNetworkSnapshot([]);
     };
@@ -386,13 +393,14 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
         publishEnginePlacementResult({ ok: false, reason: "missing placed object" });
         return;
       }
-      const object = findEnginePlacedObjectById(objects, instanceId);
+      const currentObjects = objectsRef.current;
+      const object = findEnginePlacedObjectById(currentObjects, instanceId);
       if (!object) {
         publishEnginePlacementResult({ ok: false, reason: "placed object not found" });
         return;
       }
-      setObjects((current) => removeEnginePlacedObjectById(current, instanceId));
-      publishEnginePlacementResult({ ok: true, label: `deleted ${object.label}`, count: Math.max(0, objects.length - 1) });
+      commitEnginePlacedObjects(removeEnginePlacedObjectById(currentObjects, instanceId));
+      publishEnginePlacementResult({ ok: true, label: `deleted ${object.label}`, count: Math.max(0, currentObjects.length - 1) });
       emitEnginePlaceableNetworkDelete(instanceId);
     };
     const handlePlaceableRequest = (event: { detail: EnginePlaceableRequestDetail | undefined }) => {
@@ -429,7 +437,8 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
         return;
       }
 
-      const collision = findEnginePlacementCollision(placeable, placementPlan.x, placementPlan.z, objects, detail?.replaceInstanceId, placementPlan.yaw);
+      const currentObjects = objectsRef.current;
+      const collision = findEnginePlacementCollision(placeable, placementPlan.x, placementPlan.z, currentObjects, detail?.replaceInstanceId, placementPlan.yaw);
       if (collision) {
         publishEnginePlacementResult({ ok: false, label: placeable.name, reason: `overlaps ${collision.label}` });
         setPreview({
@@ -457,12 +466,11 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
         yaw: placementPlan.yaw,
       };
       const replaceInstanceId = detail?.replaceInstanceId;
-      const replacingObject = Boolean(replaceInstanceId && hasEnginePlacedObjectId(objects, replaceInstanceId));
-      if (replacingObject) {
-        setObjects((current) => replaceEnginePlacedObjectById(current, String(replaceInstanceId), object));
-      } else {
-        setObjects((current) => appendEnginePlacedObjectBounded(current, object));
-      }
+      const replacingObject = Boolean(replaceInstanceId && hasEnginePlacedObjectId(currentObjects, replaceInstanceId));
+      const nextObjects = replacingObject
+        ? replaceEnginePlacedObjectById(currentObjects, String(replaceInstanceId), object)
+        : appendEnginePlacedObjectBounded(currentObjects, object);
+      commitEnginePlacedObjects(nextObjects);
       setPreview({
         ok: true,
         placeableId: placeable.id,
@@ -477,12 +485,12 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       publishEnginePlacementResult({
         ok: true,
         label: replacingObject ? `moved ${placeable.name}` : placeable.name,
-        count: replacingObject ? objects.length : Math.min(objects.length + 1, MAX_ENGINE_PLACED_OBJECTS),
+        count: replacingObject ? currentObjects.length : Math.min(currentObjects.length + 1, MAX_ENGINE_PLACED_OBJECTS),
       });
       emitEnginePlaceableNetworkUpsert(object);
     };
     const handlePlacedObjectListRequest = () => {
-      publishEnginePlacedObjectList(objects);
+      publishEnginePlacedObjectList(objectsRef.current);
     };
     const handlePlacedObjectSlotListRequest = () => {
       publishEnginePlacedObjectSlotList();
@@ -492,7 +500,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
         getEnginePlacementStorage(),
         event.detail?.slotId,
         event.detail?.label,
-        objects
+        objectsRef.current
       );
       if (!summary) {
         publishEnginePlacementResult({ ok: false, reason: "slot save failed" });
@@ -510,7 +518,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
         publishEnginePlacedObjectSlotList();
         return;
       }
-      setObjects(loadedObjects);
+      commitEnginePlacedObjects(loadedObjects);
       setPreview(null);
       publishEnginePlacementResult({ ok: true, label: `loaded ${label}`, count: loadedObjects.length });
       publishEnginePlacedObjectSlotList();
@@ -529,27 +537,21 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
     const handleNetworkUpsert = (event: { detail: EnginePlaceableNetworkUpsertDetail | undefined }) => {
       const object = normalizeReplicatedEnginePlacedObject(event.detail?.object);
       if (!object) return;
-      setObjects((current) => {
-        if (hasEnginePlacedObjectId(current, object.instanceId)) {
-          return replaceEnginePlacedObjectById(current, object.instanceId, object);
-        }
-        return appendEnginePlacedObjectBounded(current, object);
-      });
+      const currentObjects = objectsRef.current;
+      const nextObjects = hasEnginePlacedObjectId(currentObjects, object.instanceId)
+        ? replaceEnginePlacedObjectById(currentObjects, object.instanceId, object)
+        : appendEnginePlacedObjectBounded(currentObjects, object);
+      commitEnginePlacedObjects(nextObjects);
       publishEnginePlacementResult({ ok: true, label: `synced ${object.label}` });
     };
     const handleNetworkDelete = (event: { detail: EnginePlaceableNetworkDeleteDetail | undefined }) => {
       const instanceId = String(event.detail?.instanceId ?? "");
       if (!instanceId) return;
-      let deletedLabel = "";
-      setObjects((current) => {
-        const object = findEnginePlacedObjectById(current, instanceId);
-        if (!object) return current;
-        deletedLabel = object.label;
-        return removeEnginePlacedObjectById(current, instanceId);
-      });
-      if (deletedLabel) {
-        publishEnginePlacementResult({ ok: true, label: `synced delete ${deletedLabel}` });
-      }
+      const currentObjects = objectsRef.current;
+      const object = findEnginePlacedObjectById(currentObjects, instanceId);
+      if (!object) return;
+      commitEnginePlacedObjects(removeEnginePlacedObjectById(currentObjects, instanceId));
+      publishEnginePlacementResult({ ok: true, label: `synced delete ${object.label}` });
     };
     const handleNetworkSnapshot = (event: { detail: EnginePlaceableNetworkSnapshotDetail | undefined }) => {
       if (Number.isFinite(event.detail?.receivedAt)) {
@@ -561,7 +563,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
         const object = normalizeReplicatedEnginePlacedObject(incomingObjects[index]);
         if (object) nextObjects.push(object);
       }
-      setObjects(nextObjects);
+      commitEnginePlacedObjects(nextObjects);
       setPreview(null);
       publishEnginePlacementResult({ ok: true, label: "synced placement snapshot", count: nextObjects.length });
     };
@@ -601,7 +603,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       unsubscribeNetworkDelete();
       unsubscribeNetworkSnapshot();
     };
-  }, [isSurvivalMode, objects]);
+  }, [isSurvivalMode]);
 
   if (objects.length === 0 && !preview) return null;
 
