@@ -200,6 +200,7 @@ export type SurvivalSaveUpdate = Partial<Pick<
 >>;
 
 export const ALL_SPELLS: SpellType[] = ['fireball', 'iceshard', 'arcanebeam', 'healspell', 'icespell', 'ringsofpower', 'lightning', 'smokebomb', 'portal', 'blink', 'grab', 'tornado', 'meteorshower', 'flamethrower', 'discshield', 'orbshield', 'kunai', 'healingcrystals', 'magicarmor', 'jumpboost', 'speedboost', 'tungstonballsack', 'sleep', 'poison', 'acid', 'magicglassorb'];
+const ALL_SPELL_SET = new Set<SpellType>(ALL_SPELLS);
 export const SPELL_DISPLAY_NAMES: Record<SpellType, string> = {
   fireball: 'Fireball',
   iceshard: 'Biden Blast',
@@ -501,6 +502,7 @@ const pickAvailableQuestUnlockedSpellsScratch = new Set<SpellType>();
 const pickAvailableQuestActiveAssignmentsScratch = new Set<SpellType>();
 const pickAvailableQuestUnassignedScratch: SpellQuestDefinition[] = [];
 const pickAvailableQuestLockedScratch: SpellQuestDefinition[] = [];
+const questUnlockedDedupeScratch = new Set<SpellType>();
 export const SURVIVAL_BLOCK_SIZE = 512;
 export const DARREL_QUEST_CHUNK = { cx: 12, cz: -12 } as const;
 export const LILY_COIL_QUEST_CHUNK = { cx: 48, cz: -48 } as const;
@@ -1079,11 +1081,17 @@ function sanitizeCharacterCustomization(value: unknown): CharacterCustomization 
 function sanitizeQuestUnlockedSpellList(value: unknown): SpellType[] {
   const storedSpells = Array.isArray(value) ? value : [];
   const unlocked: SpellType[] = ['blink'];
+  questUnlockedDedupeScratch.clear();
+  questUnlockedDedupeScratch.add('blink');
   for (let index = 0; index < storedSpells.length; index += 1) {
     const spell = storedSpells[index];
-    if (typeof spell !== 'string' || !ALL_SPELLS.includes(spell as SpellType)) continue;
-    if (!unlocked.includes(spell as SpellType)) unlocked.push(spell as SpellType);
+    if (typeof spell !== 'string') continue;
+    const typedSpell = spell as SpellType;
+    if (!ALL_SPELL_SET.has(typedSpell) || questUnlockedDedupeScratch.has(typedSpell)) continue;
+    questUnlockedDedupeScratch.add(typedSpell);
+    unlocked.push(typedSpell);
   }
+  questUnlockedDedupeScratch.clear();
   return unlocked;
 }
 
@@ -1094,10 +1102,14 @@ function addUniqueQuestUnlockedSpell(spells: SpellType[], spell: SpellType): Spe
 
 function dedupeQuestUnlockedSpells(spells: SpellType[]): SpellType[] {
   const next: SpellType[] = [];
+  questUnlockedDedupeScratch.clear();
   for (let index = 0; index < spells.length; index += 1) {
     const spell = spells[index];
-    if (!next.includes(spell)) next.push(spell);
+    if (questUnlockedDedupeScratch.has(spell)) continue;
+    questUnlockedDedupeScratch.add(spell);
+    next.push(spell);
   }
+  questUnlockedDedupeScratch.clear();
   return next;
 }
 
@@ -1209,7 +1221,7 @@ function sanitizeSpellQuestAssignments(raw: unknown): Record<string, QuestNpcAss
     const displayName = typeof value.displayName === 'string' && value.displayName.trim()
       ? value.displayName.trim().slice(0, 42)
       : 'Villager';
-    const spell = typeof value.spell === 'string' && ALL_SPELLS.includes(value.spell as SpellType)
+    const spell = typeof value.spell === 'string' && ALL_SPELL_SET.has(value.spell as SpellType)
       ? value.spell as SpellType
       : null;
     const definition = spell ? getSpellQuestDefinition(spell) : null;
@@ -1239,6 +1251,12 @@ function isQuestFlagTruthy(value: QuestFlagValue | undefined) {
 
 function normalizeQuestLookupValue(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+const spellByQuestLookupValue = new Map<string, SpellType>();
+for (let index = 0; index < ALL_SPELLS.length; index += 1) {
+  const spell = ALL_SPELLS[index];
+  spellByQuestLookupValue.set(normalizeQuestLookupValue(spell), spell);
 }
 
 function isDarrelQuestNpc(npc: Pick<QuestNpcDescriptor, 'npcId' | 'displayName'>) {
@@ -1840,11 +1858,7 @@ function parseQuestEventLine(line: string) {
 
 function getSpellFromQuestValue(value: string): SpellType | null {
   const normalized = normalizeQuestLookupValue(value);
-  for (let index = 0; index < ALL_SPELLS.length; index += 1) {
-    const spell = ALL_SPELLS[index];
-    if (spell.toLowerCase() === normalized) return spell;
-  }
-  return null;
+  return spellByQuestLookupValue.get(normalized) ?? null;
 }
 
 function getQuestTeleportDestination(value: string) {
