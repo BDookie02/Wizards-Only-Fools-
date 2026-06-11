@@ -12,14 +12,6 @@ function getPlayerPoseCoordinate(player, index) {
   return getFiniteCoordinate(player.pos[index]);
 }
 
-function getServerPlayerPosition(player) {
-  const x = getPlayerPoseCoordinate(player, 0);
-  const y = getPlayerPoseCoordinate(player, 1);
-  const z = getPlayerPoseCoordinate(player, 2);
-  if (x === null || y === null || z === null) return null;
-  return { x, y, z };
-}
-
 export function markServerPlayerPose(player, now = Date.now()) {
   if (!player) return player;
   player.lastPoseAt = now;
@@ -66,13 +58,26 @@ export function isServerDamageTargetAllowed(
 ) {
   if (!attacker || !target) return false;
   if (attackerId && targetId && attackerId === targetId) return true;
-  const attackerPos = getServerPlayerPosition(attacker);
-  const targetPos = getServerPlayerPosition(target);
-  if (!attackerPos || !targetPos) return false;
+  const attackerX = getPlayerPoseCoordinate(attacker, 0);
+  const attackerY = getPlayerPoseCoordinate(attacker, 1);
+  const attackerZ = getPlayerPoseCoordinate(attacker, 2);
+  const targetX = getPlayerPoseCoordinate(target, 0);
+  const targetY = getPlayerPoseCoordinate(target, 1);
+  const targetZ = getPlayerPoseCoordinate(target, 2);
+  if (
+    attackerX === null ||
+    attackerY === null ||
+    attackerZ === null ||
+    targetX === null ||
+    targetY === null ||
+    targetZ === null
+  ) {
+    return false;
+  }
   const maxDistanceNumber = Math.max(0, Number(maxDistance) || 0);
   const maxDistanceSq = maxDistanceNumber * maxDistanceNumber;
-  const deltaX = attackerPos.x - targetPos.x;
-  const deltaY = attackerPos.y - targetPos.y;
-  const deltaZ = attackerPos.z - targetPos.z;
+  const deltaX = attackerX - targetX;
+  const deltaY = attackerY - targetY;
+  const deltaZ = attackerZ - targetZ;
   return deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ <= maxDistanceSq;
 }

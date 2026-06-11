@@ -460,7 +460,7 @@ async function startServer() {
                     now - lastPlayerMoveBroadcastAt >= PLAYER_MOVE_BROADCAST_INTERVAL_MS;
                 Object.assign(p, safeData);
                 if (safeData.pos) {
-                    markServerPlayerPose(p);
+                    markServerPlayerPose(p, now);
                 }
                 if (shouldBroadcastMove) {
                     lastPlayerMoveBroadcastAt = now;
