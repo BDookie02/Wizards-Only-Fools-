@@ -131,17 +131,23 @@ function findEnginePlacedObjectById(objects: EnginePlacedObject[], instanceId: s
 }
 
 function removeEnginePlacedObjectById(objects: EnginePlacedObject[], instanceId: string) {
-  let removed = false;
-  const next: EnginePlacedObject[] = [];
+  let removeIndex = -1;
   for (let index = 0; index < objects.length; index += 1) {
-    const object = objects[index];
-    if (object.instanceId === instanceId) {
-      removed = true;
-      continue;
+    if (objects[index].instanceId === instanceId) {
+      removeIndex = index;
+      break;
     }
-    next.push(object);
   }
-  return removed ? next : objects;
+  if (removeIndex < 0) return objects;
+
+  const next = new Array<EnginePlacedObject>(objects.length - 1);
+  for (let index = 0; index < removeIndex; index += 1) {
+    next[index] = objects[index];
+  }
+  for (let index = removeIndex + 1; index < objects.length; index += 1) {
+    next[index - 1] = objects[index];
+  }
+  return next;
 }
 
 function replaceEnginePlacedObjectById(objects: EnginePlacedObject[], instanceId: string, replacement: EnginePlacedObject) {
