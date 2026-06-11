@@ -42,6 +42,15 @@ function getRemotePlayerStatus(player: PlayerState, now: number) {
   return status || "READY";
 }
 
+function insertRemotePlayerById(remotePlayers: PlayerState[], player: PlayerState) {
+  let insertIndex = remotePlayers.length;
+  while (insertIndex > 0 && player.id.localeCompare(remotePlayers[insertIndex - 1].id) < 0) {
+    remotePlayers[insertIndex] = remotePlayers[insertIndex - 1];
+    insertIndex -= 1;
+  }
+  remotePlayers[insertIndex] = player;
+}
+
 export function buildScoreboardRows({
   localPlayerName,
   isSurvivalMode,
@@ -65,9 +74,8 @@ export function buildScoreboardRows({
     if (!Object.prototype.hasOwnProperty.call(players, playerId)) continue;
     const player = players[playerId];
     if (player.id === connectedPlayerId) continue;
-    remotePlayers.push(player);
+    insertRemotePlayerById(remotePlayers, player);
   }
-  remotePlayers.sort((a, b) => a.id.localeCompare(b.id));
 
   const rows: ScoreboardRow[] = [{
     id: getLocalNetworkPlayerId(),
