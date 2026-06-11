@@ -250,12 +250,20 @@ async function startServer() {
         emptyRoomCleanupTimers.set(roomCode, timer);
     };
     const getRoomPlaceables = (roomCode) => roomPlaceables.get(roomCode) ?? [];
+    const rememberRoomPlaceables = (roomCode, objects) => {
+        roomPlaceables.set(roomCode, objects);
+        return objects;
+    };
     const setRoomPlaceables = (roomCode, objects) => {
-        const nextObjects = Array.isArray(objects)
-            ? objects.slice(-MULTIPLAYER_MAX_ENGINE_PLACEABLES)
-            : [];
-        roomPlaceables.set(roomCode, nextObjects);
-        return nextObjects;
+        if (!Array.isArray(objects) || objects.length === 0) {
+            return rememberRoomPlaceables(roomCode, []);
+        }
+        const startIndex = Math.max(0, objects.length - MULTIPLAYER_MAX_ENGINE_PLACEABLES);
+        const nextObjects = new Array(objects.length - startIndex);
+        for (let index = startIndex; index < objects.length; index += 1) {
+            nextObjects[index - startIndex] = objects[index];
+        }
+        return rememberRoomPlaceables(roomCode, nextObjects);
     };
     const upsertRoomPlaceable = (roomCode, object) => {
         const currentObjects = getRoomPlaceables(roomCode);
@@ -267,11 +275,20 @@ async function startServer() {
             }
         }
         if (existingIndex >= 0) {
-            const nextObjects = currentObjects.slice();
-            nextObjects[existingIndex] = object;
-            return setRoomPlaceables(roomCode, nextObjects);
+            const nextObjects = new Array(currentObjects.length);
+            for (let index = 0; index < currentObjects.length; index += 1) {
+                nextObjects[index] = index === existingIndex ? object : currentObjects[index];
+            }
+            return rememberRoomPlaceables(roomCode, nextObjects);
         }
-        return setRoomPlaceables(roomCode, [...currentObjects, object]);
+        const nextLength = Math.min(currentObjects.length + 1, MULTIPLAYER_MAX_ENGINE_PLACEABLES);
+        const nextObjects = new Array(nextLength);
+        const startIndex = Math.max(0, currentObjects.length - (nextLength - 1));
+        for (let index = startIndex; index < currentObjects.length; index += 1) {
+            nextObjects[index - startIndex] = currentObjects[index];
+        }
+        nextObjects[nextLength - 1] = object;
+        return rememberRoomPlaceables(roomCode, nextObjects);
     };
     const deleteRoomPlaceable = (roomCode, instanceId) => {
         const currentObjects = getRoomPlaceables(roomCode);
@@ -280,7 +297,7 @@ async function startServer() {
             const candidate = currentObjects[index];
             if (candidate.instanceId !== instanceId) nextObjects.push(candidate);
         }
-        return setRoomPlaceables(roomCode, nextObjects);
+        return rememberRoomPlaceables(roomCode, nextObjects);
     };
     const announcePlayerDeath = (roomCode, targetId, player) => {
         io.to(roomCode).emit("playerDied", {
