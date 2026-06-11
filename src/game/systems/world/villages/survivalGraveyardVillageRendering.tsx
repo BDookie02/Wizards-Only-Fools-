@@ -1570,6 +1570,19 @@ type ChapelSideWingPewPlacement = {
   width: number;
 };
 
+type ChapelWingCeilingBeamPlacement = {
+  key: string;
+  side: -1 | 1;
+  z: number;
+  color: string;
+};
+
+type ChapelCenterPewColliderPlacement = {
+  key: string;
+  x: number;
+  z: number;
+};
+
 const CHAPEL_POPE_TARGET = { x: 0, z: -68.6 };
 const CHAPEL_CENTER_PEW_X = 17.2;
 const CHAPEL_CENTER_PEW_SEATS = [12.1, 19.2];
@@ -1588,14 +1601,58 @@ const CHAPEL_CENTER_NPC_SEAT_OFFSETS = [
 const CHAPEL_SIDE_NPC_SEAT_OFFSETS = [-0.24, 0.24] as const;
 const CHAPEL_NAVE_CEILING_BEAM_ROWS = [-66, -44, -22, 0, 22, 44, 66] as const;
 const CHAPEL_WING_CEILING_BEAM_ROWS = [-42, -21, 0, 21, 42] as const;
-const CHAPEL_SIDE_WING_PEW_LAYOUT: ChapelSideWingPewPlacement[] = CHAPEL_SIDE_SIGNS.flatMap((side) => ([
-  { key: `${side}-rear-outer`, x: side * 94, z: -44, width: 16 },
-  { key: `${side}-rear-inner`, x: side * 76, z: -34, width: 18 },
-  { key: `${side}-rear-mid`, x: side * 94, z: -22, width: 16 },
-  { key: `${side}-front-mid`, x: side * 94, z: 22, width: 16 },
-  { key: `${side}-front-inner`, x: side * 76, z: 34, width: 18 },
-  { key: `${side}-front-outer`, x: side * 94, z: 44, width: 16 },
-]));
+const CHAPEL_SIDE_WING_PEW_LAYOUT = buildChapelSideWingPewLayout();
+const CHAPEL_WING_CEILING_BEAMS = buildChapelWingCeilingBeams();
+const CHAPEL_CENTER_PEW_COLLIDERS = buildChapelCenterPewColliders();
+
+function buildChapelSideWingPewLayout(): ChapelSideWingPewPlacement[] {
+  const layout: ChapelSideWingPewPlacement[] = [];
+  for (let sideIndex = 0; sideIndex < CHAPEL_SIDE_SIGNS.length; sideIndex += 1) {
+    const side = CHAPEL_SIDE_SIGNS[sideIndex];
+    layout.push(
+      { key: `${side}-rear-outer`, x: side * 94, z: -44, width: 16 },
+      { key: `${side}-rear-inner`, x: side * 76, z: -34, width: 18 },
+      { key: `${side}-rear-mid`, x: side * 94, z: -22, width: 16 },
+      { key: `${side}-front-mid`, x: side * 94, z: 22, width: 16 },
+      { key: `${side}-front-inner`, x: side * 76, z: 34, width: 18 },
+      { key: `${side}-front-outer`, x: side * 94, z: 44, width: 16 },
+    );
+  }
+  return layout;
+}
+
+function buildChapelWingCeilingBeams(): ChapelWingCeilingBeamPlacement[] {
+  const beams: ChapelWingCeilingBeamPlacement[] = [];
+  for (let sideIndex = 0; sideIndex < CHAPEL_SIDE_SIGNS.length; sideIndex += 1) {
+    const side = CHAPEL_SIDE_SIGNS[sideIndex];
+    for (let rowIndex = 0; rowIndex < CHAPEL_WING_CEILING_BEAM_ROWS.length; rowIndex += 1) {
+      const z = CHAPEL_WING_CEILING_BEAM_ROWS[rowIndex];
+      beams.push({
+        key: `chapel-wing-ceiling-beam-${side}-${z}`,
+        side,
+        z,
+        color: rowIndex % 2 === 0 ? "#171017" : "#241821",
+      });
+    }
+  }
+  return beams;
+}
+
+function buildChapelCenterPewColliders(): ChapelCenterPewColliderPlacement[] {
+  const colliders: ChapelCenterPewColliderPlacement[] = [];
+  for (let rowIndex = 0; rowIndex < CHAPEL_CENTER_PEW_ROWS.length; rowIndex += 1) {
+    const z = CHAPEL_CENTER_PEW_ROWS[rowIndex];
+    for (let sideIndex = 0; sideIndex < CHAPEL_SIDE_SIGNS.length; sideIndex += 1) {
+      const side = CHAPEL_SIDE_SIGNS[sideIndex];
+      colliders.push({
+        key: `chapel-center-pew-collider-${side}-${z}`,
+        x: side * CHAPEL_CENTER_PEW_X,
+        z: z + 0.45,
+      });
+    }
+  }
+  return colliders;
+}
 
 function getChapelSideWingPewLayout(): ChapelSideWingPewPlacement[] {
   return CHAPEL_SIDE_WING_PEW_LAYOUT;
@@ -2392,12 +2449,12 @@ function ChapelCeiling({ darkStoneMap }: { darkStoneMap: THREE.Texture }) {
           <meshBasicMaterial color={index % 2 === 0 ? "#171017" : "#241821"} />
         </mesh>
       ))}
-      {CHAPEL_SIDE_SIGNS.flatMap((side) => CHAPEL_WING_CEILING_BEAM_ROWS.map((z, index) => (
-        <mesh key={`chapel-wing-ceiling-beam-${side}-${z}`} position={[side * CHAPEL_SIDE_WING_CENTER_X, CHAPEL_WALL_HEIGHT - 1.35, z]} castShadow={false}>
+      {CHAPEL_WING_CEILING_BEAMS.map((beam) => (
+        <mesh key={beam.key} position={[beam.side * CHAPEL_SIDE_WING_CENTER_X, CHAPEL_WALL_HEIGHT - 1.35, beam.z]} castShadow={false}>
           <boxGeometry args={[CHAPEL_SIDE_WING_HALF_WIDTH * 2 - 8, 1.7, 1.55]} />
-          <meshBasicMaterial color={index % 2 === 0 ? "#171017" : "#241821"} />
+          <meshBasicMaterial color={beam.color} />
         </mesh>
-      )))}
+      ))}
       <mesh position={[0, CHAPEL_WALL_HEIGHT - 0.2, 0]} castShadow={false}>
         <boxGeometry args={[3.4, 3, CHAPEL_CENTER_HALF_DEPTH * 2 - 10]} />
         <meshBasicMaterial color="#100b10" />
@@ -2679,14 +2736,12 @@ function GraveyardVillageColliders({
         <CuboidCollider args={[CHAPEL_CENTER_HALF_WIDTH, 0.58, CHAPEL_CENTER_HALF_DEPTH]} position={[0, baseHeight + 0.56, 0]} />
         <CuboidCollider args={[CHAPEL_SIDE_WING_HALF_WIDTH, 0.56, CHAPEL_SIDE_WING_HALF_DEPTH]} position={[-CHAPEL_SIDE_WING_CENTER_X, baseHeight + 0.54, 0]} />
         <CuboidCollider args={[CHAPEL_SIDE_WING_HALF_WIDTH, 0.56, CHAPEL_SIDE_WING_HALF_DEPTH]} position={[CHAPEL_SIDE_WING_CENTER_X, baseHeight + 0.54, 0]} />
-        {CHAPEL_CENTER_PEW_ROWS.flatMap((z) => (
-          CHAPEL_SIDE_SIGNS.map((side) => (
-            <CuboidCollider
-              key={`chapel-center-pew-collider-${side}-${z}`}
-              args={[9.5, 1.75, 2.55]}
-              position={[side * CHAPEL_CENTER_PEW_X, baseHeight + 2.65, z + 0.45]}
-            />
-          ))
+        {CHAPEL_CENTER_PEW_COLLIDERS.map((pew) => (
+          <CuboidCollider
+            key={pew.key}
+            args={[9.5, 1.75, 2.55]}
+            position={[pew.x, baseHeight + 2.65, pew.z]}
+          />
         ))}
         {sideWingPews.map((pew) => (
           <CuboidCollider
