@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { Projectile } from "../../../store/gameStore";
@@ -59,6 +59,12 @@ type MeteorConfig = {
   impactRadius: number;
   particles: MeteorExplosionParticle[];
 };
+
+function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
+  const ref = useRef<T | null>(null);
+  if (ref.current === null) ref.current = factory();
+  return ref as MutableRefObject<T>;
+}
 
 function makeTornadoBandConfigs(): TornadoBandConfig[] {
   const bands: TornadoBandConfig[] = [];
@@ -156,7 +162,7 @@ export function TornadoSpell({ projectile }: { projectile: Projectile }) {
   useProjectileLifetime(projectile.id, TORNADO_DURATION);
   const rootRef = useRef<THREE.Group>(null);
   const swirlRef = useRef<THREE.Group>(null);
-  const bandRefs = useRef<Array<THREE.Group | null>>([]);
+  const bandRefs = useLazyRef<Array<THREE.Group | null>>(() => []);
   const spawnedClockAt = useRef<number | null>(null);
   const lastVisualUpdateAt = useRef(Number.NEGATIVE_INFINITY);
   const center = useMemo(
@@ -256,9 +262,9 @@ export function TornadoSpell({ projectile }: { projectile: Projectile }) {
 }
 
 function TornadoLocalPullRuntime({ center }: { center: THREE.Vector3 }) {
-  const playerPosRef = useRef(new THREE.Vector3());
-  const toCenterRef = useRef(new THREE.Vector3());
-  const spinRef = useRef(new THREE.Vector3());
+  const playerPosRef = useLazyRef(() => new THREE.Vector3());
+  const toCenterRef = useLazyRef(() => new THREE.Vector3());
+  const spinRef = useLazyRef(() => new THREE.Vector3());
   const lastForceEventAtRef = useRef<number | null>(null);
 
   useFrame(({ clock }) => {
@@ -294,11 +300,11 @@ function TornadoLocalPullRuntime({ center }: { center: THREE.Vector3 }) {
 
 export function MeteorShowerSpell({ projectile }: { projectile: Projectile }) {
   useProjectileLifetime(projectile.id, METEOR_SHOWER_DURATION + 900);
-  const meteorRefs = useRef<Array<THREE.Group | null>>([]);
-  const impactRefs = useRef<Array<THREE.Mesh | null>>([]);
-  const impactFlashRefs = useRef<Array<THREE.Mesh | null>>([]);
-  const explosionRefs = useRef<Array<THREE.Group | null>>([]);
-  const explosionParticleRefs = useRef<Array<Array<THREE.Mesh | null>>>([]);
+  const meteorRefs = useLazyRef<Array<THREE.Group | null>>(() => []);
+  const impactRefs = useLazyRef<Array<THREE.Mesh | null>>(() => []);
+  const impactFlashRefs = useLazyRef<Array<THREE.Mesh | null>>(() => []);
+  const explosionRefs = useLazyRef<Array<THREE.Group | null>>(() => []);
+  const explosionParticleRefs = useLazyRef<Array<Array<THREE.Mesh | null>>>(() => []);
   const spawnedClockAt = useRef<number | null>(null);
   const lastVisualUpdateAt = useRef(0);
   const center = useMemo(
@@ -500,8 +506,8 @@ function MeteorImpactRuntime({
   meteors: readonly MeteorConfig[];
   projectile: Projectile;
 }) {
-  const playerPosRef = useRef(new THREE.Vector3());
-  const groundPointRef = useRef(new THREE.Vector3());
+  const playerPosRef = useLazyRef(() => new THREE.Vector3());
+  const groundPointRef = useLazyRef(() => new THREE.Vector3());
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
