@@ -38,6 +38,8 @@ export type EnginePlacedObjectSlotSummary = {
   savedAt: number;
 };
 
+export type EnginePlacedObjectSlotLookup = Record<string, EnginePlacedObjectSlotSummary | undefined>;
+
 export const ENGINE_MENU_SLOT_IDS = ["slot-1", "slot-2", "slot-3", "slot-4", "slot-5", "slot-6"] as const;
 
 const placeableSearchTextCache = new WeakMap<PlaceableDefinition, string>();
@@ -133,12 +135,19 @@ export function getSelectedEnginePlacedObject(
   return null;
 }
 
-export function getSelectedEngineSlot(
+export function createEngineMenuSlotLookup(
   slotSummaries: readonly EnginePlacedObjectSlotSummary[],
+): EnginePlacedObjectSlotLookup {
+  const lookup: EnginePlacedObjectSlotLookup = {};
+  for (const slot of slotSummaries) {
+    lookup[slot.slotId] = slot;
+  }
+  return lookup;
+}
+
+export function getSelectedEngineSlot(
+  slotLookup: EnginePlacedObjectSlotLookup,
   selectedSlotId: string,
 ) {
-  for (const slot of slotSummaries) {
-    if (slot.slotId === selectedSlotId) return slot;
-  }
-  return null;
+  return slotLookup[selectedSlotId] ?? null;
 }

@@ -17,6 +17,7 @@ import { dispatchEnginePlaceableEvent, subscribeEnginePlaceableEvent } from "../
 import { GAME_SYSTEM_CATALOG } from "../systems/systemCatalog";
 import {
   createEngineMenuPlacementOptions,
+  createEngineMenuSlotLookup,
   ENGINE_MENU_SLOT_IDS,
   formatEngineMenuSlotTime,
   getEngineMenuSlotLabel,
@@ -157,9 +158,13 @@ export function EngineMenu({
     () => getSelectedEnginePlacedObject(placedObjects, selectedPlacedObjectId),
     [placedObjects, selectedPlacedObjectId]
   );
+  const slotLookup = useMemo(
+    () => createEngineMenuSlotLookup(slotSummaries),
+    [slotSummaries],
+  );
   const selectedSlot = useMemo(
-    () => getSelectedEngineSlot(slotSummaries, selectedSlotId),
-    [selectedSlotId, slotSummaries]
+    () => getSelectedEngineSlot(slotLookup, selectedSlotId),
+    [selectedSlotId, slotLookup]
   );
 
   useEffect(() => {
@@ -240,7 +245,7 @@ export function EngineMenu({
 
   const selectSlot = (slotId: string) => {
     setSelectedSlotId(slotId);
-    setSlotLabel(getSelectedEngineSlot(slotSummaries, slotId)?.label ?? getEngineMenuSlotLabel(slotId));
+    setSlotLabel(getSelectedEngineSlot(slotLookup, slotId)?.label ?? getEngineMenuSlotLabel(slotId));
   };
 
   const requestSlotSave = () => {
@@ -572,7 +577,7 @@ export function EngineMenu({
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-1">
                   {ENGINE_MENU_SLOT_IDS.map((slotId) => {
-                    const summary = getSelectedEngineSlot(slotSummaries, slotId);
+                    const summary = getSelectedEngineSlot(slotLookup, slotId);
                     const selectedSlotButton = selectedSlotId === slotId;
                     return (
                       <button
