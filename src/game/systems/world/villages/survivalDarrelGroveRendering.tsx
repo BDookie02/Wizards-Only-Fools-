@@ -35,6 +35,15 @@ const DARREL_HUT_FOUNDATION_HEIGHT = DARREL_HUT_BASE_LIFT - 2.05;
 const DARREL_HUT_BASE_Y = DARREL_GROVE_GROUND_Y + DARREL_HUT_HILL_HEIGHT + DARREL_HUT_BASE_LIFT;
 const DARREL_HUT_ENTRY_SURFACE_OFFSET = DARREL_HUT_HILL_HEIGHT + DARREL_HUT_BASE_LIFT + 2.1;
 const DARREL_SIDE_SIGNS = [-1, 1] as const;
+const DARREL_HUT_TATAMI_X = [-20, 0, 20] as const;
+const DARREL_HUT_TABLE_LEG_X = [-7, 7] as const;
+const DARREL_HUT_CUSHION_X = [-16, 16] as const;
+const DARREL_HUT_SHELF_Y = [0, 5.5, 11] as const;
+const DARREL_HUT_JAR_Z = [-9, 0, 9] as const;
+const DARREL_HUT_LANTERN_X = [-28, 28] as const;
+const DARREL_HUT_FOUNDATION_FRONT_STONE_X = [-42, -28, 28, 42] as const;
+const DARREL_HUT_FRONT_POST_X = [-34, -14, 14, 34] as const;
+const DARREL_WATERFALL_CASCADE_INDICES = [0, 1, 2] as const;
 const DARREL_FALLEN_PETAL_TARGET_COUNT = 360;
 const DARREL_FALLING_PETAL_COUNT = 68;
 const MOBILE_DARREL_WATER_UPDATE_INTERVAL_SECONDS = 1 / 30;
@@ -310,13 +319,13 @@ function DarrelHutFurniture() {
 
   return (
     <group>
-      {[-20, 0, 20].map((x) => (
+      {DARREL_HUT_TATAMI_X.map((x) => (
         <mesh key={`mat-a-${x}`} position={[x, 1.08, -6]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[18, 28]} />
           <meshStandardMaterial map={tatamiTexture} color="#f0df92" roughness={1} />
         </mesh>
       ))}
-      {[-20, 0, 20].map((x) => (
+      {DARREL_HUT_TATAMI_X.map((x) => (
         <mesh key={`mat-b-${x}`} position={[x, 1.09, 17]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} receiveShadow>
           <planeGeometry args={[16, 28]} />
           <meshStandardMaterial map={tatamiTexture} color="#d6cf83" roughness={1} />
@@ -327,13 +336,13 @@ function DarrelHutFurniture() {
           <boxGeometry args={[18, 1.4, 10]} />
           <meshStandardMaterial map={woodTexture} color="#7b4b2b" roughness={0.9} />
         </mesh>
-        {[-7, 7].map((x) => (
+        {DARREL_HUT_TABLE_LEG_X.map((x) => (
           <mesh key={`table-leg-${x}`} position={[x, -2.6, -3]} castShadow>
             <boxGeometry args={[1.4, 4.2, 1.4]} />
             <meshStandardMaterial map={woodTexture} color="#4a2c1a" roughness={0.95} />
           </mesh>
         ))}
-        {[-7, 7].map((x) => (
+        {DARREL_HUT_TABLE_LEG_X.map((x) => (
           <mesh key={`table-leg-b-${x}`} position={[x, -2.6, 3]} castShadow>
             <boxGeometry args={[1.4, 4.2, 1.4]} />
             <meshStandardMaterial map={woodTexture} color="#4a2c1a" roughness={0.95} />
@@ -344,20 +353,20 @@ function DarrelHutFurniture() {
           <meshStandardMaterial color="#d9a441" roughness={0.7} />
         </mesh>
       </group>
-      {[-16, 16].map((x) => (
+      {DARREL_HUT_CUSHION_X.map((x) => (
         <mesh key={`cushion-${x}`} position={[x, 1.45, -5]} castShadow>
           <boxGeometry args={[8, 0.8, 7]} />
           <meshStandardMaterial color={x < 0 ? "#b91c1c" : "#1d4ed8"} roughness={0.9} />
         </mesh>
       ))}
       <group position={[-31.5, 7, 8]}>
-        {[0, 5.5, 11].map((y) => (
+        {DARREL_HUT_SHELF_Y.map((y) => (
           <mesh key={`shelf-${y}`} position={[0, y, 0]} castShadow receiveShadow>
             <boxGeometry args={[2, 1.2, 26]} />
             <meshStandardMaterial map={woodTexture} color="#5b341e" roughness={0.95} />
           </mesh>
         ))}
-        {[-9, 0, 9].map((z, index) => (
+        {DARREL_HUT_JAR_Z.map((z, index) => (
           <mesh key={`jar-${z}`} position={[0.4, 12.2, z]} castShadow>
             <cylinderGeometry args={[1.6, 1.9, 3.4, 8]} />
             <meshStandardMaterial color={index % 2 ? "#94a3b8" : "#d97706"} roughness={0.8} />
@@ -380,10 +389,10 @@ function DarrelHutFurniture() {
         <planeGeometry args={[10, 11]} />
         <meshBasicMaterial color="#991b1b" transparent opacity={0.28} />
       </mesh>
-      {[-28, 28].map((x) => (
+      {DARREL_HUT_LANTERN_X.map((x) => (
         <pointLight key={`lantern-light-${x}`} position={[x, 12, -18]} color="#ffb454" intensity={3.2} distance={30} decay={2} />
       ))}
-      {[-28, 28].map((x) => (
+      {DARREL_HUT_LANTERN_X.map((x) => (
         <group key={`lantern-${x}`} position={[x, 11, -18]}>
           <mesh renderOrder={5}>
             <sphereGeometry args={[5.2, 8, 6]} />
@@ -470,7 +479,7 @@ function DarrelChineseHut() {
         <CuboidCollider args={[(width - doorWidth) / 4, wallHeight / 2, wallThickness / 2]} position={[(doorWidth / 2 + (width - doorWidth) / 4), wallCenterY, -depth / 2]} />
       </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.96} restitution={0} name="darrel-hut-side-stair-ramp">
-        {[-1, 1].map((side) => (
+        {DARREL_SIDE_SIGNS.map((side) => (
           <CuboidCollider
             key={`hut-side-step-smooth-ramp-${side}`}
             args={[sideStairRampLength / 2, sideStairRampHalfThickness, sideStairDepth / 2]}
@@ -483,19 +492,19 @@ function DarrelChineseHut() {
         <boxGeometry args={[foundationWidth, DARREL_HUT_FOUNDATION_HEIGHT, foundationRearDepth]} />
         <meshStandardMaterial map={stoneTexture} color="#777f78" roughness={1} />
       </mesh>
-      {[-1, 1].map((side) => (
+      {DARREL_SIDE_SIGNS.map((side) => (
         <mesh key={`hut-foundation-front-support-${side}`} position={[side * foundationSideX, foundationCenterY, foundationFrontSupportZ]} castShadow receiveShadow>
           <boxGeometry args={[foundationFrontSupportWidth, DARREL_HUT_FOUNDATION_HEIGHT, foundationFrontSupportDepth]} />
           <meshStandardMaterial map={stoneTexture} color="#747c75" roughness={1} />
         </mesh>
       ))}
-      {[-1, 1].map((side) => (
+      {DARREL_SIDE_SIGNS.map((side) => (
         <mesh key={`hut-foundation-front-trim-${side}`} position={[side * foundationSideX, foundationTrimY, foundationFrontZ - 0.35]} castShadow receiveShadow>
           <boxGeometry args={[foundationFrontSupportWidth + 4, foundationTrimHeight, 2.4]} />
           <meshStandardMaterial map={stoneTexture} color="#949b93" roughness={1} />
         </mesh>
       ))}
-      {[-42, -28, 28, 42].map((x) => (
+      {DARREL_HUT_FOUNDATION_FRONT_STONE_X.map((x) => (
         <mesh key={`hut-foundation-front-stone-${x}`} position={[x, foundationCenterY - 0.2, foundationFrontZ - 0.8]} castShadow receiveShadow>
           <boxGeometry args={[8, DARREL_HUT_FOUNDATION_HEIGHT * 0.72, 1.2]} />
           <meshStandardMaterial map={stoneTexture} color={Math.abs(x) < 30 ? "#8c948c" : "#6f776f"} roughness={1} />
@@ -527,7 +536,7 @@ function DarrelChineseHut() {
           <meshStandardMaterial map={wallTexture} color="#d9b77f" roughness={1} />
         </mesh>
       ))}
-      {[-34, -14, 14, 34].map((x) => (
+      {DARREL_HUT_FRONT_POST_X.map((x) => (
         <mesh key={`front-post-${x}`} position={[x, 15.5, -35.2]} castShadow>
           <cylinderGeometry args={[1.7, 2, 31, 8]} />
           <meshStandardMaterial map={woodTexture} color="#8b1f24" roughness={0.8} />
@@ -859,13 +868,13 @@ function DarrelWaterfallHill() {
         <planeGeometry args={[8, 60]} />
         <meshBasicMaterial ref={foamMaterialRef} color="#f1feff" transparent opacity={0.36} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} polygonOffset polygonOffsetFactor={-9} />
       </mesh>
-      {[-1, 1].map((side) => (
+      {DARREL_SIDE_SIGNS.map((side) => (
         <mesh key={`darrel-fall-edge-${side}`} position={[side * 14.8, 12.75, 67.32]} rotation={[-1.08, 0, 0]} renderOrder={13}>
           <planeGeometry args={[2.5, 58]} />
           <meshBasicMaterial color="#2e8fa8" transparent opacity={0.25} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} polygonOffset polygonOffsetFactor={-7} />
         </mesh>
       ))}
-      {[0, 1, 2].map((index) => (
+      {DARREL_WATERFALL_CASCADE_INDICES.map((index) => (
         <mesh
           key={`darrel-visible-cascade-${index}`}
           ref={(mesh) => {

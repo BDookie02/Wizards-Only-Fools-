@@ -455,20 +455,30 @@ function LilyCoilForegroundMeadow() {
 
   return (
     <group name="lily-coil-foreground-meadow" userData={HIDE_FROM_MINIMAP}>
-      {[{ ref: farRef, opacity: 0.68, order: 8 }, { ref: nearRef, opacity: 0.84, order: 9 }].map((layer, index) => (
-        <mesh key={`lily-coil-meadow-overlay-${index}`} ref={layer.ref} renderOrder={layer.order} frustumCulled={false}>
-          <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial
-            map={meadowTexture}
-            transparent
-            opacity={layer.opacity}
-            depthTest={false}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-            toneMapped={false}
-          />
-        </mesh>
-      ))}
+      <mesh ref={farRef} renderOrder={8} frustumCulled={false}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial
+          map={meadowTexture}
+          transparent
+          opacity={0.68}
+          depthTest={false}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+      <mesh ref={nearRef} renderOrder={9} frustumCulled={false}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial
+          map={meadowTexture}
+          transparent
+          opacity={0.84}
+          depthTest={false}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
     </group>
   );
 }
