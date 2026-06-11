@@ -19,6 +19,10 @@ export type AppViewportSize = {
   height: number;
 };
 
+export type AppViewportCssVarsOptions = {
+  useVisualViewport?: boolean;
+};
+
 export function readAppViewportSize({
   useVisualViewport = true,
 }: {
@@ -99,10 +103,12 @@ export function installInputLayoutClassSync(root = typeof document === "undefine
   };
 }
 
-export function writeAppViewportCssVars(root = typeof document === "undefined" ? null : document.documentElement) {
+export function writeAppViewportCssVars(
+  root = typeof document === "undefined" ? null : document.documentElement,
+  { useVisualViewport = isMobileLikeDevice() }: AppViewportCssVarsOptions = {},
+) {
   if (typeof window === "undefined" || !root) return;
 
-  const useVisualViewport = isMobileLikeDevice();
   const { width, height } = readAppViewportSize({ useVisualViewport });
   if (root === lastAppViewportRoot && width === lastAppViewportWidth && height === lastAppViewportHeight) return;
   lastAppViewportRoot = root;
@@ -119,7 +125,7 @@ export function installAppViewportCssVars(root = typeof document === "undefined"
   let viewportRaf = 0;
   const updateViewportVars = () => {
     viewportRaf = 0;
-    writeAppViewportCssVars(root);
+    writeAppViewportCssVars(root, { useVisualViewport });
   };
   const scheduleViewportUpdate = () => {
     if (viewportRaf) return;
