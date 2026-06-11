@@ -50,6 +50,21 @@ function compareSurvivalChunkOffsetPriority(a: SurvivalChunkOffset, b: SurvivalC
   return (a.distance - b.distance) || (a.dx - b.dx) || (a.dz - b.dz);
 }
 
+function insertSurvivalChunkOffsetByPriority(
+  offsets: SurvivalChunkOffset[],
+  offset: SurvivalChunkOffset,
+) {
+  let insertIndex = offsets.length;
+  while (
+    insertIndex > 0 &&
+    compareSurvivalChunkOffsetPriority(offset, offsets[insertIndex - 1]) < 0
+  ) {
+    offsets[insertIndex] = offsets[insertIndex - 1];
+    insertIndex -= 1;
+  }
+  offsets[insertIndex] = offset;
+}
+
 function getSurvivalChunkOffsets(radius: number) {
   const cached = survivalChunkOffsetCache.get(radius);
   if (cached) return cached;
@@ -61,7 +76,7 @@ function getSurvivalChunkOffsets(radius: number) {
     for (let dx = -radius; dx <= radius; dx += 1) {
       if (dx * dx + dz * dz > roundedRadiusSq) continue;
       const distance = Math.max(Math.abs(dx), Math.abs(dz));
-      offsets.push({
+      insertSurvivalChunkOffsetByPriority(offsets, {
         dx,
         dz,
         distance,
@@ -69,7 +84,6 @@ function getSurvivalChunkOffsets(radius: number) {
       });
     }
   }
-  offsets.sort(compareSurvivalChunkOffsetPriority);
   survivalChunkOffsetCache.set(radius, offsets);
   return offsets;
 }

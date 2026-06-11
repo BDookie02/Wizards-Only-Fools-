@@ -57,6 +57,21 @@ function compareSurvivalTutorialGrassCellOffsetDistance(
   return a.distance - b.distance;
 }
 
+function insertSurvivalTutorialGrassCellOffsetByDistance(
+  offsets: SurvivalTutorialGrassCellOffset[],
+  offset: SurvivalTutorialGrassCellOffset,
+) {
+  let insertIndex = offsets.length;
+  while (
+    insertIndex > 0 &&
+    compareSurvivalTutorialGrassCellOffsetDistance(offset, offsets[insertIndex - 1]) < 0
+  ) {
+    offsets[insertIndex] = offsets[insertIndex - 1];
+    insertIndex -= 1;
+  }
+  offsets[insertIndex] = offset;
+}
+
 function compareSurvivalTutorialGrassCellBatchDistance(
   a: SurvivalTutorialGrassCellBatch,
   b: SurvivalTutorialGrassCellBatch,
@@ -125,7 +140,7 @@ function getSurvivalTutorialGrassCellOffsets() {
       const distanceSq = distanceX * distanceX + distanceZ * distanceZ;
       if (distanceSq > streamLimitSq) continue;
       const distance = Math.sqrt(distanceSq);
-      offsets.push({
+      insertSurvivalTutorialGrassCellOffsetByDistance(offsets, {
         dx,
         dz,
         distance,
@@ -135,7 +150,6 @@ function getSurvivalTutorialGrassCellOffsets() {
     }
   }
 
-  offsets.sort(compareSurvivalTutorialGrassCellOffsetDistance);
   cachedSurvivalTutorialGrassCellOffsets = offsets;
   return offsets;
 }

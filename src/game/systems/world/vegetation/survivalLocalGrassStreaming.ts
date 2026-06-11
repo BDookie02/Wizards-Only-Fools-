@@ -65,6 +65,21 @@ function compareSurvivalLocalGrassCellOffsetDistance(
   return a.distance - b.distance;
 }
 
+function insertSurvivalLocalGrassCellOffsetByDistance(
+  offsets: SurvivalLocalGrassCellOffset[],
+  offset: SurvivalLocalGrassCellOffset,
+) {
+  let insertIndex = offsets.length;
+  while (
+    insertIndex > 0 &&
+    compareSurvivalLocalGrassCellOffsetDistance(offset, offsets[insertIndex - 1]) < 0
+  ) {
+    offsets[insertIndex] = offsets[insertIndex - 1];
+    insertIndex -= 1;
+  }
+  offsets[insertIndex] = offset;
+}
+
 function sortSurvivalLocalGrassCellsByDistanceIfNeeded(cells: SurvivalLocalGrassCell[]) {
   for (let index = 1; index < cells.length; index += 1) {
     if (compareSurvivalLocalGrassCellDistance(cells[index - 1], cells[index]) > 0) {
@@ -97,7 +112,7 @@ function getSurvivalLocalGrassCellOffsets(safeStreamRadius: number) {
       const distance = Math.sqrt(distanceSq);
       const densityDistanceX = Math.max(0, Math.abs(centerDistanceX) - halfCellSize);
       const densityDistanceZ = Math.max(0, Math.abs(centerDistanceZ) - halfCellSize);
-      offsets.push({
+      insertSurvivalLocalGrassCellOffsetByDistance(offsets, {
         dx,
         dz,
         distance,
@@ -108,7 +123,6 @@ function getSurvivalLocalGrassCellOffsets(safeStreamRadius: number) {
     }
   }
 
-  offsets.sort(compareSurvivalLocalGrassCellOffsetDistance);
   survivalLocalGrassCellOffsetCache.set(safeStreamRadius, offsets);
   return offsets;
 }
