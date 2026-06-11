@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 import { Canvas, useThree } from "@react-three/fiber";
 import type { OrthographicCamera } from "three";
@@ -42,6 +42,23 @@ function hasEnginePlacedObjectSummaryId(objects: EnginePlacedObjectSummary[], in
     }
   }
   return false;
+}
+
+const ENGINE_GRID_SIZE_OPTIONS = [1, 2, 4, 8] as const;
+const ENGINE_PLACEABLE_TAG_CHIP_LIMIT = 3;
+
+function renderPlaceableTagChips(tags: readonly string[]) {
+  const tagCount = Math.min(tags.length, ENGINE_PLACEABLE_TAG_CHIP_LIMIT);
+  const tagChips: ReactElement[] = [];
+  for (let index = 0; index < tagCount; index += 1) {
+    const tag = tags[index];
+    tagChips.push(
+      <span key={tag} className="max-w-full truncate border border-cyan-100/15 bg-cyan-200/6 px-1 py-0.5 text-[6px] tracking-[0.1em] text-cyan-100/45">
+        {tag}
+      </span>,
+    );
+  }
+  return tagChips;
 }
 
 function PlaceablePreviewCamera({ placeable }: { placeable: PlaceableDefinition }) {
@@ -353,11 +370,7 @@ export function EngineMenu({
                           r{placeable.footprintRadius} / slope {placeable.maxSlopeDelta}
                         </span>
                         <span className="flex min-w-0 flex-wrap gap-1">
-                          {placeable.tags.slice(0, 3).map((tag) => (
-                            <span key={tag} className="max-w-full truncate border border-cyan-100/15 bg-cyan-200/6 px-1 py-0.5 text-[6px] tracking-[0.1em] text-cyan-100/45">
-                              {tag}
-                            </span>
-                          ))}
+                          {renderPlaceableTagChips(placeable.tags)}
                         </span>
                       </span>
                     </span>
@@ -401,7 +414,7 @@ export function EngineMenu({
                 {placementStatus || "Ready"}
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                {[1, 2, 4, 8].map((size) => (
+                {ENGINE_GRID_SIZE_OPTIONS.map((size) => (
                   <button
                     key={size}
                     type="button"
