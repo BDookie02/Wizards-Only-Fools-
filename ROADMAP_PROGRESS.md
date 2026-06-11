@@ -16,6 +16,7 @@ Status: In progress
 Done:
 - Added `src/game/systems/systemCatalog.ts` as the top-level boundary map.
 - Added a spell catalog boundary under `src/game/systems/spells/`.
+- Moved the `qaHideManaFlowers` route flag behind `manaRechargeRuntime.ts`, so the rune renderer consumes a spell-owned helper instead of parsing browser search directly.
 - Added a placeable catalog and shared placeable model boundary under `src/game/systems/placeables/`.
 - Extracted engine-placed object rendering and placement validation from `GameWorld.tsx` into `src/game/systems/placeables/EnginePlacedObjects.tsx`.
 - Extracted engine placement target planning, grid snapping, slope validation, yaw selection, and training-dummy spawn planning into `src/game/systems/placeables/placementRules.ts`.
@@ -761,6 +762,7 @@ Done:
 - Routed navigation recorder samples through the player frame epoch when the recorder is active, so active recordings reuse the same timestamp source as the rest of the controller frame.
 - Routed status-bolt local status expiry through the spell render-clock epoch and `spellStatusRuntime.ts`, removing direct wall-clock expiry math from the projectile renderer.
 - Moved active-portal teleport cooldown state into `spellPortalRuntime.ts`, replacing the old `window.__lastTeleport` browser global with an isolated spell-system reserve helper.
+- Moved the mana-flower QA hide route flag into `manaRechargeRuntime.ts`, keeping the survival/base mana renderer focused on source reconciliation and chunk keys while the spell runtime owns the browser route cache.
 - Moved generated treehouse bark/plank texture caches into `treeHouseVillageTextures.ts`, replacing `window.__barkTexture` / `window.__plankTexture` globals with module-owned village texture state.
 - Added a typed `getPublishedLocalPlayerPosition` bridge and routed rune/mana recharge logic through it, removing raw `window.localPlayerPos` casts from `Runes.tsx`.
 - Verified the player spell projectile helper split with a focused `tsx` probe, `tsc --noEmit`, `npm run build`, PC gameplay HUD QA (`wofHudQaFailCount=0`, 3 canvases, 0 touch controls), and the `qaSpellDummies=1` route rendering all four dummy labels/health bars without runtime failure text.
@@ -832,6 +834,9 @@ Next:
 
 ## Latest Verification
 
+- Focused mana route-flag cleanup: `Runes.tsx` now reads `shouldHideCurrentManaFlowersForQa()` from `manaRechargeRuntime.ts`; the only `qaHideManaFlowers` URL parsing is in the cached spell-runtime helper, so the rune renderer no longer reaches into `window.location.search`.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the mana route visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the mana route-flag cleanup. Sprite verification passed; current warning remains chunk size only. `Runes` is about 11.70 kB / 4.71 kB gzip and `manaRechargeRuntime` is about 2.20 kB / 1.05 kB gzip.
 - Focused QA route-cache cleanup: `qaRouteTelemetry.ts` now owns cached route parameter reads, `GameWorld.tsx` / `spellDummyQaScene.tsx` / `survivalGrassDebug.ts` / `survivalWalkQa.ts` use the shared route boundary, and `PlayerController.tsx` removed the redundant QA-walk URL parse. The targeted source scan found no direct `window.location.search` parsing in those files after the pass.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the QA route-cache visual path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the QA route-cache cleanup. Sprite verification passed; current warning remains chunk size only. `GameWorld` is about 25.90 kB / 9.18 kB gzip, `PlayerController` is about 81.19 kB / 28.58 kB gzip, and `spellDummyQaScene` is about 8.79 kB / 3.35 kB gzip.

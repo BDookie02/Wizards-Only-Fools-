@@ -13,6 +13,7 @@ import {
   pickActiveRuneIds,
   pruneManaFlowerCooldowns,
   publishManaFlowerQaDataset,
+  shouldHideCurrentManaFlowersForQa,
   shouldReconcileManaSources,
   shouldShowBaseVillageRuneSources,
 } from "./systems/spells/manaRechargeRuntime";
@@ -41,10 +42,7 @@ export function Runes() {
   const manaSpawnRate = useGameStore(s => s.survivalRules.manaSpawnRate);
   const isSurvivalMode = gameMode === "solo-survival" || gameMode === "multiplayer-survival";
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
-  const hideManaFlowersForQa = useMemo(() => (
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("qaHideManaFlowers") === "1"
-  ), []);
+  const hideManaFlowersForQa = useMemo(() => shouldHideCurrentManaFlowersForQa(), []);
   const lastWellChunkRef = useRef("");
   const hutPositions = useMemo(() => {
     const huts = getHutList();

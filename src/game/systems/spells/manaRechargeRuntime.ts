@@ -26,6 +26,8 @@ export type RunePowerDecayResult = RunePowerState & {
 
 const RUNE_ACTIVE_RATIO = 2 / 3;
 let manaRenderClockEpochOffsetMs: number | null = null;
+let cachedManaQaSearch = "";
+let cachedHideManaFlowersForQa = false;
 
 export type BaseVillageRuneSourceVisibilityInput = {
   isSurvivalMode: boolean;
@@ -101,6 +103,23 @@ export function getEpochMsFromManaRenderClock(elapsedSeconds: number, sampledEpo
   }
 
   return manaRenderClockEpochOffsetMs + elapsedMs;
+}
+
+export function shouldHideManaFlowersForQaFromSearch(search: string) {
+  if (search === cachedManaQaSearch) return cachedHideManaFlowersForQa;
+
+  cachedManaQaSearch = search;
+  try {
+    cachedHideManaFlowersForQa = new URLSearchParams(search).get("qaHideManaFlowers") === "1";
+  } catch {
+    cachedHideManaFlowersForQa = false;
+  }
+  return cachedHideManaFlowersForQa;
+}
+
+export function shouldHideCurrentManaFlowersForQa() {
+  if (typeof window === "undefined") return false;
+  return shouldHideManaFlowersForQaFromSearch(window.location.search);
 }
 
 export function shouldReconcileManaSources(
