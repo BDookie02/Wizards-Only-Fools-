@@ -113,6 +113,13 @@ const MOUNTAIN_COLOR_TRAIL_DIRT = new THREE.Color("#5f4e35");
 const MOUNTAIN_COLOR_TRAIL_STONE = new THREE.Color("#3e342b");
 const MOUNTAIN_WATERFALL_VISIBILITY_CHECK_INTERVAL_SECONDS = 1 / 12;
 const mountainTerrainTrailColorScratch = new THREE.Color();
+const MOUNTAIN_RENDER_SIDES = [-1, 1] as const;
+const MOUNTAIN_TIMBER_GRAIN_OFFSETS = [-0.27, 0.26] as const;
+const MOUNTAIN_HORIZONTAL_GRAIN_OFFSETS = [-0.2, 0.22] as const;
+const MOUNTAIN_DOOR_STRAP_HEIGHT_RATIOS = [0.31, 0.64] as const;
+const MOUNTAIN_MINESHAFT_ENTRY_POST_XS = [-2.56, 2.56] as const;
+const MOUNTAIN_CATWALK_CENTER_RAIL_HEIGHTS = [0.86, 1.55, 2.08] as const;
+const MOUNTAIN_EXIT_BRIDGE_BEAM_ZS = [-2.9, 0, 2.9] as const;
 const MOUNTAIN_MINESHAFT_CHAIR_LEG_OFFSETS = [
   { x: -0.74, z: -0.5 },
   { x: -0.74, z: 0.54 },
@@ -1174,7 +1181,7 @@ function RetroVerticalTimberDetails({
               <boxGeometry args={[width + 0.28, 0.28, 0.12]} />
               <meshBasicMaterial color={bandColor} />
             </mesh>
-            {[-1, 1].map((side) => (
+            {MOUNTAIN_RENDER_SIDES.map((side) => (
               <mesh key={`timber-bolt-${side}`} position={[side * width * 0.32, y + 0.01, z + 0.07]} castShadow={false}>
                 <boxGeometry args={[0.18, 0.18, 0.12]} />
                 <meshBasicMaterial color="#d7a85e" />
@@ -1183,14 +1190,14 @@ function RetroVerticalTimberDetails({
           </Fragment>
         );
       })}
-      {[-0.27, 0.26].map((offset, index) => (
+      {MOUNTAIN_TIMBER_GRAIN_OFFSETS.map((offset, index) => (
         <mesh key={`timber-grain-${index}`} position={[offset * width, 0, z + 0.04]} castShadow={false}>
           <boxGeometry args={[0.08, height * 0.86, 0.08]} />
           <meshBasicMaterial color={index === 0 ? darkColor : lightColor} transparent opacity={0.82} />
         </mesh>
       ))}
       <RetroPixelWoodTexture width={width * 0.82} height={height * 0.86} z={z + 0.12} count={Math.max(5, Math.min(14, Math.floor(height / 2.8)))} seed={Math.floor(height + width * 5)} dark />
-      {[-1, 1].map((side) => (
+      {MOUNTAIN_RENDER_SIDES.map((side) => (
         <mesh key={`timber-dark-edge-${side}`} position={[side * (width / 2 + 0.03), 0, z + 0.02]} castShadow={false}>
           <boxGeometry args={[0.12, height * 0.92, 0.1]} />
           <meshBasicMaterial color="#080504" transparent opacity={0.62} />
@@ -1240,14 +1247,14 @@ function RetroHorizontalTimberDetails({
           </Fragment>
         );
       })}
-      {[-0.2, 0.22].map((offset, index) => (
+      {MOUNTAIN_HORIZONTAL_GRAIN_OFFSETS.map((offset, index) => (
         <mesh key={`horizontal-grain-${index}`} position={[0, offset * height, z + 0.04]} castShadow={false}>
           <boxGeometry args={[length * 0.86, 0.08, 0.08]} />
           <meshBasicMaterial color={darkColor} transparent opacity={index === 0 ? 0.72 : 0.46} />
         </mesh>
       ))}
       <RetroPixelWoodTexture width={length * 0.86} height={height * 0.86} z={z + 0.12} count={Math.max(6, Math.min(16, Math.floor(length / 2.8)))} seed={Math.floor(length + height * 9)} dark />
-      {[-1, 1].map((side) => (
+      {MOUNTAIN_RENDER_SIDES.map((side) => (
         <mesh key={`horizontal-end-shadow-${side}`} position={[side * (length / 2 + 0.02), 0, z + 0.04]} castShadow={false}>
           <boxGeometry args={[0.16, height + 0.16, 0.12]} />
           <meshBasicMaterial color="#080504" transparent opacity={0.68} />
@@ -1359,7 +1366,7 @@ function MountainHutDoorPanel({
           </mesh>
         );
       })}
-      {[0.31, 0.64].map((heightRatio, index) => (
+      {MOUNTAIN_DOOR_STRAP_HEIGHT_RATIOS.map((heightRatio, index) => (
         <mesh key={`door-cross-brace-${index}`} position={[0, floorY + doorHeight * heightRatio, panelZ + 0.24]} castShadow={false}>
           <boxGeometry args={[panelWidth + 0.42, 0.42, 0.2]} />
           <meshBasicMaterial color={index === 0 ? "#2a180d" : "#9a6333"} />
@@ -1417,7 +1424,7 @@ function MountainHutWallDetails({
           </mesh>
         );
       })}
-      {[-1, 1].map((side) => (
+      {MOUNTAIN_RENDER_SIDES.map((side) => (
         <Fragment key={`side-wall-detail-${side}`}>
           {getCachedIndexRange(sidePlankCount).map((index) => {
             const z = -depth / 2 + ((index + 1) * depth) / (sidePlankCount + 1);
@@ -1443,7 +1450,7 @@ function MountainHutWallDetails({
           </mesh>
         </Fragment>
       ))}
-      {[-1, 1].map((side) => (
+      {MOUNTAIN_RENDER_SIDES.map((side) => (
         <Fragment key={`hut-corner-shadow-${side}`}>
           <mesh position={[side * (width / 2 + 0.18), floorY + height / 2, frontZ + 0.18]} castShadow={false}>
             <boxGeometry args={[0.34, height + 0.44, 0.22]} />
@@ -1463,7 +1470,7 @@ function MountainHutWallDetails({
         <boxGeometry args={[width + 1.1, 0.3, 0.2]} />
         <meshBasicMaterial color="#100b07" transparent opacity={0.68} />
       </mesh>
-      {[-1, 1].map((side) => (
+      {MOUNTAIN_RENDER_SIDES.map((side) => (
         <group key={`front-wall-pixel-wood-${side}`} position={[side * (doorWidth / 2 + frontPanelWidth / 2), floorY + height / 2, frontZ + 0.36]}>
           <RetroPixelWoodTexture width={frontPanelWidth * 0.82} height={height * 0.78} z={0} count={compact ? 7 : 10} seed={side > 0 ? 4 : 9} dark />
         </group>
@@ -1562,7 +1569,7 @@ function RetroWindowDetails({ x, y, z, width, height }: { x: number; y: number; 
         <boxGeometry args={[width + 0.42, 0.18, 0.14]} />
         <meshBasicMaterial color="#2b1c12" />
       </mesh>
-      {[-1, 1].map((side) => (
+      {MOUNTAIN_RENDER_SIDES.map((side) => (
         <mesh key={`window-glint-${side}`} position={[side * width * 0.24, height * 0.18, 0.16]} castShadow={false}>
           <boxGeometry args={[0.28, 0.34, 0.1]} />
           <meshBasicMaterial color="#fff1a9" transparent opacity={0.58} />
@@ -1615,7 +1622,7 @@ function MountainVillageTrail({ layout, showDetails }: { layout: MountainVillage
                     <meshBasicMaterial color="#3a2719" />
                   </mesh>
                 )}
-                {[-1, 1].map((side) => (
+                {MOUNTAIN_RENDER_SIDES.map((side) => (
                   <mesh key={`trail-top-shadow-${side}`} position={[side * (segment.width / 2 - 0.52), 0.08, 0]} castShadow={false}>
                     <boxGeometry args={[0.42, 0.08, segment.length * 0.92]} />
                     <meshBasicMaterial color="#120c08" transparent opacity={0.5} />
@@ -2074,7 +2081,7 @@ function MountainMineshaftVillagerPainting({
           </mesh>
         </>
       )}
-      {[-2.56, 2.56].map((x) => (
+      {MOUNTAIN_MINESHAFT_ENTRY_POST_XS.map((x) => (
         <mesh key={`painting-pin-${x}`} position={[x, 1.82, -0.38]} castShadow={false}>
           <boxGeometry args={[0.22, 0.22, 0.08]} />
           <meshBasicMaterial color="#d7a548" />
@@ -2485,7 +2492,7 @@ function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainM
       ))}
       {showDetails && platformPieces.map((piece) => (
         <Fragment key={`platform-detail-${piece.key}`}>
-          {[-1, 1].map((side) => (
+          {MOUNTAIN_RENDER_SIDES.map((side) => (
             <mesh key={`platform-side-shadow-${side}`} position={[piece.centerX + side * piece.width * 0.47, 0.88, platformZ]} castShadow={false}>
               <boxGeometry args={[0.2, 0.12, hut.platformDepth * 0.92]} />
               <meshBasicMaterial color="#080504" transparent opacity={0.74} />
@@ -2508,7 +2515,7 @@ function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainM
             <boxGeometry args={[piece.width * 0.94, 0.18, 0.24]} />
             <meshBasicMaterial color="#2c1d13" />
           </mesh>
-          {[-1, 1].map((side) => (
+          {MOUNTAIN_RENDER_SIDES.map((side) => (
             <mesh key={`bolt-${side}`} position={[piece.centerX + side * piece.width * 0.34, 0.94, platformZ + hut.platformDepth * 0.38]} castShadow={false}>
               <boxGeometry args={[0.28, 0.1, 0.28]} />
               <meshBasicMaterial color="#d0a05d" />
@@ -2516,7 +2523,7 @@ function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainM
           ))}
         </Fragment>
       ))}
-      {[-1, 1].map((side) => (
+      {MOUNTAIN_RENDER_SIDES.map((side) => (
         <group key={`platform-support-${side}`} position={[side * hut.platformWidth * 0.38, -2.0, platformZ - hut.platformDepth * 0.1]} rotation={[0, 0, side * 0.28]}>
           <mesh castShadow={false}>
             <boxGeometry args={[0.58, 4.8, 0.58]} />
@@ -2645,7 +2652,7 @@ function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMine
             <boxGeometry args={[ladder.width + 0.9, height * 0.94, 0.08]} />
             <meshBasicMaterial color="#050403" transparent opacity={0.22} />
           </mesh>
-          {[-1, 1].map((side) => (
+          {MOUNTAIN_RENDER_SIDES.map((side) => (
             <mesh key={`rail-highlight-${side}`} position={[side * ladder.width / 2 + side * 0.08, height / 2, 0.2]} castShadow={false}>
               <boxGeometry args={[0.1, height * 0.94, 0.08]} />
               <meshBasicMaterial color="#8a5b34" />
@@ -2793,7 +2800,7 @@ function MountainMineshaftCatwalkRing({
           </mesh>
         );
       })}
-      {showDetails && [0.86, 1.55, 2.08].map((height, railIndex) => (
+      {showDetails && MOUNTAIN_CATWALK_CENTER_RAIL_HEIGHTS.map((height, railIndex) => (
         <Fragment key={`catwalk-center-guard-rail-row-${railIndex}`}>
           {getCachedIndexRange(centerGuardPostCount).map((index) => {
             const angle = ((index + 0.5) / centerGuardPostCount) * Math.PI * 2;
@@ -2874,7 +2881,7 @@ function MountainMineshaftTopExitBridge({ ladder, summitY, showDetails }: { ladd
       </mesh>
       {showDetails && (
         <>
-          {[-1, 1].map((side) => (
+          {MOUNTAIN_RENDER_SIDES.map((side) => (
             <mesh key={`exit-bridge-edge-shadow-${side}`} position={[side * (MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH / 2 - 0.34), 0.72, 0]} castShadow={false}>
               <boxGeometry args={[0.24, 0.12, bridge.length * 0.98]} />
               <meshBasicMaterial color="#080504" transparent opacity={0.72} />
@@ -2901,7 +2908,7 @@ function MountainMineshaftTopExitBridge({ ladder, summitY, showDetails }: { ladd
           </mesh>
         );
       })}
-      {[-1, 1].map((side) => (
+      {MOUNTAIN_RENDER_SIDES.map((side) => (
         <Fragment key={`exit-side-${side}`}>
           <mesh position={[side * (MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH / 2 + 0.36), 1.38, 0]} castShadow={false}>
             <boxGeometry args={[0.36, 0.36, bridge.length * 0.92]} />
@@ -3022,7 +3029,7 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
             </mesh>
             {showDetails && (
               <>
-                {[-2.9, 0, 2.9].map((beamZ, bandIndex) => (
+                {MOUNTAIN_EXIT_BRIDGE_BEAM_ZS.map((beamZ, bandIndex) => (
                   <mesh key={`rim-beam-band-${bandIndex}`} position={[0, 0.12, beamZ]} castShadow={false}>
                     <boxGeometry args={[3.76, 0.16, 0.24]} />
                     <meshBasicMaterial color={bandIndex === 1 ? "#a67642" : "#24170f"} />
@@ -3066,7 +3073,7 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
                 <meshBasicMaterial color="#513821" />
               </mesh>
               <RetroHorizontalTimberDetails length={27.5} height={2.4} depth={2.6} bandColor="#be8a4c" />
-              {[-1, 1].map((side) => (
+              {MOUNTAIN_RENDER_SIDES.map((side) => (
                 <mesh key={`support-snow-cap-${side}`} position={[side * 8.7, 1.32, 0]} castShadow={false}>
                   <boxGeometry args={[5.1, 0.22, 1.88]} />
                   <meshBasicMaterial color="#e8f8ff" transparent opacity={0.7} />
@@ -3146,7 +3153,7 @@ function VisibleMountainWaterfall({
         <planeGeometry args={[waterfall.width * 0.36, height * 0.96]} />
         <meshBasicMaterial color="#effdff" transparent opacity={0.28} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
-      {[-1, 1].map((side) => {
+      {MOUNTAIN_RENDER_SIDES.map((side) => {
         const sideOffset = side * waterfall.width * 0.43;
         return (
           <mesh
