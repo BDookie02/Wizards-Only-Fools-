@@ -46,7 +46,13 @@ export type InventoryQuestProgressRow = {
   done: boolean;
 };
 
-const inventoryItemOrder = Object.keys(INVENTORY_ITEM_DEFINITIONS) as InventoryItemId[];
+const inventoryItemOrder: readonly InventoryItemId[] = [
+  "darrel-leaves",
+  "darrel-berries",
+  "darrel-roots",
+  "garden-draught",
+  "healing-crystals",
+];
 
 export function getInventoryPreviewAnimation(playerState: InventoryHudPlayerState): AvatarAnimation {
   if (playerState.isMeditating) return "meditate";

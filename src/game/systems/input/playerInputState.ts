@@ -27,7 +27,22 @@ export const keys = {
   ArrowRight: false,
 };
 
-const PLAYER_MOVEMENT_KEY_CODES = Object.keys(keys) as PlayerMovementKeyCode[];
+const PLAYER_MOVEMENT_KEY_CODES: readonly PlayerMovementKeyCode[] = [
+  "KeyW",
+  "KeyA",
+  "KeyS",
+  "KeyD",
+  "Space",
+  "ShiftLeft",
+  "KeyC",
+  "KeyQ",
+  "ControlLeft",
+  "ControlRight",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+];
 const CONTROLLER_RELEASE_BASE_BUTTONS: readonly GamepadButtonName[] = [
   "dpadUp",
   "dpadDown",

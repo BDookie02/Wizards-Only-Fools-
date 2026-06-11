@@ -19,7 +19,24 @@ export const controllerButtonLabels: Record<ControllerButtonName, string> = {
   dpadRight: "D-Pad Right",
 };
 
-export const controllerButtonOptions = Object.keys(controllerButtonLabels) as ControllerButtonName[];
+export const controllerButtonOptions: readonly ControllerButtonName[] = [
+  "a",
+  "b",
+  "x",
+  "y",
+  "leftBumper",
+  "rightBumper",
+  "leftTrigger",
+  "rightTrigger",
+  "back",
+  "start",
+  "leftStick",
+  "rightStick",
+  "dpadUp",
+  "dpadDown",
+  "dpadLeft",
+  "dpadRight",
+];
 
 export type ControllerActionSettingsRow = {
   action: ControllerAction;
