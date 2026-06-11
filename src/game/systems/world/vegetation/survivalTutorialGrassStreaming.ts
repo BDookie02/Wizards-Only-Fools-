@@ -89,8 +89,19 @@ function compareSurvivalTutorialGrassCellBatchMember(
 function sortSurvivalTutorialGrassCellsByDistanceIfNeeded(cells: SurvivalTutorialGrassCell[]) {
   for (let index = 1; index < cells.length; index += 1) {
     if (compareSurvivalTutorialGrassCellDistance(cells[index - 1], cells[index]) > 0) {
-      cells.sort(compareSurvivalTutorialGrassCellDistance);
-      break;
+      for (let sortIndex = index; sortIndex < cells.length; sortIndex += 1) {
+        const cell = cells[sortIndex];
+        let insertIndex = sortIndex;
+        while (
+          insertIndex > 0 &&
+          compareSurvivalTutorialGrassCellDistance(cell, cells[insertIndex - 1]) < 0
+        ) {
+          cells[insertIndex] = cells[insertIndex - 1];
+          insertIndex -= 1;
+        }
+        cells[insertIndex] = cell;
+      }
+      return cells;
     }
   }
   return cells;
@@ -101,8 +112,19 @@ function sortSurvivalTutorialGrassCellBatchesByDistanceIfNeeded(
 ) {
   for (let index = 1; index < batches.length; index += 1) {
     if (compareSurvivalTutorialGrassCellBatchDistance(batches[index - 1], batches[index]) > 0) {
-      batches.sort(compareSurvivalTutorialGrassCellBatchDistance);
-      break;
+      for (let sortIndex = index; sortIndex < batches.length; sortIndex += 1) {
+        const batch = batches[sortIndex];
+        let insertIndex = sortIndex;
+        while (
+          insertIndex > 0 &&
+          compareSurvivalTutorialGrassCellBatchDistance(batch, batches[insertIndex - 1]) < 0
+        ) {
+          batches[insertIndex] = batches[insertIndex - 1];
+          insertIndex -= 1;
+        }
+        batches[insertIndex] = batch;
+      }
+      return batches;
     }
   }
   return batches;
@@ -111,8 +133,19 @@ function sortSurvivalTutorialGrassCellBatchesByDistanceIfNeeded(
 function sortSurvivalTutorialGrassBatchCellsIfNeeded(cells: SurvivalTutorialGrassCell[]) {
   for (let index = 1; index < cells.length; index += 1) {
     if (compareSurvivalTutorialGrassCellBatchMember(cells[index - 1], cells[index]) > 0) {
-      cells.sort(compareSurvivalTutorialGrassCellBatchMember);
-      break;
+      for (let sortIndex = index; sortIndex < cells.length; sortIndex += 1) {
+        const cell = cells[sortIndex];
+        let insertIndex = sortIndex;
+        while (
+          insertIndex > 0 &&
+          compareSurvivalTutorialGrassCellBatchMember(cell, cells[insertIndex - 1]) < 0
+        ) {
+          cells[insertIndex] = cells[insertIndex - 1];
+          insertIndex -= 1;
+        }
+        cells[insertIndex] = cell;
+      }
+      return cells;
     }
   }
   return cells;

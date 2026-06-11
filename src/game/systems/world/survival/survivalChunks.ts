@@ -88,6 +88,25 @@ function getSurvivalChunkOffsets(radius: number) {
   return offsets;
 }
 
+function sortSurvivalChunksByPriorityInPlace(
+  chunks: SurvivalChunkInfo[],
+  compareChunkPriority: SurvivalChunkPriorityComparator,
+) {
+  for (let index = 1; index < chunks.length; index += 1) {
+    const chunk = chunks[index];
+    let insertIndex = index;
+    while (
+      insertIndex > 0 &&
+      compareChunkPriority(chunk, chunks[insertIndex - 1]) < 0
+    ) {
+      chunks[insertIndex] = chunks[insertIndex - 1];
+      insertIndex -= 1;
+    }
+    chunks[insertIndex] = chunk;
+  }
+  return chunks;
+}
+
 function getSurvivalChunksSortedByPriority(
   chunks: SurvivalChunkInfo[],
   compareChunkPriority: SurvivalChunkPriorityComparator,
@@ -99,8 +118,7 @@ function getSurvivalChunksSortedByPriority(
       for (let copyIndex = 0; copyIndex < chunks.length; copyIndex += 1) {
         scratchChunks.push(chunks[copyIndex]);
       }
-      scratchChunks.sort(compareChunkPriority);
-      return scratchChunks;
+      return sortSurvivalChunksByPriorityInPlace(scratchChunks, compareChunkPriority);
     }
   }
   return chunks;
@@ -112,8 +130,7 @@ function sortSurvivalChunksByPriorityIfNeeded(
 ) {
   for (let index = 1; index < chunks.length; index += 1) {
     if (compareChunkPriority(chunks[index - 1], chunks[index]) > 0) {
-      chunks.sort(compareChunkPriority);
-      break;
+      return sortSurvivalChunksByPriorityInPlace(chunks, compareChunkPriority);
     }
   }
   return chunks;

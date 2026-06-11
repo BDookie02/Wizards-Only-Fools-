@@ -83,8 +83,19 @@ function insertSurvivalLocalGrassCellOffsetByDistance(
 function sortSurvivalLocalGrassCellsByDistanceIfNeeded(cells: SurvivalLocalGrassCell[]) {
   for (let index = 1; index < cells.length; index += 1) {
     if (compareSurvivalLocalGrassCellDistance(cells[index - 1], cells[index]) > 0) {
-      cells.sort(compareSurvivalLocalGrassCellDistance);
-      break;
+      for (let sortIndex = index; sortIndex < cells.length; sortIndex += 1) {
+        const cell = cells[sortIndex];
+        let insertIndex = sortIndex;
+        while (
+          insertIndex > 0 &&
+          compareSurvivalLocalGrassCellDistance(cell, cells[insertIndex - 1]) < 0
+        ) {
+          cells[insertIndex] = cells[insertIndex - 1];
+          insertIndex -= 1;
+        }
+        cells[insertIndex] = cell;
+      }
+      return cells;
     }
   }
   return cells;
