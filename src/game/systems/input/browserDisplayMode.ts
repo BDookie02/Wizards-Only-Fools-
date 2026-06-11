@@ -34,12 +34,15 @@ export function getFullscreenElement() {
   return document.fullscreenElement ?? webkitDocument.webkitFullscreenElement ?? null;
 }
 
-export function isStandaloneDisplayMode() {
+export function isStandaloneDisplayMode(
+  fullscreenMedia?: MediaQueryList | null,
+  standaloneMedia?: MediaQueryList | null,
+) {
   const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
   return (
     navigatorWithStandalone.standalone === true ||
-    window.matchMedia?.("(display-mode: fullscreen)").matches ||
-    window.matchMedia?.("(display-mode: standalone)").matches
+    (fullscreenMedia ?? window.matchMedia?.("(display-mode: fullscreen)"))?.matches ||
+    (standaloneMedia ?? window.matchMedia?.("(display-mode: standalone)"))?.matches
   );
 }
 

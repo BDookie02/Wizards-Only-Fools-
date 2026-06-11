@@ -13,8 +13,11 @@ type WebkitFullscreenElement = HTMLElement & {
   webkitRequestFullscreen?: () => Promise<void> | void;
 };
 
-function getDocumentFullscreenState() {
-  return Boolean(getFullscreenElement()) || isStandaloneDisplayMode();
+function getDocumentFullscreenState(
+  fullscreenMedia?: MediaQueryList | null,
+  standaloneMedia?: MediaQueryList | null,
+) {
+  return Boolean(getFullscreenElement()) || isStandaloneDisplayMode(fullscreenMedia, standaloneMedia);
 }
 
 export function subscribeDocumentFullscreenState(onFullscreenStateChange: (active: boolean) => void) {
@@ -22,7 +25,7 @@ export function subscribeDocumentFullscreenState(onFullscreenStateChange: (activ
 
   const fullscreenMedia = window.matchMedia?.("(display-mode: fullscreen)");
   const standaloneMedia = window.matchMedia?.("(display-mode: standalone)");
-  const updateFullscreenState = () => onFullscreenStateChange(getDocumentFullscreenState());
+  const updateFullscreenState = () => onFullscreenStateChange(getDocumentFullscreenState(fullscreenMedia, standaloneMedia));
 
   updateFullscreenState();
   document.addEventListener("fullscreenchange", updateFullscreenState);
