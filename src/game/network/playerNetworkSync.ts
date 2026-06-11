@@ -1,10 +1,15 @@
 import * as THREE from "three";
 import type { HandType } from "../../store/gameStore";
-import { emitGameNetworkEvent } from "./gameNetworkClient";
+import { emitGameNetworkEvent, getLocalNetworkPlayerId } from "./gameNetworkClient";
 import { getMultiplayerPoseIntervalMs } from "./multiplayerSessionConfig";
 
 const playerNetworkAimScratch = new THREE.Vector3();
 const playerNetworkPoseAimScratch = new THREE.Vector3();
+const CHARACTER_SIGNATURE_IDS = new WeakMap<object, number>();
+const MAX_DUPLICATE_POSE_SKIPS = 14;
+let nextCharacterSignatureId = 1;
+let lastPlayerNetworkPoseSignature = "";
+let duplicatePlayerNetworkPoseSkips = 0;
 
 export type PlayerNetworkAnimation =
   | "sleep"
@@ -104,6 +109,53 @@ function emitGrabControlForHand(
   });
 }
 
+function getCharacterSignature(characterCustomization: unknown) {
+  if (!characterCustomization || typeof characterCustomization !== "object") {
+    return String(characterCustomization ?? "");
+  }
+
+  const objectValue = characterCustomization as object;
+  let signatureId = CHARACTER_SIGNATURE_IDS.get(objectValue);
+  if (signatureId === undefined) {
+    signatureId = nextCharacterSignatureId;
+    nextCharacterSignatureId += 1;
+    CHARACTER_SIGNATURE_IDS.set(objectValue, signatureId);
+  }
+  return String(signatureId);
+}
+
+function buildPlayerNetworkPoseSignature(options: PlayerNetworkPoseSyncOptions, aimDir: { x: number; y: number; z: number }) {
+  const { anim, camera, characterCustomization, isVoiceSpeaking, pos, survivalLevel, yaw } = options;
+  return [
+    getLocalNetworkPlayerId(),
+    pos.x,
+    pos.y,
+    pos.z,
+    camera.rotation.x,
+    yaw,
+    camera.rotation.z,
+    aimDir.x,
+    aimDir.y,
+    aimDir.z,
+    anim,
+    survivalLevel,
+    isVoiceSpeaking ? 1 : 0,
+    getCharacterSignature(characterCustomization),
+  ].join("|");
+}
+
+function shouldSkipDuplicatePlayerNetworkPose(signature: string) {
+  if (signature !== lastPlayerNetworkPoseSignature) {
+    duplicatePlayerNetworkPoseSkips = 0;
+    return false;
+  }
+
+  duplicatePlayerNetworkPoseSkips += 1;
+  if (duplicatePlayerNetworkPoseSkips <= MAX_DUPLICATE_POSE_SKIPS) return true;
+  duplicatePlayerNetworkPoseSkips = 0;
+  return false;
+}
+
 export function emitPlayerNetworkSync(options: PlayerNetworkSyncOptions) {
   const {
     activeGrabIds,
@@ -140,7 +192,7 @@ export function emitPlayerNetworkSync(options: PlayerNetworkSyncOptions) {
   emitGrabControlForHand(activeGrabIds, "left", camera, aimDir);
   emitGrabControlForHand(activeGrabIds, "right", camera, aimDir);
 
-  emitPlayerNetworkPoseSync({
+  return emitPlayerNetworkPoseSync({
     anim: networkAnimation,
     camera,
     characterCustomization,
@@ -164,8 +216,10 @@ export function emitPlayerNetworkPoseSync(options: PlayerNetworkPoseSyncOptions)
     yaw,
   } = options;
   const aimDir = providedAimDir ?? camera.getWorldDirection(playerNetworkPoseAimScratch);
+  const signature = buildPlayerNetworkPoseSignature(options, aimDir);
+  if (shouldSkipDuplicatePlayerNetworkPose(signature)) return false;
 
-  emitGameNetworkEvent("updateMe", {
+  const emitted = emitGameNetworkEvent("updateMe", {
     pos: [pos.x, pos.y, pos.z],
     rot: [camera.rotation.x, yaw, camera.rotation.z],
     aimDir: [aimDir.x, aimDir.y, aimDir.z],
@@ -174,4 +228,8 @@ export function emitPlayerNetworkPoseSync(options: PlayerNetworkPoseSyncOptions)
     survivalLevel,
     isSpeaking: isVoiceSpeaking,
   });
+  if (emitted) {
+    lastPlayerNetworkPoseSignature = signature;
+  }
+  return emitted;
 }
