@@ -120,6 +120,8 @@ const MOUNTAIN_DOOR_STRAP_HEIGHT_RATIOS = [0.31, 0.64] as const;
 const MOUNTAIN_MINESHAFT_ENTRY_POST_XS = [-2.56, 2.56] as const;
 const MOUNTAIN_CATWALK_CENTER_RAIL_HEIGHTS = [0.86, 1.55, 2.08] as const;
 const MOUNTAIN_EXIT_BRIDGE_BEAM_ZS = [-2.9, 0, 2.9] as const;
+const MOUNTAIN_RETRO_WOOD_DARK_COLORS = ["#0a0604", "#1a100a", "#2f1d11", "#4d301b"] as const;
+const MOUNTAIN_RETRO_WOOD_LIGHT_COLORS = ["#1b1009", "#3c2415", "#704627", "#b47a3f"] as const;
 const MOUNTAIN_MINESHAFT_CHAIR_LEG_OFFSETS = [
   { x: -0.74, z: -0.5 },
   { x: -0.74, z: 0.54 },
@@ -1283,7 +1285,7 @@ function RetroPixelWoodTexture({
   seed?: number;
   dark?: boolean;
 }) {
-  const colors = dark ? ["#0a0604", "#1a100a", "#2f1d11", "#4d301b"] : ["#1b1009", "#3c2415", "#704627", "#b47a3f"];
+  const colors = dark ? MOUNTAIN_RETRO_WOOD_DARK_COLORS : MOUNTAIN_RETRO_WOOD_LIGHT_COLORS;
 
   return (
     <>
