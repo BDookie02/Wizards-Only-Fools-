@@ -3,15 +3,26 @@ type IdleSchedulerWindow = Window & {
   cancelIdleCallback?: (handle: number) => void;
 };
 
-export function scheduleGameplayPreload(callback: () => void) {
+export type GameplayPreloadScheduleOptions = {
+  mobilePerformanceMode?: boolean;
+};
+
+const DESKTOP_IDLE_TIMEOUT_MS = 1200;
+const DESKTOP_FALLBACK_DELAY_MS = 650;
+const MOBILE_IDLE_TIMEOUT_MS = 2400;
+const MOBILE_FALLBACK_DELAY_MS = 1600;
+
+export function scheduleGameplayPreload(callback: () => void, options: GameplayPreloadScheduleOptions = {}) {
   if (typeof window === "undefined") return () => {};
 
+  const idleTimeoutMs = options.mobilePerformanceMode ? MOBILE_IDLE_TIMEOUT_MS : DESKTOP_IDLE_TIMEOUT_MS;
+  const fallbackDelayMs = options.mobilePerformanceMode ? MOBILE_FALLBACK_DELAY_MS : DESKTOP_FALLBACK_DELAY_MS;
   const idleWindow = window as IdleSchedulerWindow;
   if (typeof idleWindow.requestIdleCallback === "function") {
-    const handle = idleWindow.requestIdleCallback(callback, { timeout: 1200 });
+    const handle = idleWindow.requestIdleCallback(callback, { timeout: idleTimeoutMs });
     return () => idleWindow.cancelIdleCallback?.(handle);
   }
 
-  const timer = window.setTimeout(callback, 650);
+  const timer = window.setTimeout(callback, fallbackDelayMs);
   return () => window.clearTimeout(timer);
 }

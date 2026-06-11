@@ -12,6 +12,7 @@ import {
   installBrowserZoomPrevention,
   installInputLayoutClassSync,
 } from './game/systems/input/mobileLayoutRuntime';
+import { isMobilePerformanceMode } from './game/systems/input/performanceMode';
 import { AppErrorBoundary } from './game/ui/appFrame/AppErrorBoundary';
 import { getAppFrameLayout } from './game/ui/appFrame/appFrameLayout';
 import { readCurrentAppFrameRouteFlags } from './game/ui/appFrame/appFrameRouteFlags';
@@ -61,6 +62,7 @@ export default function App() {
   const setMouseSensitivity = useGameStore(s => s.setMouseSensitivity);
   const gameFrameRef = useRef<HTMLDivElement>(null);
   const appFrameRouteFlags = useMemo(() => readCurrentAppFrameRouteFlags(), []);
+  const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const shouldMountVoiceChat = isGameLaunched && (voiceChatEnabled || appFrameRouteFlags.voiceChatRequested);
   const shouldMountQaPerfStatsProbe = isGameLaunched && appFrameRouteFlags.qaPerfStatsRequested;
 
@@ -87,13 +89,13 @@ export default function App() {
     const cancelPreload = scheduleGameplayPreload(() => {
       if (canceled || useGameStore.getState().isGameLaunched) return;
       preloadGameplayModules();
-    });
+    }, { mobilePerformanceMode });
 
     return () => {
       canceled = true;
       cancelPreload();
     };
-  }, [isGameLaunched]);
+  }, [isGameLaunched, mobilePerformanceMode]);
 
   useEffect(() => {
     applyMobileLayoutDefaults({
