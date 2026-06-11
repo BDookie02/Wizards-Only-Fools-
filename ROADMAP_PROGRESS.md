@@ -32,6 +32,7 @@ Done:
 - Extracted base village visibility/detail phasing into `src/game/systems/world/villages/baseVillageVisibility.ts`.
 - Extracted canvas resize handling, horizon texture generation, wall texture generation, and the QA perf probe into their owning systems.
 - Extracted shared QA route telemetry classification into `src/game/tools/qa/qaRouteTelemetry.ts` so rendering, world, water, vegetation, and feature-counter diagnostics use one route boundary.
+- Moved water-ripple QA route gating into `waterRippleRuntime.ts` with a cached current-route helper, leaving `WaterRipples.tsx` to consume water-owned runtime state instead of reading browser search directly.
 - Extracted app-frame route flag ownership into `src/game/ui/appFrame/appFrameRouteFlags.ts`, so voice, QA perf, survival observer, and app-frame QA metrics mounting use one parsed route snapshot instead of scattered `App.tsx` URL reads.
 - Extended the shared QA route helper to own cached route parameter reads for spell-dummy, grass-inspection, and survival-walk routes, removing more direct browser-search parsing from gameplay/world QA callers.
 - Extracted survival chunk types, render/collision radii, terrain segment tuning, biome blend tuning, and stream-delay timing into `src/game/systems/world/survival/survivalWorldConfig.ts`.
@@ -837,6 +838,9 @@ Next:
 
 ## Latest Verification
 
+- Focused water-ripple route-gate cleanup: `WaterRipples.tsx` now uses `isCurrentWaterRippleQaEnabled()` from `waterRippleRuntime.ts`, and `waterRippleRuntime.ts` caches the `qaWaterRipple` search parse for unchanged route strings. The renderer no longer reads `window.location.search` directly for the QA trigger path.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the water-ripple QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the water-ripple route-gate cleanup. Sprite verification passed; current warning remains chunk size only. `BaseVillageScene` is about 39.25 kB / 10.68 kB gzip.
 - Focused survival position-route cleanup: `survivalPosition.ts` now shares one cached route snapshot for QA player position, local grass initial centering, and initial survival stream chunk selection. The targeted route scan now shows one cached `URLSearchParams` creation in `survivalPosition.ts` and one in `survivalPlayerSpawn.ts`.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the survival position-route QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the survival position-route cleanup. Sprite verification passed; current warning remains chunk size only. `survivalPosition` is about 2.02 kB / 0.93 kB gzip.

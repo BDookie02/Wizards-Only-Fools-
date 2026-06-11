@@ -14,6 +14,8 @@ const INNER_MOAT_MIN_RADIUS_SQ = 42 * 42;
 const INNER_MOAT_MAX_RADIUS_SQ = 58 * 58;
 const OUTER_WATER_MIN_RADIUS_SQ = 125 * 125;
 const OUTER_WATER_MAX_RADIUS_SQ = 145 * 145;
+let cachedWaterRippleQaSearch: string | null = null;
+let cachedWaterRippleQaEnabled = false;
 
 export function isBaseVillageWaterRippleSpot(x: number, y: number, z: number) {
   const radiusSq = x * x + z * z;
@@ -24,7 +26,15 @@ export function isBaseVillageWaterRippleSpot(x: number, y: number, z: number) {
 }
 
 export function isWaterRippleQaEnabled(search: string) {
-  return new URLSearchParams(search).get(WATER_RIPPLE_QA_QUERY_PARAM) === "1";
+  if (search === cachedWaterRippleQaSearch) return cachedWaterRippleQaEnabled;
+  cachedWaterRippleQaSearch = search;
+  cachedWaterRippleQaEnabled = new URLSearchParams(search).get(WATER_RIPPLE_QA_QUERY_PARAM) === "1";
+  return cachedWaterRippleQaEnabled;
+}
+
+export function isCurrentWaterRippleQaEnabled() {
+  if (typeof window === "undefined") return false;
+  return isWaterRippleQaEnabled(window.location.search);
 }
 
 export function appendWaterRipple(current: readonly WaterRipple[], ripple: WaterRipple, now: number) {

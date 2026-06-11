@@ -40,7 +40,7 @@ export const GAME_SYSTEM_CATALOG: GameSystemDescriptor[] = [
     name: "Water",
     category: "world",
     owner: "World Simulation",
-    responsibility: "Base-village water ripple hit testing, event/RAF/render-clock timestamp ownership, lifetime scheduling, route-gated QA telemetry, direct pending-RAF cleanup, timeout-driven ripple cleanup, shared active ripple frame-clock publishing for mesh animation, lazy survival river/pond/lily/waterfall rendering with cached pond/lily geometry and biome water materials, feature boundaries, and shared water-surface runtime rules that should stay independent from village dressing and terrain ownership.",
+    responsibility: "Base-village water ripple hit testing, event/RAF/render-clock timestamp ownership, lifetime scheduling, cached route-gated QA telemetry, direct pending-RAF cleanup, timeout-driven ripple cleanup, shared active ripple frame-clock publishing for mesh animation, lazy survival river/pond/lily/waterfall rendering with cached pond/lily geometry and biome water materials, feature boundaries, and shared water-surface runtime rules that should stay independent from village dressing and terrain ownership.",
     currentEntrypoints: ["waterRippleRuntime.ts", "WaterRipples.tsx", "survivalRivers.ts", "survivalWaterFeatures.ts", "survivalWaterFeatureRendering.tsx", "survivalWaterfalls.ts", "survivalWaterfallRendering.tsx"],
     extractionTarget: "src/game/systems/world/water",
   },

@@ -8,8 +8,8 @@ import {
   WATER_RIPPLE_LIFETIME_MS,
   appendWaterRipple,
   getWaterRippleCleanupDelayMs,
+  isCurrentWaterRippleQaEnabled,
   isBaseVillageWaterRippleSpot,
-  isWaterRippleQaEnabled,
   pruneExpiredWaterRipples,
   type WaterRipple,
 } from './systems/world/water/waterRippleRuntime';
@@ -55,7 +55,7 @@ export function WaterRipples() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined" || typeof document === "undefined" || !isWaterRippleQaEnabled(window.location.search)) return;
+    if (typeof window === "undefined" || typeof document === "undefined" || !isCurrentWaterRippleQaEnabled()) return;
 
     waterRippleQaEnabled.current = true;
     let qaTriggerCount = 0;
