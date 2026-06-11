@@ -44,6 +44,7 @@ import {
 import {
   getInitialSurvivalVisibleChunks,
   makeSurvivalChunks,
+  makeSurvivalVisibleChunkKeySet,
   reconcileSurvivalVisibleChunks,
 } from "./survivalChunks";
 import { prewarmSurvivalChunkGeometry } from "./survivalChunkPrewarm";
@@ -497,13 +498,7 @@ export function SurvivalProceduralWorld({
     visibleChunksRef.current = visibleChunks;
   }, [visibleChunks]);
 
-  const visibleChunkKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const chunk of visibleChunks) {
-      keys.add(chunk.key);
-    }
-    return keys;
-  }, [visibleChunks]);
+  const visibleChunkKeys = useMemo(() => makeSurvivalVisibleChunkKeySet(visibleChunks), [visibleChunks]);
 
   useEffect(() => {
     if (chunks.length === 0 || typeof window === "undefined") {
