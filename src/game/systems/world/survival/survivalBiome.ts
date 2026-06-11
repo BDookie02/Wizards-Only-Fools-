@@ -29,6 +29,10 @@ const SURVIVAL_BIOME_INDEX: Record<SurvivalBiome, number> = {
   mushroom: 4,
   tallgrass: 5,
 };
+const SURVIVAL_BIOME_COUNT = survivalBiomes.length;
+const survivalTerrainColorBiomeWeights = new Array<number>(SURVIVAL_BIOME_COUNT).fill(0);
+const survivalWaterLevelBiomeWeights = new Array<number>(SURVIVAL_BIOME_COUNT).fill(0);
+const survivalStrictDesertBiomeWeights = new Array<number>(SURVIVAL_BIOME_COUNT).fill(0);
 
 const SURVIVAL_RESTORED_MEADOW_CENTERS: ReadonlyArray<readonly [number, number]> = [
   [3, -3],
@@ -131,9 +135,9 @@ function addBiomeWeight(biome: SurvivalBiome, weight: number, weights: number[])
   weights[SURVIVAL_BIOME_INDEX[biome]] += weight;
 }
 
-function pushBiomeWeight(target: BiomeWeight[], biome: SurvivalBiome, weight: number, invTotalWeight: number) {
+function pushBiomeWeight(target: BiomeWeight[], biome: SurvivalBiome, weight: number) {
   if (weight <= 0.0001) return;
-  target.push({ biome, weight: weight * invTotalWeight });
+  target.push({ biome, weight });
 }
 
 function getBiomeMountainField(biome: SurvivalBiome, worldX: number, worldZ: number) {
@@ -189,8 +193,21 @@ export function getSurvivalBiome(cx: number, cz: number): SurvivalBiome {
 }
 
 export function getSurvivalBiomeWeights(worldX: number, worldZ: number): BiomeWeight[] {
+  const mergedWeights = getSurvivalBiomeWeightValuesInto(worldX, worldZ, new Array<number>(SURVIVAL_BIOME_COUNT));
+  const weights: BiomeWeight[] = [];
+  for (let index = 0; index < SURVIVAL_BIOME_COUNT; index += 1) {
+    pushBiomeWeight(weights, survivalBiomes[index], mergedWeights[index] ?? 0);
+  }
+  return weights;
+}
+
+export function getSurvivalBiomeWeightValuesInto(worldX: number, worldZ: number, target: number[]) {
   const center = worldToBiomeHex(worldX, worldZ);
-  const mergedWeights = [0, 0, 0, 0, 0, 0];
+  target.length = SURVIVAL_BIOME_COUNT;
+  for (let index = 0; index < SURVIVAL_BIOME_COUNT; index += 1) {
+    target[index] = 0;
+  }
+
   const outerDistance = SURVIVAL_BIOME_HEX_RADIUS * SURVIVAL_BIOME_BLEND_OUTER_RADIUS;
   const outerDistanceSq = outerDistance * outerDistance;
   let totalWeight = 0;
@@ -217,23 +234,20 @@ export function getSurvivalBiomeWeights(worldX: number, worldZ: number): BiomeWe
     const weight = Math.pow(Math.max(0, falloff), SURVIVAL_BIOME_BLEND_POWER) * ringDamping;
     totalWeight += weight;
     if (weight > 0.0001) {
-      addBiomeWeight(getSurvivalBiome(q, r), weight, mergedWeights);
+      addBiomeWeight(getSurvivalBiome(q, r), weight, target);
     }
   }
 
   if (totalWeight <= 0.0001) {
-    return [{ biome: getSurvivalBiome(center.q, center.r), weight: 1 }];
+    target[SURVIVAL_BIOME_INDEX[getSurvivalBiome(center.q, center.r)]] = 1;
+    return target;
   }
 
-  const weights: BiomeWeight[] = [];
   const invTotalWeight = 1 / totalWeight;
-  pushBiomeWeight(weights, "plains", mergedWeights[0], invTotalWeight);
-  pushBiomeWeight(weights, "jungle", mergedWeights[1], invTotalWeight);
-  pushBiomeWeight(weights, "desert", mergedWeights[2], invTotalWeight);
-  pushBiomeWeight(weights, "swamp", mergedWeights[3], invTotalWeight);
-  pushBiomeWeight(weights, "mushroom", mergedWeights[4], invTotalWeight);
-  pushBiomeWeight(weights, "tallgrass", mergedWeights[5], invTotalWeight);
-  return weights;
+  for (let index = 0; index < SURVIVAL_BIOME_COUNT; index += 1) {
+    target[index] *= invTotalWeight;
+  }
+  return target;
 }
 
 export function getBiomeTerrainHeight(biome: SurvivalBiome, worldX: number, worldZ: number) {
@@ -319,11 +333,12 @@ export function getBiomeTerrainHeight(biome: SurvivalBiome, worldX: number, worl
 }
 
 export function getSurvivalWaterLevelAtWorld(worldX: number, worldZ: number) {
-  const weights = getSurvivalBiomeWeights(worldX, worldZ);
+  const weights = getSurvivalBiomeWeightValuesInto(worldX, worldZ, survivalWaterLevelBiomeWeights);
   let waterLevel = 0;
-  for (let index = 0; index < weights.length; index += 1) {
-    const { biome, weight } = weights[index];
-    waterLevel += survivalBiomeElevation[biome].waterLevel * weight;
+  for (let index = 0; index < SURVIVAL_BIOME_COUNT; index += 1) {
+    const weight = weights[index] ?? 0;
+    if (weight <= 0) continue;
+    waterLevel += survivalBiomeElevation[survivalBiomes[index]].waterLevel * weight;
   }
   return waterLevel;
 }
@@ -379,7 +394,7 @@ export function getSurvivalTerrainColor(worldX: number, worldZ: number, height: 
 }
 
 export function getSurvivalTerrainColorInto(worldX: number, worldZ: number, height: number, target: THREE.Color) {
-  const weights = getSurvivalBiomeWeights(worldX, worldZ);
+  const weights = getSurvivalBiomeWeightValuesInto(worldX, worldZ, survivalTerrainColorBiomeWeights);
   let r = 0;
   let g = 0;
   let b = 0;
@@ -388,8 +403,10 @@ export function getSurvivalTerrainColorInto(worldX: number, worldZ: number, heig
   let grasslandWeight = 0;
   let desertWeight = 0;
 
-  for (let index = 0; index < weights.length; index += 1) {
-    const { biome, weight } = weights[index];
+  for (let index = 0; index < SURVIVAL_BIOME_COUNT; index += 1) {
+    const weight = weights[index] ?? 0;
+    if (weight <= 0) continue;
+    const biome = survivalBiomes[index];
     const style = survivalBiomeStyle[biome];
     const ground = hexToRgb(style.ground);
     const accent = hexToRgb(style.accent);
@@ -595,9 +612,11 @@ export function isStrictSurvivalDesertTerrainAtWorld(worldX: number, worldZ: num
   let desertWeight = 0;
   let meadowWeight = 0;
   let grasslandWeight = 0;
-  const weights = getSurvivalBiomeWeights(worldX, worldZ);
-  for (let index = 0; index < weights.length; index += 1) {
-    const { biome, weight } = weights[index];
+  const weights = getSurvivalBiomeWeightValuesInto(worldX, worldZ, survivalStrictDesertBiomeWeights);
+  for (let index = 0; index < SURVIVAL_BIOME_COUNT; index += 1) {
+    const weight = weights[index] ?? 0;
+    if (weight <= 0) continue;
+    const biome = survivalBiomes[index];
     if (biome === "desert") {
       desertWeight += weight;
       continue;

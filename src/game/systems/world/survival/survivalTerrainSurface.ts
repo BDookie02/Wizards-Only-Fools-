@@ -10,9 +10,11 @@ import {
 } from "./survivalWorldConfig";
 import {
   getBiomeTerrainHeight,
+  getSurvivalBiomeWeightValuesInto,
   getSurvivalBiomeWeights,
   getSurvivalRestoredMeadowMask,
   getSurvivalTerrainColorInto,
+  survivalBiomes,
   isStrictSurvivalDesertTerrainAtWorld,
   isSurvivalRestoredMeadowWaterSuppressed,
 } from "./survivalBiome";
@@ -41,6 +43,7 @@ const survivalRenderedRestoredGroundColor = new THREE.Color("#4f9631");
 const survivalRenderedRestoredLiftColor = new THREE.Color("#5fa836");
 const survivalRenderedRestoredShadowColor = new THREE.Color("#3f7d28");
 const survivalRenderedRestoredGroundScratch = new THREE.Color();
+const survivalRawTerrainHeightBiomeWeights = new Array<number>(survivalBiomes.length).fill(0);
 
 export function getSurvivalSmoothedTerrainColorInto(
   worldX: number,
@@ -128,11 +131,12 @@ function getBaseVillageTransitionMask(worldX: number, worldZ: number) {
 }
 
 export function getSurvivalRawTerrainHeightAtWorld(worldX: number, worldZ: number) {
-  const weights = getSurvivalBiomeWeights(worldX, worldZ);
+  const weights = getSurvivalBiomeWeightValuesInto(worldX, worldZ, survivalRawTerrainHeightBiomeWeights);
   let height = 0;
-  for (let index = 0; index < weights.length; index += 1) {
-    const { biome, weight } = weights[index];
-    height += getBiomeTerrainHeight(biome, worldX, worldZ) * weight;
+  for (let index = 0; index < survivalBiomes.length; index += 1) {
+    const weight = weights[index] ?? 0;
+    if (weight <= 0) continue;
+    height += getBiomeTerrainHeight(survivalBiomes[index], worldX, worldZ) * weight;
   }
   return height;
 }
