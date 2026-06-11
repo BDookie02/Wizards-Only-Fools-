@@ -70,6 +70,7 @@ Done:
 - Extracted survival biome foliage palettes and BOTW hillside grass tint/keep rules into `src/game/systems/world/vegetation/survivalFoliagePalettes.ts`.
 - Extracted survival solid-tree texture/geometry caches, roof-forest support, tree scale/profile helpers, and canopy height helpers into `src/game/systems/world/vegetation/survivalTreeVisuals.ts`.
 - Extracted active survival solid-tree grove rendering into `src/game/systems/world/vegetation/survivalSolidTreeGroveRendering.tsx` behind the existing terrain surface-quality resolver.
+- Moved BOTW grass runtime telemetry current-route checks into `survivalBotwGrassTelemetry.ts`, leaving active grass rendering to consume a vegetation-owned QA telemetry gate instead of reading the browser search string directly.
 - Extracted deterministic world willow placement and caching into `src/game/systems/world/vegetation/survivalWorldWillows.ts` behind terrain/biome/village resolvers.
 - Extracted deterministic ambient butterfly/bee generation into `src/game/systems/world/vegetation/survivalAmbientInsects.ts` behind terrain-height and water-level resolvers.
 - Extracted survival ambient butterfly/bee rendering, animation, and QA counting into `src/game/systems/world/vegetation/survivalAmbientInsectRendering.tsx`.
@@ -840,6 +841,9 @@ Next:
 
 ## Latest Verification
 
+- Focused BOTW grass telemetry route cleanup: `survivalBotwGrassTelemetry.ts` now owns `shouldPublishCurrentSurvivalBotwGrassRuntimeMetrics()`, and `survivalBotwGrassRendering.tsx` consumes that helper instead of reading `window.location.search` directly for active grass telemetry. The cached `fromSearch` classifier remains the single route parser for this telemetry path.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the BOTW grass telemetry QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the BOTW grass telemetry route cleanup. Sprite verification passed; current warning remains chunk size only. `survivalBotwGrassRendering` is about 30.70 kB / 11.36 kB gzip.
 - Focused survival sky time-route cleanup: `survivalSkyCycleMath.ts` now caches `qaSurvivalTime` / `qaTimeOfDay` override parsing by current search string through `getQaSurvivalTimeOverrideSecondsFromSearch()`, while the existing `getQaSurvivalTimeOverrideSeconds()` API remains the current-route wrapper for sky and terrain callers.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the survival sky time-route QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the survival sky time-route cleanup. Sprite verification passed; current warning remains chunk size only. `GameWorld` is about 26.05 kB / 9.25 kB gzip.

@@ -7,7 +7,7 @@ let latestSurvivalBotwGrassUploadProgress = "";
 
 function getSurvivalBotwGrassTelemetryRoot() {
   if (typeof window === "undefined" || typeof document === "undefined") return null;
-  if (!shouldPublishSurvivalBotwGrassRuntimeMetricsFromSearch(window.location.search)) return null;
+  if (!shouldPublishCurrentSurvivalBotwGrassRuntimeMetrics()) return null;
   return document.documentElement;
 }
 
@@ -18,6 +18,11 @@ export function shouldPublishSurvivalBotwGrassRuntimeMetricsFromSearch(search: s
   cachedTelemetryEnabled = isQaTelemetryRouteEnabledFromSearch(search, ["perf", "grass", "survival", "canvas", "touch", "mountain"]);
 
   return cachedTelemetryEnabled;
+}
+
+export function shouldPublishCurrentSurvivalBotwGrassRuntimeMetrics() {
+  if (typeof window === "undefined") return false;
+  return shouldPublishSurvivalBotwGrassRuntimeMetricsFromSearch(window.location.search);
 }
 
 export function isSurvivalBotwGrassWarmupBlockingChunkPrewarm() {

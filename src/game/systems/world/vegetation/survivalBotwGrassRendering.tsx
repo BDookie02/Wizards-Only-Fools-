@@ -127,7 +127,7 @@ import {
   publishSurvivalBotwGrassRuntimeMetrics,
   publishSurvivalBotwGrassUploadComplete,
   publishSurvivalBotwGrassUploadSnapshot,
-  shouldPublishSurvivalBotwGrassRuntimeMetricsFromSearch,
+  shouldPublishCurrentSurvivalBotwGrassRuntimeMetrics,
 } from "./survivalBotwGrassTelemetry";
 import {
   getSurvivalGrassDebugSampleAt,
@@ -455,10 +455,7 @@ function ActiveSurvivalBotwGrassField() {
   const enabled = SURVIVAL_GRASS_SYSTEM_ENABLED;
   const initialCenter = useMemo(() => getInitialSurvivalBotwGrassCenter(), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
-  const publishRuntimeMetrics = useMemo(() => (
-    typeof window !== "undefined" &&
-    shouldPublishSurvivalBotwGrassRuntimeMetricsFromSearch(window.location.search)
-  ), []);
+  const publishRuntimeMetrics = useMemo(() => shouldPublishCurrentSurvivalBotwGrassRuntimeMetrics(), []);
   const grassDebugViewEnabled = useMemo(() => isSurvivalGrassInspectionView(), []);
   const [center, setCenter] = useState(initialCenter);
   const centerRef = useRef(center);
@@ -1602,4 +1599,3 @@ export function SurvivalBotwGrassField({ disabled = false }: { disabled?: boolea
   if (disabled || !SURVIVAL_GRASS_SYSTEM_ENABLED) return null;
   return <ActiveSurvivalBotwGrassField />;
 }
-
