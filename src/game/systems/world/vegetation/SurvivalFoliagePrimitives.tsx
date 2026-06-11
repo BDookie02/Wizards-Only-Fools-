@@ -7,6 +7,36 @@ export const HIDE_FROM_MINIMAP = { hideFromMiniMap: true };
 
 export type PlantLineShader = Parameters<THREE.Material["onBeforeCompile"]>[0];
 
+const SURVIVAL_BRANCH_UP = new THREE.Vector3(0, 1, 0);
+
+export type SurvivalBranchFrame = {
+  direction: THREE.Vector3;
+  midpoint: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  length: number;
+};
+
+export function createSurvivalBranchFrame(): SurvivalBranchFrame {
+  return {
+    direction: new THREE.Vector3(),
+    midpoint: new THREE.Vector3(),
+    quaternion: new THREE.Quaternion(),
+    length: 0.1,
+  };
+}
+
+export function writeSurvivalBranchFrameInto(
+  start: THREE.Vector3,
+  end: THREE.Vector3,
+  target: SurvivalBranchFrame,
+) {
+  target.direction.subVectors(end, start);
+  target.length = Math.max(0.1, target.direction.length());
+  target.midpoint.addVectors(start, end).multiplyScalar(0.5);
+  target.quaternion.setFromUnitVectors(SURVIVAL_BRANCH_UP, target.direction.normalize());
+  return target;
+}
+
 export function makeFacetedPlantLobeGeometry() {
   const source = new THREE.DodecahedronGeometry(0.5, 0);
   const geometry = source.index ? source.toNonIndexed() : source;
@@ -165,14 +195,7 @@ export function SurvivalBranch({
   color: string;
 }) {
   const { midpoint, length, quaternion } = useMemo(() => {
-    const direction = new THREE.Vector3().subVectors(end, start);
-    const length = Math.max(0.1, direction.length());
-    const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      direction.normalize()
-    );
-    return { midpoint, length, quaternion };
+    return writeSurvivalBranchFrameInto(start, end, createSurvivalBranchFrame());
   }, [end, start]);
 
   return (
