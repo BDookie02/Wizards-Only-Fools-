@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import { SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
 import {
-  getSurvivalBiomeWeights,
+  getSurvivalBiomeWeightValuesInto,
   isSurvivalGrasslandTerrainBiome,
   isSurvivalRestoredMeadowWaterSuppressed,
+  survivalBiomes,
 } from "../survival/survivalBiome";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
 
@@ -12,6 +13,7 @@ let cachedSurvivalTerrainDetailTexture: THREE.CanvasTexture | null = null;
 let cachedSurvivalGrasslandTerrainDetailTexture: THREE.CanvasTexture | null = null;
 let cachedMountainVillageTerrainDetailTexture: THREE.CanvasTexture | null = null;
 let cachedDesertAdobeWallTexture: THREE.CanvasTexture | null = null;
+const survivalTerrainTextureBiomeWeights = new Array<number>(survivalBiomes.length).fill(0);
 
 function survivalTextureHash01(x: number, z: number, salt = 0) {
   const n = Math.sin(x * 127.1 + z * 311.7 + salt * 74.7) * 43758.5453123;
@@ -260,11 +262,12 @@ export function getSurvivalTerrainDetailTextureForChunk(chunk: SurvivalChunkInfo
     return getSurvivalGrasslandTerrainDetailTexture();
   }
 
-  const centerWeights = getSurvivalBiomeWeights(chunk.x, chunk.z);
+  const centerWeights = getSurvivalBiomeWeightValuesInto(chunk.x, chunk.z, survivalTerrainTextureBiomeWeights);
   let grasslandWeight = 0;
-  for (let index = 0; index < centerWeights.length; index++) {
-    const { biome, weight } = centerWeights[index];
-    if (isSurvivalGrasslandTerrainBiome(biome)) grasslandWeight += weight;
+  for (let index = 0; index < survivalBiomes.length; index++) {
+    if (isSurvivalGrasslandTerrainBiome(survivalBiomes[index])) {
+      grasslandWeight += centerWeights[index] ?? 0;
+    }
   }
 
   if (grasslandWeight > 0.42 || isSurvivalGrasslandTerrainBiome(chunk.biome)) {

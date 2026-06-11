@@ -12,10 +12,11 @@ import {
   type SurvivalChunkInfo,
 } from "./survivalWorldConfig";
 import {
-  getSurvivalBiomeWeights,
+  getSurvivalBiomeWeightValuesInto,
   getSurvivalRestoredMeadowMask,
   getSurvivalWaterLevelAtWorld,
   isSurvivalRestoredMeadowWaterSuppressed,
+  survivalBiomes,
 } from "./survivalBiome";
 import { getSurvivalChunkInfoAtWorld } from "./survivalChunks";
 import {
@@ -65,6 +66,7 @@ import { SWAMP_VILLAGE_RADIUS } from "../villages/survivalSwampVillageTerrain";
 const survivalGrassTerrainColorSample = new THREE.Color();
 const survivalGrassBiomeTerrainColorSample = new THREE.Color();
 const survivalGrassDebugTerrainColorSample = new THREE.Color();
+const survivalGrassBiomeWeights = new Array<number>(survivalBiomes.length).fill(0);
 
 const SURVIVAL_GRASS_WATER_SURFACE_OFFSET = 0.16;
 const SURVIVAL_GRASS_WATER_MASK_FEATHER = 0.12;
@@ -375,11 +377,12 @@ function getSurvivalGrassSurfaceBiome(baseBiome: SurvivalBiome, worldX: number, 
 
   const terrainColor = getSurvivalSmoothedTerrainColorInto(worldX, worldZ, height, survivalGrassBiomeTerrainColorSample);
   const looksLikeMeadow = terrainColor.g > terrainColor.r * 1.04 && terrainColor.g > terrainColor.b * 1.18;
-  const biomeWeights = getSurvivalBiomeWeights(worldX, worldZ);
+  const biomeWeights = getSurvivalBiomeWeightValuesInto(worldX, worldZ, survivalGrassBiomeWeights);
   let strongestNonDesertBiome: SurvivalBiome | null = null;
   let strongestNonDesertWeight = 0;
-  for (let index = 0; index < biomeWeights.length; index += 1) {
-    const { biome, weight } = biomeWeights[index];
+  for (let index = 0; index < survivalBiomes.length; index += 1) {
+    const biome = survivalBiomes[index];
+    const weight = biomeWeights[index] ?? 0;
     if (biome === "desert" || weight <= strongestNonDesertWeight) continue;
     strongestNonDesertBiome = biome;
     strongestNonDesertWeight = weight;
