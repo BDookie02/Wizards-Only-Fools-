@@ -170,9 +170,27 @@ export function sanitizeNetworkStatusEffect(value) {
 export function sanitizeStatusEffectsList(value) {
   if (!Array.isArray(value)) return [];
   const safeEffects = [];
-  for (let index = 0; index < value.length; index += 1) {
+  let hasSlow = false;
+  let hasSleep = false;
+  let hasPoison = false;
+  let hasAcid = false;
+  for (let index = 0; index < value.length && safeEffects.length < MULTIPLAYER_NETWORK_STATUS_EFFECTS.length; index += 1) {
     const effect = sanitizeNetworkStatusEffect(value[index]);
-    if (!effect || safeEffects.includes(effect)) continue;
+    if (effect === "slow") {
+      if (hasSlow) continue;
+      hasSlow = true;
+    } else if (effect === "sleep") {
+      if (hasSleep) continue;
+      hasSleep = true;
+    } else if (effect === "poison") {
+      if (hasPoison) continue;
+      hasPoison = true;
+    } else if (effect === "acid") {
+      if (hasAcid) continue;
+      hasAcid = true;
+    } else {
+      continue;
+    }
     safeEffects.push(effect);
   }
   return safeEffects;
