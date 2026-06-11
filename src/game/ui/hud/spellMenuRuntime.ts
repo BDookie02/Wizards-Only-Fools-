@@ -31,6 +31,43 @@ export const spellFamilyFilters: SpellFamilyFilter[] = [
 
 const SPELL_MENU_FALLBACK_THUMBNAIL = "/sprites/fireball/fireball_1.png";
 
+const cachedSpellMenuFamilyCounts: Record<SpellFamilyFilter, number> = {
+  all: ALL_SPELLS.length,
+  damage: 0,
+  movement: 0,
+  defense: 0,
+  utility: 0,
+  status: 0,
+  quest: 0,
+};
+
+const cachedVisibleSpellMenuSpells: Record<SpellFamilyFilter, readonly SpellType[]> = {
+  all: ALL_SPELLS,
+  damage: [],
+  movement: [],
+  defense: [],
+  utility: [],
+  status: [],
+  quest: [],
+};
+
+const cachedFirstSpellInFamily: Record<SpellFamilyFilter, SpellType | null> = {
+  all: null,
+  damage: null,
+  movement: null,
+  defense: null,
+  utility: null,
+  status: null,
+  quest: null,
+};
+
+for (const spell of ALL_SPELLS) {
+  const family = SPELL_CATALOG[spell].family;
+  cachedSpellMenuFamilyCounts[family] += 1;
+  (cachedVisibleSpellMenuSpells[family] as SpellType[]).push(spell);
+  cachedFirstSpellInFamily[family] ??= spell;
+}
+
 export function getFallbackSpellThumbnail() {
   return getSpriteUrl(SPELL_MENU_FALLBACK_THUMBNAIL) || SPELL_MENU_FALLBACK_THUMBNAIL;
 }
@@ -49,35 +86,13 @@ export function getSpellMenuFamilyForSpell(spell: SpellType) {
 }
 
 export function getSpellMenuFamilyCounts() {
-  const counts = {} as Record<SpellFamilyFilter, number>;
-  for (const family of spellFamilyFilters) {
-    counts[family] = 0;
-  }
-  counts.all = ALL_SPELLS.length;
-  for (const spell of ALL_SPELLS) {
-    counts[getSpellMenuFamilyForSpell(spell)] += 1;
-  }
-  return counts;
+  return cachedSpellMenuFamilyCounts;
 }
 
 export function getVisibleSpellMenuSpells(activeFamily: SpellFamilyFilter) {
-  if (activeFamily === "all") return ALL_SPELLS;
-
-  const visibleSpells: SpellType[] = [];
-  for (const spell of ALL_SPELLS) {
-    if (getSpellMenuFamilyForSpell(spell) === activeFamily) {
-      visibleSpells.push(spell);
-    }
-  }
-  return visibleSpells;
+  return cachedVisibleSpellMenuSpells[activeFamily];
 }
 
 export function getFirstSpellInFamily(activeFamily: SpellFamilyFilter) {
-  if (activeFamily === "all") return null;
-  for (const spell of ALL_SPELLS) {
-    if (getSpellMenuFamilyForSpell(spell) === activeFamily) {
-      return spell;
-    }
-  }
-  return null;
+  return cachedFirstSpellInFamily[activeFamily];
 }
