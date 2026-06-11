@@ -24,6 +24,7 @@ const BUSH_TREE_BLOCKERS: readonly [number, number][] = [
   [18, -26],
   [-22, -24],
 ];
+const bushLineColorCache = new Map<string, THREE.Color>();
 type BushLineShader = Parameters<THREE.Material["onBeforeCompile"]>[0];
 
 function makeBushLobeGeometry() {
@@ -41,10 +42,15 @@ function makeBushLobeGeometry() {
 }
 
 function getBushLineColor(fillColor: string) {
+  const cached = bushLineColorCache.get(fillColor);
+  if (cached) return cached;
+
   const color = new THREE.Color(fillColor);
   const luminance = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
   const target = new THREE.Color(luminance < 0.38 ? "#d9f99d" : "#16240f");
-  return color.clone().lerp(target, luminance < 0.38 ? 0.74 : 0.78);
+  const lineColor = color.lerp(target, luminance < 0.38 ? 0.74 : 0.78);
+  bushLineColorCache.set(fillColor, lineColor);
+  return lineColor;
 }
 
 function applyBushLineShader(

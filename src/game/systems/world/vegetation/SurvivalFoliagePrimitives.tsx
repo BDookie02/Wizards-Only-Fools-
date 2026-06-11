@@ -8,6 +8,7 @@ export const HIDE_FROM_MINIMAP = { hideFromMiniMap: true };
 export type PlantLineShader = Parameters<THREE.Material["onBeforeCompile"]>[0];
 
 const SURVIVAL_BRANCH_UP = new THREE.Vector3(0, 1, 0);
+const facetedPlantLineColorCache = new Map<string, THREE.Color>();
 
 export type SurvivalBranchFrame = {
   direction: THREE.Vector3;
@@ -52,10 +53,15 @@ export function makeFacetedPlantLobeGeometry() {
 }
 
 export function getFacetedPlantLineColor(fillColor: string) {
+  const cached = facetedPlantLineColorCache.get(fillColor);
+  if (cached) return cached;
+
   const color = new THREE.Color(fillColor);
   const luminance = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
   const target = new THREE.Color(luminance < 0.38 ? "#d9f99d" : "#17250f");
-  return color.clone().lerp(target, luminance < 0.38 ? 0.74 : 0.78);
+  const lineColor = color.lerp(target, luminance < 0.38 ? 0.74 : 0.78);
+  facetedPlantLineColorCache.set(fillColor, lineColor);
+  return lineColor;
 }
 
 export function applyFacetedPlantLines(
