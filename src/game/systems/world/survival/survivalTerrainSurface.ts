@@ -261,6 +261,7 @@ const survivalVillagePadResolvers = {
   flatRadius: DESERT_VILLAGE_PAD_FLAT_RADIUS,
   terrainHeightForChunk: getSurvivalTerrainHeightForChunk,
   terrainColorAtWorld: getSurvivalSmoothedTerrainColor,
+  terrainColorAtWorldInto: getSurvivalSmoothedTerrainColorInto,
 };
 
 export function getSurvivalVillagePadHeight(

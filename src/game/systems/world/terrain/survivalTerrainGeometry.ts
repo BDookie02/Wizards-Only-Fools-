@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
 import { clamp01, lerpNumber } from "../survival/survivalMath";
 import {
-  getSurvivalRenderedTerrainColor,
   getSurvivalRenderedTerrainColorInto,
   getSurvivalTerrainHeightForChunk,
 } from "../survival/survivalTerrainSurface";
@@ -299,9 +298,7 @@ export function makeSurvivalTerrainGeometry(chunk: SurvivalChunkInfo) {
     const worldX = chunk.x + x;
     const worldZ = chunk.z + z;
     const y = heightGrid.heights[i] ?? getSurvivalTerrainHeightForChunk(chunk, x, z);
-    const color = getSurvivalRenderedTerrainColorInto
-      ? getSurvivalRenderedTerrainColorInto(worldX, worldZ, y, vertexColor)
-      : vertexColor.copy(getSurvivalRenderedTerrainColor(worldX, worldZ, y));
+    const color = getSurvivalRenderedTerrainColorInto(worldX, worldZ, y, vertexColor);
     const renderX = x <= -halfBlock ? x - edgeOverlap : x >= halfBlock ? x + edgeOverlap : x;
     const renderZ = z <= -halfBlock ? z - edgeOverlap : z >= halfBlock ? z + edgeOverlap : z;
     pos.setX(i, renderX);
@@ -351,9 +348,7 @@ export function makeSurvivalTerrainSkirtGeometry(chunk: SurvivalChunkInfo, edges
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
       const height = getSurvivalTerrainHeightForChunk(chunk, localX, localZ);
-      const color = getSurvivalRenderedTerrainColorInto
-        ? getSurvivalRenderedTerrainColorInto(worldX, worldZ, height, skirtColor)
-        : skirtColor.copy(getSurvivalRenderedTerrainColor(worldX, worldZ, height));
+      const color = getSurvivalRenderedTerrainColorInto(worldX, worldZ, height, skirtColor);
       return { height, color };
     },
     edges,

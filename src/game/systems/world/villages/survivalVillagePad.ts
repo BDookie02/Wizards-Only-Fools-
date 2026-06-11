@@ -16,11 +16,33 @@ export type SurvivalVillagePadTerrainColorResolver = (
   height: number,
 ) => THREE.Color;
 
+export type SurvivalVillagePadTerrainColorIntoResolver = (
+  worldX: number,
+  worldZ: number,
+  height: number,
+  target: THREE.Color,
+) => THREE.Color;
+
 export type SurvivalVillagePadResolvers = {
   flatRadius: number;
   terrainHeightForChunk: SurvivalVillagePadTerrainHeightResolver;
   terrainColorAtWorld: SurvivalVillagePadTerrainColorResolver;
+  terrainColorAtWorldInto?: SurvivalVillagePadTerrainColorIntoResolver;
 };
+
+function resolveSurvivalVillagePadTerrainColorInto(
+  resolvers: SurvivalVillagePadResolvers,
+  worldX: number,
+  worldZ: number,
+  height: number,
+  target: THREE.Color,
+) {
+  if (resolvers.terrainColorAtWorldInto) {
+    return resolvers.terrainColorAtWorldInto(worldX, worldZ, height, target);
+  }
+
+  return target.copy(resolvers.terrainColorAtWorld(worldX, worldZ, height));
+}
 
 export function getSurvivalVillageBaseHeight(
   chunk: SurvivalChunkInfo,
@@ -56,12 +78,19 @@ export function makeSurvivalVillagePadGeometry(
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
+  const colorScratch = new THREE.Color();
 
   for (let i = 0; i < pos.count; i += 1) {
     const localX = pos.getX(i);
     const localZ = pos.getZ(i);
     const height = getSurvivalVillagePadHeight(chunk, localX, localZ, resolvers, baseHeight);
-    const color = resolvers.terrainColorAtWorld(chunk.x + localX, chunk.z + localZ, height);
+    const color = resolveSurvivalVillagePadTerrainColorInto(
+      resolvers,
+      chunk.x + localX,
+      chunk.z + localZ,
+      height,
+      colorScratch,
+    );
     const colorOffset = i * 3;
     pos.setY(i, height);
     colors[colorOffset] = color.r;
@@ -79,6 +108,7 @@ export function makeSurvivalVillagePadSkirtGeometry(
   resolvers: SurvivalVillagePadResolvers,
 ) {
   const baseHeight = getSurvivalVillageBaseHeight(chunk, resolvers.terrainHeightForChunk);
+  const colorScratch = new THREE.Color();
   return makeSurvivalEdgeSkirtGeometry(
     `${chunk.key}:village-pad-skirt:${SURVIVAL_VILLAGE_PAD_SEGMENTS}`,
     SURVIVAL_VILLAGE_PAD_SEGMENTS,
@@ -86,7 +116,7 @@ export function makeSurvivalVillagePadSkirtGeometry(
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
       const height = getSurvivalVillagePadHeight(chunk, localX, localZ, resolvers, baseHeight);
-      const color = resolvers.terrainColorAtWorld(worldX, worldZ, height);
+      const color = resolveSurvivalVillagePadTerrainColorInto(resolvers, worldX, worldZ, height, colorScratch);
       return { height, color };
     },
   );

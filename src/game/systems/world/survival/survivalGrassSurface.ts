@@ -24,7 +24,7 @@ import {
 } from "./survivalRivers";
 import { getSurvivalTownRouteMask } from "./survivalRoutes";
 import {
-  getSurvivalRenderedTerrainColor,
+  getSurvivalRenderedTerrainColorInto,
   getSurvivalSmoothedTerrainColor,
   getSurvivalSmoothedTerrainColorInto,
   getSurvivalTerrainHeightForChunk,
@@ -63,6 +63,8 @@ import { getMountainVillageHeight as getMountainVillageSurfaceHeight } from "../
 import { SWAMP_VILLAGE_RADIUS } from "../villages/survivalSwampVillageTerrain";
 
 const survivalGrassTerrainColorSample = new THREE.Color();
+const survivalGrassBiomeTerrainColorSample = new THREE.Color();
+const survivalGrassDebugTerrainColorSample = new THREE.Color();
 
 const SURVIVAL_GRASS_WATER_SURFACE_OFFSET = 0.16;
 const SURVIVAL_GRASS_WATER_MASK_FEATHER = 0.12;
@@ -371,7 +373,7 @@ function getSurvivalGrassSurfaceBiome(baseBiome: SurvivalBiome, worldX: number, 
   if (getSurvivalRestoredMeadowMask(worldX, worldZ) > 0.08) return "tallgrass";
   if (baseBiome !== "desert") return baseBiome;
 
-  const terrainColor = getSurvivalSmoothedTerrainColor(worldX, worldZ, height);
+  const terrainColor = getSurvivalSmoothedTerrainColorInto(worldX, worldZ, height, survivalGrassBiomeTerrainColorSample);
   const looksLikeMeadow = terrainColor.g > terrainColor.r * 1.04 && terrainColor.g > terrainColor.b * 1.18;
   const biomeWeights = getSurvivalBiomeWeights(worldX, worldZ);
   let strongestNonDesertBiome: SurvivalBiome | null = null;
@@ -478,7 +480,7 @@ function getSurvivalGrassDebugSampleAt(worldX: number, worldZ: number) {
     grassNormal,
     riverMask,
   } = surface;
-  const terrainColor = getSurvivalRenderedTerrainColor(worldX, worldZ, terrainY);
+  const terrainColor = getSurvivalRenderedTerrainColorInto(worldX, worldZ, terrainY, survivalGrassDebugTerrainColorSample);
   return {
     worldX: Math.round(worldX),
     worldZ: Math.round(worldZ),
