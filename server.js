@@ -294,10 +294,22 @@ async function startServer() {
     };
     const deleteRoomPlaceable = (roomCode, instanceId) => {
         const currentObjects = getRoomPlaceables(roomCode);
-        const nextObjects = [];
+        let deleteIndex = -1;
         for (let index = 0; index < currentObjects.length; index += 1) {
-            const candidate = currentObjects[index];
-            if (candidate.instanceId !== instanceId) nextObjects.push(candidate);
+            if (currentObjects[index].instanceId === instanceId) {
+                deleteIndex = index;
+                break;
+            }
+        }
+        if (deleteIndex < 0) {
+            return currentObjects;
+        }
+        const nextObjects = new Array(currentObjects.length - 1);
+        for (let index = 0; index < deleteIndex; index += 1) {
+            nextObjects[index] = currentObjects[index];
+        }
+        for (let index = deleteIndex + 1; index < currentObjects.length; index += 1) {
+            nextObjects[index - 1] = currentObjects[index];
         }
         return rememberRoomPlaceables(roomCode, nextObjects);
     };
