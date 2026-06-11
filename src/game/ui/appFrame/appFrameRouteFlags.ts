@@ -12,6 +12,9 @@ const EMPTY_APP_FRAME_ROUTE_FLAGS: AppFrameRouteFlags = {
   publishQaMetrics: false,
 };
 
+let cachedAppFrameRouteSearch = "";
+let cachedAppFrameRouteFlags: AppFrameRouteFlags = EMPTY_APP_FRAME_ROUTE_FLAGS;
+
 function hasSurvivalQaParam(params: URLSearchParams) {
   for (const key of params.keys()) {
     if (key.startsWith("qaSurvival")) return true;
@@ -20,12 +23,15 @@ function hasSurvivalQaParam(params: URLSearchParams) {
 }
 
 export function readAppFrameRouteFlagsFromSearch(search: string): AppFrameRouteFlags {
+  if (search === cachedAppFrameRouteSearch) return cachedAppFrameRouteFlags;
+
   try {
     const params = new URLSearchParams(search);
     const survivalQaParamPresent = hasSurvivalQaParam(params);
     const qaPerfStatsRequested = params.get("qaPerfStats") === "1";
 
-    return {
+    cachedAppFrameRouteSearch = search;
+    cachedAppFrameRouteFlags = {
       voiceChatRequested:
         params.has("voiceAutoStart") ||
         params.has("voiceSoundboard") ||
@@ -47,7 +53,10 @@ export function readAppFrameRouteFlagsFromSearch(search: string): AppFrameRouteF
         params.get("spawnMountain") === "1" ||
         survivalQaParamPresent,
     };
+    return cachedAppFrameRouteFlags;
   } catch {
+    cachedAppFrameRouteSearch = search;
+    cachedAppFrameRouteFlags = EMPTY_APP_FRAME_ROUTE_FLAGS;
     return EMPTY_APP_FRAME_ROUTE_FLAGS;
   }
 }
