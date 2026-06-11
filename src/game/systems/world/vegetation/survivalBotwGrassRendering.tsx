@@ -779,8 +779,8 @@ function ActiveSurvivalBotwGrassField() {
         appendSurvivalBotwTallFeatureFlowers(nextFlowerInstances, flowerContext);
         const buildMs = getSurvivalBotwGrassElapsedMs(startedAt);
         const result = {
-          bladeInstances: nextBladeInstances.slice(),
-          flowerInstances: nextFlowerInstances.slice(),
+          bladeInstances: nextBladeInstances,
+          flowerInstances: nextFlowerInstances,
           buildMs,
         };
         rememberSurvivalBotwGrassBuild(buildKey, result);
