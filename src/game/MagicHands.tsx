@@ -1,9 +1,10 @@
+import { useEffect } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { SpellType, useGameStore } from "../store/gameStore";
 import { getSpriteUrl } from "./SpriteManifest";
 import { ImageHandCanvas } from "./ui/hud/MagicHandSpriteCanvas";
-import { MagicHandSpellEffectSlot } from "./ui/hud/MagicHandSpellEffects";
+import { MagicHandSpellEffectSlot, preloadMagicHandSpellEffect } from "./ui/hud/MagicHandSpellEffects";
 import { useMagicHandsPose } from "./ui/hud/useMagicHandsPose";
 
 function cn(...inputs: ClassValue[]) {
@@ -115,6 +116,12 @@ function ActiveMagicHands({ playerState, leftSpell, rightSpell }: { playerState:
 export function MagicHands({ playerState, leftSpell, rightSpell }: { playerState: any, leftSpell: SpellType, rightSpell: SpellType }) {
   const isMagicArmed = useGameStore(s => s.isMagicArmed);
   const isSpellMenuOpen = useGameStore(s => s.isSpellMenuOpen);
+
+  useEffect(() => {
+    if (!isMagicArmed) return;
+    preloadMagicHandSpellEffect(leftSpell);
+    preloadMagicHandSpellEffect(rightSpell);
+  }, [isMagicArmed, leftSpell, rightSpell]);
 
   if (isSpellMenuOpen || playerState.isMeditating || !isMagicArmed) {
     return null;

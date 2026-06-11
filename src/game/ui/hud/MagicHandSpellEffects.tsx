@@ -1,20 +1,83 @@
+import { lazy, Suspense } from "react";
 import { SpellType } from "../../../store/gameStore";
-import { MeteorShowerCanvas, TornadoSpellCanvas } from "./magicHandAreaSpellEffects";
-import { BuffSpellCanvas } from "./magicHandBuffSpellEffects";
-import { DiscShieldCanvas, OrbShieldCanvas } from "./magicHandDefenseSpellEffects";
-import { BlinkGifCanvas, PortalGifCanvas, SmokeBombGifCanvas } from "./magicHandGifSpellEffects";
-import { LightningSpellCanvas } from "./magicHandLightningSpellEffect";
-import {
-  FireballCanvas,
-  HealSpellCanvas,
-  IceShardCanvas,
-  IceSpellCanvas,
-  RingsSpellCanvas,
-} from "./magicHandSpriteSpellEffects";
-import { KunaiCanvas, MagicGlassOrbCanvas } from "./magicHandThreeSpellEffects";
-import { GrabSpellCanvas, HealingCrystalsCanvas } from "./magicHandUtilitySpellEffects";
 
-export function MagicHandSpellEffectSlot({
+const loadAreaSpellEffects = () => import("./magicHandAreaSpellEffects");
+const loadBuffSpellEffects = () => import("./magicHandBuffSpellEffects");
+const loadDefenseSpellEffects = () => import("./magicHandDefenseSpellEffects");
+const loadGifSpellEffects = () => import("./magicHandGifSpellEffects");
+const loadLightningSpellEffect = () => import("./magicHandLightningSpellEffect");
+const loadSpriteSpellEffects = () => import("./magicHandSpriteSpellEffects");
+const loadThreeSpellEffects = () => import("./magicHandThreeSpellEffects");
+const loadUtilitySpellEffects = () => import("./magicHandUtilitySpellEffects");
+
+const LazyMeteorShowerCanvas = lazy(() => loadAreaSpellEffects().then((module) => ({ default: module.MeteorShowerCanvas })));
+const LazyTornadoSpellCanvas = lazy(() => loadAreaSpellEffects().then((module) => ({ default: module.TornadoSpellCanvas })));
+const LazyBuffSpellCanvas = lazy(() => loadBuffSpellEffects().then((module) => ({ default: module.BuffSpellCanvas })));
+const LazyDiscShieldCanvas = lazy(() => loadDefenseSpellEffects().then((module) => ({ default: module.DiscShieldCanvas })));
+const LazyOrbShieldCanvas = lazy(() => loadDefenseSpellEffects().then((module) => ({ default: module.OrbShieldCanvas })));
+const LazyBlinkGifCanvas = lazy(() => loadGifSpellEffects().then((module) => ({ default: module.BlinkGifCanvas })));
+const LazyPortalGifCanvas = lazy(() => loadGifSpellEffects().then((module) => ({ default: module.PortalGifCanvas })));
+const LazySmokeBombGifCanvas = lazy(() => loadGifSpellEffects().then((module) => ({ default: module.SmokeBombGifCanvas })));
+const LazyLightningSpellCanvas = lazy(() => loadLightningSpellEffect().then((module) => ({ default: module.LightningSpellCanvas })));
+const LazyFireballCanvas = lazy(() => loadSpriteSpellEffects().then((module) => ({ default: module.FireballCanvas })));
+const LazyHealSpellCanvas = lazy(() => loadSpriteSpellEffects().then((module) => ({ default: module.HealSpellCanvas })));
+const LazyIceShardCanvas = lazy(() => loadSpriteSpellEffects().then((module) => ({ default: module.IceShardCanvas })));
+const LazyIceSpellCanvas = lazy(() => loadSpriteSpellEffects().then((module) => ({ default: module.IceSpellCanvas })));
+const LazyRingsSpellCanvas = lazy(() => loadSpriteSpellEffects().then((module) => ({ default: module.RingsSpellCanvas })));
+const LazyKunaiCanvas = lazy(() => loadThreeSpellEffects().then((module) => ({ default: module.KunaiCanvas })));
+const LazyMagicGlassOrbCanvas = lazy(() => loadThreeSpellEffects().then((module) => ({ default: module.MagicGlassOrbCanvas })));
+const LazyGrabSpellCanvas = lazy(() => loadUtilitySpellEffects().then((module) => ({ default: module.GrabSpellCanvas })));
+const LazyHealingCrystalsCanvas = lazy(() => loadUtilitySpellEffects().then((module) => ({ default: module.HealingCrystalsCanvas })));
+
+export function preloadMagicHandSpellEffect(currentSpell: SpellType) {
+  switch (currentSpell) {
+    case "tornado":
+    case "meteorshower":
+      void loadAreaSpellEffects();
+      return;
+    case "magicarmor":
+    case "jumpboost":
+    case "speedboost":
+    case "tungstonballsack":
+    case "sleep":
+    case "poison":
+    case "acid":
+      void loadBuffSpellEffects();
+      return;
+    case "discshield":
+    case "orbshield":
+      void loadDefenseSpellEffects();
+      return;
+    case "portal":
+    case "blink":
+    case "smokebomb":
+      void loadGifSpellEffects();
+      return;
+    case "lightning":
+      void loadLightningSpellEffect();
+      return;
+    case "fireball":
+    case "flamethrower":
+    case "iceshard":
+    case "icespell":
+    case "healspell":
+    case "ringsofpower":
+      void loadSpriteSpellEffects();
+      return;
+    case "kunai":
+    case "magicglassorb":
+      void loadThreeSpellEffects();
+      return;
+    case "grab":
+    case "healingcrystals":
+      void loadUtilitySpellEffects();
+      return;
+    default:
+      return;
+  }
+}
+
+function MagicHandSpellEffect({
   currentSpell,
   isChargingSpell,
   align,
@@ -26,54 +89,66 @@ export function MagicHandSpellEffectSlot({
   switch (currentSpell) {
     case "fireball":
     case "flamethrower":
-      return <FireballCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyFireballCanvas isActive isCharging={isChargingSpell} />;
     case "iceshard":
-      return !isChargingSpell ? <IceShardCanvas isActive isCharging={isChargingSpell} /> : null;
+      return !isChargingSpell ? <LazyIceShardCanvas isActive isCharging={isChargingSpell} /> : null;
     case "icespell":
-      return <IceSpellCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyIceSpellCanvas isActive isCharging={isChargingSpell} />;
     case "healspell":
-      return <HealSpellCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyHealSpellCanvas isActive isCharging={isChargingSpell} />;
     case "ringsofpower":
-      return <RingsSpellCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyRingsSpellCanvas isActive isCharging={isChargingSpell} />;
     case "portal":
-      return <PortalGifCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyPortalGifCanvas isActive isCharging={isChargingSpell} />;
     case "lightning":
-      return <LightningSpellCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyLightningSpellCanvas isActive isCharging={isChargingSpell} />;
     case "blink":
-      return <BlinkGifCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyBlinkGifCanvas isActive isCharging={isChargingSpell} />;
     case "grab":
-      return !isChargingSpell ? <GrabSpellCanvas isActive isCharging={isChargingSpell} /> : null;
+      return !isChargingSpell ? <LazyGrabSpellCanvas isActive isCharging={isChargingSpell} /> : null;
     case "tornado":
-      return <TornadoSpellCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyTornadoSpellCanvas isActive isCharging={isChargingSpell} />;
     case "meteorshower":
-      return <MeteorShowerCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyMeteorShowerCanvas isActive isCharging={isChargingSpell} />;
     case "smokebomb":
-      return <SmokeBombGifCanvas isActive isCharging={isChargingSpell} />;
+      return <LazySmokeBombGifCanvas isActive isCharging={isChargingSpell} />;
     case "discshield":
-      return <DiscShieldCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyDiscShieldCanvas isActive isCharging={isChargingSpell} />;
     case "orbshield":
-      return <OrbShieldCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyOrbShieldCanvas isActive isCharging={isChargingSpell} />;
     case "kunai":
-      return <KunaiCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyKunaiCanvas isActive isCharging={isChargingSpell} />;
     case "healingcrystals":
-      return <HealingCrystalsCanvas isActive isCharging={isChargingSpell} />;
+      return <LazyHealingCrystalsCanvas isActive isCharging={isChargingSpell} />;
     case "magicarmor":
-      return <BuffSpellCanvas isActive isCharging={isChargingSpell} variant="armor" />;
+      return <LazyBuffSpellCanvas isActive isCharging={isChargingSpell} variant="armor" />;
     case "jumpboost":
-      return <BuffSpellCanvas isActive isCharging={isChargingSpell} variant="jump" />;
+      return <LazyBuffSpellCanvas isActive isCharging={isChargingSpell} variant="jump" />;
     case "speedboost":
-      return <BuffSpellCanvas isActive isCharging={isChargingSpell} variant="speed" />;
+      return <LazyBuffSpellCanvas isActive isCharging={isChargingSpell} variant="speed" />;
     case "tungstonballsack":
-      return <BuffSpellCanvas isActive isCharging={isChargingSpell} variant="tungston" />;
+      return <LazyBuffSpellCanvas isActive isCharging={isChargingSpell} variant="tungston" />;
     case "sleep":
-      return <BuffSpellCanvas isActive isCharging={isChargingSpell} variant="sleep" />;
+      return <LazyBuffSpellCanvas isActive isCharging={isChargingSpell} variant="sleep" />;
     case "poison":
-      return <BuffSpellCanvas isActive isCharging={isChargingSpell} variant="poison" />;
+      return <LazyBuffSpellCanvas isActive isCharging={isChargingSpell} variant="poison" />;
     case "acid":
-      return <BuffSpellCanvas isActive isCharging={isChargingSpell} variant="acid" />;
+      return <LazyBuffSpellCanvas isActive isCharging={isChargingSpell} variant="acid" />;
     case "magicglassorb":
-      return <MagicGlassOrbCanvas isActive isCharging={isChargingSpell} align={align} />;
+      return <LazyMagicGlassOrbCanvas isActive isCharging={isChargingSpell} align={align} />;
     default:
       return null;
   }
+}
+
+export function MagicHandSpellEffectSlot(props: {
+  currentSpell: SpellType;
+  isChargingSpell: boolean;
+  align: "left" | "right";
+}) {
+  return (
+    <Suspense fallback={null}>
+      <MagicHandSpellEffect {...props} />
+    </Suspense>
+  );
 }
