@@ -1,9 +1,9 @@
-import { isCurrentQaTelemetryRouteEnabled } from "./qaRouteTelemetry";
+import { shouldRunCurrentSurvivalGrassInspectionView } from "./survivalQaTelemetryRoutes";
 
 export type SurvivalGrassDebugSampleResolver = (worldX: number, worldZ: number) => unknown;
 
 export function isSurvivalGrassInspectionView() {
-  return isCurrentQaTelemetryRouteEnabled(["grass"]);
+  return shouldRunCurrentSurvivalGrassInspectionView();
 }
 
 export function installSurvivalGrassDebugSampler(resolveSample: SurvivalGrassDebugSampleResolver) {

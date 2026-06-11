@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { isCurrentQaTelemetryRouteEnabled } from "./qaRouteTelemetry";
+import { isCurrentSpellDummyQaRouteEnabled } from "./spellDummyQaRoutes";
 
 const SPELL_DUMMY_QA_FALLBACK_MOUNT_DELAY_MS = 650;
 
 export function useSpellDummyQaMountGate() {
-  const spellDummyQaRequested = useMemo(() => isCurrentQaTelemetryRouteEnabled(["spellDummies"]), []);
+  const spellDummyQaRequested = useMemo(isCurrentSpellDummyQaRouteEnabled, []);
   const [shouldMountSpellDummyQa, setShouldMountSpellDummyQa] = useState(false);
 
   useEffect(() => {

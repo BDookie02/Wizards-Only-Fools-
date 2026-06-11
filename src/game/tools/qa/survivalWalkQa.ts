@@ -8,8 +8,8 @@ import {
 } from "../../../store/gameStore";
 import {
   getCurrentQaRouteParam,
-  isCurrentQaTelemetryRouteEnabled,
 } from "./qaRouteTelemetry";
+import { isCurrentSpellDummyQaRouteEnabled } from "./spellDummyQaRoutes";
 import {
   angleDeltaRadians,
   lerpAngleRadians,
@@ -231,7 +231,7 @@ export function publishQaPlayerPosition(position: { x: number; y: number; z: num
 }
 
 export function isQaSpellDummyRunEnabled() {
-  return isCurrentQaTelemetryRouteEnabled(["spellDummies"]);
+  return isCurrentSpellDummyQaRouteEnabled();
 }
 
 export function getQaSpellDummies() {

@@ -1,4 +1,4 @@
-import { isCurrentQaTelemetryRouteEnabled } from "../../../tools/qa/qaRouteTelemetry";
+import { isCurrentQaTelemetryRouteEnabled, type QaTelemetryRoute } from "../../../tools/qa/qaRouteTelemetry";
 
 export interface WaterRipple {
   id: number;
@@ -16,6 +16,7 @@ const INNER_MOAT_MIN_RADIUS_SQ = 42 * 42;
 const INNER_MOAT_MAX_RADIUS_SQ = 58 * 58;
 const OUTER_WATER_MIN_RADIUS_SQ = 125 * 125;
 const OUTER_WATER_MAX_RADIUS_SQ = 145 * 145;
+const WATER_RIPPLE_TELEMETRY_ROUTES: readonly QaTelemetryRoute[] = ["waterRipple", "perf", "canvas"];
 let cachedWaterRippleQaSearch: string | null = null;
 let cachedWaterRippleQaEnabled = false;
 
@@ -40,7 +41,7 @@ export function isCurrentWaterRippleQaEnabled() {
 }
 
 export function shouldPublishCurrentWaterRippleTelemetry() {
-  return isCurrentQaTelemetryRouteEnabled(["waterRipple", "perf", "canvas"]);
+  return isCurrentQaTelemetryRouteEnabled(WATER_RIPPLE_TELEMETRY_ROUTES);
 }
 
 export function appendWaterRipple(current: readonly WaterRipple[], ripple: WaterRipple, now: number) {

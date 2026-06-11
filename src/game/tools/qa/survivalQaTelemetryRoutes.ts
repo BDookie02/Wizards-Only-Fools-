@@ -1,9 +1,12 @@
 import {
+  hasCurrentQaRouteParam,
   isCurrentQaTelemetryRouteEnabled,
   isQaTelemetryRouteEnabledFromSearch,
   type QaTelemetryRoute,
 } from "./qaRouteTelemetry";
 
+const SURVIVAL_QA_OBSERVER_ROUTES: readonly QaTelemetryRoute[] = ["survival", "spellDummies", "mountain"];
+const SURVIVAL_GRASS_INSPECTION_ROUTES: readonly QaTelemetryRoute[] = ["grass"];
 const SURVIVAL_WORLD_TELEMETRY_ROUTES: readonly QaTelemetryRoute[] = [
   "perf",
   "canvas",
@@ -38,6 +41,14 @@ const SURVIVAL_MOUNTAIN_SLOPE_GRASS_TELEMETRY_ROUTES: readonly QaTelemetryRoute[
 
 export function shouldPublishCurrentSurvivalWorldTelemetry() {
   return isCurrentQaTelemetryRouteEnabled(SURVIVAL_WORLD_TELEMETRY_ROUTES);
+}
+
+export function shouldRunCurrentSurvivalQaObserver() {
+  return isCurrentQaTelemetryRouteEnabled(SURVIVAL_QA_OBSERVER_ROUTES) || hasCurrentQaRouteParam("spawnGraveyard");
+}
+
+export function shouldRunCurrentSurvivalGrassInspectionView() {
+  return isCurrentQaTelemetryRouteEnabled(SURVIVAL_GRASS_INSPECTION_ROUTES);
 }
 
 export function shouldPublishSurvivalWorldTelemetryFromSearch(search: string) {

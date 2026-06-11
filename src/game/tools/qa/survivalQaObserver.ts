@@ -1,5 +1,5 @@
 import { useGameStore } from "../../../store/gameStore";
-import { hasCurrentQaRouteParam, isCurrentQaTelemetryRouteEnabled } from "./qaRouteTelemetry";
+import { shouldRunCurrentSurvivalQaObserver } from "./survivalQaTelemetryRoutes";
 
 function isLocalQaHost(hostname: string) {
   if (
@@ -23,10 +23,7 @@ function isLocalQaHost(hostname: string) {
 
 export function isDevSurvivalObserver() {
   if (typeof window === "undefined") return false;
-  const survivalQaRequested =
-    isCurrentQaTelemetryRouteEnabled(["survival", "spellDummies", "mountain"]) ||
-    hasCurrentQaRouteParam("spawnGraveyard");
-  if (!survivalQaRequested) return false;
+  if (!shouldRunCurrentSurvivalQaObserver()) return false;
   return import.meta.env.DEV || isLocalQaHost(window.location.hostname);
 }
 

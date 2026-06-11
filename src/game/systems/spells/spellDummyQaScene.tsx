@@ -26,10 +26,10 @@ import {
 import { getLocalProjectileCreatorId } from "./spellProjectileOwnership";
 import { getPublishedLastPlayerYaw } from "../player/playerEventBridge";
 import { subscribeEnginePlaceableEvent } from "../placeables/enginePlaceableEvents";
-import { isCurrentQaTelemetryRouteEnabled } from "../../tools/qa/qaRouteTelemetry";
+import { isCurrentSpellDummyQaRouteEnabled } from "../../tools/qa/spellDummyQaRoutes";
 
 export function DevSpellTestDummies() {
-  const queryEnabled = isCurrentQaTelemetryRouteEnabled(["spellDummies"]);
+  const queryEnabled = isCurrentSpellDummyQaRouteEnabled();
   if (!queryEnabled) return null;
   return <DeferredDevSpellTestDummies />;
 }
