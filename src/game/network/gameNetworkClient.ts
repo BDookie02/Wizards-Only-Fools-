@@ -73,14 +73,24 @@ export function visitNetworkPlayerIdsKey(playerIdsKey: string, visit: (playerId:
   return true;
 }
 
+function playerIdSegmentEquals(playerIdsKey: string, startIndex: number, endIndex: number, playerId: string) {
+  if (endIndex - startIndex !== playerId.length) return false;
+  for (let index = 0; index < playerId.length; index += 1) {
+    if (playerIdsKey.charCodeAt(startIndex + index) !== playerId.charCodeAt(index)) return false;
+  }
+  return true;
+}
+
 export function hasRemoteNetworkPlayerId(playerIdsKey: string, localPlayerId: string | undefined) {
-  let hasRemotePlayer = false;
-  visitNetworkPlayerIdsKey(playerIdsKey, (playerId) => {
-    if (playerId === localPlayerId) return;
-    hasRemotePlayer = true;
-    return false;
-  });
-  return hasRemotePlayer;
+  let startIndex = 0;
+  for (let index = 0; index <= playerIdsKey.length; index += 1) {
+    if (index < playerIdsKey.length && playerIdsKey.charCodeAt(index) !== 44) continue;
+    if (index > startIndex && (!localPlayerId || !playerIdSegmentEquals(playerIdsKey, startIndex, index, localPlayerId))) {
+      return true;
+    }
+    startIndex = index + 1;
+  }
+  return false;
 }
 
 export function emitGameNetworkEvent(eventName: string, ...args: unknown[]) {
