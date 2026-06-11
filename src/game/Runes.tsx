@@ -32,6 +32,8 @@ type BaseRuneHutPosition = { id: string; x: number; y: number; z: number };
 const MOBILE_MANA_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 24;
 const MOBILE_MANA_PULSE_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 30;
 const MOBILE_RUNE_SOURCE_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 24;
+const MANA_PULSE_RING_INDICES = [0, 1, 2] as const;
+const MANA_FLOWER_LEAF_INDICES = [0, 1, 2] as const;
 
 function findBaseRuneHutPositionById(hutPositions: readonly BaseRuneHutPosition[], id: string) {
   for (let index = 0; index < hutPositions.length; index += 1) {
@@ -460,7 +462,7 @@ function ManaPickupPulse({
 
   return (
     <group ref={groupRef} name="mana_pickup_pulse" visible={false}>
-      {[0, 1, 2].map((index) => (
+      {MANA_PULSE_RING_INDICES.map((index) => (
         <mesh
           key={index}
           ref={(node) => {
@@ -660,7 +662,7 @@ function ManaFlower({
           position={[0, source.stemHeight * 0.5, 0]}
           scale={[1, source.stemHeight, 1]}
         />
-        {[0, 1, 2].map((leaf) => (
+        {MANA_FLOWER_LEAF_INDICES.map((leaf) => (
           <mesh
             key={leaf}
             castShadow={false}
