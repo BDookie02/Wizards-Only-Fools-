@@ -12,6 +12,21 @@ function isDesktopUserAgent(userAgent: string) {
   return /Windows NT|Macintosh|X11|Linux x86_64/i.test(userAgent);
 }
 
+function isNativeMobileLikeDevice() {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+
+  const userAgent = navigator.userAgent || "";
+  const hasTouch = (navigator.maxTouchPoints || 0) > 0;
+  const shortSide = Math.min(window.screen?.width || window.innerWidth, window.screen?.height || window.innerHeight);
+  const androidLike = /Android/i.test(userAgent);
+  const mobileUserAgent = /Mobile|Tablet|iPhone|iPad|iPod/i.test(userAgent);
+
+  if (isIOSLikeDevice() || androidLike) return true;
+  if (isDesktopUserAgent(userAgent)) return false;
+
+  return mobileUserAgent || (hasTouch && shortSide <= 900);
+}
+
 let cachedQaSearch = "";
 let cachedQaParams: URLSearchParams | null = null;
 
@@ -44,38 +59,13 @@ export function isForcedTouchControlsQaMode() {
 export function isMobileLikeDevice() {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false;
   if (isForcedMobileQaMode()) return true;
-
-  const userAgent = navigator.userAgent || "";
-  const hasTouch = (navigator.maxTouchPoints || 0) > 0;
-  const shortSide = Math.min(window.screen?.width || window.innerWidth, window.screen?.height || window.innerHeight);
-  const androidLike = /Android/i.test(userAgent);
-  const mobileUserAgent = /Mobile|Tablet|iPhone|iPad|iPod/i.test(userAgent);
-
-  if (isIOSLikeDevice() || androidLike) return true;
-  if (isDesktopUserAgent(userAgent)) return false;
-
-  return mobileUserAgent || (hasTouch && shortSide <= 900);
+  return isNativeMobileLikeDevice();
 }
 
 export function isTouchGameplayDevice() {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false;
   if (isForcedTouchControlsQaMode()) return true;
-  if (isMobileLikeDevice()) return true;
-
-  const userAgent = navigator.userAgent || "";
-  const platform = navigator.platform || "";
-  const maxTouchPoints = navigator.maxTouchPoints || 0;
-  const iosLike = /iPad|iPhone|iPod/.test(userAgent) || (platform === "MacIntel" && maxTouchPoints > 1);
-  const androidLike = /Android/i.test(userAgent);
-  const mobileUserAgent = /Android|Mobile|Tablet|iPhone|iPad|iPod/i.test(userAgent);
-  const desktopUserAgent = isDesktopUserAgent(userAgent);
-  const coarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-  const noHover = window.matchMedia?.("(hover: none)").matches ?? false;
-
-  if (iosLike || androidLike) return true;
-  if (desktopUserAgent) return false;
-
-  return mobileUserAgent && coarsePointer && noHover;
+  return isNativeMobileLikeDevice();
 }
 
 export function isMobilePerformanceMode() {
