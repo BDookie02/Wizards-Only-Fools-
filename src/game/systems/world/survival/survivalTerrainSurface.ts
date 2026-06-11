@@ -104,10 +104,6 @@ export function getSurvivalRenderedTerrainColorInto(
   return color;
 }
 
-export function getSurvivalRenderedTerrainColor(worldX: number, worldZ: number, height: number) {
-  return getSurvivalRenderedTerrainColorInto(worldX, worldZ, height, new THREE.Color());
-}
-
 function getBaseVillageTransitionMask(worldX: number, worldZ: number) {
   const absX = Math.abs(worldX);
   const absZ = Math.abs(worldZ);

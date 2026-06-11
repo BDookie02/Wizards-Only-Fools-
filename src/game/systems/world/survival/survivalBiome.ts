@@ -389,10 +389,6 @@ export function isSurvivalRestoredMeadowWaterSuppressed(worldX: number, worldZ: 
   );
 }
 
-export function getSurvivalTerrainColor(worldX: number, worldZ: number, height: number) {
-  return getSurvivalTerrainColorInto(worldX, worldZ, height, new THREE.Color());
-}
-
 export function getSurvivalTerrainColorInto(worldX: number, worldZ: number, height: number, target: THREE.Color) {
   const weights = getSurvivalBiomeWeightValuesInto(worldX, worldZ, survivalTerrainColorBiomeWeights);
   let r = 0;
