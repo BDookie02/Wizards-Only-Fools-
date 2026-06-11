@@ -26,6 +26,7 @@ import {
   isNetworkConnected,
 } from "./network/gameNetworkClient";
 import { getPublishedLocalPlayerPosition, type PlayerPositionLike } from "./systems/player/playerEventBridge";
+import { useLazyRef } from "./systems/react/useLazyRef";
 
 type PlayerPositionRef = React.MutableRefObject<PlayerPositionLike | undefined>;
 type BaseRuneHutPosition = { id: string; x: number; y: number; z: number };
@@ -76,7 +77,7 @@ export function Runes() {
   const latestManaEpochMsRef = useRef(0);
   const latestPlayerPositionRef = useRef<PlayerPositionLike | undefined>(undefined);
   const lastManaSourceReconcileAtRef = useRef(Number.NEGATIVE_INFINITY);
-  const previousActiveRunesRef = useRef<Set<string>>(new Set());
+  const previousActiveRunesRef = useLazyRef(() => new Set<string>());
   const lastBaseRuneCycleAtRef = useRef(Number.NEGATIVE_INFINITY);
   const getLatestManaEpochMs = () => latestManaEpochMsRef.current || Date.now();
   const setBaseRuneSourcesVisibility = useCallback((nextVisible: boolean) => {
