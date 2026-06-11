@@ -8,30 +8,43 @@ import { PixelBlocks } from "./magicHandPixelBlocks";
 import type { PixelBlock } from "./magicHandSpellEffectsRuntime";
 import { useMagicHandEquipScale } from "./useMagicHandEquipScale";
 
-function TungstonChainGlyph({ isCharging }: { isCharging: boolean }) {
-  const chainBlocks: PixelBlock[] = [
-    { x: 32, y: 34, w: 10, h: 8, color: "#e2e8f0", rotation: -28 },
-    { x: 43, y: 41, w: 10, h: 8, color: "#64748b", rotation: -28 },
-    { x: 54, y: 48, w: 10, h: 8, color: "#cbd5e1", rotation: -28 },
-    { x: 65, y: 55, w: 10, h: 8, color: "#475569", rotation: -28 },
-    { x: 76, y: 62, w: 10, h: 8, color: "#94a3b8", rotation: -28 },
-    { x: 87, y: 69, w: 10, h: 8, color: "#334155", rotation: -28 },
-  ];
-  const ballBlocks: PixelBlock[] = [
-    { x: 82, y: 66, w: 44, h: 8, color: "#cbd5e1" },
-    { x: 72, y: 74, w: 64, h: 14, color: "#94a3b8" },
-    { x: 64, y: 88, w: 80, h: 28, color: "#64748b" },
-    { x: 72, y: 116, w: 64, h: 14, color: "#334155" },
-    { x: 84, y: 130, w: 40, h: 8, color: "#1f2937" },
-    { x: 82, y: 76, w: 22, h: 8, color: "#f8fafc", opacity: 0.8 },
-    { x: 74, y: 90, w: 16, h: 10, color: "#e2e8f0", opacity: 0.58 },
-    { x: 122, y: 102, w: 14, h: 14, color: "#0f172a", opacity: 0.7 },
-    { x: 96, y: 126, w: 28, h: 6, color: "#0f172a", opacity: 0.62 },
-  ];
+const TUNGSTON_CHAIN_BLOCKS: PixelBlock[] = [
+  { x: 32, y: 34, w: 10, h: 8, color: "#e2e8f0", rotation: -28 },
+  { x: 43, y: 41, w: 10, h: 8, color: "#64748b", rotation: -28 },
+  { x: 54, y: 48, w: 10, h: 8, color: "#cbd5e1", rotation: -28 },
+  { x: 65, y: 55, w: 10, h: 8, color: "#475569", rotation: -28 },
+  { x: 76, y: 62, w: 10, h: 8, color: "#94a3b8", rotation: -28 },
+  { x: 87, y: 69, w: 10, h: 8, color: "#334155", rotation: -28 },
+];
 
+const TUNGSTON_BALL_BLOCKS: PixelBlock[] = [
+  { x: 82, y: 66, w: 44, h: 8, color: "#cbd5e1" },
+  { x: 72, y: 74, w: 64, h: 14, color: "#94a3b8" },
+  { x: 64, y: 88, w: 80, h: 28, color: "#64748b" },
+  { x: 72, y: 116, w: 64, h: 14, color: "#334155" },
+  { x: 84, y: 130, w: 40, h: 8, color: "#1f2937" },
+  { x: 82, y: 76, w: 22, h: 8, color: "#f8fafc", opacity: 0.8 },
+  { x: 74, y: 90, w: 16, h: 10, color: "#e2e8f0", opacity: 0.58 },
+  { x: 122, y: 102, w: 14, h: 14, color: "#0f172a", opacity: 0.7 },
+  { x: 96, y: 126, w: 28, h: 6, color: "#0f172a", opacity: 0.62 },
+];
+
+const SLEEP_PILL_BLOCKS: PixelBlock[] = [
+  { x: 22, y: 57, w: 116, h: 12, color: "#dbeafe" },
+  { x: 12, y: 69, w: 136, h: 32, color: "#60a5fa" },
+  { x: 22, y: 101, w: 116, h: 12, color: "#1d4ed8" },
+  { x: 8, y: 78, w: 16, h: 18, color: "#93c5fd" },
+  { x: 136, y: 78, w: 16, h: 18, color: "#1e3a8a" },
+  { x: 18, y: 73, w: 58, h: 24, color: "#bfdbfe", opacity: 0.72 },
+  { x: 84, y: 73, w: 56, h: 24, color: "#2563eb", opacity: 0.88 },
+  { x: 78, y: 66, w: 5, h: 48, color: "#e0f2fe", opacity: 0.76 },
+  { x: 30, y: 75, w: 26, h: 5, color: "#ffffff", opacity: 0.72 },
+];
+
+function TungstonChainGlyph({ isCharging }: { isCharging: boolean }) {
   return (
     <>
-      <PixelBlocks blocks={chainBlocks} />
+      <PixelBlocks blocks={TUNGSTON_CHAIN_BLOCKS} />
       <g>
         <animateTransform
           attributeName="transform"
@@ -40,7 +53,7 @@ function TungstonChainGlyph({ isCharging }: { isCharging: boolean }) {
           dur={isCharging ? "0.32s" : "1.1s"}
           repeatCount="indefinite"
         />
-        <PixelBlocks blocks={ballBlocks} />
+        <PixelBlocks blocks={TUNGSTON_BALL_BLOCKS} />
       </g>
     </>
   );
@@ -50,17 +63,7 @@ function SleepPillGlyph() {
   return (
     <>
       <PixelBlocks
-        blocks={[
-          { x: 22, y: 57, w: 116, h: 12, color: "#dbeafe" },
-          { x: 12, y: 69, w: 136, h: 32, color: "#60a5fa" },
-          { x: 22, y: 101, w: 116, h: 12, color: "#1d4ed8" },
-          { x: 8, y: 78, w: 16, h: 18, color: "#93c5fd" },
-          { x: 136, y: 78, w: 16, h: 18, color: "#1e3a8a" },
-          { x: 18, y: 73, w: 58, h: 24, color: "#bfdbfe", opacity: 0.72 },
-          { x: 84, y: 73, w: 56, h: 24, color: "#2563eb", opacity: 0.88 },
-          { x: 78, y: 66, w: 5, h: 48, color: "#e0f2fe", opacity: 0.76 },
-          { x: 30, y: 75, w: 26, h: 5, color: "#ffffff", opacity: 0.72 },
-        ]}
+        blocks={SLEEP_PILL_BLOCKS}
       />
       <text x="34" y="45" fill="#e0f2fe" fontFamily="monospace" fontSize="24" fontWeight="900">ZZZ</text>
       <text x="37" y="45" fill="#2563eb" fontFamily="monospace" fontSize="24" fontWeight="900" opacity="0.55">ZZZ</text>
