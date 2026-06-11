@@ -12,6 +12,64 @@ import {
 } from "./magicHandSpellEffectsRuntime";
 import { useMagicHandEquipScale } from "./useMagicHandEquipScale";
 
+const TORNADO_CHARGING_BLOCKS: PixelBlock[] = [
+  { x: 8, y: 62, w: 8, h: 8, color: "#f8fafc", opacity: 0.82 },
+  { x: 144, y: 78, w: 8, h: 8, color: "#e5e7eb", opacity: 0.82 },
+  { x: 18, y: 126, w: 8, h: 8, color: "#9ca3af", opacity: 0.72 },
+  { x: 134, y: 134, w: 10, h: 10, color: "#6b7280", opacity: 0.72 },
+];
+
+const METEOR_FLAME_BLOCKS: PixelBlock[] = [
+  { x: 54, y: 28, w: 52, h: 12, color: "#fed7aa", opacity: 0.62 },
+  { x: 42, y: 40, w: 76, h: 16, color: "#fb923c", opacity: 0.78 },
+  { x: 32, y: 56, w: 96, h: 22, color: "#ef4444", opacity: 0.84 },
+  { x: 26, y: 78, w: 108, h: 30, color: "#f97316", opacity: 0.94 },
+  { x: 38, y: 108, w: 84, h: 22, color: "#b91c1c", opacity: 0.84 },
+  { x: 56, y: 130, w: 48, h: 12, color: "#fb923c", opacity: 0.72 },
+];
+
+const METEOR_CORE_BLOCKS: PixelBlock[] = [
+  { x: 58, y: 44, w: 46, h: 16, color: "#fff7ed", opacity: 0.92 },
+  { x: 46, y: 62, w: 68, h: 24, color: "#fde68a", opacity: 0.94 },
+  { x: 54, y: 86, w: 52, h: 24, color: "#facc15", opacity: 0.92 },
+  { x: 68, y: 108, w: 28, h: 16, color: "#fffbeb", opacity: 0.88 },
+];
+
+const METEOR_ROCK_BLOCKS: PixelBlock[] = [
+  { x: 70, y: 68, w: 24, h: 16, color: "#7c2d12", opacity: 0.96 },
+  { x: 98, y: 74, w: 22, h: 16, color: "#9a3412", opacity: 0.96 },
+  { x: 46, y: 84, w: 22, h: 18, color: "#c2410c", opacity: 0.96 },
+  { x: 86, y: 98, w: 28, h: 18, color: "#ea580c", opacity: 0.96 },
+];
+
+const METEOR_EMBER_BLOCKS: PixelBlock[] = [
+  { x: 22, y: 50, w: 8, h: 8, color: "#fff7ed", opacity: 0.74 },
+  { x: 130, y: 58, w: 9, h: 9, color: "#fed7aa", opacity: 0.66 },
+  { x: 18, y: 116, w: 8, h: 8, color: "#f97316", opacity: 0.68 },
+  { x: 132, y: 120, w: 8, h: 8, color: "#fef3c7", opacity: 0.68 },
+];
+
+const METEOR_GLOW_BLOCKS: PixelBlock[] = [
+  { x: 38, y: 48, w: 84, h: 26, color: "#fed7aa", opacity: 0.14 },
+  { x: 28, y: 66, w: 100, h: 38, color: "#fb923c", opacity: 0.15 },
+  { x: 34, y: 92, w: 82, h: 34, color: "#ef4444", opacity: 0.13 },
+  { x: 14, y: 24, w: 58, h: 26, color: "#fb923c", opacity: 0.11 },
+  { x: 96, y: 26, w: 52, h: 24, color: "#facc15", opacity: 0.1 },
+];
+
+const METEOR_CHARGING_BLOCKS: PixelBlock[] = [
+  { x: 122, y: 18, w: 10, h: 10, color: "#fff7ed", opacity: 0.72 },
+  { x: 18, y: 44, w: 10, h: 10, color: "#fed7aa", opacity: 0.66 },
+  { x: 118, y: 132, w: 12, h: 12, color: "#fb923c", opacity: 0.68 },
+  { x: 28, y: 144, w: 8, h: 8, color: "#fef3c7", opacity: 0.68 },
+];
+
+const METEORITES = [
+  { id: "main", x: 80, y: 91, scale: 0.66, flameDur: 0.44, coreDur: 0.55, emberDur: 1.25 },
+  { id: "small-left", x: 47, y: 48, scale: 0.38, flameDur: 0.5, coreDur: 0.62, emberDur: 1.45 },
+  { id: "small-right", x: 114, y: 45, scale: 0.33, flameDur: 0.56, coreDur: 0.68, emberDur: 1.6 },
+] as const;
+
 export function TornadoSpellCanvas({ isActive, isCharging }: { isActive: boolean, isCharging: boolean }) {
   const equipScale = useMagicHandEquipScale(isActive);
 
@@ -54,12 +112,7 @@ export function TornadoSpellCanvas({ isActive, isCharging }: { isActive: boolean
         </g>
         {isCharging && (
           <PixelBlocks
-            blocks={[
-              { x: 8, y: 62, w: 8, h: 8, color: "#f8fafc", opacity: 0.82 },
-              { x: 144, y: 78, w: 8, h: 8, color: "#e5e7eb", opacity: 0.82 },
-              { x: 18, y: 126, w: 8, h: 8, color: "#9ca3af", opacity: 0.72 },
-              { x: 134, y: 134, w: 10, h: 10, color: "#6b7280", opacity: 0.72 },
-            ]}
+            blocks={TORNADO_CHARGING_BLOCKS}
           />
         )}
       </svg>
@@ -71,44 +124,6 @@ export function MeteorShowerCanvas({ isActive, isCharging }: { isActive: boolean
   const equipScale = useMagicHandEquipScale(isActive);
 
   if (equipScale === 0) return null;
-  const meteorFlameBlocks: PixelBlock[] = [
-    { x: 54, y: 28, w: 52, h: 12, color: "#fed7aa", opacity: 0.62 },
-    { x: 42, y: 40, w: 76, h: 16, color: "#fb923c", opacity: 0.78 },
-    { x: 32, y: 56, w: 96, h: 22, color: "#ef4444", opacity: 0.84 },
-    { x: 26, y: 78, w: 108, h: 30, color: "#f97316", opacity: 0.94 },
-    { x: 38, y: 108, w: 84, h: 22, color: "#b91c1c", opacity: 0.84 },
-    { x: 56, y: 130, w: 48, h: 12, color: "#fb923c", opacity: 0.72 },
-  ];
-  const meteorCoreBlocks: PixelBlock[] = [
-    { x: 58, y: 44, w: 46, h: 16, color: "#fff7ed", opacity: 0.92 },
-    { x: 46, y: 62, w: 68, h: 24, color: "#fde68a", opacity: 0.94 },
-    { x: 54, y: 86, w: 52, h: 24, color: "#facc15", opacity: 0.92 },
-    { x: 68, y: 108, w: 28, h: 16, color: "#fffbeb", opacity: 0.88 },
-  ];
-  const meteorRockBlocks: PixelBlock[] = [
-    { x: 70, y: 68, w: 24, h: 16, color: "#7c2d12", opacity: 0.96 },
-    { x: 98, y: 74, w: 22, h: 16, color: "#9a3412", opacity: 0.96 },
-    { x: 46, y: 84, w: 22, h: 18, color: "#c2410c", opacity: 0.96 },
-    { x: 86, y: 98, w: 28, h: 18, color: "#ea580c", opacity: 0.96 },
-  ];
-  const meteorEmberBlocks: PixelBlock[] = [
-    { x: 22, y: 50, w: 8, h: 8, color: "#fff7ed", opacity: 0.74 },
-    { x: 130, y: 58, w: 9, h: 9, color: "#fed7aa", opacity: 0.66 },
-    { x: 18, y: 116, w: 8, h: 8, color: "#f97316", opacity: 0.68 },
-    { x: 132, y: 120, w: 8, h: 8, color: "#fef3c7", opacity: 0.68 },
-  ];
-  const glowBlocks: PixelBlock[] = [
-    { x: 38, y: 48, w: 84, h: 26, color: "#fed7aa", opacity: 0.14 },
-    { x: 28, y: 66, w: 100, h: 38, color: "#fb923c", opacity: 0.15 },
-    { x: 34, y: 92, w: 82, h: 34, color: "#ef4444", opacity: 0.13 },
-    { x: 14, y: 24, w: 58, h: 26, color: "#fb923c", opacity: 0.11 },
-    { x: 96, y: 26, w: 52, h: 24, color: "#facc15", opacity: 0.1 },
-  ];
-  const meteorites = [
-    { id: "main", x: 80, y: 91, scale: 0.66, flameDur: 0.44, coreDur: 0.55, emberDur: 1.25 },
-    { id: "small-left", x: 47, y: 48, scale: 0.38, flameDur: 0.5, coreDur: 0.62, emberDur: 1.45 },
-    { id: "small-right", x: 114, y: 45, scale: 0.33, flameDur: 0.56, coreDur: 0.68, emberDur: 1.6 },
-  ];
 
   return (
     <div
@@ -124,8 +139,8 @@ export function MeteorShowerCanvas({ isActive, isCharging }: { isActive: boolean
       }}
     >
       <svg viewBox="0 0 160 160" className="h-full w-full" shapeRendering="crispEdges" style={{ imageRendering: 'pixelated' }}>
-        <PixelBlocks blocks={glowBlocks} />
-        {meteorites.map((meteorite) => (
+        <PixelBlocks blocks={METEOR_GLOW_BLOCKS} />
+        {METEORITES.map((meteorite) => (
           <g key={meteorite.id} transform={`translate(${meteorite.x} ${meteorite.y}) scale(${meteorite.scale}) translate(-80 -82)`}>
             <g transform="translate(80 82)">
               <g>
@@ -136,7 +151,7 @@ export function MeteorShowerCanvas({ isActive, isCharging }: { isActive: boolean
                   </>
                 )}
                 <g transform="translate(-80 -82)">
-                  <PixelBlocks blocks={meteorFlameBlocks} />
+                  <PixelBlocks blocks={METEOR_FLAME_BLOCKS} />
                 </g>
               </g>
             </g>
@@ -149,11 +164,11 @@ export function MeteorShowerCanvas({ isActive, isCharging }: { isActive: boolean
                   </>
                 )}
                 <g transform="translate(-80 -82)">
-                  <PixelBlocks blocks={meteorCoreBlocks} />
+                  <PixelBlocks blocks={METEOR_CORE_BLOCKS} />
                 </g>
               </g>
             </g>
-            <PixelBlocks blocks={meteorRockBlocks} />
+            <PixelBlocks blocks={METEOR_ROCK_BLOCKS} />
             <g>
               {!MAGIC_HANDS_MOBILE_PERFORMANCE_MODE && (
                 <>
@@ -161,18 +176,13 @@ export function MeteorShowerCanvas({ isActive, isCharging }: { isActive: boolean
                   <animate attributeName="opacity" values="0.5;0.86;0.42;0.76;0.5" dur={`${meteorite.flameDur}s`} repeatCount="indefinite" />
                 </>
               )}
-              <PixelBlocks blocks={meteorEmberBlocks} />
+              <PixelBlocks blocks={METEOR_EMBER_BLOCKS} />
             </g>
           </g>
         ))}
         {isCharging && (
           <PixelBlocks
-            blocks={[
-              { x: 122, y: 18, w: 10, h: 10, color: "#fff7ed", opacity: 0.72 },
-              { x: 18, y: 44, w: 10, h: 10, color: "#fed7aa", opacity: 0.66 },
-              { x: 118, y: 132, w: 12, h: 12, color: "#fb923c", opacity: 0.68 },
-              { x: 28, y: 144, w: 8, h: 8, color: "#fef3c7", opacity: 0.68 },
-            ]}
+            blocks={METEOR_CHARGING_BLOCKS}
           />
         )}
       </svg>
