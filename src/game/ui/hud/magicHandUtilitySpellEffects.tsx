@@ -12,6 +12,14 @@ type UtilitySpellEffectProps = {
   isCharging: boolean;
 };
 
+const GRAB_SPELL_FINGER_PATHS = [
+  "M171 69 C190 46 209 37 224 40",
+  "M181 84 C207 72 226 73 238 82",
+  "M180 101 C204 102 220 112 229 128",
+  "M166 114 C181 132 188 148 185 163",
+  "M142 82 C126 62 112 53 96 55",
+] as const;
+
 export function HealingCrystalsCanvas({ isActive, isCharging }: UtilitySpellEffectProps) {
   const equipScale = useMagicHandEquipScale(isActive);
 
@@ -108,13 +116,7 @@ export function GrabSpellCanvas({ isActive, isCharging }: UtilitySpellEffectProp
         />
         <ellipse cx="161" cy="91" rx="29" ry="34" fill="#f472b6" opacity="0.46" transform="rotate(-23 161 91)" />
         <ellipse cx="157" cy="88" rx="20" ry="24" fill="#ffd6fb" opacity="0.58" transform="rotate(-23 157 88)" />
-        {[
-          "M171 69 C190 46 209 37 224 40",
-          "M181 84 C207 72 226 73 238 82",
-          "M180 101 C204 102 220 112 229 128",
-          "M166 114 C181 132 188 148 185 163",
-          "M142 82 C126 62 112 53 96 55",
-        ].map((d, index) => (
+        {GRAB_SPELL_FINGER_PATHS.map((d, index) => (
           <path
             key={d}
             d={d}
