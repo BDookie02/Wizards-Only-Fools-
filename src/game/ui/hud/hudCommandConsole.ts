@@ -36,9 +36,71 @@ export type HudCommandConsoleContext = {
   setSurvivalTimeOverrideSeconds: (seconds: number | null) => void;
 };
 
-const TRUTHY_COMMAND_VALUES = ["on", "true", "1", "yes", "enable", "enabled"];
-const FALSY_COMMAND_VALUES = ["off", "false", "0", "no", "disable", "disabled"];
-const DEFAULT_TRUTHY_COMMAND_VALUES = ["", ...TRUTHY_COMMAND_VALUES];
+function isTruthyCommandValue(value: string, allowEmpty = false) {
+  switch (value) {
+    case "":
+      return allowEmpty;
+    case "on":
+    case "true":
+    case "1":
+    case "yes":
+    case "enable":
+    case "enabled":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function isFalsyCommandValue(value: string) {
+  switch (value) {
+    case "off":
+    case "false":
+    case "0":
+    case "no":
+    case "disable":
+    case "disabled":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function isNightClearCommandValue(value: string) {
+  return isFalsyCommandValue(value) || value === "clear" || value === "reset" || value === "day";
+}
+
+function isDayClearCommandValue(value: string) {
+  return isFalsyCommandValue(value) || value === "clear" || value === "reset" || value === "cycle";
+}
+
+function getNavigationRecorderAction(action: string) {
+  switch (action) {
+    case "start":
+    case "on":
+    case "begin":
+    case "record":
+      return "start";
+    case "stop":
+    case "off":
+    case "end":
+    case "finish":
+      return "stop";
+    case "export":
+    case "save":
+    case "download":
+      return "export";
+    case "clear":
+    case "reset":
+    case "delete":
+      return "clear";
+    case "status":
+    case "info":
+      return "status";
+    default:
+      return "";
+  }
+}
 
 function parseToggleCommandValue(
   normalizedValue: string,
@@ -48,8 +110,8 @@ function parseToggleCommandValue(
   if ((options.allowEmpty && normalizedValue.length === 0) || normalizedValue === "toggle") {
     return !currentValue;
   }
-  if (TRUTHY_COMMAND_VALUES.includes(normalizedValue)) return true;
-  if (FALSY_COMMAND_VALUES.includes(normalizedValue)) return false;
+  if (isTruthyCommandValue(normalizedValue)) return true;
+  if (isFalsyCommandValue(normalizedValue)) return false;
   return null;
 }
 
@@ -248,12 +310,10 @@ export function submitHudCommandConsoleCommand({
   }
 
   if (normalizedCommand === "night") {
-    const falsy = [...FALSY_COMMAND_VALUES, "clear", "reset", "day"];
-
-    if (DEFAULT_TRUTHY_COMMAND_VALUES.includes(normalizedValue)) {
+    if (isTruthyCommandValue(normalizedValue, true)) {
       setSurvivalTimeOverrideSeconds(FORCED_NIGHT_ELAPSED_SECONDS);
       addLobbyMessage("NIGHT FORCED", "system");
-    } else if (falsy.includes(normalizedValue)) {
+    } else if (isNightClearCommandValue(normalizedValue)) {
       setSurvivalTimeOverrideSeconds(null);
       addLobbyMessage("DAY/NIGHT CYCLE RESUMED", "system");
     } else {
@@ -265,12 +325,10 @@ export function submitHudCommandConsoleCommand({
   }
 
   if (normalizedCommand === "day") {
-    const falsy = [...FALSY_COMMAND_VALUES, "clear", "reset", "cycle"];
-
-    if (DEFAULT_TRUTHY_COMMAND_VALUES.includes(normalizedValue)) {
+    if (isTruthyCommandValue(normalizedValue, true)) {
       setSurvivalTimeOverrideSeconds(FORCED_DAY_ELAPSED_SECONDS);
       addLobbyMessage("DAY FORCED", "system");
-    } else if (falsy.includes(normalizedValue)) {
+    } else if (isDayClearCommandValue(normalizedValue)) {
       setSurvivalTimeOverrideSeconds(null);
       addLobbyMessage("DAY/NIGHT CYCLE RESUMED", "system");
     } else {
@@ -286,20 +344,21 @@ export function submitHudCommandConsoleCommand({
     const action = rawAction.toLowerCase();
     const label = labelParts.join(" ");
     const activeStatus = getNavigationRecorderStatus();
+    const recorderAction = getNavigationRecorderAction(action);
 
-    if (["start", "on", "begin", "record"].includes(action)) {
+    if (recorderAction === "start") {
       const result = startNavigationRecording(label || undefined);
       addLobbyMessage(result.message, "system");
-    } else if (["stop", "off", "end", "finish"].includes(action)) {
+    } else if (recorderAction === "stop") {
       const result = stopNavigationRecording();
       addLobbyMessage(result.message, "system");
-    } else if (["export", "save", "download"].includes(action)) {
+    } else if (recorderAction === "export") {
       const result = exportNavigationRecording();
       addLobbyMessage(result.message, "system");
-    } else if (["clear", "reset", "delete"].includes(action)) {
+    } else if (recorderAction === "clear") {
       const result = clearNavigationRecordings();
       addLobbyMessage(result.message, "system");
-    } else if (["status", "info"].includes(action)) {
+    } else if (recorderAction === "status") {
       const seconds = Math.round(activeStatus.durationMs / 1000);
       addLobbyMessage(
         activeStatus.active
