@@ -1,8 +1,9 @@
+import { isCurrentQaTelemetryRouteEnabled } from "./qaRouteTelemetry";
+
 export type SurvivalGrassDebugSampleResolver = (worldX: number, worldZ: number) => unknown;
 
 export function isSurvivalGrassInspectionView() {
-  if (typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).get("qaGrassView") === "1";
+  return isCurrentQaTelemetryRouteEnabled(["grass"]);
 }
 
 export function installSurvivalGrassDebugSampler(resolveSample: SurvivalGrassDebugSampleResolver) {

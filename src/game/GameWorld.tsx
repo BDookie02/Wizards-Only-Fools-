@@ -21,6 +21,7 @@ import { LazyBaseVillageScene, LazyClassicSkyEnvironment, LazyDevSpellTestDummie
 import { useBaseVillageRenderState } from "./systems/world/villages/baseVillageVisibility";
 import { publishGameWorldModeTelemetry } from "./systems/world/gameWorldTelemetry";
 import { isMobilePerformanceMode } from "./systems/input/performanceMode";
+import { isCurrentQaTelemetryRouteEnabled } from "./tools/qa/qaRouteTelemetry";
 
 export function GameWorld() {
   const gameMode = useGameStore(s => s.gameMode);
@@ -50,10 +51,7 @@ export function GameWorld() {
   } = useBaseVillageRenderState(isSurvivalMode);
 
   const hillsTexture = useMemo(() => getHorizonHillsTexture(), []);
-  const spellDummyQaRequested = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("qaSpellDummies") === "1";
-  }, []);
+  const spellDummyQaRequested = useMemo(() => isCurrentQaTelemetryRouteEnabled(["spellDummies"]), []);
   const [mountSpellDummyQa, setMountSpellDummyQa] = useState(false);
 
   useEffect(() => {

@@ -29,6 +29,15 @@ const EMPTY_QA_TELEMETRY_ROUTE_FLAGS: QaTelemetryRouteFlags = {
 
 let cachedSearch = "";
 let cachedRouteFlags: QaTelemetryRouteFlags = EMPTY_QA_TELEMETRY_ROUTE_FLAGS;
+let cachedParamsSearch = "";
+let cachedParams: URLSearchParams | null = null;
+
+function getQaRouteSearchParams(search: string) {
+  if (cachedParams && cachedParamsSearch === search) return cachedParams;
+  cachedParamsSearch = search;
+  cachedParams = new URLSearchParams(search);
+  return cachedParams;
+}
 
 function hasSurvivalQaParam(params: URLSearchParams) {
   for (const key of params.keys()) {
@@ -42,7 +51,7 @@ function getQaTelemetryRouteFlags(search: string) {
   if (search === cachedSearch) return cachedRouteFlags;
 
   cachedSearch = search;
-  const params = new URLSearchParams(search);
+  const params = getQaRouteSearchParams(search);
   cachedRouteFlags = {
     aspect: params.get("qaAspectMatrix") === "1",
     canvas: params.get("qaCanvasRuntime") === "1",
@@ -58,6 +67,24 @@ function getQaTelemetryRouteFlags(search: string) {
   };
 
   return cachedRouteFlags;
+}
+
+export function getQaRouteParamFromSearch(search: string, name: string) {
+  return getQaRouteSearchParams(search).get(name);
+}
+
+export function hasQaRouteParamFromSearch(search: string, name: string) {
+  return getQaRouteSearchParams(search).has(name);
+}
+
+export function getCurrentQaRouteParam(name: string) {
+  if (typeof window === "undefined") return null;
+  return getQaRouteParamFromSearch(window.location.search, name);
+}
+
+export function hasCurrentQaRouteParam(name: string) {
+  if (typeof window === "undefined") return false;
+  return hasQaRouteParamFromSearch(window.location.search, name);
 }
 
 export function isQaTelemetryRouteEnabledFromSearch(search: string, routes: readonly QaTelemetryRoute[]) {

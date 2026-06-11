@@ -7,6 +7,10 @@ import {
   type SpellType,
 } from "../../../store/gameStore";
 import {
+  getCurrentQaRouteParam,
+  isCurrentQaTelemetryRouteEnabled,
+} from "./qaRouteTelemetry";
+import {
   angleDeltaRadians,
   lerpAngleRadians,
   moveAngleTowardsRadians,
@@ -178,23 +182,20 @@ export function isSurvivalGameMode(gameMode: string) {
 }
 
 export function isQaSurvivalWalkEnabled() {
-  if (!import.meta.env.DEV || typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).get("qaSurvivalWalk") === "1";
+  return import.meta.env.DEV && getCurrentQaRouteParam("qaSurvivalWalk") === "1";
 }
 
 export function getQaSurvivalWalkStartDelaySeconds() {
-  if (!import.meta.env.DEV || typeof window === "undefined") return 0;
-  const params = new URLSearchParams(window.location.search);
-  const rawDelay = params.get("qaSurvivalWalkDelay") ?? params.get("qaWalkDelay") ?? "0";
+  if (!import.meta.env.DEV) return 0;
+  const rawDelay = getCurrentQaRouteParam("qaSurvivalWalkDelay") ?? getCurrentQaRouteParam("qaWalkDelay") ?? "0";
   const delayMs = Number(rawDelay);
   if (!Number.isFinite(delayMs) || delayMs <= 0) return 0;
   return Math.min(60, Math.max(0, delayMs / 1000));
 }
 
 export function getQaSurvivalRouteWaypoints() {
-  if (!import.meta.env.DEV || typeof window === "undefined") return [] as QaSurvivalRouteWaypoint[];
-  const params = new URLSearchParams(window.location.search);
-  const route = (params.get("qaSurvivalRoute") || params.get("qaRoute") || "").toLowerCase();
+  if (!import.meta.env.DEV) return [] as QaSurvivalRouteWaypoint[];
+  const route = (getCurrentQaRouteParam("qaSurvivalRoute") || getCurrentQaRouteParam("qaRoute") || "").toLowerCase();
   if (!route || route === "off" || route === "0") return [];
   if (route.includes("long") || route.includes("point") || route === "ab" || route === "a-b") {
     return QA_SURVIVAL_LONG_HAUL_ROUTE;
@@ -230,8 +231,7 @@ export function publishQaPlayerPosition(position: { x: number; y: number; z: num
 }
 
 export function isQaSpellDummyRunEnabled() {
-  if (typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).get("qaSpellDummies") === "1";
+  return isCurrentQaTelemetryRouteEnabled(["spellDummies"]);
 }
 
 export function getQaSpellDummies() {

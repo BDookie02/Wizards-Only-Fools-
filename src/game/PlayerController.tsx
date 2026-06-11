@@ -364,11 +364,7 @@ export function PlayerController() {
     resetQaWalkSession,
     startQaWalkSession,
   } = useQaSurvivalWalkRuntimeState();
-  const qaWalkShouldCloseSpellMenu = useMemo(() => {
-    if (!qaSurvivalWalkEnabled || typeof window === "undefined") return false;
-    const params = new URLSearchParams(window.location.search);
-    return params.get("qaHideMenu") === "1" || params.get("qaSurvivalWalk") === "1";
-  }, [qaSurvivalWalkEnabled]);
+  const qaWalkShouldCloseSpellMenu = qaSurvivalWalkEnabled;
   const {
     activeLadderZones,
     slideTimer,

@@ -32,6 +32,7 @@ Done:
 - Extracted canvas resize handling, horizon texture generation, wall texture generation, and the QA perf probe into their owning systems.
 - Extracted shared QA route telemetry classification into `src/game/tools/qa/qaRouteTelemetry.ts` so rendering, world, water, vegetation, and feature-counter diagnostics use one route boundary.
 - Extracted app-frame route flag ownership into `src/game/ui/appFrame/appFrameRouteFlags.ts`, so voice, QA perf, survival observer, and app-frame QA metrics mounting use one parsed route snapshot instead of scattered `App.tsx` URL reads.
+- Extended the shared QA route helper to own cached route parameter reads for spell-dummy, grass-inspection, and survival-walk routes, removing more direct browser-search parsing from gameplay/world QA callers.
 - Extracted survival chunk types, render/collision radii, terrain segment tuning, biome blend tuning, and stream-delay timing into `src/game/systems/world/survival/survivalWorldConfig.ts`.
 - Extracted survival sky/day-night rendering into `src/game/systems/rendering/sky/SurvivalSkyCycle.tsx`.
 - Extracted quest navigation beacons into `src/game/systems/quests/QuestNavigationBeacons.tsx`.
@@ -501,6 +502,7 @@ Done:
 - Moved reusable foliage branch/vine/dodeca/leaf primitives, faceted plant line helpers, and minimap-hide metadata into `SurvivalFoliagePrimitives.tsx`, giving grass/tree/flower follow-up splits a shared vegetation visual boundary.
 - Added the shared `qaRouteTelemetry.ts` route gate so normal gameplay avoids scattered diagnostic dataset parsing/writes across rendering, world, water, vegetation, and feature counters.
 - Added `appFrameRouteFlags.ts` so app-frame voice, QA perf, survival observer, and layout telemetry gates are derived from one route snapshot at mount time instead of separate URL parses in `App.tsx`.
+- Reused the cached QA route helper for spell-dummy mounting, grass-inspection mode, survival-walk delay/route parsing, and the player-controller QA menu-close decision; `PlayerController` no longer reparses `qaHideMenu` during startup because `qaSurvivalWalk=1` already implies the same close-menu behavior.
 - Added the terrain-owned `survivalTerrainTint.ts` cache so visible survival terrain chunks share the same day/night tint computation for a frame instead of recomputing identical cycle color math per chunk.
 - Shortened collided smoke-bomb lifecycle cleanup, unmounted completed portal scale-in frame hooks, and added mobile-only status-bolt visual cadence while preserving spell collision/status/network timing.
 - Moved mountain village radius, plateau, trail, mineshaft, slope-grass, waterfall-hide constants and pure trail/terrain helpers into `mountainVillageTerrain.ts`, giving mountain grass, terrain, colliders, and the future mountain renderer one shared tuning source.
@@ -830,6 +832,9 @@ Next:
 
 ## Latest Verification
 
+- Focused QA route-cache cleanup: `qaRouteTelemetry.ts` now owns cached route parameter reads, `GameWorld.tsx` / `spellDummyQaScene.tsx` / `survivalGrassDebug.ts` / `survivalWalkQa.ts` use the shared route boundary, and `PlayerController.tsx` removed the redundant QA-walk URL parse. The targeted source scan found no direct `window.location.search` parsing in those files after the pass.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the QA route-cache visual path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the QA route-cache cleanup. Sprite verification passed; current warning remains chunk size only. `GameWorld` is about 25.90 kB / 9.18 kB gzip, `PlayerController` is about 81.19 kB / 28.58 kB gzip, and `spellDummyQaScene` is about 8.79 kB / 3.35 kB gzip.
 - Focused app-frame/network route-flag cleanup: `App.tsx` now delegates voice, QA perf, survival observer, and app-frame telemetry route decisions to `appFrameRouteFlags.ts`; `VoiceChat.tsx` now delegates soundboard/autostart route decisions to `voiceChatRouteFlags.ts` and reads one memoized route snapshot per lazy voice mount.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the route-flag visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the app-frame/network route-flag split. Sprite verification passed; current warning remains chunk size only. `index` is about 78.44 kB / 23.82 kB gzip, `VoiceChat` is about 10.68 kB / 4.34 kB gzip, and `appFrameQaMetrics` is about 7.49 kB / 2.41 kB gzip.
