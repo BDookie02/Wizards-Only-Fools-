@@ -140,11 +140,16 @@ function getHorizontalDistance(dx: number, dz: number) {
 }
 
 function getSwampHutsByRopeAngle(huts: readonly SwampVillageHut[]) {
-  const sortedHuts = new Array<SwampVillageHut>(huts.length);
+  const sortedHuts: SwampVillageHut[] = [];
   for (let index = 0; index < huts.length; index += 1) {
-    sortedHuts[index] = huts[index];
+    const hut = huts[index];
+    let insertIndex = sortedHuts.length;
+    while (insertIndex > 0 && hut.ropeAngle < sortedHuts[insertIndex - 1].ropeAngle) {
+      sortedHuts[insertIndex] = sortedHuts[insertIndex - 1];
+      insertIndex -= 1;
+    }
+    sortedHuts[insertIndex] = hut;
   }
-  sortedHuts.sort((a, b) => a.ropeAngle - b.ropeAngle);
   return sortedHuts;
 }
 
