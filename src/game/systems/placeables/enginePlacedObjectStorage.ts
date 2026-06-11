@@ -203,10 +203,21 @@ function removeStoredEngineObjectSlotSummary(
   summaries: EnginePlacedObjectSlotSummary[],
   slotId: string
 ) {
-  const next: EnginePlacedObjectSlotSummary[] = [];
+  let removeIndex = -1;
   for (let index = 0; index < summaries.length; index += 1) {
-    const summary = summaries[index];
-    if (summary.slotId !== slotId) next.push(summary);
+    if (summaries[index].slotId === slotId) {
+      removeIndex = index;
+      break;
+    }
+  }
+  if (removeIndex < 0) return summaries;
+
+  const next = new Array<EnginePlacedObjectSlotSummary>(summaries.length - 1);
+  for (let index = 0; index < removeIndex; index += 1) {
+    next[index] = summaries[index];
+  }
+  for (let index = removeIndex + 1; index < summaries.length; index += 1) {
+    next[index - 1] = summaries[index];
   }
   return next;
 }
@@ -215,9 +226,10 @@ function prependStoredEngineObjectSlotSummary(
   summary: EnginePlacedObjectSlotSummary,
   summaries: EnginePlacedObjectSlotSummary[]
 ) {
-  const next = new Array<EnginePlacedObjectSlotSummary>(summaries.length + 1);
+  const nextLength = Math.min(MAX_ENGINE_PLACED_OBJECT_SLOTS, summaries.length + 1);
+  const next = new Array<EnginePlacedObjectSlotSummary>(nextLength);
   next[0] = summary;
-  for (let index = 0; index < summaries.length; index += 1) {
+  for (let index = 0; index < nextLength - 1; index += 1) {
     next[index + 1] = summaries[index];
   }
   return next;
