@@ -46,6 +46,13 @@ export type InventoryQuestProgressRow = {
   done: boolean;
 };
 
+type InventoryQuestDefinition = (typeof SPELL_QUEST_DEFINITIONS)[number];
+
+type InventoryQuestDefinitionLookupEntry = {
+  definition: InventoryQuestDefinition;
+  index: number;
+};
+
 const inventoryItemOrder: readonly InventoryItemId[] = [
   "darrel-leaves",
   "darrel-berries",
@@ -53,6 +60,19 @@ const inventoryItemOrder: readonly InventoryItemId[] = [
   "garden-draught",
   "healing-crystals",
 ];
+
+const questDefinitionById = new Map<string, InventoryQuestDefinitionLookupEntry>();
+const questDefinitionBySpell = new Map<SpellType, InventoryQuestDefinitionLookupEntry>();
+
+for (let index = 0; index < SPELL_QUEST_DEFINITIONS.length; index += 1) {
+  const definition = SPELL_QUEST_DEFINITIONS[index];
+  if (!questDefinitionById.has(definition.id)) {
+    questDefinitionById.set(definition.id, { definition, index });
+  }
+  if (!questDefinitionBySpell.has(definition.spell)) {
+    questDefinitionBySpell.set(definition.spell, { definition, index });
+  }
+}
 
 export function getInventoryPreviewAnimation(playerState: InventoryHudPlayerState): AvatarAnimation {
   if (playerState.isMeditating) return "meditate";
@@ -69,12 +89,11 @@ export function isInventoryQuestFlagTruthy(value: QuestFlagValue | undefined) {
 }
 
 export function getQuestDefinitionForAssignment(assignment: QuestNpcAssignment) {
-  for (const quest of SPELL_QUEST_DEFINITIONS) {
-    if (quest.id === assignment.questId || quest.spell === assignment.spell) {
-      return quest;
-    }
-  }
-  return null;
+  const questIdMatch = questDefinitionById.get(assignment.questId);
+  const spellMatch = questDefinitionBySpell.get(assignment.spell);
+  if (!questIdMatch) return spellMatch?.definition ?? null;
+  if (!spellMatch) return questIdMatch.definition;
+  return questIdMatch.index <= spellMatch.index ? questIdMatch.definition : spellMatch.definition;
 }
 
 export function isQuestSpellAlreadyUnlocked(spells: readonly SpellType[], spell: SpellType) {
