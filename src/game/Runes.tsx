@@ -28,9 +28,18 @@ import {
 import { getPublishedLocalPlayerPosition, type PlayerPositionLike } from "./systems/player/playerEventBridge";
 
 type PlayerPositionRef = React.MutableRefObject<PlayerPositionLike | undefined>;
+type BaseRuneHutPosition = { id: string; x: number; y: number; z: number };
 const MOBILE_MANA_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 24;
 const MOBILE_MANA_PULSE_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 30;
 const MOBILE_RUNE_SOURCE_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 24;
+
+function findBaseRuneHutPositionById(hutPositions: readonly BaseRuneHutPosition[], id: string) {
+  for (let index = 0; index < hutPositions.length; index += 1) {
+    const hut = hutPositions[index];
+    if (hut.id === id) return hut;
+  }
+  return null;
+}
 
 export function Runes() {
   const [manaPulses, setManaPulses] = useState<{ id: number; playerId: string }[]>([]);
@@ -46,7 +55,7 @@ export function Runes() {
   const lastWellChunkRef = useRef("");
   const hutPositions = useMemo(() => {
     const huts = getHutList();
-    const positions = new Array<{ id: string; x: number; y: number; z: number }>(huts.length);
+    const positions = new Array<BaseRuneHutPosition>(huts.length);
     for (let index = 0; index < huts.length; index += 1) {
       const hut = huts[index];
       positions[index] = {
@@ -58,14 +67,6 @@ export function Runes() {
     }
     return positions;
   }, []);
-  const hutById = useMemo(() => {
-    const lookup = new Map<string, { id: string; x: number; y: number; z: number }>();
-    for (let index = 0; index < hutPositions.length; index += 1) {
-      const hut = hutPositions[index];
-      lookup.set(hut.id, hut);
-    }
-    return lookup;
-  }, [hutPositions]);
 
   const [activeRunes, setActiveRunes] = useState<string[]>([]);
   const [baseRuneSourcesVisible, setBaseRuneSourcesVisible] = useState(() => !isSurvivalMode);
@@ -311,7 +312,7 @@ export function Runes() {
         />
       ))}
       {baseRuneSourcesVisible && activeRunes.map((id) => {
-        const hut = hutById.get(id);
+        const hut = findBaseRuneHutPositionById(hutPositions, id);
         if (!hut) return null;
         return <Rune key={id} hut={hut} mobilePerformanceMode={mobilePerformanceMode} onCollect={() => collectRune(id)} />;
       })}
