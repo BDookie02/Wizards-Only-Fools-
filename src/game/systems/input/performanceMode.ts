@@ -12,8 +12,28 @@ function isDesktopUserAgent(userAgent: string) {
   return /Windows NT|Macintosh|X11|Linux x86_64/i.test(userAgent);
 }
 
+function getNativeMobileSignature() {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return "";
+
+  return [
+    navigator.userAgent || "",
+    navigator.platform || "",
+    navigator.maxTouchPoints || 0,
+    window.screen?.width || 0,
+    window.screen?.height || 0,
+    window.innerWidth || 0,
+    window.innerHeight || 0,
+  ].join("|");
+}
+
+let cachedNativeMobileSignature = "";
+let cachedNativeMobileLikeDevice = false;
+
 function isNativeMobileLikeDevice() {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+
+  const signature = getNativeMobileSignature();
+  if (cachedNativeMobileSignature === signature) return cachedNativeMobileLikeDevice;
 
   const userAgent = navigator.userAgent || "";
   const hasTouch = (navigator.maxTouchPoints || 0) > 0;
@@ -21,10 +41,18 @@ function isNativeMobileLikeDevice() {
   const androidLike = /Android/i.test(userAgent);
   const mobileUserAgent = /Mobile|Tablet|iPhone|iPad|iPod/i.test(userAgent);
 
-  if (isIOSLikeDevice() || androidLike) return true;
-  if (isDesktopUserAgent(userAgent)) return false;
+  cachedNativeMobileSignature = signature;
+  if (isIOSLikeDevice() || androidLike) {
+    cachedNativeMobileLikeDevice = true;
+    return cachedNativeMobileLikeDevice;
+  }
+  if (isDesktopUserAgent(userAgent)) {
+    cachedNativeMobileLikeDevice = false;
+    return cachedNativeMobileLikeDevice;
+  }
 
-  return mobileUserAgent || (hasTouch && shortSide <= 900);
+  cachedNativeMobileLikeDevice = mobileUserAgent || (hasTouch && shortSide <= 900);
+  return cachedNativeMobileLikeDevice;
 }
 
 let cachedQaSearch = "";
@@ -68,14 +96,51 @@ export function isTouchGameplayDevice() {
   return isNativeMobileLikeDevice();
 }
 
+function getStoredPerformancePreference(key: string) {
+  try {
+    return window.localStorage?.getItem(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+let cachedMobilePerformanceSignature = "";
+let cachedMobilePerformanceMode = false;
+
 export function isMobilePerformanceMode() {
   if (typeof window !== "undefined") {
+    const search = window.location.search || "";
+    const qualityPreference = getStoredPerformancePreference("wizards-quality-performance");
+    const mobilePreference = getStoredPerformancePreference("wizards-mobile-performance");
+    const signature = [
+      search,
+      qualityPreference,
+      mobilePreference,
+      getNativeMobileSignature(),
+    ].join("|");
+
+    if (cachedMobilePerformanceSignature === signature) return cachedMobilePerformanceMode;
+
     const params = getQaParams();
-    if (params?.get("perf") === "quality" || params?.get("quality") === "1") return false;
-    if (params?.get("mobilePerf") === "1" || params?.get("perf") === "mobile") return true;
-    if (window.localStorage?.getItem("wizards-quality-performance") === "1") return false;
-    if (window.localStorage?.getItem("wizards-mobile-performance") === "1") return true;
+    cachedMobilePerformanceSignature = signature;
+    if (params?.get("perf") === "quality" || params?.get("quality") === "1") {
+      cachedMobilePerformanceMode = false;
+      return cachedMobilePerformanceMode;
+    }
+    if (params?.get("mobilePerf") === "1" || params?.get("perf") === "mobile") {
+      cachedMobilePerformanceMode = true;
+      return cachedMobilePerformanceMode;
+    }
+    if (qualityPreference === "1") {
+      cachedMobilePerformanceMode = false;
+      return cachedMobilePerformanceMode;
+    }
+    if (mobilePreference === "1") {
+      cachedMobilePerformanceMode = true;
+      return cachedMobilePerformanceMode;
+    }
   }
 
-  return isMobileLikeDevice();
+  cachedMobilePerformanceMode = isMobileLikeDevice();
+  return cachedMobilePerformanceMode;
 }
