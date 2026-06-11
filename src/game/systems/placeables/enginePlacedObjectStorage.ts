@@ -29,8 +29,44 @@ type EnginePlacementStorageLike = {
   removeItem?: (key: string) => void;
 };
 
+const slotSummarySeenScratch = new Set<string>();
+
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function appendBoundedStoredEngineObject(
+  objects: EnginePlacedObjectRecord[],
+  object: EnginePlacedObjectRecord
+) {
+  if (objects.length < MAX_ENGINE_PLACED_OBJECTS) {
+    objects.push(object);
+    return;
+  }
+
+  for (let index = 1; index < MAX_ENGINE_PLACED_OBJECTS; index += 1) {
+    objects[index - 1] = objects[index];
+  }
+  objects[MAX_ENGINE_PLACED_OBJECTS - 1] = object;
+}
+
+function copyLastStoredEngineObjects(objects: EnginePlacedObjectRecord[]) {
+  if (objects.length <= MAX_ENGINE_PLACED_OBJECTS) return objects;
+  const startIndex = objects.length - MAX_ENGINE_PLACED_OBJECTS;
+  const savedObjects = new Array<EnginePlacedObjectRecord>(MAX_ENGINE_PLACED_OBJECTS);
+  for (let index = 0; index < MAX_ENGINE_PLACED_OBJECTS; index += 1) {
+    savedObjects[index] = objects[startIndex + index];
+  }
+  return savedObjects;
+}
+
+function copyFirstStoredSlotSummaries(summaries: EnginePlacedObjectSlotSummary[]) {
+  if (summaries.length <= MAX_ENGINE_PLACED_OBJECT_SLOTS) return summaries;
+  const savedSummaries = new Array<EnginePlacedObjectSlotSummary>(MAX_ENGINE_PLACED_OBJECT_SLOTS);
+  for (let index = 0; index < MAX_ENGINE_PLACED_OBJECT_SLOTS; index += 1) {
+    savedSummaries[index] = summaries[index];
+  }
+  return savedSummaries;
 }
 
 function sanitizeStoredEngineObjects(parsed: unknown): EnginePlacedObjectRecord[] {
@@ -46,7 +82,7 @@ function sanitizeStoredEngineObjects(parsed: unknown): EnginePlacedObjectRecord[
     const z = Number(object?.z);
     const yaw = Number(object?.yaw);
     if (!isFiniteNumber(x) || !isFiniteNumber(y) || !isFiniteNumber(z) || !isFiniteNumber(yaw)) continue;
-    objects.push({
+    appendBoundedStoredEngineObject(objects, {
       instanceId: String(object?.instanceId || `engine-${placeableId}-${index}`),
       placeableId,
       label: String(object?.label || placeable.name),
@@ -56,7 +92,7 @@ function sanitizeStoredEngineObjects(parsed: unknown): EnginePlacedObjectRecord[
       yaw,
     });
   }
-  return objects.slice(-MAX_ENGINE_PLACED_OBJECTS);
+  return objects;
 }
 
 export function sanitizeEnginePlacementSlotId(slotId: unknown) {
@@ -103,7 +139,7 @@ export function loadStoredEngineObjects(storage: EnginePlacementStorageLike | nu
 
 export function saveStoredEngineObjects(storage: EnginePlacementStorageLike | null | undefined, objects: EnginePlacedObjectRecord[]) {
   try {
-    storage?.setItem?.(ENGINE_PLACED_OBJECTS_STORAGE_KEY, JSON.stringify(objects.slice(-MAX_ENGINE_PLACED_OBJECTS)));
+    storage?.setItem?.(ENGINE_PLACED_OBJECTS_STORAGE_KEY, JSON.stringify(copyLastStoredEngineObjects(objects)));
     return Boolean(storage?.setItem);
   } catch {
     return false;
@@ -117,17 +153,22 @@ export function loadStoredEngineObjectSlotSummaries(storage: EnginePlacementStor
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     const summaries: EnginePlacedObjectSlotSummary[] = [];
-    const seen = new Set<string>();
+    const seen = slotSummarySeenScratch;
+    seen.clear();
     for (let index = 0; index < parsed.length; index += 1) {
       const summary = sanitizeSlotSummary(parsed[index]);
       if (!summary || seen.has(summary.slotId)) continue;
       seen.add(summary.slotId);
       summaries.push(summary);
     }
-    return summaries
-      .sort((a, b) => b.savedAt - a.savedAt)
-      .slice(0, MAX_ENGINE_PLACED_OBJECT_SLOTS);
+    seen.clear();
+    summaries.sort((a, b) => b.savedAt - a.savedAt);
+    if (summaries.length > MAX_ENGINE_PLACED_OBJECT_SLOTS) {
+      summaries.length = MAX_ENGINE_PLACED_OBJECT_SLOTS;
+    }
+    return summaries;
   } catch {
+    slotSummarySeenScratch.clear();
     return [];
   }
 }
@@ -139,7 +180,7 @@ function saveStoredEngineObjectSlotSummaries(
   try {
     storage?.setItem?.(
       ENGINE_PLACED_OBJECTS_SLOT_META_KEY,
-      JSON.stringify(summaries.slice(0, MAX_ENGINE_PLACED_OBJECT_SLOTS))
+      JSON.stringify(copyFirstStoredSlotSummaries(summaries))
     );
     return Boolean(storage?.setItem);
   } catch {
@@ -179,7 +220,7 @@ export function saveStoredEngineObjectSlot(
 ) {
   const slotId = sanitizeEnginePlacementSlotId(slotIdValue);
   const label = getEnginePlacementSlotLabel(slotId, labelValue);
-  const savedObjects = objects.slice(-MAX_ENGINE_PLACED_OBJECTS);
+  const savedObjects = copyLastStoredEngineObjects(objects);
   const savedAt = Date.now();
   try {
     storage?.setItem?.(getEnginePlacementSlotStorageKey(slotId), JSON.stringify(savedObjects));
