@@ -4,12 +4,6 @@ import { isMobilePerformanceMode } from "../../input/performanceMode";
 import { isSurvivalGrassInspectionView } from "../../../tools/qa/survivalGrassDebug";
 import { SurvivalTerrain, SurvivalTerrainTintRuntime } from "../terrain/SurvivalTerrain";
 import {
-  SURVIVAL_ALL_TERRAIN_SKIRT_EDGES,
-  makeSurvivalTerrainCollisionGeometry,
-  makeSurvivalTerrainGeometry,
-  makeSurvivalTerrainSkirtGeometry,
-} from "../terrain/survivalTerrainGeometry";
-import {
   SURVIVAL_CHUNK_CENTER_HYSTERESIS,
   SURVIVAL_CHUNK_MOBILE_MOUNT_INTERVAL_MS,
   SURVIVAL_CHUNK_MOUNT_BATCH,
@@ -51,10 +45,8 @@ import {
   getInitialSurvivalVisibleChunks,
   makeSurvivalChunks,
   reconcileSurvivalVisibleChunks,
-  shouldBuildSurvivalChunkColliders,
-  shouldRenderSurvivalTerrainSkirt,
 } from "./survivalChunks";
-import { makeSurvivalRiverSurfaceGeometry } from "./survivalRivers";
+import { prewarmSurvivalChunkGeometry } from "./survivalChunkPrewarm";
 import { SURVIVAL_GRASS_SYSTEM_ENABLED } from "../vegetation/survivalGrassSystemConfig";
 import {
   hasSurvivalVillage,
@@ -116,19 +108,6 @@ type SurvivalChunkRendererProps = {
   showBaseVillage: boolean;
   visibleChunkKeys: ReadonlySet<string>;
 };
-
-function prewarmSurvivalChunkGeometry(chunk: SurvivalChunkInfo) {
-  makeSurvivalTerrainGeometry(chunk);
-  if (shouldBuildSurvivalChunkColliders(chunk)) {
-    makeSurvivalTerrainCollisionGeometry(chunk);
-  }
-  if (shouldRenderSurvivalTerrainSkirt(chunk)) {
-    makeSurvivalTerrainSkirtGeometry(chunk, SURVIVAL_ALL_TERRAIN_SKIRT_EDGES);
-  }
-  if (chunk.hasRiver) {
-    makeSurvivalRiverSurfaceGeometry(chunk, getSurvivalTerrainHeightForChunk);
-  }
-}
 
 function appendSurvivalLookaheadPrewarmChunks(
   targetCx: number,
