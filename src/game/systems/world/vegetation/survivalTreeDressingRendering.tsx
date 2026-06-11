@@ -13,8 +13,10 @@ import {
   SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y,
 } from "./survivalBotwGrassConfig";
 import {
+  createSurvivalBranchFrame,
   HIDE_FROM_MINIMAP,
   PLANT_EDGE_COLOR,
+  writeSurvivalBranchFrameInto,
 } from "./SurvivalFoliagePrimitives";
 import {
   SURVIVAL_ROOF_FOREST_CANOPY_COLORS,
@@ -91,6 +93,11 @@ export function SurvivalFastGroves({
   const sideCanopyRef0 = useRef<THREE.InstancedMesh>(null);
   const sideCanopyRef1 = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const branchScratch = useMemo(() => ({
+    start: new THREE.Vector3(),
+    end: new THREE.Vector3(),
+    frame: createSurvivalBranchFrame(),
+  }), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const canopyColors = SURVIVAL_TREE_CANOPY_COLORS[chunk.biome];
   const trunkColor = SURVIVAL_TREE_TRUNK_COLORS[chunk.biome];
@@ -190,12 +197,7 @@ export function SurvivalFastGroves({
 
     const branchMesh = branchRef.current;
     if (branchMesh) {
-      const up = new THREE.Vector3(0, 1, 0);
-      const start = new THREE.Vector3();
-      const end = new THREE.Vector3();
-      const direction = new THREE.Vector3();
-      const midpoint = new THREE.Vector3();
-      const quaternion = new THREE.Quaternion();
+      const { start, end, frame } = branchScratch;
       let branchInstance = 0;
       for (let treeIndex = 0; treeIndex < trees.length; treeIndex += 1) {
         const tree = trees[treeIndex];
@@ -213,13 +215,10 @@ export function SurvivalFastGroves({
             start.y + tree.canopyHeight * (0.36 + branchSeed * 0.42),
             start.z + Math.cos(angle) * length,
           );
-          direction.subVectors(end, start);
-          const branchLength = Math.max(0.1, direction.length());
-          midpoint.addVectors(start, end).multiplyScalar(0.5);
-          quaternion.setFromUnitVectors(up, direction.normalize());
-          dummy.position.copy(midpoint);
-          dummy.quaternion.copy(quaternion);
-          dummy.scale.set(tree.trunkRadius * (0.28 + branchSeed * 0.2), branchLength, tree.trunkRadius * (0.24 + branchSeed * 0.16));
+          writeSurvivalBranchFrameInto(start, end, frame);
+          dummy.position.copy(frame.midpoint);
+          dummy.quaternion.copy(frame.quaternion);
+          dummy.scale.set(tree.trunkRadius * (0.28 + branchSeed * 0.2), frame.length, tree.trunkRadius * (0.24 + branchSeed * 0.16));
           dummy.updateMatrix();
           branchMesh.setMatrixAt(branchInstance, dummy.matrix);
           branchInstance += 1;
@@ -308,7 +307,7 @@ export function SurvivalFastGroves({
         finalizeSurvivalInstancedMesh(edgeMesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.88, 86);
       }
     }
-  }, [chunk.cx, chunk.cz, chunk.x, chunk.z, dummy, trees]);
+  }, [branchScratch, chunk.cx, chunk.cz, chunk.x, chunk.z, dummy, trees]);
 
   if (trees.length === 0) return null;
 
