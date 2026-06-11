@@ -2664,20 +2664,38 @@ function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMine
   );
 }
 
-function MountainMineshaftCatwalkRing({ hut, ladders, showDetails }: { hut: MountainMineshaftHut; ladders: MountainMineshaftLadder[]; showDetails: boolean }) {
+function MountainMineshaftCatwalkRing({
+  hut,
+  ladder,
+  nextLadder,
+  showDetails,
+}: {
+  hut: MountainMineshaftHut;
+  ladder?: MountainMineshaftLadder;
+  nextLadder?: MountainMineshaftLadder;
+  showDetails: boolean;
+}) {
   const plankRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
   const centerGuardRailRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 0.55;
   const centerGuardPostCount = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS * 2;
   const centerGuardRailSegmentLength = ((Math.PI * 2 * centerGuardRailRadius) / centerGuardPostCount) * 0.78;
   const lightPoleRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS + 0.95;
   const balconyGapHalfAngle = Math.min(0.52, Math.max(0.34, (hut.platformWidth * 0.38) / centerGuardRailRadius));
-  const guardRailGaps = new Array<{ angle: number; halfAngle: number }>(ladders.length + 1);
-  guardRailGaps[0] = { angle: hut.angle, halfAngle: balconyGapHalfAngle };
-  for (let index = 0; index < ladders.length; index += 1) {
-    const ladder = ladders[index];
-    guardRailGaps[index + 1] = {
+  const guardRailGaps = new Array<{ angle: number; halfAngle: number }>(1 + (ladder ? 1 : 0) + (nextLadder ? 1 : 0));
+  let guardRailGapCount = 0;
+  guardRailGaps[guardRailGapCount] = { angle: hut.angle, halfAngle: balconyGapHalfAngle };
+  guardRailGapCount += 1;
+  if (ladder) {
+    guardRailGaps[guardRailGapCount] = {
       angle: ladder.angle,
       halfAngle: Math.min(0.5, Math.max(0.34, (ladder.width * 1.35) / centerGuardRailRadius)),
+    };
+    guardRailGapCount += 1;
+  }
+  if (nextLadder) {
+    guardRailGaps[guardRailGapCount] = {
+      angle: nextLadder.angle,
+      halfAngle: Math.min(0.5, Math.max(0.34, (nextLadder.width * 1.35) / centerGuardRailRadius)),
     };
   }
   const isGuardRailOpening = (angle: number) => {
@@ -2803,7 +2821,8 @@ function MountainMineshaftInterior({ layout, showDetails }: { layout: MountainVi
         <MountainMineshaftCatwalkRing
           key={`${hut.key}-catwalk-ring`}
           hut={hut}
-          ladders={layout.interiorLadders.slice(index, index + 2)}
+          ladder={layout.interiorLadders[index]}
+          nextLadder={layout.interiorLadders[index + 1]}
           showDetails={showDetails}
         />
       ))}
