@@ -6,6 +6,7 @@ import { spellColors, spellNames } from "../../systems/spells/spellCatalog";
 import {
   getFallbackSpellThumbnail,
   getFirstSpellInFamily,
+  getSpellMenuIndex,
   getSpellMenuFamilyCounts,
   getSpellMenuFamilyForSpell,
   getSpellThumbnail,
@@ -823,7 +824,7 @@ export const SpellMenu = memo(function SpellMenu({
     const nextSpell = family === "all"
       ? highlightedSpell
       : getFirstSpellInFamily(family);
-    const nextIndex = nextSpell ? ALL_SPELLS.indexOf(nextSpell) : 0;
+    const nextIndex = nextSpell ? getSpellMenuIndex(nextSpell) : 0;
     if (nextIndex >= 0) setMenuSpellIndex(nextIndex);
   };
 
@@ -950,7 +951,7 @@ export const SpellMenu = memo(function SpellMenu({
 
             <div className="spell-menu-grid grid grid-cols-3 gap-2 md:grid-cols-5">
               {visibleSpells.map((spell) => {
-                const index = ALL_SPELLS.indexOf(spell);
+                const index = getSpellMenuIndex(spell);
                 const isHighlighted = index === menuSpellIndex;
                 const leftAssignedSlot = leftHotbarSpells.indexOf(spell);
                 const rightAssignedSlot = rightHotbarSpells.indexOf(spell);

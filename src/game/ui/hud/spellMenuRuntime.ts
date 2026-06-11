@@ -61,8 +61,12 @@ const cachedFirstSpellInFamily: Record<SpellFamilyFilter, SpellType | null> = {
   quest: null,
 };
 
-for (const spell of ALL_SPELLS) {
+const cachedSpellMenuIndexBySpell = {} as Record<SpellType, number>;
+
+for (let index = 0; index < ALL_SPELLS.length; index += 1) {
+  const spell = ALL_SPELLS[index];
   const family = SPELL_CATALOG[spell].family;
+  cachedSpellMenuIndexBySpell[spell] = index;
   cachedSpellMenuFamilyCounts[family] += 1;
   (cachedVisibleSpellMenuSpells[family] as SpellType[]).push(spell);
   cachedFirstSpellInFamily[family] ??= spell;
@@ -95,4 +99,8 @@ export function getVisibleSpellMenuSpells(activeFamily: SpellFamilyFilter) {
 
 export function getFirstSpellInFamily(activeFamily: SpellFamilyFilter) {
   return cachedFirstSpellInFamily[activeFamily];
+}
+
+export function getSpellMenuIndex(spell: SpellType) {
+  return cachedSpellMenuIndexBySpell[spell];
 }
