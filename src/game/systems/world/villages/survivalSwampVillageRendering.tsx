@@ -139,6 +139,15 @@ function getHorizontalDistance(dx: number, dz: number) {
   return Math.sqrt(dx * dx + dz * dz);
 }
 
+function getSwampHutsByRopeAngle(huts: readonly SwampVillageHut[]) {
+  const sortedHuts = new Array<SwampVillageHut>(huts.length);
+  for (let index = 0; index < huts.length; index += 1) {
+    sortedHuts[index] = huts[index];
+  }
+  sortedHuts.sort((a, b) => a.ropeAngle - b.ropeAngle);
+  return sortedHuts;
+}
+
 function makeSwampLilyPadGeometry() {
   const shape = new THREE.Shape();
   const cutAngle = 0.44;
@@ -643,8 +652,7 @@ function makeSwampVillageLayout(
     });
   }
 
-  const sortedHuts = huts.slice();
-  sortedHuts.sort((a, b) => a.ropeAngle - b.ropeAngle);
+  const sortedHuts = getSwampHutsByRopeAngle(huts);
   const ropes: SwampVillageRope[] = [];
   if (sortedHuts.length > 1) {
     for (let index = 0; index < sortedHuts.length; index += 1) {
