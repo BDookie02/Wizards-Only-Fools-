@@ -38,6 +38,29 @@ export function getCurrentInviteRoomCode(fallback = "lobby") {
   return sanitizeInviteRoomCode(new URL(window.location.href).searchParams.get("room") || fallback);
 }
 
+export function getCurrentLanMobileInviteUrl(
+  lanInfo?: LanInfoResponse,
+  fallbackUrl = typeof window === "undefined" ? "" : window.location.href,
+) {
+  if (typeof window === "undefined") return fallbackUrl;
+
+  try {
+    const currentUrl = new URL(window.location.href);
+    const params = new URLSearchParams(currentUrl.search);
+    if (!params.has("mobilePerf")) params.set("mobilePerf", "1");
+
+    const lanAddress = lanInfo?.lanAddresses?.[0];
+    const httpPort = lanInfo?.httpPort || 3000;
+    if (lanAddress) {
+      return `http://${lanAddress}:${httpPort}${currentUrl.pathname}?${params.toString()}`;
+    }
+  } catch {
+    // Fall back to the visible room URL if the browser URL is malformed.
+  }
+
+  return fallbackUrl;
+}
+
 export function getMobileInviteUrl(roomCode: string, lanInfo?: LanInfoResponse) {
   if (typeof window === "undefined") return "";
   const room = extractInviteRoomCode(roomCode);

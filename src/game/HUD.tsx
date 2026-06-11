@@ -138,7 +138,7 @@ import {
   resetHudControllerTransientState,
 } from "./ui/hud/hudControllerRuntime";
 import { GameplayHudOverlay } from "./ui/hud/GameplayHudOverlay";
-import { extractInviteRoomCode, getCurrentInviteRoomCode, type LanInfoResponse } from "./network/inviteRoom";
+import { extractInviteRoomCode, getCurrentInviteRoomCode, getCurrentLanMobileInviteUrl, type LanInfoResponse } from "./network/inviteRoom";
 import { useHudTouchGameplayRuntime } from "./ui/hud/useHudTouchGameplayRuntime";
 import { setHudMapSuppressedByToolOverlay } from "./ui/hud/hudMapSuppressionRuntime";
 import { getDecayedRunePower, RUNE_POWER_DECAY_INTERVAL_MS } from "./systems/spells/manaRechargeRuntime";
@@ -510,18 +510,10 @@ export function HUD() {
     void (async () => {
       let inviteUrl = roomUrl;
       try {
-        const currentUrl = new URL(window.location.href);
-        const params = new URLSearchParams(currentUrl.search);
-        if (!params.has("mobilePerf")) params.set("mobilePerf", "1");
-
         const response = await fetch("/api/lan-info", { cache: "no-store" });
         if (response.ok) {
           const info = await response.json() as LanInfoResponse;
-          const lanAddress = info.lanAddresses?.[0];
-          const httpPort = info.httpPort || 3000;
-          if (lanAddress) {
-            inviteUrl = `http://${lanAddress}:${httpPort}${currentUrl.pathname}?${params.toString()}`;
-          }
+          inviteUrl = getCurrentLanMobileInviteUrl(info, roomUrl);
         }
       } catch {
         // Fall back to the current URL if the LAN helper is unavailable.
