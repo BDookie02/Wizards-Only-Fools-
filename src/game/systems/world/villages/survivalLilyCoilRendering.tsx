@@ -509,6 +509,17 @@ function LilyCoilTunnelFlora() {
     right: new THREE.Vector3(),
     up: new THREE.Vector3(),
   }), []);
+  const floraUploadScratch = useMemo(() => ({
+    radial: new THREE.Vector3(),
+    inward: new THREE.Vector3(),
+    around: new THREE.Vector3(),
+    base: new THREE.Vector3(),
+    widthAxis: new THREE.Vector3(),
+    windLean: new THREE.Vector3(),
+    growth: new THREE.Vector3(),
+    normal: new THREE.Vector3(),
+    lilyCenter: new THREE.Vector3(),
+  }), []);
   const grassPatchAlphaTexture = useMemo(() => getLilyCoilGrassPatchAlphaTexture(), []);
   const callaBloomTexture = useMemo(() => getLilyCoilCallaBloomTexture(), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
@@ -843,6 +854,18 @@ function LilyCoilTunnelFlora() {
   });
 
   useEffect(() => {
+    const {
+      radial,
+      inward,
+      around,
+      base,
+      widthAxis,
+      windLean,
+      growth,
+      normal,
+      lilyCenter,
+    } = floraUploadScratch;
+
     for (let groupIndex = 0; groupIndex < grassGroups.length; groupIndex += 1) {
       const grass = grassGroups[groupIndex];
       const grassMesh = grassRefs.current[groupIndex];
@@ -852,18 +875,18 @@ function LilyCoilTunnelFlora() {
       for (let index = 0; index < grass.length; index += 1) {
         const tuft = grass[index];
         const frame = makeLilyCoilFrame(tuft.t);
-        const radial = frame.up.clone().multiplyScalar(Math.cos(tuft.angle)).addScaledVector(frame.side, Math.sin(tuft.angle)).normalize();
-        const inward = radial.clone().multiplyScalar(-1);
-        const around = frame.up.clone().multiplyScalar(-Math.sin(tuft.angle)).addScaledVector(frame.side, Math.cos(tuft.angle)).normalize();
-        const base = frame.center.clone().addScaledVector(radial, tuft.radius);
+        radial.copy(frame.up).multiplyScalar(Math.cos(tuft.angle)).addScaledVector(frame.side, Math.sin(tuft.angle)).normalize();
+        inward.copy(radial).multiplyScalar(-1);
+        around.copy(frame.up).multiplyScalar(-Math.sin(tuft.angle)).addScaledVector(frame.side, Math.cos(tuft.angle)).normalize();
+        base.copy(frame.center).addScaledVector(radial, tuft.radius);
         for (let bladeIndex = 0; bladeIndex < LILY_COIL_TUBE_GRASS_BLADES_PER_TUFT; bladeIndex += 1) {
           const bladeYaw = tuft.yaw;
-          const widthAxis = frame.tangent.clone().multiplyScalar(Math.cos(bladeYaw)).addScaledVector(around, Math.sin(bladeYaw)).normalize();
-          const windLean = around.clone()
+          widthAxis.copy(frame.tangent).multiplyScalar(Math.cos(bladeYaw)).addScaledVector(around, Math.sin(bladeYaw)).normalize();
+          windLean.copy(around)
             .multiplyScalar(Math.sin(bladeYaw) * tuft.lean)
             .addScaledVector(frame.tangent, Math.cos(bladeYaw) * tuft.lean * 0.62);
-          const growth = inward.clone().add(windLean).normalize();
-          const normal = new THREE.Vector3().crossVectors(widthAxis, growth).normalize();
+          growth.copy(inward).add(windLean).normalize();
+          normal.crossVectors(widthAxis, growth).normalize();
           basis.makeBasis(widthAxis, growth, normal);
           const height = tuft.height * (0.86 + getDarrelPetalNoise(index, 211 + bladeIndex) * 0.34);
           const width = tuft.width * (0.82 + getDarrelPetalNoise(index, 221 + bladeIndex) * 0.36);
@@ -888,11 +911,11 @@ function LilyCoilTunnelFlora() {
     for (let index = 0; index < lilies.length; index += 1) {
       const lily = lilies[index];
       const frame = makeLilyCoilFrame(lily.t);
-      const radial = frame.up.clone().multiplyScalar(Math.cos(lily.angle)).addScaledVector(frame.side, Math.sin(lily.angle)).normalize();
-      const inward = radial.clone().multiplyScalar(-1);
-      const around = new THREE.Vector3().crossVectors(frame.tangent, inward).normalize();
+      radial.copy(frame.up).multiplyScalar(Math.cos(lily.angle)).addScaledVector(frame.side, Math.sin(lily.angle)).normalize();
+      inward.copy(radial).multiplyScalar(-1);
+      around.crossVectors(frame.tangent, inward).normalize();
       basis.makeBasis(frame.tangent, around, inward);
-      const lilyCenter = frame.center.clone().addScaledVector(radial, LILY_COIL_TUBE_RADIUS - 2.1);
+      lilyCenter.copy(frame.center).addScaledVector(radial, LILY_COIL_TUBE_RADIUS - 2.1);
       for (let petalIndex = 0; petalIndex < LILY_COIL_TUBE_LILY_PETALS; petalIndex += 1) {
         const petalAngle = lily.yaw + (petalIndex / LILY_COIL_TUBE_LILY_PETALS) * Math.PI * 2 + (index % 3) * 0.13;
         const petalOffset = lily.scale * 0.42;
@@ -1018,7 +1041,7 @@ function LilyCoilTunnelFlora() {
       glowMesh.instanceMatrix.needsUpdate = true;
       glowMesh.frustumCulled = false;
     }
-  }, [basis, dummy, flowerAnchors, flowers, grassGroups, lilies, smallFlowerAnchors, smallFlowers]);
+  }, [basis, dummy, floraUploadScratch, flowerAnchors, flowers, grassGroups, lilies, smallFlowerAnchors, smallFlowers]);
 
   const callaLightAnchors = useMemo(() => {
     const maxLights = mobilePerformanceMode ? 4 : 8;
@@ -1036,6 +1059,19 @@ function LilyCoilTunnelFlora() {
     }
     return items;
   }, [lilies]);
+  const tubeLilyLightPositions = useMemo(() => {
+    const positions: Array<[number, number, number]> = [];
+    const radial = new THREE.Vector3();
+    const position = new THREE.Vector3();
+    for (let index = 0; index < tubeLilyLights.length; index += 1) {
+      const lily = tubeLilyLights[index];
+      const frame = makeLilyCoilFrame(lily.t);
+      radial.copy(frame.up).multiplyScalar(Math.cos(lily.angle)).addScaledVector(frame.side, Math.sin(lily.angle)).normalize();
+      position.copy(frame.center).addScaledVector(radial, LILY_COIL_TUBE_RADIUS - 8);
+      positions.push([position.x, position.y, position.z]);
+    }
+    return positions;
+  }, [tubeLilyLights]);
 
   return (
     <group name="lily-coil-tunnel-flora" userData={HIDE_FROM_MINIMAP}>
@@ -1143,12 +1179,9 @@ function LilyCoilTunnelFlora() {
         <sphereGeometry args={[1, 6, 4]} />
         <meshBasicMaterial color="#ecfeff" transparent opacity={0.72} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
       </instancedMesh>
-      {tubeLilyLights.map((lily, index) => {
-        const frame = makeLilyCoilFrame(lily.t);
-        const radial = frame.up.clone().multiplyScalar(Math.cos(lily.angle)).addScaledVector(frame.side, Math.sin(lily.angle)).normalize();
-        const position = frame.center.clone().addScaledVector(radial, LILY_COIL_TUBE_RADIUS - 8);
-        return <pointLight key={`lily-coil-tube-lily-light-${index}`} position={position.toArray()} color="#f8fafc" intensity={1.18} distance={68} decay={2} />;
-      })}
+      {tubeLilyLightPositions.map((position, index) => (
+        <pointLight key={`lily-coil-tube-lily-light-${index}`} position={position} color="#f8fafc" intensity={1.18} distance={68} decay={2} />
+      ))}
     </group>
   );
 }
