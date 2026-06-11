@@ -22,6 +22,47 @@ declare global {
 const PERF_SAMPLE_CAPACITY = 720;
 const PERF_RECENT_SAMPLE_COUNT = 120;
 
+export function selectQaPerfSampleByRank(
+  samples: number[],
+  count: number,
+  targetIndex: number,
+) {
+  const sampleCount = Math.max(0, Math.min(count, samples.length));
+  if (sampleCount === 0) return 0;
+
+  const target = Math.max(0, Math.min(sampleCount - 1, targetIndex));
+  let left = 0;
+  let right = sampleCount - 1;
+
+  while (left < right) {
+    const pivot = samples[(left + right) >> 1];
+    let low = left;
+    let high = right;
+
+    while (low <= high) {
+      while (samples[low] < pivot) low += 1;
+      while (samples[high] > pivot) high -= 1;
+      if (low <= high) {
+        const nextLow = samples[low];
+        samples[low] = samples[high];
+        samples[high] = nextLow;
+        low += 1;
+        high -= 1;
+      }
+    }
+
+    if (target <= high) {
+      right = high;
+    } else if (target >= low) {
+      left = low;
+    } else {
+      return samples[target] ?? 0;
+    }
+  }
+
+  return samples[left] ?? 0;
+}
+
 function isQaPerfStatsProbeEnabled() {
   return shouldMountCurrentQaPerfStatsProbe();
 }
@@ -36,7 +77,7 @@ export function QaPerfStatsProbe() {
 function QaPerfStatsSampler() {
   const startedAtRef = useRef(Date.now());
   const samplesRef = useRef<number[]>([]);
-  const sortedSamplesRef = useRef<number[]>([]);
+  const sampleScratchRef = useRef<number[]>([]);
   const sampleWriteIndexRef = useRef(0);
   const sampleCountRef = useRef(0);
   const lastPublishRef = useRef(0);
@@ -52,20 +93,25 @@ function QaPerfStatsSampler() {
     lastPublishRef.current = elapsedSeconds;
 
     const sampleCount = sampleCountRef.current;
-    const sorted = sortedSamplesRef.current;
-    sorted.length = sampleCount;
+    const scratch = sampleScratchRef.current;
+    scratch.length = sampleCount;
     let sum = 0;
+    let max = 0;
     let stutter50Count = 0;
     let stutter100Count = 0;
     for (let index = 0; index < sampleCount; index += 1) {
       const value = samples[index] ?? 0;
-      sorted[index] = value;
+      scratch[index] = value;
       sum += value;
+      if (value > max) max = value;
       if (value >= 50) stutter50Count += 1;
       if (value >= 100) stutter100Count += 1;
     }
-    sorted.sort((a, b) => a - b);
-    const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))] ?? 0;
+    const p95 = selectQaPerfSampleByRank(
+      scratch,
+      sampleCount,
+      Math.min(sampleCount - 1, Math.floor(sampleCount * 0.95)),
+    );
     const recentCount = Math.min(PERF_RECENT_SAMPLE_COUNT, sampleCount);
     let recentMax = 0;
     for (let offset = 0; offset < recentCount; offset += 1) {
@@ -75,7 +121,7 @@ function QaPerfStatsSampler() {
     const stats = {
       averageMs: sampleCount ? Number((sum / sampleCount).toFixed(2)) : 0,
       frames: sampleCount,
-      maxMs: Number((sorted[sorted.length - 1] ?? 0).toFixed(2)),
+      maxMs: Number(max.toFixed(2)),
       p95Ms: Number(p95.toFixed(2)),
       recentMaxMs: Number(recentMax.toFixed(2)),
       stutter50Count,
@@ -99,7 +145,7 @@ function QaPerfStatsSampler() {
     const resetStats = () => {
       startedAtRef.current = Date.now();
       samplesRef.current = [];
-      sortedSamplesRef.current.length = 0;
+      sampleScratchRef.current.length = 0;
       sampleWriteIndexRef.current = 0;
       sampleCountRef.current = 0;
       lastPublishRef.current = 0;
