@@ -55,6 +55,7 @@ Done:
 - Extracted survival mana flower/well source generation into `src/game/systems/world/survival/survivalManaSources.ts`.
 - Moved browser/player position reads and local grass initial-center QA fallback into `src/game/systems/world/survival/survivalPosition.ts`.
 - Added a shared QA survival chunk-coordinate parser and squared stale-origin checks in `survivalPosition.ts`, removing repeated `split().map()` parsing and `Math.hypot` calls from survival QA centering.
+- Added a cached survival position-route snapshot in `survivalPosition.ts`, so QA player position, local grass centering, and initial stream centering share one parsed route snapshot per current search string.
 - Moved survival player spawn override resolution, cached survival spawn-route snapshot parsing, QA survival URL spawn parsing, temporary village spawn routing, random survival spawn selection, and base-village QA spawn clearance into `src/game/systems/world/survival/survivalPlayerSpawn.ts`.
 - Tightened QA quest-spawn routing so descriptive `qaReload` / `qaPerfRun` labels containing `darrel`, `lily`, or `coil` no longer override an explicit `qaSurvivalChunk`; explicit quest forcing now uses `qaQuestSpawn=`.
 - Kept the authored base village chunk `0:0` in the survival chunk stream as a stable placeholder while the base village owns the rendered terrain/collider, preventing base-center physics teardown errors without double-rendering base terrain.
@@ -836,6 +837,9 @@ Next:
 
 ## Latest Verification
 
+- Focused survival position-route cleanup: `survivalPosition.ts` now shares one cached route snapshot for QA player position, local grass initial centering, and initial survival stream chunk selection. The targeted route scan now shows one cached `URLSearchParams` creation in `survivalPosition.ts` and one in `survivalPlayerSpawn.ts`.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the survival position-route QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the survival position-route cleanup. Sprite verification passed; current warning remains chunk size only. `survivalPosition` is about 2.02 kB / 0.93 kB gzip.
 - Focused survival spawn-route cleanup: `survivalPlayerSpawn.ts` now reads the URL into one cached spawn-route snapshot per current search string, then passes that typed snapshot through mountain, graveyard, QA chunk, quest, and default survival spawn resolution instead of repeatedly parsing `window.location.search`.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the survival spawn-route QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the survival spawn-route cleanup. Sprite verification passed; current warning remains chunk size only. `survivalProceduralWorldRendering` is about 18.24 kB / 6.00 kB gzip.

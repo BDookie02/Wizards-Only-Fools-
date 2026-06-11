@@ -15,7 +15,17 @@ export type SurvivalChunkCoords = {
   cz: number;
 };
 
+type SurvivalPositionRouteSnapshot = {
+  qaSpellDummies: boolean;
+  qaSurvivalChunk: SurvivalChunkCoords | null;
+  qaSurvivalUrlPosition: SurvivalWorldPosition | null;
+  qaQuestSpawn: string;
+};
+
 export const QA_AUTHORED_VILLAGE_SAFE_LOCAL_Z = 214;
+
+let cachedSurvivalPositionRouteSearch: string | null = null;
+let cachedSurvivalPositionRouteSnapshot: SurvivalPositionRouteSnapshot | null = null;
 
 export function getSurvivalChunkCoord(value: number) {
   return Math.floor((value + SURVIVAL_BLOCK_SIZE / 2) / SURVIVAL_BLOCK_SIZE);
@@ -59,8 +69,10 @@ export function getQaSurvivalChunkInitialWorldCenter(cx: number, cz: number): Su
   };
 }
 
-function getQaSurvivalUrlPlayerWorldPositionFromParams(params: URLSearchParams): SurvivalWorldPosition | null {
-  const qaChunk = parseSurvivalChunkCoordsParam(params.get("qaSurvivalChunk"));
+function getQaSurvivalUrlPlayerWorldPositionFromParams(
+  qaChunk: SurvivalChunkCoords | null,
+  params: URLSearchParams,
+): SurvivalWorldPosition | null {
   if (!qaChunk) return null;
   const { cx, cz } = qaChunk;
 
@@ -74,9 +86,32 @@ function getQaSurvivalUrlPlayerWorldPositionFromParams(params: URLSearchParams):
   };
 }
 
-export function getQaSurvivalUrlPlayerWorldPosition(): SurvivalWorldPosition | null {
+function getSurvivalPositionRouteSnapshotFromSearch(search: string): SurvivalPositionRouteSnapshot {
+  if (search === cachedSurvivalPositionRouteSearch && cachedSurvivalPositionRouteSnapshot) {
+    return cachedSurvivalPositionRouteSnapshot;
+  }
+
+  const params = new URLSearchParams(search);
+  const qaSurvivalChunk = parseSurvivalChunkCoordsParam(params.get("qaSurvivalChunk"));
+  const snapshot: SurvivalPositionRouteSnapshot = {
+    qaSpellDummies: params.get("qaSpellDummies") === "1",
+    qaSurvivalChunk,
+    qaSurvivalUrlPosition: getQaSurvivalUrlPlayerWorldPositionFromParams(qaSurvivalChunk, params),
+    qaQuestSpawn: (params.get("qaQuestSpawn") || "").toLowerCase(),
+  };
+
+  cachedSurvivalPositionRouteSearch = search;
+  cachedSurvivalPositionRouteSnapshot = snapshot;
+  return snapshot;
+}
+
+function getCurrentSurvivalPositionRouteSnapshot(): SurvivalPositionRouteSnapshot | null {
   if (typeof window === "undefined") return null;
-  return getQaSurvivalUrlPlayerWorldPositionFromParams(new URLSearchParams(window.location.search));
+  return getSurvivalPositionRouteSnapshotFromSearch(window.location.search);
+}
+
+export function getQaSurvivalUrlPlayerWorldPosition(): SurvivalWorldPosition | null {
+  return getCurrentSurvivalPositionRouteSnapshot()?.qaSurvivalUrlPosition ?? null;
 }
 
 export function getBrowserSurvivalPlayerPosition(): SurvivalPlayerWorldPosition | null {
@@ -98,20 +133,19 @@ function isLikelyStaleQaOriginPosition(
 }
 
 export function getInitialSurvivalLocalGrassCenter(): SurvivalWorldPosition {
-  const qaPosition = getQaSurvivalUrlPlayerWorldPosition();
+  const route = getCurrentSurvivalPositionRouteSnapshot();
+  const qaPosition = route?.qaSurvivalUrlPosition ?? null;
   const localPlayer = getBrowserSurvivalPlayerPosition();
   if (isLikelyStaleQaOriginPosition(localPlayer, qaPosition)) return qaPosition!;
   if (localPlayer) return { x: localPlayer.x, z: localPlayer.z };
   if (qaPosition) return qaPosition;
 
-  if (typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("qaSpellDummies") === "1") {
+  if (route) {
+    if (route.qaSpellDummies) {
       return getQaSurvivalChunkInitialWorldCenter(4, -3);
     }
-    const qaChunk = parseSurvivalChunkCoordsParam(params.get("qaSurvivalChunk"));
-    if (qaChunk) {
-      return getQaSurvivalChunkInitialWorldCenter(qaChunk.cx, qaChunk.cz);
+    if (route.qaSurvivalChunk) {
+      return getQaSurvivalChunkInitialWorldCenter(route.qaSurvivalChunk.cx, route.qaSurvivalChunk.cz);
     }
   }
 
@@ -119,20 +153,20 @@ export function getInitialSurvivalLocalGrassCenter(): SurvivalWorldPosition {
 }
 
 export function getInitialSurvivalCenterChunkCoords(): SurvivalChunkCoords {
-  if (typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("qaSpellDummies") === "1") {
+  const route = getCurrentSurvivalPositionRouteSnapshot();
+  if (route) {
+    if (route.qaSpellDummies) {
       return getSurvivalChunkCoordsForWorldPosition(getQaSurvivalChunkInitialWorldCenter(4, -3));
     }
 
-    const qaChunk = parseSurvivalChunkCoordsParam(params.get("qaSurvivalChunk"));
+    const qaChunk = route.qaSurvivalChunk;
     if (qaChunk) {
-      const center = getQaSurvivalUrlPlayerWorldPositionFromParams(params)
+      const center = route.qaSurvivalUrlPosition
         ?? getQaSurvivalChunkInitialWorldCenter(qaChunk.cx, qaChunk.cz);
       return getSurvivalChunkCoordsForWorldPosition(center);
     }
 
-    const questSpawn = (params.get("qaQuestSpawn") || "").toLowerCase();
+    const questSpawn = route.qaQuestSpawn;
     if (questSpawn === "lily" || questSpawn === "lily-coil" || questSpawn === "coil") {
       return { cx: LILY_COIL_QUEST_CHUNK.cx, cz: LILY_COIL_QUEST_CHUNK.cz };
     }
