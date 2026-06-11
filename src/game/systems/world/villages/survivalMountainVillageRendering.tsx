@@ -113,6 +113,36 @@ const MOUNTAIN_COLOR_TRAIL_DIRT = new THREE.Color("#5f4e35");
 const MOUNTAIN_COLOR_TRAIL_STONE = new THREE.Color("#3e342b");
 const MOUNTAIN_WATERFALL_VISIBILITY_CHECK_INTERVAL_SECONDS = 1 / 12;
 const mountainTerrainTrailColorScratch = new THREE.Color();
+const MOUNTAIN_MINESHAFT_CHAIR_LEG_OFFSETS = [
+  { x: -0.74, z: -0.5 },
+  { x: -0.74, z: 0.54 },
+  { x: 0.74, z: -0.5 },
+  { x: 0.74, z: 0.54 },
+] as const;
+const MOUNTAIN_MINESHAFT_CHAIR_BACK_SPIRE_X = [-0.72, 0, 0.72] as const;
+const MOUNTAIN_MINESHAFT_THRONE_ARM_SIDES = [-1.94, 1.94] as const;
+const MOUNTAIN_MINESHAFT_THRONE_SPIRE_X = [-1.72, 0, 1.72] as const;
+const MOUNTAIN_MINESHAFT_BANQUET_BREAD_POSITIONS = [
+  { x: -2.9, z: -1.3 },
+  { x: 2.65, z: 1.45 },
+  { x: -0.9, z: 3.2 },
+  { x: 1.34, z: -3.1 },
+] as const;
+const MOUNTAIN_MINESHAFT_FRUIT_BOWL_POSITIONS = [
+  { x: -3.7, z: 1.7 },
+  { x: 3.55, z: -1.55 },
+  { x: 0.8, z: 3.9 },
+  { x: -1.2, z: -3.75 },
+] as const;
+const MOUNTAIN_MINESHAFT_FRUIT_COLORS = ["#b7202e", "#d6a43e", "#7aa34b", "#8a2b5f", "#efc55b"] as const;
+const MOUNTAIN_MINESHAFT_TABLE_CANDLE_POSITIONS = [
+  { x: -1.8, z: 2.2 },
+  { x: 1.8, z: -2.2 },
+] as const;
+const MOUNTAIN_MINESHAFT_BANQUET_PLATE_ANGLES = [
+  ...MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES,
+  Math.PI,
+] as const;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -2221,13 +2251,13 @@ function MountainMineshaftBanquetChair({
         <boxGeometry args={[0.32, 0.98, 1.74]} />
         <meshBasicMaterial color="#2a1a10" />
       </mesh>
-      {[-0.74, 0.74].flatMap((legX) => [-0.5, 0.54].map((legZ) => (
+      {MOUNTAIN_MINESHAFT_CHAIR_LEG_OFFSETS.map(({ x: legX, z: legZ }) => (
         <mesh key={`chair-leg-${legX}-${legZ}`} position={[legX, 0.36, legZ]} castShadow={false}>
           <boxGeometry args={[0.24, 0.72, 0.24]} />
           <meshBasicMaterial color="#1b1009" />
         </mesh>
-      )))}
-      {[-0.72, 0, 0.72].map((barX) => (
+      ))}
+      {MOUNTAIN_MINESHAFT_CHAIR_BACK_SPIRE_X.map((barX) => (
         <mesh key={`chair-back-gold-${barX}`} position={[barX, 2.92, 1.1]} castShadow={false}>
           <boxGeometry args={[0.24, 0.36, 0.24]} />
           <meshBasicMaterial color="#d7a548" />
@@ -2260,7 +2290,7 @@ function MountainMineshaftKingsThrone() {
         <boxGeometry args={[3.18, 2.86, 0.22]} />
         <meshBasicMaterial color="#9f2428" />
       </mesh>
-      {[-1.94, 1.94].map((side) => (
+      {MOUNTAIN_MINESHAFT_THRONE_ARM_SIDES.map((side) => (
         <Fragment key={`throne-arm-${side}`}>
           <mesh position={[side, 1.28, -0.3]} castShadow={false}>
             <boxGeometry args={[0.62, 1.42, 3.12]} />
@@ -2276,7 +2306,7 @@ function MountainMineshaftKingsThrone() {
         <coneGeometry args={[1.26, 1.16, 4]} />
         <meshBasicMaterial color="#e2b34c" />
       </mesh>
-      {[-1.72, 0, 1.72].map((x, index) => (
+      {MOUNTAIN_MINESHAFT_THRONE_SPIRE_X.map((x, index) => (
         <mesh key={`throne-spire-${index}`} position={[x, 4.36 + (index === 1 ? 0.36 : 0), 1.12]} castShadow={false}>
           <boxGeometry args={[0.4, index === 1 ? 1.28 : 0.9, 0.42]} />
           <meshBasicMaterial color="#d7a548" />
@@ -2292,7 +2322,6 @@ function MountainMineshaftKingsThrone() {
 
 function MountainMineshaftBanquetTable() {
   const tableRadius = MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS;
-  const plateAngles = [...MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES, Math.PI];
 
   return (
     <group name="mineshaft-royal-banquet-table">
@@ -2340,7 +2369,7 @@ function MountainMineshaftBanquetTable() {
         <cylinderGeometry args={[0.16, 0.16, 1.42, 8]} />
         <meshBasicMaterial color="#f1d8a0" />
       </mesh>
-      {[[-2.9, -1.3], [2.65, 1.45], [-0.9, 3.2], [1.34, -3.1]].map(([x, z], index) => (
+      {MOUNTAIN_MINESHAFT_BANQUET_BREAD_POSITIONS.map(({ x, z }, index) => (
         <group key={`banquet-bread-${index}`} position={[x, 2.5, z]} rotation={[0, index * 0.7, 0]}>
           <mesh scale={[1.18, 0.36, 0.62]} castShadow={false}>
             <sphereGeometry args={[1, 8, 5]} />
@@ -2352,7 +2381,7 @@ function MountainMineshaftBanquetTable() {
           </mesh>
         </group>
       ))}
-      {[[-3.7, 1.7], [3.55, -1.55], [0.8, 3.9], [-1.2, -3.75]].map(([x, z], index) => (
+      {MOUNTAIN_MINESHAFT_FRUIT_BOWL_POSITIONS.map(({ x, z }, index) => (
         <group key={`fruit-bowl-${index}`} position={[x, 2.48, z]}>
           <mesh position={[0, -0.04, 0]} castShadow={false}>
             <cylinderGeometry args={[0.86, 0.7, 0.18, 10]} />
@@ -2361,12 +2390,12 @@ function MountainMineshaftBanquetTable() {
           {getCachedIndexRange(5).map((fruitIndex) => (
             <mesh key={`fruit-${fruitIndex}`} position={[(fruitIndex - 2) * 0.22, 0.18 + (fruitIndex % 2) * 0.12, Math.sin(fruitIndex) * 0.24]} scale={[0.24, 0.24, 0.24]} castShadow={false}>
               <sphereGeometry args={[1, 6, 4]} />
-              <meshBasicMaterial color={["#b7202e", "#d6a43e", "#7aa34b", "#8a2b5f", "#efc55b"][(fruitIndex + index) % 5]} />
+              <meshBasicMaterial color={MOUNTAIN_MINESHAFT_FRUIT_COLORS[(fruitIndex + index) % MOUNTAIN_MINESHAFT_FRUIT_COLORS.length]} />
             </mesh>
           ))}
         </group>
       ))}
-      {plateAngles.map((angle, index) => (
+      {MOUNTAIN_MINESHAFT_BANQUET_PLATE_ANGLES.map((angle, index) => (
         <group key={`banquet-place-${index}`} position={[Math.sin(angle) * 4.5, 2.42, Math.cos(angle) * 4.5]} rotation={[0, angle, 0]}>
           <mesh castShadow={false}>
             <cylinderGeometry args={[0.82, 0.9, 0.08, 12]} />
@@ -2382,8 +2411,8 @@ function MountainMineshaftBanquetTable() {
           </mesh>
         </group>
       ))}
-      {[-1.8, 1.8].map((x, index) => (
-        <group key={`table-candle-${index}`} position={[x, 2.54, index === 0 ? 2.2 : -2.2]}>
+      {MOUNTAIN_MINESHAFT_TABLE_CANDLE_POSITIONS.map(({ x, z }, index) => (
+        <group key={`table-candle-${index}`} position={[x, 2.54, z]}>
           <mesh position={[0, 0.3, 0]} castShadow={false}>
             <cylinderGeometry args={[0.16, 0.16, 0.6, 8]} />
             <meshBasicMaterial color="#f6e2a8" />
