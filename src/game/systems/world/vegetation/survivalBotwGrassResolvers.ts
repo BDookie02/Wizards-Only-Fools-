@@ -19,7 +19,6 @@ export type SurvivalBotwUnifiedTerrainSurfaceSampleTargets = {
 
 export type SurvivalBotwGrassResolvers = {
   getGrassSurfaceHeightAtWorld: (worldX: number, worldZ: number) => number;
-  getSmoothedTerrainColor: (worldX: number, worldZ: number, height: number) => THREE.Color;
   getSmoothedTerrainColorInto: (worldX: number, worldZ: number, height: number, target: THREE.Color) => THREE.Color;
   getFastGrassBladeColorInto: (biome: SurvivalBiome, worldX: number, worldZ: number, height: number, variant: number, target: THREE.Color) => THREE.Color;
   isBaseVillageLocalGrassBlocked: (worldX: number, worldZ: number) => boolean;
@@ -49,10 +48,6 @@ export function getSurvivalBotwGrassResolvers() {
 
 export function getSurvivalGrassSurfaceHeightAtWorld(worldX: number, worldZ: number) {
   return getSurvivalBotwGrassResolvers().getGrassSurfaceHeightAtWorld(worldX, worldZ);
-}
-
-export function getSurvivalSmoothedTerrainColor(worldX: number, worldZ: number, height: number) {
-  return getSurvivalBotwGrassResolvers().getSmoothedTerrainColor(worldX, worldZ, height);
 }
 
 export function getSurvivalSmoothedTerrainColorInto(

@@ -8,10 +8,11 @@ import {
   SURVIVAL_BOTW_HILLSIDE_GRASS_START_Y,
 } from "./survivalBotwGrassConfig";
 
-export type SurvivalTerrainColorResolver = (
+export type SurvivalTerrainColorIntoResolver = (
   worldX: number,
   worldZ: number,
   height: number,
+  target: THREE.Color,
 ) => THREE.Color;
 
 export const SURVIVAL_GRASS_COLORS: Record<SurvivalBiome, string[]> = {
@@ -111,11 +112,12 @@ export function tintSurvivalBotwHillsideGrassColor(
   worldZ: number,
   terrainY: number,
   hillsideMix: number,
-  getTerrainColor: SurvivalTerrainColorResolver,
+  getTerrainColorInto: SurvivalTerrainColorIntoResolver,
+  terrainColorTarget: THREE.Color,
 ) {
   if (hillsideMix <= 0.001) return color;
 
-  const terrainColor = getTerrainColor(worldX, worldZ, terrainY);
+  const terrainColor = getTerrainColorInto(worldX, worldZ, terrainY, terrainColorTarget);
   const dryNoise = survivalHash01(Math.floor(worldX * 0.08), Math.floor(worldZ * 0.08), 8440);
   color
     .lerp(terrainColor, hillsideMix * 0.18)

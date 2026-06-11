@@ -54,7 +54,7 @@ import {
 } from "./survivalFoliagePalettes";
 import {
   getSurvivalFastGrassBladeColorInto,
-  getSurvivalSmoothedTerrainColor,
+  getSurvivalSmoothedTerrainColorInto,
 } from "./survivalBotwGrassResolvers";
 
 const SURVIVAL_BOTW_INSTANCE_BASE_COLOR = new THREE.Color("#62bd37");
@@ -62,6 +62,7 @@ const SURVIVAL_BOTW_INSTANCE_LIFT_COLOR = new THREE.Color("#b9ef5b");
 const SURVIVAL_BOTW_INSTANCE_SHADOW_COLOR = new THREE.Color("#3c8b2d");
 const survivalBotwInstanceAccentScratch = new THREE.Color();
 const survivalBotwBladeInstanceColorScratch = new THREE.Color();
+const survivalBotwHillsideTerrainColorScratch = new THREE.Color();
 const survivalBotwFlowerColorScratch = new THREE.Color();
 const survivalBotwFlowerLargeColorScratch = new THREE.Color();
 const survivalBotwFlowerLeafColorScratch = new THREE.Color();
@@ -206,7 +207,15 @@ export function makeSurvivalBotwGrassBladeCandidate(
   const flushFootprintLimit = getSurvivalBotwGrassFlushFootprintLimit(placement.normal.y, meadowMask);
   if (footprintStats.heightRange > Math.min(SURVIVAL_BOTW_GRASS_MAX_FOOTPRINT_HEIGHT_RANGE, flushFootprintLimit)) return null;
   const hillsideMix = getSurvivalBotwHillsideVegetationMix(placement.terrainY, placement.normal.y, footprintStats.heightRange);
-  tintSurvivalBotwHillsideGrassColor(color, worldX, worldZ, placement.terrainY, hillsideMix, getSurvivalSmoothedTerrainColor);
+  tintSurvivalBotwHillsideGrassColor(
+    color,
+    worldX,
+    worldZ,
+    placement.terrainY,
+    hillsideMix,
+    getSurvivalSmoothedTerrainColorInto,
+    survivalBotwHillsideTerrainColorScratch,
+  );
   const distanceFromCenter = Math.abs(radialDistance);
   const midDistanceFill = meadowMask * smoothstepRange(28, context.radius * 0.82, distanceFromCenter);
   const footprintCompression = lerpNumber(

@@ -26,7 +26,6 @@ import {
 import { getSurvivalTownRouteMask } from "./survivalRoutes";
 import {
   getSurvivalRenderedTerrainColorInto,
-  getSurvivalSmoothedTerrainColor,
   getSurvivalSmoothedTerrainColorInto,
   getSurvivalTerrainHeightForChunk,
   getSurvivalVillageBaseHeight,
@@ -514,7 +513,6 @@ function getSurvivalGrassDebugSampleAt(worldX: number, worldZ: number) {
 
 configureSurvivalBotwGrassResolvers({
   getGrassSurfaceHeightAtWorld: getSurvivalGrassSurfaceHeightAtWorld,
-  getSmoothedTerrainColor: getSurvivalSmoothedTerrainColor,
   getSmoothedTerrainColorInto: getSurvivalSmoothedTerrainColorInto,
   getFastGrassBladeColorInto: getSurvivalGrassBladeColorInto,
   isBaseVillageLocalGrassBlocked,
