@@ -471,6 +471,7 @@ Done:
 - Moved quest navigation beacon rendering and cached beacon texture into the quest system.
 - Moved staged decoration load profiles, idle/background scheduling, and grass stream scale helpers into `survivalLoadStage.ts`.
 - Moved survival QA spawn URL, current player position, and chunk-coordinate helpers into `survivalPosition.ts`.
+- Moved survival procedural world's initial center-chunk route selection into `survivalPosition.ts`, leaving chunk streaming/rendering to consume a typed initial chunk coordinate instead of parsing QA URLs itself.
 - Moved survival player spawn override resolution, QA URL route parsing, authored-village temporary spawn routing, random survival spawn selection, and base-village QA safe-height clamping into `survivalPlayerSpawn.ts`.
 - Moved survival terrain, grassland, mountain village, desert sand, and adobe wall cached texture generation into `survivalTerrainTextures.ts`.
 - Moved deterministic canvas texture noise into `textureNoise.ts` for reuse by Darrel, Lily Coil, and survival grass texture generators.
@@ -508,6 +509,7 @@ Done:
 - Shortened collided smoke-bomb lifecycle cleanup, unmounted completed portal scale-in frame hooks, and added mobile-only status-bolt visual cadence while preserving spell collision/status/network timing.
 - Moved mountain village radius, plateau, trail, mineshaft, slope-grass, waterfall-hide constants and pure trail/terrain helpers into `mountainVillageTerrain.ts`, giving mountain grass, terrain, colliders, and the future mountain renderer one shared tuning source.
 - Moved browser survival player-position reads and local grass initial-center QA fallback into `survivalPosition.ts`, so grass streaming and QA spawn logic share the existing position system instead of reaching through `GameWorld`.
+- Moved survival procedural world's spell-dummy, QA chunk, Lily Coil quest, and remembered-player initial center selection into `survivalPosition.ts`; `survivalProceduralWorldRendering.tsx` now starts from `getInitialSurvivalCenterChunkCoords()` and no longer parses route params directly.
 - Moved survival grass inspection/debug sampler wiring into `survivalGrassDebug.ts`, keeping QA-only browser hooks out of the world orchestration module.
 - Moved local grass stream constants, cell-grid generation, hysteresis, stream-radius bucketing, visible-cell reconciliation, and per-cell load staging into `survivalLocalGrassStreaming.ts`, giving vegetation streaming its own ownership boundary.
 - Moved tutorial grass stream constants, cell-grid generation, hysteresis, visible-cell reconciliation, and batch grouping into `survivalTutorialGrassStreaming.ts`, matching the survival grass stream boundary and reducing another gameplay-specific block inside `GameWorld`.
@@ -834,6 +836,9 @@ Next:
 
 ## Latest Verification
 
+- Focused survival initial-center cleanup: `survivalProceduralWorldRendering.tsx` now delegates its initial chunk selection to `getInitialSurvivalCenterChunkCoords()` in `survivalPosition.ts`, preserving spell-dummy, `qaSurvivalChunk`, Lily Coil quest, and remembered-player startup behavior while removing renderer-owned URL parsing.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the survival center visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the survival initial-center split. Sprite verification passed; current warning remains chunk size only. `survivalProceduralWorldRendering` is about 18.13 kB / 5.97 kB gzip.
 - Focused mana route-flag cleanup: `Runes.tsx` now reads `shouldHideCurrentManaFlowersForQa()` from `manaRechargeRuntime.ts`; the only `qaHideManaFlowers` URL parsing is in the cached spell-runtime helper, so the rune renderer no longer reaches into `window.location.search`.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the mana route visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the mana route-flag cleanup. Sprite verification passed; current warning remains chunk size only. `Runes` is about 11.70 kB / 4.71 kB gzip and `manaRechargeRuntime` is about 2.20 kB / 1.05 kB gzip.

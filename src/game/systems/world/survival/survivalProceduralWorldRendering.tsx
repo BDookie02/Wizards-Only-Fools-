@@ -1,5 +1,5 @@
 import { lazy, startTransition, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { LILY_COIL_QUEST_CHUNK, SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
+import { SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
 import { isSurvivalGrassInspectionView } from "../../../tools/qa/survivalGrassDebug";
 import { SurvivalTerrain, SurvivalTerrainTintRuntime } from "../terrain/SurvivalTerrain";
@@ -44,9 +44,7 @@ import {
   publishSurvivalVillageRendererPreloads,
 } from "./survivalProceduralWorldTelemetry";
 import {
-  getQaSurvivalChunkInitialWorldCenter,
-  getQaSurvivalUrlPlayerWorldPosition,
-  getBrowserSurvivalPlayerPosition,
+  getInitialSurvivalCenterChunkCoords,
   getSurvivalChunkCoord,
 } from "./survivalPosition";
 import {
@@ -261,47 +259,7 @@ export function SurvivalProceduralWorld({
 }: { showBaseVillage: boolean }) {
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const grassInspectionView = useMemo(() => isSurvivalGrassInspectionView(), []);
-  const [centerChunk, setCenterChunk] = useState(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("qaSpellDummies") === "1") {
-        const center = getQaSurvivalChunkInitialWorldCenter(4, -3);
-        return {
-          cx: getSurvivalChunkCoord(center.x),
-          cz: getSurvivalChunkCoord(center.z),
-        };
-      }
-
-      const qaChunk = params.get("qaSurvivalChunk");
-      if (qaChunk) {
-        const commaIndex = qaChunk.indexOf(",");
-        const cx = commaIndex >= 0 ? Number(qaChunk.slice(0, commaIndex).trim()) : Number.NaN;
-        const cz = commaIndex >= 0 ? Number(qaChunk.slice(commaIndex + 1).trim()) : Number.NaN;
-        if (Number.isFinite(cx) && Number.isFinite(cz)) {
-          const center = getQaSurvivalUrlPlayerWorldPosition() ?? getQaSurvivalChunkInitialWorldCenter(cx, cz);
-          return {
-            cx: getSurvivalChunkCoord(center.x),
-            cz: getSurvivalChunkCoord(center.z),
-          };
-        }
-      }
-
-      const questSpawn = (params.get("qaQuestSpawn") || "").toLowerCase();
-      if (questSpawn === "lily" || questSpawn === "lily-coil" || questSpawn === "coil") {
-        return { cx: LILY_COIL_QUEST_CHUNK.cx, cz: LILY_COIL_QUEST_CHUNK.cz };
-      }
-
-      const localPlayerPos = getBrowserSurvivalPlayerPosition();
-      if (localPlayerPos) {
-        return {
-          cx: getSurvivalChunkCoord(localPlayerPos.x),
-          cz: getSurvivalChunkCoord(localPlayerPos.z),
-        };
-      }
-    }
-
-    return { cx: 0, cz: 0 };
-  });
+  const [centerChunk, setCenterChunk] = useState(() => getInitialSurvivalCenterChunkCoords());
   const [chunkStreamRadius, setChunkStreamRadius] = useState(SURVIVAL_CHUNK_STREAM_INITIAL_RADIUS);
   const [travelLookaheadStep, setTravelLookaheadStep] = useState({ cx: 0, cz: 0 });
   const lastPlayerMoveRef = useRef({ x: 0, z: 0, hasValue: false });

@@ -1,4 +1,4 @@
-import { SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
+import { LILY_COIL_QUEST_CHUNK, SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
 import { getLastKnownLocalPlayerPosition } from "../../player/playerEventBridge";
 
 export type SurvivalWorldPosition = {
@@ -19,6 +19,13 @@ export const QA_AUTHORED_VILLAGE_SAFE_LOCAL_Z = 214;
 
 export function getSurvivalChunkCoord(value: number) {
   return Math.floor((value + SURVIVAL_BLOCK_SIZE / 2) / SURVIVAL_BLOCK_SIZE);
+}
+
+function getSurvivalChunkCoordsForWorldPosition(position: SurvivalWorldPosition): SurvivalChunkCoords {
+  return {
+    cx: getSurvivalChunkCoord(position.x),
+    cz: getSurvivalChunkCoord(position.z),
+  };
 }
 
 export function parseSurvivalChunkCoordsParam(value: string | null): SurvivalChunkCoords | null {
@@ -52,9 +59,7 @@ export function getQaSurvivalChunkInitialWorldCenter(cx: number, cz: number): Su
   };
 }
 
-export function getQaSurvivalUrlPlayerWorldPosition(): SurvivalWorldPosition | null {
-  if (typeof window === "undefined") return null;
-  const params = new URLSearchParams(window.location.search);
+function getQaSurvivalUrlPlayerWorldPositionFromParams(params: URLSearchParams): SurvivalWorldPosition | null {
   const qaChunk = parseSurvivalChunkCoordsParam(params.get("qaSurvivalChunk"));
   if (!qaChunk) return null;
   const { cx, cz } = qaChunk;
@@ -67,6 +72,11 @@ export function getQaSurvivalUrlPlayerWorldPosition(): SurvivalWorldPosition | n
     x: cx * SURVIVAL_BLOCK_SIZE + (Number.isFinite(localX) ? localX : fallback.x - cx * SURVIVAL_BLOCK_SIZE),
     z: cz * SURVIVAL_BLOCK_SIZE + (Number.isFinite(localZ) ? localZ : fallback.z - cz * SURVIVAL_BLOCK_SIZE),
   };
+}
+
+export function getQaSurvivalUrlPlayerWorldPosition(): SurvivalWorldPosition | null {
+  if (typeof window === "undefined") return null;
+  return getQaSurvivalUrlPlayerWorldPositionFromParams(new URLSearchParams(window.location.search));
 }
 
 export function getBrowserSurvivalPlayerPosition(): SurvivalPlayerWorldPosition | null {
@@ -108,6 +118,34 @@ export function getInitialSurvivalLocalGrassCenter(): SurvivalWorldPosition {
   return { x: 0, z: 0 };
 }
 
+export function getInitialSurvivalCenterChunkCoords(): SurvivalChunkCoords {
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("qaSpellDummies") === "1") {
+      return getSurvivalChunkCoordsForWorldPosition(getQaSurvivalChunkInitialWorldCenter(4, -3));
+    }
+
+    const qaChunk = parseSurvivalChunkCoordsParam(params.get("qaSurvivalChunk"));
+    if (qaChunk) {
+      const center = getQaSurvivalUrlPlayerWorldPositionFromParams(params)
+        ?? getQaSurvivalChunkInitialWorldCenter(qaChunk.cx, qaChunk.cz);
+      return getSurvivalChunkCoordsForWorldPosition(center);
+    }
+
+    const questSpawn = (params.get("qaQuestSpawn") || "").toLowerCase();
+    if (questSpawn === "lily" || questSpawn === "lily-coil" || questSpawn === "coil") {
+      return { cx: LILY_COIL_QUEST_CHUNK.cx, cz: LILY_COIL_QUEST_CHUNK.cz };
+    }
+
+    const localPlayerPos = getBrowserSurvivalPlayerPosition();
+    if (localPlayerPos) {
+      return getSurvivalChunkCoordsForWorldPosition(localPlayerPos);
+    }
+  }
+
+  return { cx: 0, cz: 0 };
+}
+
 export function getCurrentSurvivalPlayerWorldPosition(): SurvivalWorldPosition | null {
   const qaPosition = getQaSurvivalUrlPlayerWorldPosition();
   const livePosition = getBrowserSurvivalPlayerPosition();
@@ -122,10 +160,5 @@ export function getCurrentSurvivalPlayerWorldPosition(): SurvivalWorldPosition |
 
 export function getCurrentSurvivalPlayerChunkCoords(): SurvivalChunkCoords | null {
   const playerPosition = getCurrentSurvivalPlayerWorldPosition();
-  return playerPosition
-    ? {
-      cx: getSurvivalChunkCoord(playerPosition.x),
-      cz: getSurvivalChunkCoord(playerPosition.z),
-    }
-    : null;
+  return playerPosition ? getSurvivalChunkCoordsForWorldPosition(playerPosition) : null;
 }
