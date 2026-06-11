@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
+import { useLazyRef } from "../../react/useLazyRef";
 import { useSurvivalFeatureCount } from "../../../tools/qa/survivalFeatureCounters";
 import { getSurvivalWaterLevelAtWorld } from "../survival/survivalBiome";
 import { survivalHash01 } from "../survival/survivalMath";
@@ -53,7 +54,7 @@ export function SurvivalSolidTreeGroves({
   dense?: boolean;
   getSurfaceQuality: SurvivalSolidTreeSurfaceResolver;
 }) {
-  const treeRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
+  const treeRefs = useLazyRef<Array<THREE.InstancedMesh | null>>(() => []);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const variantInstanceCounts = useMemo(() => new Uint16Array(SURVIVAL_SOLID_TREE_VARIANT_COUNT), []);
   const geometries = useMemo(() => {

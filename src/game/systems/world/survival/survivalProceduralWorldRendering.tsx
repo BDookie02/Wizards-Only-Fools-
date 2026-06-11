@@ -3,6 +3,7 @@ import { SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
 import { isSurvivalGrassInspectionView } from "../../../tools/qa/survivalGrassDebug";
 import { SurvivalTerrain, SurvivalTerrainTintRuntime } from "../terrain/SurvivalTerrain";
+import { useLazyRef } from "../../react/useLazyRef";
 import {
   SURVIVAL_CHUNK_CENTER_HYSTERESIS,
   SURVIVAL_CHUNK_MOBILE_MOUNT_INTERVAL_MS,
@@ -256,7 +257,7 @@ export function SurvivalProceduralWorld({
   const [centerChunk, setCenterChunk] = useState(() => getInitialSurvivalCenterChunkCoords());
   const [chunkStreamRadius, setChunkStreamRadius] = useState(SURVIVAL_CHUNK_STREAM_INITIAL_RADIUS);
   const [travelLookaheadStep, setTravelLookaheadStep] = useState({ cx: 0, cz: 0 });
-  const lastPlayerMoveRef = useRef({ x: 0, z: 0, hasValue: false });
+  const lastPlayerMoveRef = useLazyRef(() => ({ x: 0, z: 0, hasValue: false }));
 
   useEffect(() => {
     const handlePlayerMove = (event: Event) => {

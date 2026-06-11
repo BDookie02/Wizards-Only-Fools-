@@ -14,6 +14,7 @@ import {
   useGameStore,
 } from "../../../../store/gameStore";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
+import { useLazyRef } from "../../react/useLazyRef";
 import { configurePixelSpriteTexture } from "../../rendering/textures/pixelSpriteTexture";
 import { getDarrelPetalNoise } from "../../rendering/textures/textureNoise";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
@@ -759,8 +760,8 @@ function DarrelWaterfallHill() {
   const fallMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const foamMaterialRef = useRef<THREE.MeshBasicMaterial>(null);
   const poolMaterialRef = useRef<THREE.MeshStandardMaterial>(null);
-  const runnelRefs = useRef<Array<THREE.Mesh | null>>([]);
-  const sprayRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const runnelRefs = useLazyRef<Array<THREE.Mesh | null>>(() => []);
+  const sprayRefs = useLazyRef<Array<THREE.Mesh | null>>(() => []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const lastMobileWaterUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
   const hillStones = [

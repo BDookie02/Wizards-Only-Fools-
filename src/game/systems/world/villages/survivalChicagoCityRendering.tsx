@@ -10,6 +10,7 @@ import { isMobilePerformanceMode } from "../../input/performanceMode";
 import { shouldBuildSurvivalChunkColliders, shouldRenderSurvivalChunkSkirt } from "../survival/survivalChunks";
 import { clamp01, lerpNumber, survivalHash01 } from "../survival/survivalMath";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
+import { useLazyRef } from "../../react/useLazyRef";
 import { FoliageDodeca } from "../vegetation/SurvivalFoliagePrimitives";
 import { finalizeSurvivalInstancedMesh } from "../vegetation/survivalInstancing";
 import { useSurvivalFeatureCount } from "../../../tools/qa/survivalFeatureCounters";
@@ -889,7 +890,7 @@ function ChicagoBuildings({
   baseHeight: number;
   showDetails: boolean;
 }) {
-  const bodyRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
+  const bodyRefs = useLazyRef<Array<THREE.InstancedMesh | null>>(() => []);
   const roofRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const facadeTextures = useMemo(() => getChicagoFacadeTextures(), []);
@@ -1248,8 +1249,8 @@ function ChicagoStreetDetails({ baseHeight }: { baseHeight: number }) {
   const flatPlaneDummy = useMemo(() => new THREE.Object3D(), []);
   const sidewalkRef = useRef<THREE.InstancedMesh>(null);
   const parkingRef = useRef<THREE.InstancedMesh>(null);
-  const grassRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
-  const crosswalkRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
+  const grassRefs = useLazyRef<Array<THREE.InstancedMesh | null>>(() => []);
+  const crosswalkRefs = useLazyRef<Array<THREE.InstancedMesh | null>>(() => []);
 
   const hydrants = useMemo(() => {
     const items: Array<{ key: string; x: number; z: number }> = [];
@@ -1899,16 +1900,16 @@ function groupChicagoCarsByColor(
 }
 
 function ChicagoTraffic({ cars, baseHeight }: { cars: ChicagoCar[]; baseHeight: number }) {
-  const bodyRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
-  const sideMarkRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
-  const lightBarRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
+  const bodyRefs = useLazyRef<Array<THREE.InstancedMesh | null>>(() => []);
+  const sideMarkRefs = useLazyRef<Array<THREE.InstancedMesh | null>>(() => []);
+  const lightBarRefs = useLazyRef<Array<THREE.InstancedMesh | null>>(() => []);
   const cabinRef = useRef<THREE.InstancedMesh>(null);
   const taxiSignRef = useRef<THREE.InstancedMesh>(null);
   const wheelRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const lastUpdateRef = useRef(-1);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
-  const transformBufferRef = useRef<ChicagoVehicleTransform[]>([]);
+  const transformBufferRef = useLazyRef<ChicagoVehicleTransform[]>(() => []);
   const carInstances = useMemo(() => {
     const items: ChicagoCarInstance[] = [];
     for (let index = 0; index < cars.length; index += 1) {

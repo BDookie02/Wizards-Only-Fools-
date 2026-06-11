@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { LILY_COIL_QUEST_CHUNK, SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
+import { useLazyRef } from "../../react/useLazyRef";
 import { getLastKnownLocalPlayerPosition } from "../../player/playerEventBridge";
 import { getDarrelPetalNoise } from "../../rendering/textures/textureNoise";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
@@ -484,8 +485,8 @@ function LilyCoilForegroundMeadow() {
 }
 
 function LilyCoilTunnelFlora() {
-  const grassRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
-  const grassUniformsRef = useRef<Array<{ uTime: THREE.IUniform<number> } | null>>([]);
+  const grassRefs = useLazyRef<Array<THREE.InstancedMesh | null>>(() => []);
+  const grassUniformsRef = useLazyRef<Array<{ uTime: THREE.IUniform<number> } | null>>(() => []);
   const lilyRef = useRef<THREE.InstancedMesh>(null);
   const glowRef = useRef<THREE.InstancedMesh>(null);
   const flowerStemRef = useRef<THREE.InstancedMesh>(null);

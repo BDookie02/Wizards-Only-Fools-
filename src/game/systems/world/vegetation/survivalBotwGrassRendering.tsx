@@ -2,6 +2,7 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
+import { useLazyRef } from "../../react/useLazyRef";
 import {
   installSurvivalGrassDebugSampler,
   isSurvivalGrassInspectionView,
@@ -592,7 +593,7 @@ function ActiveSurvivalBotwGrassField() {
     return () => window.removeEventListener("player-state", handlePlayerState);
   }, [enabled]);
 
-  const bladeInstancesRef = useRef<SurvivalBotwGrassBladeInstance[]>([]);
+  const bladeInstancesRef = useLazyRef<SurvivalBotwGrassBladeInstance[]>(() => []);
   const [bladeUploadVersion, setBladeUploadVersion] = useState(0);
   const carpetGeometry = useMemo(
     () => enabled && SURVIVAL_BOTW_GRASS_CARPET_ENABLED
