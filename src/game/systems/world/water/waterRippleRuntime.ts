@@ -1,3 +1,5 @@
+import { isCurrentQaTelemetryRouteEnabled } from "../../../tools/qa/qaRouteTelemetry";
+
 export interface WaterRipple {
   id: number;
   x: number;
@@ -35,6 +37,10 @@ export function isWaterRippleQaEnabled(search: string) {
 export function isCurrentWaterRippleQaEnabled() {
   if (typeof window === "undefined") return false;
   return isWaterRippleQaEnabled(window.location.search);
+}
+
+export function shouldPublishCurrentWaterRippleTelemetry() {
+  return isCurrentQaTelemetryRouteEnabled(["waterRipple", "perf", "canvas"]);
 }
 
 export function appendWaterRipple(current: readonly WaterRipple[], ripple: WaterRipple, now: number) {

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState, useRef, type MutableRefObjec
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { isMobilePerformanceMode } from './systems/input/performanceMode';
-import { isCurrentQaTelemetryRouteEnabled } from './tools/qa/qaRouteTelemetry';
 import {
   BASE_VILLAGE_WATER_Y,
   WATER_RIPPLE_LIFETIME_MS,
@@ -11,13 +10,14 @@ import {
   isCurrentWaterRippleQaEnabled,
   isBaseVillageWaterRippleSpot,
   pruneExpiredWaterRipples,
+  shouldPublishCurrentWaterRippleTelemetry,
   type WaterRipple,
 } from './systems/world/water/waterRippleRuntime';
 
 const MOBILE_WATER_RIPPLE_UPDATE_INTERVAL_SECONDS = 1 / 30;
 
 function shouldPublishWaterRippleTelemetry() {
-  return isCurrentQaTelemetryRouteEnabled(["waterRipple", "perf", "canvas"]);
+  return shouldPublishCurrentWaterRippleTelemetry();
 }
 
 export function WaterRipples() {

@@ -24,6 +24,14 @@ const RESIZE_OBSERVER_TELEMETRY_ROUTES: readonly QaTelemetryRoute[] = [
   "mountain",
   "survival",
 ];
+const LOCAL_CANVAS_RESIZE_OBSERVER_FALLBACK_ROUTES: readonly QaTelemetryRoute[] = [
+  "perf",
+  "survival",
+  "spellDummies",
+  "touch",
+  "mobilePerf",
+  "mountain",
+];
 
 export function shouldMountCanvasRuntimeProbeFromSearch(search: string) {
   return isQaTelemetryRouteEnabledFromSearch(search, CANVAS_RUNTIME_PROBE_ROUTES);
@@ -39,4 +47,8 @@ export function shouldPublishCanvasLayoutTelemetry() {
 
 export function shouldPublishCanvasResizeObserverTelemetry() {
   return isCurrentQaTelemetryRouteEnabled(RESIZE_OBSERVER_TELEMETRY_ROUTES);
+}
+
+export function shouldForceLocalCanvasResizeObserverFallbackFromSearch(search: string) {
+  return isQaTelemetryRouteEnabledFromSearch(search, LOCAL_CANVAS_RESIZE_OBSERVER_FALLBACK_ROUTES);
 }

@@ -1,5 +1,5 @@
 import { installResizeObserverFallback } from "./resizeObserverFallback";
-import { isQaTelemetryRouteEnabledFromSearch } from "../../../tools/qa/qaRouteTelemetry";
+import { shouldForceLocalCanvasResizeObserverFallbackFromSearch } from "./canvasQaTelemetryRoute";
 
 function isLocalCanvasQaRoute() {
   if (typeof window === "undefined") return false;
@@ -12,14 +12,7 @@ function isLocalCanvasQaRoute() {
     hostname.endsWith(".local");
   if (!isLocalHost) return false;
 
-  return isQaTelemetryRouteEnabledFromSearch(search, [
-    "perf",
-    "survival",
-    "spellDummies",
-    "touch",
-    "mobilePerf",
-    "mountain",
-  ]);
+  return shouldForceLocalCanvasResizeObserverFallbackFromSearch(search);
 }
 
 installResizeObserverFallback({ force: isLocalCanvasQaRoute() });
