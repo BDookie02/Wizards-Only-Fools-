@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { isCurrentQaTelemetryRouteEnabled } from "./qaRouteTelemetry";
+import { shouldMountCurrentQaPerfStatsProbe } from "./appQaTelemetryRoutes";
 
 type WofPerfStats = {
   averageMs: number;
@@ -23,7 +23,7 @@ const PERF_SAMPLE_CAPACITY = 720;
 const PERF_RECENT_SAMPLE_COUNT = 120;
 
 function isQaPerfStatsProbeEnabled() {
-  return isCurrentQaTelemetryRouteEnabled(["perf"]);
+  return shouldMountCurrentQaPerfStatsProbe();
 }
 
 export function QaPerfStatsProbe() {

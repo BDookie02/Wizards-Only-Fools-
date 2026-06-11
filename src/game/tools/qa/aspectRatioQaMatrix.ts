@@ -1,8 +1,8 @@
 import {
   getCurrentQaRouteParam,
   getQaRouteParamFromSearch,
-  isCurrentQaTelemetryRouteEnabled,
 } from "./qaRouteTelemetry";
+import { isCurrentAspectRatioQaMatrixRouteEnabled } from "./appQaTelemetryRoutes";
 
 export type AspectRatioQaProfile = {
   id: string;
@@ -260,7 +260,7 @@ export function buildAspectRatioHudQaRoutes(options: {
 }
 
 export function isAspectRatioQaMatrixEnabled() {
-  return isCurrentQaTelemetryRouteEnabled(["aspect"]);
+  return isCurrentAspectRatioQaMatrixRouteEnabled();
 }
 
 export function getClosestAspectRatioQaProfile(width: number, height: number) {

@@ -1,7 +1,7 @@
-import { isCurrentQaTelemetryRouteEnabled } from "../../tools/qa/qaRouteTelemetry";
+import { shouldPublishCurrentGameWorldModeTelemetry } from "../../tools/qa/appQaTelemetryRoutes";
 
 function shouldPublishGameWorldModeTelemetry() {
-  return isCurrentQaTelemetryRouteEnabled(["perf", "canvas", "hud", "aspect", "touch", "mountain", "survival"]);
+  return shouldPublishCurrentGameWorldModeTelemetry();
 }
 
 export function publishGameWorldModeTelemetry(gameMode: string, isSurvivalMode: boolean) {

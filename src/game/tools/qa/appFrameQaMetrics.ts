@@ -5,7 +5,7 @@ import {
   getAspectRatioQaProfileSummary,
   isAspectRatioQaMatrixEnabled,
 } from "./aspectRatioQaMatrix";
-import { isQaTelemetryRouteEnabledFromSearch } from "./qaRouteTelemetry";
+import { shouldPublishAppFrameQaMetricsFromSearch } from "./appQaTelemetryRoutes";
 import type { AspectRatioOption } from "../../../store/gameStore";
 import { readAppViewportSize } from "../../systems/input/mobileLayoutRuntime";
 
@@ -33,10 +33,6 @@ const QA_ASPECT_DATASET_KEYS = [
 ] as const;
 
 let lastAppFrameQaSnapshot = "";
-
-export function shouldPublishAppFrameQaMetricsFromSearch(search: string) {
-  return isQaTelemetryRouteEnabledFromSearch(search, ["perf", "hud", "aspect", "touch", "mobilePerf", "canvas", "mountain", "survival"]);
-}
 
 export function clearAppFrameQaMetrics() {
   if (typeof document === "undefined") return;
