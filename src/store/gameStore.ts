@@ -478,6 +478,29 @@ export const DEFAULT_KEYBOARD_ARROW_LOOK_ENABLED = true;
 export const DEFAULT_VOICE_PUSH_TO_TALK_KEY = 'KeyV';
 export const DEFAULT_VOICE_OUTPUT_VOLUME = 0.85;
 export const DEFAULT_VOICE_PROXIMITY_RANGE = 28;
+
+type SpellQuestDefinitionLookupEntry = {
+  quest: SpellQuestDefinition;
+  index: number;
+};
+
+const spellQuestDefinitionById = new Map<string, SpellQuestDefinitionLookupEntry>();
+const spellQuestDefinitionBySpell = new Map<SpellType, SpellQuestDefinitionLookupEntry>();
+
+for (let index = 0; index < SPELL_QUEST_DEFINITIONS.length; index += 1) {
+  const quest = SPELL_QUEST_DEFINITIONS[index];
+  if (!spellQuestDefinitionById.has(quest.id)) {
+    spellQuestDefinitionById.set(quest.id, { quest, index });
+  }
+  if (!spellQuestDefinitionBySpell.has(quest.spell)) {
+    spellQuestDefinitionBySpell.set(quest.spell, { quest, index });
+  }
+}
+
+const pickAvailableQuestUnlockedSpellsScratch = new Set<SpellType>();
+const pickAvailableQuestActiveAssignmentsScratch = new Set<SpellType>();
+const pickAvailableQuestUnassignedScratch: SpellQuestDefinition[] = [];
+const pickAvailableQuestLockedScratch: SpellQuestDefinition[] = [];
 export const SURVIVAL_BLOCK_SIZE = 512;
 export const DARREL_QUEST_CHUNK = { cx: 12, cz: -12 } as const;
 export const LILY_COIL_QUEST_CHUNK = { cx: 48, cz: -48 } as const;
@@ -1163,11 +1186,11 @@ function removeInventoryQuantity(inventory: InventoryRecord, itemId: InventoryIt
 }
 
 function getSpellQuestDefinition(spellOrQuestId: SpellType | string): SpellQuestDefinition | null {
-  for (let index = 0; index < SPELL_QUEST_DEFINITIONS.length; index += 1) {
-    const quest = SPELL_QUEST_DEFINITIONS[index];
-    if (quest.spell === spellOrQuestId || quest.id === spellOrQuestId) return quest;
-  }
-  return null;
+  const spellMatch = spellQuestDefinitionBySpell.get(spellOrQuestId as SpellType);
+  const questIdMatch = spellQuestDefinitionById.get(spellOrQuestId);
+  if (!spellMatch) return questIdMatch?.quest ?? null;
+  if (!questIdMatch) return spellMatch.quest;
+  return spellMatch.index <= questIdMatch.index ? spellMatch.quest : questIdMatch.quest;
 }
 
 function sanitizeSpellQuestAssignments(raw: unknown): Record<string, QuestNpcAssignment> {
@@ -1530,36 +1553,42 @@ function completeAssignmentsForSpell(
   return changed ? next : assignments;
 }
 
-function hasUnlockedQuestSpell(questUnlockedSpells: SpellType[], spell: SpellType) {
-  for (let index = 0; index < questUnlockedSpells.length; index += 1) {
-    if (questUnlockedSpells[index] === spell) return true;
-  }
-  return false;
-}
-
-function hasActiveQuestAssignmentForSpell(assignments: Record<string, QuestNpcAssignment>, spell: SpellType) {
-  for (const npcId in assignments) {
-    const assignment = assignments[npcId];
-    if (assignment.status !== 'completed' && assignment.spell === spell) return true;
-  }
-  return false;
-}
-
 function pickAvailableSpellQuest(
   questUnlockedSpells: SpellType[],
   assignments: Record<string, QuestNpcAssignment>
 ): SpellQuestDefinition | null {
-  const unassignedLocked: SpellQuestDefinition[] = [];
-  const locked: SpellQuestDefinition[] = [];
+  const unlockedSpells = pickAvailableQuestUnlockedSpellsScratch;
+  const activeAssignments = pickAvailableQuestActiveAssignmentsScratch;
+  const unassignedLocked = pickAvailableQuestUnassignedScratch;
+  const locked = pickAvailableQuestLockedScratch;
+  unlockedSpells.clear();
+  activeAssignments.clear();
+  unassignedLocked.length = 0;
+  locked.length = 0;
+
+  for (let index = 0; index < questUnlockedSpells.length; index += 1) {
+    unlockedSpells.add(questUnlockedSpells[index]);
+  }
+  for (const npcId in assignments) {
+    if (!Object.prototype.hasOwnProperty.call(assignments, npcId)) continue;
+    const assignment = assignments[npcId];
+    if (assignment.status !== 'completed') activeAssignments.add(assignment.spell);
+  }
+
   for (let index = 0; index < SPELL_QUEST_DEFINITIONS.length; index += 1) {
     const quest = SPELL_QUEST_DEFINITIONS[index];
-    if (hasUnlockedQuestSpell(questUnlockedSpells, quest.spell)) continue;
+    if (unlockedSpells.has(quest.spell)) continue;
     locked.push(quest);
-    if (!hasActiveQuestAssignmentForSpell(assignments, quest.spell)) unassignedLocked.push(quest);
+    if (!activeAssignments.has(quest.spell)) unassignedLocked.push(quest);
   }
 
   const pool = unassignedLocked.length > 0 ? unassignedLocked : locked;
-  return pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
+  const selected = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
+  unlockedSpells.clear();
+  activeAssignments.clear();
+  unassignedLocked.length = 0;
+  locked.length = 0;
+  return selected;
 }
 
 function sanitizeSurvivalMode(value: unknown): SurvivalGameMode {
