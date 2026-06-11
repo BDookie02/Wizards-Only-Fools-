@@ -12,6 +12,13 @@ export type SurvivalLocalGrassCell = {
   densityDistance: number;
 };
 
+type SurvivalLocalGrassCellOffset = {
+  dx: number;
+  dz: number;
+  distance: number;
+  densityDistance: number;
+};
+
 export const SURVIVAL_LOCAL_GRASS_REFERENCE_CELL_SIZE = 300;
 export const SURVIVAL_LOCAL_GRASS_CELL_SIZE = 220;
 export const SURVIVAL_LOCAL_GRASS_GROUND_RADIUS = 420;
@@ -51,6 +58,13 @@ function compareSurvivalLocalGrassCellDistance(
   return a.distance - b.distance;
 }
 
+function compareSurvivalLocalGrassCellOffsetDistance(
+  a: SurvivalLocalGrassCellOffset,
+  b: SurvivalLocalGrassCellOffset,
+) {
+  return a.distance - b.distance;
+}
+
 function sortSurvivalLocalGrassCellsByDistanceIfNeeded(cells: SurvivalLocalGrassCell[]) {
   for (let index = 1; index < cells.length; index += 1) {
     if (compareSurvivalLocalGrassCellDistance(cells[index - 1], cells[index]) > 0) {
@@ -63,6 +77,41 @@ function sortSurvivalLocalGrassCellsByDistanceIfNeeded(cells: SurvivalLocalGrass
 
 const survivalLocalGrassReconcileTargetMap = new Map<string, SurvivalLocalGrassCell>();
 const survivalLocalGrassReconcileSeenKeys = new Set<string>();
+const survivalLocalGrassCellOffsetCache = new Map<number, SurvivalLocalGrassCellOffset[]>();
+
+function getSurvivalLocalGrassCellOffsets(safeStreamRadius: number) {
+  const cached = survivalLocalGrassCellOffsetCache.get(safeStreamRadius);
+  if (cached) return cached;
+
+  const offsets: SurvivalLocalGrassCellOffset[] = [];
+  const renderRadius = Math.ceil(safeStreamRadius / SURVIVAL_LOCAL_GRASS_CELL_SIZE);
+  const halfCellSize = SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5;
+  const safeStreamRadiusSq = safeStreamRadius * safeStreamRadius;
+
+  for (let dz = -renderRadius; dz <= renderRadius; dz += 1) {
+    for (let dx = -renderRadius; dx <= renderRadius; dx += 1) {
+      const centerDistanceX = dx * SURVIVAL_LOCAL_GRASS_CELL_SIZE;
+      const centerDistanceZ = dz * SURVIVAL_LOCAL_GRASS_CELL_SIZE;
+      const distanceSq = centerDistanceX * centerDistanceX + centerDistanceZ * centerDistanceZ;
+      if (distanceSq > safeStreamRadiusSq) continue;
+      const distance = Math.sqrt(distanceSq);
+      const densityDistanceX = Math.max(0, Math.abs(centerDistanceX) - halfCellSize);
+      const densityDistanceZ = Math.max(0, Math.abs(centerDistanceZ) - halfCellSize);
+      offsets.push({
+        dx,
+        dz,
+        distance,
+        densityDistance: densityDistanceX > 0 || densityDistanceZ > 0
+          ? Math.sqrt(densityDistanceX * densityDistanceX + densityDistanceZ * densityDistanceZ)
+          : 0,
+      });
+    }
+  }
+
+  offsets.sort(compareSurvivalLocalGrassCellOffsetDistance);
+  survivalLocalGrassCellOffsetCache.set(safeStreamRadius, offsets);
+  return offsets;
+}
 
 export function getSurvivalLocalGrassCellCoord(value: number) {
   return Math.floor(value / SURVIVAL_LOCAL_GRASS_CELL_SIZE);
@@ -74,35 +123,25 @@ export function makeSurvivalLocalGrassCells(
   streamRadius = SURVIVAL_LOCAL_GRASS_GROUND_STREAM_RADIUS,
 ): SurvivalLocalGrassCell[] {
   const cells: SurvivalLocalGrassCell[] = [];
-  const centerX = (centerCellX + 0.5) * SURVIVAL_LOCAL_GRASS_CELL_SIZE;
-  const centerZ = (centerCellZ + 0.5) * SURVIVAL_LOCAL_GRASS_CELL_SIZE;
   const safeStreamRadius = Math.max(SURVIVAL_LOCAL_GRASS_CELL_SIZE, streamRadius);
-  const renderRadius = Math.ceil(safeStreamRadius / SURVIVAL_LOCAL_GRASS_CELL_SIZE);
-  const halfCellSize = SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5;
-  const safeStreamRadiusSq = safeStreamRadius * safeStreamRadius;
 
-  for (let dz = -renderRadius; dz <= renderRadius; dz += 1) {
-    for (let dx = -renderRadius; dx <= renderRadius; dx += 1) {
-      const cellX = centerCellX + dx;
-      const cellZ = centerCellZ + dz;
-      const x = cellX * SURVIVAL_LOCAL_GRASS_CELL_SIZE;
-      const z = cellZ * SURVIVAL_LOCAL_GRASS_CELL_SIZE;
-      const centerDistanceX = x + halfCellSize - centerX;
-      const centerDistanceZ = z + halfCellSize - centerZ;
-      const distanceSq = centerDistanceX * centerDistanceX + centerDistanceZ * centerDistanceZ;
-      if (distanceSq > safeStreamRadiusSq) continue;
-      const distance = Math.sqrt(distanceSq);
-      const densityDistanceX = Math.max(0, Math.abs(x + halfCellSize - centerX) - halfCellSize);
-      const densityDistanceZ = Math.max(0, Math.abs(z + halfCellSize - centerZ) - halfCellSize);
-      const densityDistance = densityDistanceX > 0 || densityDistanceZ > 0
-        ? Math.sqrt(densityDistanceX * densityDistanceX + densityDistanceZ * densityDistanceZ)
-        : 0;
-
-      cells.push({ key: `${cellX}:${cellZ}`, cellX, cellZ, x, z, distance, densityDistance });
-    }
+  const offsets = getSurvivalLocalGrassCellOffsets(safeStreamRadius);
+  for (let index = 0; index < offsets.length; index += 1) {
+    const offset = offsets[index];
+    const cellX = centerCellX + offset.dx;
+    const cellZ = centerCellZ + offset.dz;
+    cells.push({
+      key: `${cellX}:${cellZ}`,
+      cellX,
+      cellZ,
+      x: cellX * SURVIVAL_LOCAL_GRASS_CELL_SIZE,
+      z: cellZ * SURVIVAL_LOCAL_GRASS_CELL_SIZE,
+      distance: offset.distance,
+      densityDistance: offset.densityDistance,
+    });
   }
 
-  return cells.sort(compareSurvivalLocalGrassCellDistance);
+  return cells;
 }
 
 export function getSurvivalLocalGrassHysteresisCell(
