@@ -14,6 +14,7 @@ import {
 } from './game/systems/input/mobileLayoutRuntime';
 import { AppErrorBoundary } from './game/ui/appFrame/AppErrorBoundary';
 import { getAppFrameLayout } from './game/ui/appFrame/appFrameLayout';
+import { readCurrentAppFrameRouteFlags } from './game/ui/appFrame/appFrameRouteFlags';
 import { scheduleGameplayPreload } from './game/ui/appFrame/gameplayPreload';
 import { LazyGameWorld, LazyHUD, LazyLaunchMenu, LazyMiniMap, LazyQaPerfStatsProbe, LazyVoiceChat, preloadGameplayModules } from './game/ui/appFrame/lazyAppModules';
 
@@ -22,71 +23,6 @@ let survivalQaObserverModulePromise: Promise<typeof import('./game/tools/qa/surv
 function loadSurvivalQaObserverModule() {
   survivalQaObserverModulePromise ??= import('./game/tools/qa/survivalQaObserver');
   return survivalQaObserverModulePromise;
-}
-
-function isVoiceChatRouteRequested() {
-  if (typeof window === 'undefined') return false;
-  try {
-    const params = new URLSearchParams(window.location.search);
-    return (
-      params.has('voiceAutoStart') ||
-      params.has('voiceSoundboard') ||
-      params.has('voiceTest')
-    );
-  } catch {
-    return false;
-  }
-}
-
-function isQaPerfStatsRouteRequested() {
-  if (typeof window === 'undefined') return false;
-  try {
-    return new URLSearchParams(window.location.search).get('qaPerfStats') === '1';
-  } catch {
-    return false;
-  }
-}
-
-function hasSurvivalQaParam(params: URLSearchParams) {
-  for (const key of params.keys()) {
-    if (key.startsWith('qaSurvival')) return true;
-  }
-  return false;
-}
-
-function isAppFrameQaMetricsRouteRequested() {
-  if (typeof window === 'undefined') return false;
-  try {
-    const params = new URLSearchParams(window.location.search);
-    return (
-      params.get('qaPerfStats') === '1' ||
-      params.get('qaHudLayout') === '1' ||
-      params.get('qaAspectMatrix') === '1' ||
-      params.get('qaTouchLayout') === '1' ||
-      params.get('mobilePerf') === '1' ||
-      params.get('qaCanvasRuntime') === '1' ||
-      params.get('spawnMountain') === '1' ||
-      hasSurvivalQaParam(params)
-    );
-  } catch {
-    return false;
-  }
-}
-
-function isSurvivalQaObserverRouteRequested() {
-  if (typeof window === 'undefined') return false;
-  try {
-    const params = new URLSearchParams(window.location.search);
-    return (
-      params.get('qaSurvival') === '1' ||
-      params.has('qaSurvivalChunk') ||
-      params.get('qaSpellDummies') === '1' ||
-      params.get('spawnMountain') === '1' ||
-      params.get('spawnGraveyard') === '1'
-    );
-  } catch {
-    return false;
-  }
 }
 
 function clearAppFrameQaDatasets() {
@@ -124,15 +60,12 @@ export default function App() {
   const setAspectRatio = useGameStore(s => s.setAspectRatio);
   const setMouseSensitivity = useGameStore(s => s.setMouseSensitivity);
   const gameFrameRef = useRef<HTMLDivElement>(null);
-  const voiceChatRouteRequested = useMemo(() => isVoiceChatRouteRequested(), []);
-  const qaPerfStatsRouteRequested = useMemo(() => isQaPerfStatsRouteRequested(), []);
-  const survivalQaObserverRouteRequested = useMemo(() => isSurvivalQaObserverRouteRequested(), []);
-  const shouldPublishAppFrameQaMetrics = useMemo(() => isAppFrameQaMetricsRouteRequested(), []);
-  const shouldMountVoiceChat = isGameLaunched && (voiceChatEnabled || voiceChatRouteRequested);
-  const shouldMountQaPerfStatsProbe = isGameLaunched && qaPerfStatsRouteRequested;
+  const appFrameRouteFlags = useMemo(() => readCurrentAppFrameRouteFlags(), []);
+  const shouldMountVoiceChat = isGameLaunched && (voiceChatEnabled || appFrameRouteFlags.voiceChatRequested);
+  const shouldMountQaPerfStatsProbe = isGameLaunched && appFrameRouteFlags.qaPerfStatsRequested;
 
   useLayoutEffect(() => {
-    if (!survivalQaObserverRouteRequested) return undefined;
+    if (!appFrameRouteFlags.survivalQaObserverRequested) return undefined;
     let cancelled = false;
     void loadSurvivalQaObserverModule().then((module) => {
       if (!cancelled) module.applySurvivalQaObserver();
@@ -140,7 +73,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [survivalQaObserverRouteRequested]);
+  }, [appFrameRouteFlags.survivalQaObserverRequested]);
 
   useEffect(() => {
     document.documentElement.dataset.wofAppGameMode = gameMode;
@@ -196,7 +129,7 @@ export default function App() {
   }, [safeAspectRatio]);
 
   useEffect(() => {
-    if (!shouldPublishAppFrameQaMetrics) {
+    if (!appFrameRouteFlags.publishQaMetrics) {
       clearAppFrameQaDatasets();
       return clearAppFrameQaDatasets;
     }
@@ -239,7 +172,7 @@ export default function App() {
       disposed = true;
       cleanup?.();
     };
-  }, [isFill, safeAspectRatio, shouldPublishAppFrameQaMetrics]);
+  }, [appFrameRouteFlags.publishQaMetrics, isFill, safeAspectRatio]);
 
   useEffect(() => installBrowserZoomPrevention(), []);
 

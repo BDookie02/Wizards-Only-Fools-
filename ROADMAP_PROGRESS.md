@@ -31,6 +31,7 @@ Done:
 - Extracted base village visibility/detail phasing into `src/game/systems/world/villages/baseVillageVisibility.ts`.
 - Extracted canvas resize handling, horizon texture generation, wall texture generation, and the QA perf probe into their owning systems.
 - Extracted shared QA route telemetry classification into `src/game/tools/qa/qaRouteTelemetry.ts` so rendering, world, water, vegetation, and feature-counter diagnostics use one route boundary.
+- Extracted app-frame route flag ownership into `src/game/ui/appFrame/appFrameRouteFlags.ts`, so voice, QA perf, survival observer, and app-frame QA metrics mounting use one parsed route snapshot instead of scattered `App.tsx` URL reads.
 - Extracted survival chunk types, render/collision radii, terrain segment tuning, biome blend tuning, and stream-delay timing into `src/game/systems/world/survival/survivalWorldConfig.ts`.
 - Extracted survival sky/day-night rendering into `src/game/systems/rendering/sky/SurvivalSkyCycle.tsx`.
 - Extracted quest navigation beacons into `src/game/systems/quests/QuestNavigationBeacons.tsx`.
@@ -499,6 +500,7 @@ Done:
 - Moved the survival terrain render component into `SurvivalTerrain.tsx`, keeping core open-world terrain eager-loaded while isolating mesh/material/skirt/collider ownership in the terrain system.
 - Moved reusable foliage branch/vine/dodeca/leaf primitives, faceted plant line helpers, and minimap-hide metadata into `SurvivalFoliagePrimitives.tsx`, giving grass/tree/flower follow-up splits a shared vegetation visual boundary.
 - Added the shared `qaRouteTelemetry.ts` route gate so normal gameplay avoids scattered diagnostic dataset parsing/writes across rendering, world, water, vegetation, and feature counters.
+- Added `appFrameRouteFlags.ts` so app-frame voice, QA perf, survival observer, and layout telemetry gates are derived from one route snapshot at mount time instead of separate URL parses in `App.tsx`.
 - Added the terrain-owned `survivalTerrainTint.ts` cache so visible survival terrain chunks share the same day/night tint computation for a frame instead of recomputing identical cycle color math per chunk.
 - Shortened collided smoke-bomb lifecycle cleanup, unmounted completed portal scale-in frame hooks, and added mobile-only status-bolt visual cadence while preserving spell collision/status/network timing.
 - Moved mountain village radius, plateau, trail, mineshaft, slope-grass, waterfall-hide constants and pure trail/terrain helpers into `mountainVillageTerrain.ts`, giving mountain grass, terrain, colliders, and the future mountain renderer one shared tuning source.
@@ -817,6 +819,7 @@ Done:
 - Added server-side combat-damage target validation: raw toxic `damageHealth` can only target the emitting socket, while `hitPlayer` combat damage is limited to self-targeted reports or plausible spell-range attacker/target positions.
 - Added server-side status-effect target validation: victim-reported self status still works, direct remote status requires a plausible range, and status clearing is self-only so clients cannot clear another player's poison/acid/slow/sleep effects.
 - Gated the lazy `VoiceChat` runtime mount behind `voiceChatEnabled` or explicit voice QA route flags so ordinary solo survival no longer requests the voice chunk while voice is off.
+- Added `voiceChatRouteFlags.ts` so voice soundboard/autostart QA flags are parsed once when the lazy voice runtime mounts instead of being recomputed during voice renders.
 - Gated the voice proximity-volume refresh loop behind actual non-local player IDs so voice-enabled empty rooms do not keep a 120 ms audio-volume interval awake.
 - Changed remote avatars to use one Zustand player snapshot subscription plus frame-local refs for interpolation, removing per-remote per-frame store lookups and snapping each remote to its first valid transform before smoothing begins.
 - Moved remote-avatar status expiry clocks into `remotePlayerRuntime.ts`, with idle remote players staying at `clock=0` until they actually have a timed slow/sleep/poison/acid status.
@@ -827,6 +830,9 @@ Next:
 
 ## Latest Verification
 
+- Focused app-frame/network route-flag cleanup: `App.tsx` now delegates voice, QA perf, survival observer, and app-frame telemetry route decisions to `appFrameRouteFlags.ts`; `VoiceChat.tsx` now delegates soundboard/autostart route decisions to `voiceChatRouteFlags.ts` and reads one memoized route snapshot per lazy voice mount.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the route-flag visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the app-frame/network route-flag split. Sprite verification passed; current warning remains chunk size only. `index` is about 78.44 kB / 23.82 kB gzip, `VoiceChat` is about 10.68 kB / 4.34 kB gzip, and `appFrameQaMetrics` is about 7.49 kB / 2.41 kB gzip.
 - Focused pause/start menu readability check: `HUD.tsx` now uses pause-menu class hooks for start/lobby headings, primary resume action, menu buttons, rule rows, invite forms, and utility buttons, while `src/index.css` owns the readable PC/mobile sizing variables and compact overlay overrides.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the pause/start menu visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the pause/start menu readability pass. Current warning remains chunk size only; `HUD` is about 80.49 kB / 24.06 kB gzip and CSS is about 167.28 kB / 24.50 kB gzip.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { socket } from "./socket";
 import {
   DEFAULT_VOICE_OUTPUT_VOLUME,
@@ -16,6 +16,7 @@ import { isEditableTarget } from "../systems/input/editableTargets";
 import { isMobilePerformanceMode } from "../systems/input/performanceMode";
 import { getPublishedLocalPlayerPosition } from "../systems/player/playerEventBridge";
 import { getNetworkPlayerIdsKey, hasRemoteNetworkPlayerId, visitNetworkPlayerIdsKey } from "./gameNetworkClient";
+import { readCurrentVoiceChatRouteFlags } from "./voiceChatRouteFlags";
 
 type VoiceDescriptionSignal = {
   fromId: string;
@@ -53,7 +54,6 @@ const MOBILE_VOICE_ANALYZER_INTERVAL_MS = 1000 / 15;
 const VOLUME_REFRESH_MS = 120;
 const SOUNDBOARD_BLIP_MS = 950;
 const DEBUG_PEER_SUMMARY_REFRESH_MS = 250;
-const VOICE_TEST_VALUES = new Set(["1", "true", "soundboard"]);
 const SOUNDBOARD_BLIP_NOTES: readonly { frequency: number; offset: number; duration: number }[] = [
   { frequency: 392, offset: 0, duration: 0.16 },
   { frequency: 523.25, offset: 0.18, duration: 0.18 },
@@ -74,22 +74,6 @@ function setMediaStreamAudioTracksEnabled(stream: MediaStream | null | undefined
   for (let index = 0; index < tracks.length; index += 1) {
     tracks[index].enabled = enabled;
   }
-}
-
-function getVoiceTestParam(name: string) {
-  try {
-    return new URLSearchParams(window.location.search).get(name)?.toLowerCase() ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function isVoiceSoundboardTestActive() {
-  return VOICE_TEST_VALUES.has(getVoiceTestParam("voiceTest")) || VOICE_TEST_VALUES.has(getVoiceTestParam("voiceSoundboard"));
-}
-
-function isVoiceAutoStartTestActive() {
-  return getVoiceTestParam("voiceAutoStart") === "1" || getVoiceTestParam("voiceAutoStart") === "true";
 }
 
 function createSoundboardTestStream(): VoiceSource {
@@ -181,8 +165,9 @@ export function VoiceChat() {
   const debugVoiceStatus = useGameStore(s => s.voiceStatus);
   const debugVoiceError = useGameStore(s => s.voiceError);
   const debugIsSpeaking = useGameStore(s => s.isVoiceSpeaking);
-  const voiceSoundboardTestActive = isVoiceSoundboardTestActive();
-  const voiceAutoStartTestActive = isVoiceAutoStartTestActive();
+  const voiceRouteFlags = useMemo(() => readCurrentVoiceChatRouteFlags(), []);
+  const voiceSoundboardTestActive = voiceRouteFlags.soundboardTestActive;
+  const voiceAutoStartTestActive = voiceRouteFlags.autoStartTestActive;
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Record<string, PeerRecord>>({});
   const voiceSourceLabelRef = useRef("Mic");
