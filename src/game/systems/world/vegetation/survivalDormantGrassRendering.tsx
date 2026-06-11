@@ -106,6 +106,15 @@ import {
 } from "./survivalInstancing";
 import { HIDE_FROM_MINIMAP } from "./SurvivalFoliagePrimitives";
 
+function copyInitialVisibleGrassCells<T>(cells: readonly T[], maxCount: number) {
+  const count = Math.min(cells.length, maxCount);
+  const visibleCells = new Array<T>(count);
+  for (let index = 0; index < count; index += 1) {
+    visibleCells[index] = cells[index];
+  }
+  return visibleCells;
+}
+
 const SURVIVAL_WORLD_GRASS_BLADES_PER_TUFT = 4;
 const SURVIVAL_WORLD_SHORT_GRASS_BLADES_PER_TUFT = 2;
 const SURVIVAL_GRASS_BLADE_SOURCE_UP = new THREE.Vector3(0, 1, 0);
@@ -3927,7 +3936,7 @@ function ActiveSurvivalTutorialGrassField() {
     [centerCell.cellX, centerCell.cellZ],
   );
   const [visibleCells, setVisibleCells] = useState<SurvivalTutorialGrassCell[]>(() => (
-    cells.slice(0, SURVIVAL_TUTORIAL_GRASS_INITIAL_CELL_MOUNT_COUNT)
+    copyInitialVisibleGrassCells(cells, SURVIVAL_TUTORIAL_GRASS_INITIAL_CELL_MOUNT_COUNT)
   ));
   const visibleCellsRef = useRef(visibleCells);
 
@@ -4088,7 +4097,7 @@ function ActiveSurvivalLocalGrassField() {
     [centerCell.cellX, centerCell.cellZ, cellStreamRadius],
   );
   const [visibleCells, setVisibleCells] = useState<SurvivalLocalGrassCell[]>(() => (
-    cells.slice(0, SURVIVAL_LOCAL_GRASS_INITIAL_CELL_MOUNT_COUNT)
+    copyInitialVisibleGrassCells(cells, SURVIVAL_LOCAL_GRASS_INITIAL_CELL_MOUNT_COUNT)
   ));
   const visibleCellsRef = useRef(visibleCells);
 
