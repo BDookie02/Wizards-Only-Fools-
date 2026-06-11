@@ -40,6 +40,8 @@ export type EnginePlacedObjectSlotSummary = {
 
 export const ENGINE_MENU_SLOT_IDS = ["slot-1", "slot-2", "slot-3", "slot-4", "slot-5", "slot-6"] as const;
 
+const placeableSearchTextCache = new WeakMap<PlaceableDefinition, string>();
+
 export function normalizeEnginePlaceableSearchQuery(query: string) {
   return query.trim().toLowerCase();
 }
@@ -68,7 +70,11 @@ export function createEngineMenuPlacementOptions(
 }
 
 function getPlaceableSearchText(placeable: PlaceableDefinition) {
-  return `${placeable.id} ${placeable.name} ${placeable.description} ${placeable.tags.join(" ")}`.toLowerCase();
+  const cached = placeableSearchTextCache.get(placeable);
+  if (cached !== undefined) return cached;
+  const searchText = `${placeable.id} ${placeable.name} ${placeable.description} ${placeable.tags.join(" ")}`.toLowerCase();
+  placeableSearchTextCache.set(placeable, searchText);
+  return searchText;
 }
 
 function matchesPlaceableSearch(placeable: PlaceableDefinition, normalizedSearchQuery: string) {
