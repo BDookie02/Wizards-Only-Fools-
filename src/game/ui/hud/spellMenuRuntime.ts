@@ -104,3 +104,21 @@ export function getFirstSpellInFamily(activeFamily: SpellFamilyFilter) {
 export function getSpellMenuIndex(spell: SpellType) {
   return cachedSpellMenuIndexBySpell[spell];
 }
+
+export type SpellMenuHotbarSlotLookup = Partial<Record<SpellType, number>>;
+
+export function createSpellMenuHotbarSlotLookup(spells: readonly SpellType[]) {
+  const lookup: SpellMenuHotbarSlotLookup = {};
+  for (let index = 0; index < spells.length; index += 1) {
+    const spell = spells[index];
+    lookup[spell] ??= index;
+  }
+  return lookup;
+}
+
+export function getSpellMenuAssignedSlot(
+  lookup: SpellMenuHotbarSlotLookup,
+  spell: SpellType
+) {
+  return lookup[spell] ?? -1;
+}

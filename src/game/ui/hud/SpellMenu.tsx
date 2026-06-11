@@ -4,7 +4,9 @@ import { twMerge } from "tailwind-merge";
 import { ALL_SPELLS, type HandType, type SpellType, useGameStore } from "../../../store/gameStore";
 import { spellColors, spellNames } from "../../systems/spells/spellCatalog";
 import {
+  createSpellMenuHotbarSlotLookup,
   getFallbackSpellThumbnail,
+  getSpellMenuAssignedSlot,
   getFirstSpellInFamily,
   getSpellMenuIndex,
   getSpellMenuFamilyCounts,
@@ -783,13 +785,21 @@ export const SpellMenu = memo(function SpellMenu({
   const [activeFamily, setActiveFamily] = useState<SpellFamilyFilter>("all");
 
   const highlightedSpell = ALL_SPELLS[menuSpellIndex];
-  const bindingHotbar = bindingHand === "right" ? rightHotbarSpells : leftHotbarSpells;
   const bindingSelectedIndex = bindingHand === "right" ? rightSelectedHotbarIndex : leftSelectedHotbarIndex;
   const familyCounts = useMemo(getSpellMenuFamilyCounts, []);
   const visibleSpells = useMemo(
     () => getVisibleSpellMenuSpells(activeFamily),
     [activeFamily]
   );
+  const leftHotbarSlotLookup = useMemo(
+    () => createSpellMenuHotbarSlotLookup(leftHotbarSpells),
+    [leftHotbarSpells]
+  );
+  const rightHotbarSlotLookup = useMemo(
+    () => createSpellMenuHotbarSlotLookup(rightHotbarSpells),
+    [rightHotbarSpells]
+  );
+  const bindingHotbarSlotLookup = bindingHand === "right" ? rightHotbarSlotLookup : leftHotbarSlotLookup;
 
   useEffect(() => {
     if (activeFamily === "all") return;
@@ -953,9 +963,9 @@ export const SpellMenu = memo(function SpellMenu({
               {visibleSpells.map((spell) => {
                 const index = getSpellMenuIndex(spell);
                 const isHighlighted = index === menuSpellIndex;
-                const leftAssignedSlot = leftHotbarSpells.indexOf(spell);
-                const rightAssignedSlot = rightHotbarSpells.indexOf(spell);
-                const assignedSlot = bindingHotbar.indexOf(spell);
+                const leftAssignedSlot = getSpellMenuAssignedSlot(leftHotbarSlotLookup, spell);
+                const rightAssignedSlot = getSpellMenuAssignedSlot(rightHotbarSlotLookup, spell);
+                const assignedSlot = getSpellMenuAssignedSlot(bindingHotbarSlotLookup, spell);
                 const isCurrent = spell === leftCurrentSpell || spell === rightCurrentSpell;
                 const familyLabel = spellFamilyLabels[getSpellMenuFamilyForSpell(spell)];
 
