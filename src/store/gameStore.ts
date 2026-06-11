@@ -1388,6 +1388,18 @@ function getDarrelNavigationTarget(
   };
 }
 
+function insertActiveQuestAssignmentByAssignedAt(
+  activeAssignments: QuestNpcAssignment[],
+  assignment: QuestNpcAssignment,
+) {
+  let insertIndex = activeAssignments.length;
+  while (insertIndex > 0 && assignment.assignedAt < activeAssignments[insertIndex - 1].assignedAt) {
+    activeAssignments[insertIndex] = activeAssignments[insertIndex - 1];
+    insertIndex -= 1;
+  }
+  activeAssignments[insertIndex] = assignment;
+}
+
 export function getActiveQuestNavigationTargets({
   spellQuestAssignments,
   questFlags,
@@ -1403,10 +1415,9 @@ export function getActiveQuestNavigationTargets({
   for (const npcId in spellQuestAssignments) {
     const assignment = spellQuestAssignments[npcId];
     if (assignment.status !== 'completed' && !questUnlockedSpells.includes(assignment.spell)) {
-      activeAssignments.push(assignment);
+      insertActiveQuestAssignmentByAssignedAt(activeAssignments, assignment);
     }
   }
-  activeAssignments.sort((a, b) => a.assignedAt - b.assignedAt);
 
   const targets: QuestNavigationTarget[] = [];
   for (let index = 0; index < activeAssignments.length; index += 1) {
