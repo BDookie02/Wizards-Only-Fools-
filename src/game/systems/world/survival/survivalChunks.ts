@@ -32,8 +32,47 @@ const survivalChunkReconcileStaleChunks: SurvivalChunkInfo[] = [];
 const survivalChunkReconcileTargetPriorityScratch: SurvivalChunkInfo[] = [];
 const survivalChunkReconcilePreviousPriorityScratch: SurvivalChunkInfo[] = [];
 const survivalChunkInitialImmediateKeys = new Set<string>();
+const survivalChunkOffsetCache = new Map<number, SurvivalChunkOffset[]>();
 
 type SurvivalChunkPriorityComparator = (a: SurvivalChunkInfo, b: SurvivalChunkInfo) => number;
+type SurvivalChunkOffset = {
+  dx: number;
+  dz: number;
+  distance: number;
+  lod: SurvivalChunkInfo["lod"];
+};
+
+function compareSurvivalChunkStableOrder(a: Pick<SurvivalChunkInfo, "cx" | "cz" | "key">, b: Pick<SurvivalChunkInfo, "cx" | "cz" | "key">) {
+  return (a.cx - b.cx) || (a.cz - b.cz) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+}
+
+function compareSurvivalChunkOffsetPriority(a: SurvivalChunkOffset, b: SurvivalChunkOffset) {
+  return (a.distance - b.distance) || (a.dx - b.dx) || (a.dz - b.dz);
+}
+
+function getSurvivalChunkOffsets(radius: number) {
+  const cached = survivalChunkOffsetCache.get(radius);
+  if (cached) return cached;
+
+  const offsets: SurvivalChunkOffset[] = [];
+  const roundedRadius = radius + SURVIVAL_CHUNK_STREAM_ROUNDING;
+  const roundedRadiusSq = roundedRadius * roundedRadius;
+  for (let dz = -radius; dz <= radius; dz += 1) {
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      if (dx * dx + dz * dz > roundedRadiusSq) continue;
+      const distance = Math.max(Math.abs(dx), Math.abs(dz));
+      offsets.push({
+        dx,
+        dz,
+        distance,
+        lod: distance === 0 ? "near" : distance <= SURVIVAL_NEAR_RADIUS ? "mid" : "far",
+      });
+    }
+  }
+  offsets.sort(compareSurvivalChunkOffsetPriority);
+  survivalChunkOffsetCache.set(radius, offsets);
+  return offsets;
+}
 
 function getSurvivalChunksSortedByPriority(
   chunks: SurvivalChunkInfo[],
@@ -107,38 +146,33 @@ export function makeSurvivalChunks(
 
   const chunks: SurvivalChunkInfo[] = [];
   const radius = Math.max(0, Math.min(SURVIVAL_RENDER_RADIUS, Math.floor(streamRadius)));
-  const roundedRadius = radius + SURVIVAL_CHUNK_STREAM_ROUNDING;
-  const roundedRadiusSq = roundedRadius * roundedRadius;
 
-  for (let dz = -radius; dz <= radius; dz += 1) {
-    for (let dx = -radius; dx <= radius; dx += 1) {
-      if (dx * dx + dz * dz > roundedRadiusSq) continue;
+  const offsets = getSurvivalChunkOffsets(radius);
+  for (let index = 0; index < offsets.length; index += 1) {
+    const offset = offsets[index];
+    const cx = centerCx + offset.dx;
+    const cz = centerCz + offset.dz;
+    if (!includeBaseChunk && cx === 0 && cz === 0) continue;
+    const biome = getSurvivalBiome(cx, cz);
+    const villageKind = getSurvivalVillageKindForChunk(biome, cx, cz);
 
-      const cx = centerCx + dx;
-      const cz = centerCz + dz;
-      if (!includeBaseChunk && cx === 0 && cz === 0) continue;
-      const distance = Math.max(Math.abs(dx), Math.abs(dz));
-      const biome = getSurvivalBiome(cx, cz);
-      const villageKind = getSurvivalVillageKindForChunk(biome, cx, cz);
-
-      chunks.push({
-        key: `${cx}:${cz}`,
-        cx,
-        cz,
-        x: cx * SURVIVAL_BLOCK_SIZE,
-        z: cz * SURVIVAL_BLOCK_SIZE,
-        distance,
-        biome,
-        hasVillage: villageKind !== null,
-        villageKind,
-        hasRiver: getSurvivalChunkHasRiver(cx, cz),
-        riverVertical: survivalHash01(cx, cz, 5) > 0.5,
-        lod: distance === 0 ? "near" : distance <= SURVIVAL_NEAR_RADIUS ? "mid" : "far",
-      });
-    }
+    chunks.push({
+      key: `${cx}:${cz}`,
+      cx,
+      cz,
+      x: cx * SURVIVAL_BLOCK_SIZE,
+      z: cz * SURVIVAL_BLOCK_SIZE,
+      distance: offset.distance,
+      biome,
+      hasVillage: villageKind !== null,
+      villageKind,
+      hasRiver: getSurvivalChunkHasRiver(cx, cz),
+      riverVertical: survivalHash01(cx, cz, 5) > 0.5,
+      lod: offset.lod,
+    });
   }
 
-  return chunks.sort((a, b) => a.distance - b.distance || a.key.localeCompare(b.key));
+  return chunks;
 }
 
 export function reconcileSurvivalVisibleChunks(
@@ -173,7 +207,7 @@ export function reconcileSurvivalVisibleChunks(
   ) || (
     (targetMap.get(a.key)?.distance ?? a.distance) -
     (targetMap.get(b.key)?.distance ?? b.distance)
-  ) || a.key.localeCompare(b.key);
+  ) || compareSurvivalChunkStableOrder(a, b);
   const orderedTargetChunks = getSurvivalChunksSortedByPriority(
     targetChunks,
     compareChunkPriority,
