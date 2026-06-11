@@ -5,7 +5,6 @@ import {
   getAspectRatioQaProfileSummary,
   isAspectRatioQaMatrixEnabled,
 } from "./aspectRatioQaMatrix";
-import { shouldPublishAppFrameQaMetricsFromSearch } from "./appQaTelemetryRoutes";
 import type { AspectRatioOption } from "../../../store/gameStore";
 import { readAppViewportSize } from "../../systems/input/mobileLayoutRuntime";
 
