@@ -55,6 +55,7 @@ export function SurvivalSolidTreeGroves({
 }) {
   const treeRefs = useRef<Array<THREE.InstancedMesh | null>>([]);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const variantInstanceCounts = useMemo(() => new Uint16Array(SURVIVAL_SOLID_TREE_VARIANT_COUNT), []);
   const geometries = useMemo(() => {
     const nextGeometries: THREE.BufferGeometry[] = [];
     for (let index = 0; index < SURVIVAL_SOLID_TREE_VARIANT_COUNT; index += 1) {
@@ -146,7 +147,8 @@ export function SurvivalSolidTreeGroves({
   useSurvivalFeatureCount("solidTrees", chunk.key, trees.length);
 
   useEffect(() => {
-    const instances = new Array<number>(SURVIVAL_SOLID_TREE_VARIANT_COUNT).fill(0);
+    const instances = variantInstanceCounts;
+    instances.fill(0);
 
     for (let treeIndex = 0; treeIndex < trees.length; treeIndex += 1) {
       const tree = trees[treeIndex];
@@ -182,7 +184,7 @@ export function SurvivalSolidTreeGroves({
       mesh.count = instances[variantIndex] ?? 0;
       finalizeSurvivalInstancedMesh(mesh, chunk.x, chunk.z, SURVIVAL_BLOCK_SIZE * 0.92, 112);
     }
-  }, [chunk.cx, chunk.cz, chunk.x, chunk.z, dummy, trees]);
+  }, [chunk.cx, chunk.cz, chunk.x, chunk.z, dummy, trees, variantInstanceCounts]);
 
   if (trees.length === 0) return null;
 
