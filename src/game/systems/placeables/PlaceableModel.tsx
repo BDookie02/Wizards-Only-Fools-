@@ -166,8 +166,7 @@ export function PlaceableModel({ placeable, name, opacity = 1 }: { placeable: Pl
     );
   }
 
-  const { bodyWidth, bodyDepth, bodyHeight, roofHeight } = getPlaceableBuildingMetrics(placeable);
-  const isMushroom = placeable.id.includes("mushroom");
+  const { bodyWidth, bodyDepth, bodyHeight, roofHeight, roofSegments } = getPlaceableBuildingMetrics(placeable);
 
   return (
     <group name={name}>
@@ -176,7 +175,7 @@ export function PlaceableModel({ placeable, name, opacity = 1 }: { placeable: Pl
         <meshStandardMaterial color={baseColor} roughness={0.9} {...materialProps} />
       </mesh>
       <mesh position={[0, bodyHeight + roofHeight * 0.46, 0]} rotation={[0, Math.PI / 4, 0]}>
-        <coneGeometry args={[Math.max(bodyWidth, bodyDepth) * 0.76, roofHeight, isMushroom ? 20 : 4]} />
+        <coneGeometry args={[Math.max(bodyWidth, bodyDepth) * 0.76, roofHeight, roofSegments]} />
         <meshStandardMaterial color={accentColor} roughness={0.85} {...materialProps} />
       </mesh>
       <mesh position={[0, 1.8, bodyDepth / 2 + 0.04]}>
