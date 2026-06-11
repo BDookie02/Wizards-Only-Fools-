@@ -25,16 +25,29 @@ import {
 } from "../villages/survivalVillageRegistry";
 
 const survivalChunkInfoCache = new Map<string, SurvivalChunkInfo>();
+const survivalChunkReconcileTargetMap = new Map<string, SurvivalChunkInfo>();
+const survivalChunkReconcileImmediateKeys = new Set<string>();
+const survivalChunkReconcileSeenKeys = new Set<string>();
+const survivalChunkReconcileStaleChunks: SurvivalChunkInfo[] = [];
+const survivalChunkReconcileTargetPriorityScratch: SurvivalChunkInfo[] = [];
+const survivalChunkReconcilePreviousPriorityScratch: SurvivalChunkInfo[] = [];
+const survivalChunkInitialImmediateKeys = new Set<string>();
 
 type SurvivalChunkPriorityComparator = (a: SurvivalChunkInfo, b: SurvivalChunkInfo) => number;
 
 function getSurvivalChunksSortedByPriority(
   chunks: SurvivalChunkInfo[],
   compareChunkPriority: SurvivalChunkPriorityComparator,
+  scratchChunks: SurvivalChunkInfo[],
 ) {
   for (let index = 1; index < chunks.length; index += 1) {
     if (compareChunkPriority(chunks[index - 1], chunks[index]) > 0) {
-      return chunks.slice().sort(compareChunkPriority);
+      scratchChunks.length = 0;
+      for (let copyIndex = 0; copyIndex < chunks.length; copyIndex += 1) {
+        scratchChunks.push(chunks[copyIndex]);
+      }
+      scratchChunks.sort(compareChunkPriority);
+      return scratchChunks;
     }
   }
   return chunks;
@@ -133,11 +146,21 @@ export function reconcileSurvivalVisibleChunks(
   targetChunks: SurvivalChunkInfo[],
   addCount: number,
 ) {
-  const targetMap = new Map<string, SurvivalChunkInfo>();
+  const targetMap = survivalChunkReconcileTargetMap;
+  const immediateKeys = survivalChunkReconcileImmediateKeys;
+  const seenKeys = survivalChunkReconcileSeenKeys;
+  const staleChunks = survivalChunkReconcileStaleChunks;
+  targetMap.clear();
+  immediateKeys.clear();
+  seenKeys.clear();
+  staleChunks.length = 0;
+  survivalChunkReconcileTargetPriorityScratch.length = 0;
+  survivalChunkReconcilePreviousPriorityScratch.length = 0;
+
   for (const chunk of targetChunks) {
     targetMap.set(chunk.key, chunk);
   }
-  const immediateKeys = getImmediateSurvivalVisibleChunkKeys(targetChunks);
+  fillImmediateSurvivalVisibleChunkKeys(targetChunks, immediateKeys);
   const playerChunk = getCurrentSurvivalPlayerChunkCoords();
   const getChunkPriority = (chunk: SurvivalChunkInfo) => {
     const targetChunk = targetMap.get(chunk.key) ?? chunk;
@@ -151,10 +174,12 @@ export function reconcileSurvivalVisibleChunks(
     (targetMap.get(a.key)?.distance ?? a.distance) -
     (targetMap.get(b.key)?.distance ?? b.distance)
   ) || a.key.localeCompare(b.key);
-  const orderedTargetChunks = getSurvivalChunksSortedByPriority(targetChunks, compareChunkPriority);
+  const orderedTargetChunks = getSurvivalChunksSortedByPriority(
+    targetChunks,
+    compareChunkPriority,
+    survivalChunkReconcileTargetPriorityScratch,
+  );
   const nextChunks: SurvivalChunkInfo[] = [];
-  const seenKeys = new Set<string>();
-  const staleChunks: SurvivalChunkInfo[] = [];
   let remainingWork = Math.max(0, addCount);
   const canReusePreviousChunk = (previousChunk: SurvivalChunkInfo, nextChunk: SurvivalChunkInfo) => (
     previousChunk.lod === nextChunk.lod &&
@@ -167,7 +192,11 @@ export function reconcileSurvivalVisibleChunks(
     shouldRenderSurvivalTerrainSkirt(previousChunk) === shouldRenderSurvivalTerrainSkirt(nextChunk)
   );
 
-  const orderedPreviousChunks = getSurvivalChunksSortedByPriority(previousChunks, compareChunkPriority);
+  const orderedPreviousChunks = getSurvivalChunksSortedByPriority(
+    previousChunks,
+    compareChunkPriority,
+    survivalChunkReconcilePreviousPriorityScratch,
+  );
   for (const chunk of orderedPreviousChunks) {
     const nextChunk = targetMap.get(chunk.key);
     if (!nextChunk) {
@@ -217,13 +246,23 @@ export function reconcileSurvivalVisibleChunks(
     }
   }
 
-  return unchanged ? previousChunks : orderedNextChunks;
+  const result = unchanged ? previousChunks : orderedNextChunks;
+  targetMap.clear();
+  immediateKeys.clear();
+  seenKeys.clear();
+  staleChunks.length = 0;
+  survivalChunkReconcileTargetPriorityScratch.length = 0;
+  survivalChunkReconcilePreviousPriorityScratch.length = 0;
+  return result;
 }
 
-export function getImmediateSurvivalVisibleChunkKeys(chunks: SurvivalChunkInfo[]) {
-  if (chunks.length === 0) return new Set<string>();
+function fillImmediateSurvivalVisibleChunkKeys(
+  chunks: SurvivalChunkInfo[],
+  immediateKeys: Set<string>,
+) {
+  immediateKeys.clear();
+  if (chunks.length === 0) return immediateKeys;
 
-  const immediateKeys = new Set<string>();
   const playerChunk = getCurrentSurvivalPlayerChunkCoords();
   if (playerChunk) {
     for (const chunk of chunks) {
@@ -242,15 +281,21 @@ export function getImmediateSurvivalVisibleChunkKeys(chunks: SurvivalChunkInfo[]
   return immediateKeys;
 }
 
+export function getImmediateSurvivalVisibleChunkKeys(chunks: SurvivalChunkInfo[]) {
+  return fillImmediateSurvivalVisibleChunkKeys(chunks, new Set<string>());
+}
+
 export function getInitialSurvivalVisibleChunks(chunks: SurvivalChunkInfo[]) {
   if (chunks.length === 0) return [];
 
-  const immediateKeys = getImmediateSurvivalVisibleChunkKeys(chunks);
+  const immediateKeys = fillImmediateSurvivalVisibleChunkKeys(chunks, survivalChunkInitialImmediateKeys);
   const immediateChunks: SurvivalChunkInfo[] = [];
   for (const chunk of chunks) {
     if (immediateKeys.has(chunk.key)) immediateChunks.push(chunk);
   }
-  return immediateChunks.length > 0 ? immediateChunks : [chunks[0]];
+  const result = immediateChunks.length > 0 ? immediateChunks : [chunks[0]];
+  immediateKeys.clear();
+  return result;
 }
 
 export function makeSurvivalChunkInfoForCoords(
