@@ -6,6 +6,9 @@ export const LazyBaseVillageScene = lazy(() =>
 export const LazyClassicSkyEnvironment = lazy(() =>
   import("../rendering/sky/ClassicSkyEnvironment").then((module) => ({ default: module.ClassicSkyEnvironment })),
 );
+export const LazyCanvasRuntimeProbe = lazy(() =>
+  import("../rendering/canvas/CanvasRuntimeProbe").then((module) => ({ default: module.CanvasRuntimeProbe })),
+);
 export const LazyEnginePlacedObjects = lazy(() =>
   import("../placeables/EnginePlacedObjects").then((module) => ({ default: module.EnginePlacedObjects })),
 );

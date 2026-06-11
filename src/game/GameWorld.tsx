@@ -1,9 +1,9 @@
 import { Canvas } from "@react-three/fiber";
 import { Suspense, useMemo, useEffect } from "react";
 import { SURVIVAL_BLOCK_SIZE, useGameStore } from "../store/gameStore";
-import { CanvasRuntimeProbe } from "./systems/rendering/canvas/CanvasRuntimeProbe";
 import { CanvasResizeNudge } from "./systems/rendering/canvas/CanvasResizeNudge";
 import { configureGameRenderer } from "./systems/rendering/canvas/configureGameRenderer";
+import { shouldMountCurrentCanvasRuntimeProbe } from "./systems/rendering/canvas/canvasRuntimeProbeRoute";
 import { applyGameCanvasElementSizing } from "./systems/rendering/canvas/gameCanvasElementSizing";
 import { ImmediateResizeObserver } from "./systems/rendering/canvas/resizeObserverFallback";
 import { getHorizonHillsTexture } from "./systems/rendering/sky/horizonHillsTexture";
@@ -17,7 +17,7 @@ import {
   HorizonCylinder,
   SurvivalSkyCycle,
 } from "./systems/rendering/sky/SurvivalSkyCycle";
-import { LazyBaseVillageScene, LazyClassicSkyEnvironment, LazyDevSpellTestDummies, LazyEnginePlacedObjects, LazyGameWorldPhysicsStage, LazyLiveMiniMap, LazyNetworkManager, LazyPersistentQuestNpcs, LazyPlayerController, LazyProjectiles, LazyQuestNavigationBeacons, LazyRunes, LazySurvivalProceduralWorld } from "./systems/world/gameWorldLazyModules";
+import { LazyBaseVillageScene, LazyCanvasRuntimeProbe, LazyClassicSkyEnvironment, LazyDevSpellTestDummies, LazyEnginePlacedObjects, LazyGameWorldPhysicsStage, LazyLiveMiniMap, LazyNetworkManager, LazyPersistentQuestNpcs, LazyPlayerController, LazyProjectiles, LazyQuestNavigationBeacons, LazyRunes, LazySurvivalProceduralWorld } from "./systems/world/gameWorldLazyModules";
 import { useBaseVillageRenderState } from "./systems/world/villages/baseVillageVisibility";
 import { publishGameWorldModeTelemetry } from "./systems/world/gameWorldTelemetry";
 import { isMobilePerformanceMode } from "./systems/input/performanceMode";
@@ -51,6 +51,7 @@ export function GameWorld() {
   } = useBaseVillageRenderState(isSurvivalMode);
 
   const hillsTexture = useMemo(() => getHorizonHillsTexture(), []);
+  const shouldMountCanvasRuntimeProbe = useMemo(shouldMountCurrentCanvasRuntimeProbe, []);
   const { mountSpellDummyQaNow, shouldMountSpellDummyQa } = useSpellDummyQaMountGate();
 
   return (
@@ -68,7 +69,11 @@ export function GameWorld() {
       }}
       style={canvasStyle}
     >
-      <CanvasRuntimeProbe />
+      {shouldMountCanvasRuntimeProbe && (
+        <Suspense fallback={null}>
+          <LazyCanvasRuntimeProbe />
+        </Suspense>
+      )}
       <CanvasResizeNudge />
       {shouldMountSpellDummyQa && (
         <Suspense fallback={null}>

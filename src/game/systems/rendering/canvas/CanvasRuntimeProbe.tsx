@@ -1,16 +1,16 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { isQaTelemetryRouteEnabledFromSearch } from "../../../tools/qa/qaRouteTelemetry";
+import {
+  shouldMountCanvasRuntimeProbeFromSearch,
+  shouldMountCurrentCanvasRuntimeProbe,
+} from "./canvasRuntimeProbeRoute";
 
 export function shouldPublishCanvasRuntimeFrameTelemetryFromSearch(search: string) {
-  return isQaTelemetryRouteEnabledFromSearch(search, ["perf", "hud", "aspect", "canvas"]);
+  return shouldMountCanvasRuntimeProbeFromSearch(search);
 }
 
 export function CanvasRuntimeProbe() {
-  const publishFrameTelemetry = useMemo(() => (
-    typeof window !== "undefined" &&
-    shouldPublishCanvasRuntimeFrameTelemetryFromSearch(window.location.search)
-  ), []);
+  const publishFrameTelemetry = useMemo(shouldMountCurrentCanvasRuntimeProbe, []);
   if (!publishFrameTelemetry) return null;
 
   return <CanvasRuntimeTelemetryProbe />;
