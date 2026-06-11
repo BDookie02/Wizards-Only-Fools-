@@ -48,7 +48,17 @@ import {
 import { getStatusEffectExpiryMs } from "./spellStatusRuntime";
 
 const UNIT_Y = new THREE.Vector3(0, 1, 0);
+const kunaiDirectionScratch = new THREE.Vector3();
+const kunaiQuaternionScratch = new THREE.Quaternion();
+const kunaiEulerScratch = new THREE.Euler();
 const MOBILE_STATUS_BOLT_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 30;
+
+function getKunaiRotationTuple(dir: { x: number; y: number; z: number }): [number, number, number] {
+  kunaiDirectionScratch.set(dir.x, dir.y, dir.z).normalize();
+  kunaiQuaternionScratch.setFromUnitVectors(UNIT_Y, kunaiDirectionScratch);
+  kunaiEulerScratch.setFromQuaternion(kunaiQuaternionScratch);
+  return [kunaiEulerScratch.x, kunaiEulerScratch.y, kunaiEulerScratch.z];
+}
 
 function useSynchronousTextures(urls: string[]) {
   const [textureVersion, setTextureVersion] = useState(0);
@@ -668,10 +678,7 @@ export function RingsOfPower({ projectile }: { projectile: Projectile }) {
 }
 
 function KunaiPlane({ dir }: { dir: {x: number, y: number, z: number} }) {
-  const rot = useMemo(() => {
-    const direction = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
-    return new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(UNIT_Y, direction));
-  }, [dir.x, dir.y, dir.z]);
+  const rot = useMemo(() => getKunaiRotationTuple(dir), [dir.x, dir.y, dir.z]);
   
   return (
     <group rotation={rot}>
