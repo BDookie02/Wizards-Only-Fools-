@@ -5,8 +5,9 @@ import { SURVIVAL_BLOCK_SIZE, useGameStore, type SurvivalBiome } from "../../../
 import { isSurvivalGrassInspectionView } from "../../../tools/qa/survivalGrassDebug";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
 import {
+  createSurvivalDayNightCycle,
   getEffectiveSurvivalCycleElapsedSeconds,
-  getSurvivalDayNightCycle,
+  getSurvivalDayNightCycleInto,
 } from "../../rendering/sky/survivalSkyCycleMath";
 import {
   getSurvivalGrassStreamScale,
@@ -1561,6 +1562,7 @@ function SurvivalLocalGrassCellTile({
 
   const shortBladesPerTuft = SURVIVAL_LOCAL_GRASS_SHORT_BLADES_PER_TUFT;
   const lastMobileVisualUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
+  const cycleScratch = useMemo(createSurvivalDayNightCycle, []);
 
   useFrame(({ clock }) => {
     const elapsed = clock.elapsedTime;
@@ -1570,8 +1572,9 @@ function SurvivalLocalGrassCellTile({
     ) return;
     lastMobileVisualUpdateAtRef.current = elapsed;
 
-    const cycle = getSurvivalDayNightCycle(
+    const cycle = getSurvivalDayNightCycleInto(
       getEffectiveSurvivalCycleElapsedSeconds(survivalTimeOverrideSeconds, elapsed),
+      cycleScratch,
     );
     const opacityScale = 0.78 + cycle.dayAmount * 0.22 + cycle.duskAmount * 0.04;
     grassLightTint

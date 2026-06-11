@@ -6,9 +6,10 @@ import { useLazyRef } from "../../react/useLazyRef";
 import { getEpochMsFromRenderClock } from "../renderClockEpoch";
 import {
   clamp01,
+  createSurvivalDayNightCycle,
   getEffectiveSurvivalCycleElapsedSeconds,
   getQaSurvivalTimeOverrideSeconds,
-  getSurvivalDayNightCycle,
+  getSurvivalDayNightCycleInto,
   smoothstepRange,
 } from "./survivalSkyCycleMath";
 
@@ -131,6 +132,7 @@ function HorizonCylinderRuntime({
   const duskTint = useMemo(() => new THREE.Color("#ffd09a"), []);
   const nightTint = useMemo(() => new THREE.Color("#4b547c"), []);
   const currentTint = useMemo(() => new THREE.Color("#ffffff"), []);
+  const cycleScratch = useMemo(createSurvivalDayNightCycle, []);
   const survivalTimeOverrideSeconds = useGameStore(s => s.survivalTimeOverrideSeconds);
   const qaSurvivalTimeOverrideSeconds = useMemo(() => getQaSurvivalTimeOverrideSeconds(), []);
 
@@ -146,12 +148,13 @@ function HorizonCylinderRuntime({
       (!mobilePerformanceMode || elapsed - lastHorizonTintUpdateAtRef.current >= MOBILE_SURVIVAL_SKY_UPDATE_INTERVAL_SECONDS)
     ) {
       lastHorizonTintUpdateAtRef.current = elapsed;
-      const cycle = getSurvivalDayNightCycle(
+      const cycle = getSurvivalDayNightCycleInto(
         getEffectiveSurvivalCycleElapsedSeconds(
           survivalTimeOverrideSeconds,
           elapsed,
           qaSurvivalTimeOverrideSeconds,
         ),
+        cycleScratch,
       );
       currentTint.copy(nightTint).lerp(dayTint, cycle.dayAmount).lerp(duskTint, cycle.duskAmount * 0.32);
       materialRef.current.color.copy(currentTint);
@@ -430,6 +433,7 @@ export function SurvivalSkyCycle({ mobilePerformanceMode }: { mobilePerformanceM
   const hemisphereLightRef = useRef<THREE.HemisphereLight>(null);
   const directionalLightRef = useRef<THREE.DirectionalLight>(null);
   const lastSkyUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
+  const cycleScratch = useMemo(createSurvivalDayNightCycle, []);
   const skyRadius = SURVIVAL_BLOCK_SIZE * (mobilePerformanceMode ? 2.45 : 2.85);
   const vectors = useMemo(() => ({
     sun: new THREE.Vector3(),
@@ -498,7 +502,7 @@ export function SurvivalSkyCycle({ mobilePerformanceMode }: { mobilePerformanceM
       animationElapsedSeconds,
       qaSurvivalTimeOverrideSeconds,
     );
-    const cycle = getSurvivalDayNightCycle(cycleElapsedSeconds);
+    const cycle = getSurvivalDayNightCycleInto(cycleElapsedSeconds, cycleScratch);
     const astralStrength = isAstralMeditating
       ? smoothstepRange(0, 1300, Math.max(0, renderEpochMs - astralMeditationStartedAt))
       : 0;

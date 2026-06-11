@@ -7,8 +7,9 @@ import { getCachedIndexRange } from "../../rendering/indexRange";
 import type { HutInfo } from "./baseVillageHutLayout";
 import { Villagers } from "../../../Villagers";
 import {
+  createSurvivalDayNightCycle,
   getEffectiveSurvivalCycleElapsedSeconds,
-  getSurvivalDayNightCycle,
+  getSurvivalDayNightCycleInto,
 } from "../../rendering/sky/survivalSkyCycleMath";
 import { configurePixelSpriteTexture } from "../../rendering/textures/pixelSpriteTexture";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
@@ -905,6 +906,7 @@ function SwampGiantToad({ layout }: { layout: SwampVillageLayout }) {
   const sleepZTexture = useMemo(() => makeSwampToadSleepZTexture(), []);
   const toadTextures = useSwampToadAnimationTextures(fallbackTexture);
   const survivalTimeOverrideSeconds = useGameStore(s => s.survivalTimeOverrideSeconds);
+  const cycleScratch = useMemo(createSurvivalDayNightCycle, []);
   const stateRef = useRef<{
     sleeping: boolean;
     nightCue: boolean;
@@ -932,7 +934,7 @@ function SwampGiantToad({ layout }: { layout: SwampVillageLayout }) {
     lastToadUpdateAtRef.current = animationElapsedSeconds;
 
     const cycleElapsedSeconds = getEffectiveSurvivalCycleElapsedSeconds(survivalTimeOverrideSeconds, animationElapsedSeconds);
-    const cycle = getSurvivalDayNightCycle(cycleElapsedSeconds);
+    const cycle = getSurvivalDayNightCycleInto(cycleElapsedSeconds, cycleScratch);
     const nightCue = cycle.nightAmount > 0.42;
     const sleeping = cycle.nightAmount > 0.68;
     const yawnDuration = Math.max(2.6, (toadTextures.yawn.length * toadTextures.yawnFrameMs * 2.1) / 1000);

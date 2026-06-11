@@ -3,6 +3,15 @@ import { DAY_NIGHT_CYCLE_SECONDS } from "../../../../store/gameStore";
 let cachedQaSurvivalTimeSearch: string | null = null;
 let cachedQaSurvivalTimeOverrideSeconds: number | null = null;
 
+export type SurvivalDayNightCycle = {
+  phase: number;
+  sunAngle: number;
+  sunHeight: number;
+  dayAmount: number;
+  nightAmount: number;
+  duskAmount: number;
+};
+
 export function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
@@ -12,15 +21,32 @@ export function smoothstepRange(edge0: number, edge1: number, value: number) {
   return t * t * (3 - 2 * t);
 }
 
-export function getSurvivalDayNightCycle(elapsedSeconds: number) {
+export function createSurvivalDayNightCycle(): SurvivalDayNightCycle {
+  return {
+    phase: 0,
+    sunAngle: 0,
+    sunHeight: 0,
+    dayAmount: 0,
+    nightAmount: 0,
+    duskAmount: 0,
+  };
+}
+
+export function getSurvivalDayNightCycleInto(elapsedSeconds: number, target: SurvivalDayNightCycle) {
   const phase = ((elapsedSeconds / DAY_NIGHT_CYCLE_SECONDS) + 0.18) % 1;
   const sunAngle = phase * Math.PI * 2;
   const sunHeight = Math.sin(sunAngle);
-  const dayAmount = smoothstepRange(-0.12, 0.34, sunHeight);
-  const nightAmount = 1 - smoothstepRange(-0.36, 0.08, sunHeight);
-  const duskAmount = 1 - smoothstepRange(0.02, 0.48, Math.abs(sunHeight));
+  target.phase = phase;
+  target.sunAngle = sunAngle;
+  target.sunHeight = sunHeight;
+  target.dayAmount = smoothstepRange(-0.12, 0.34, sunHeight);
+  target.nightAmount = 1 - smoothstepRange(-0.36, 0.08, sunHeight);
+  target.duskAmount = 1 - smoothstepRange(0.02, 0.48, Math.abs(sunHeight));
+  return target;
+}
 
-  return { phase, sunAngle, sunHeight, dayAmount, nightAmount, duskAmount };
+export function getSurvivalDayNightCycle(elapsedSeconds: number) {
+  return getSurvivalDayNightCycleInto(elapsedSeconds, createSurvivalDayNightCycle());
 }
 
 export function getQaSurvivalTimeOverrideSecondsFromSearch(search: string) {

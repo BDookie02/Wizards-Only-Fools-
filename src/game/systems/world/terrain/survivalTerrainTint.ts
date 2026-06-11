@@ -1,13 +1,15 @@
 import * as THREE from "three";
 import {
+  createSurvivalDayNightCycle,
   getEffectiveSurvivalCycleElapsedSeconds,
-  getSurvivalDayNightCycle,
+  getSurvivalDayNightCycleInto,
 } from "../../rendering/sky/survivalSkyCycleMath";
 
 const terrainDayTint = new THREE.Color("#ffffff");
 const terrainNightTint = new THREE.Color("#3f4f45");
 const terrainDuskTint = new THREE.Color("#c4ae72");
 const cachedTint = new THREE.Color("#ffffff");
+const cachedCycle = createSurvivalDayNightCycle();
 const registeredTerrainTintMaterials = new Set<THREE.MeshBasicMaterial>();
 
 let cachedElapsedSeconds = Number.NaN;
@@ -29,12 +31,13 @@ export function getSurvivalTerrainTintInto(
     cachedSurvivalTimeOverrideSeconds = survivalTimeOverrideSeconds;
     cachedQaSurvivalTimeOverrideSeconds = qaSurvivalTimeOverrideSeconds;
 
-    const cycle = getSurvivalDayNightCycle(
+    const cycle = getSurvivalDayNightCycleInto(
       getEffectiveSurvivalCycleElapsedSeconds(
         survivalTimeOverrideSeconds,
         elapsedSeconds,
         qaSurvivalTimeOverrideSeconds,
       ),
+      cachedCycle,
     );
     cachedTint
       .copy(terrainNightTint)
