@@ -172,6 +172,144 @@ canvas:focus {
   top: calc(env(safe-area-inset-top) + 0.75rem);
 }
 
+#play-button-overlay {
+  --pause-splash-title-font-size: 4.4rem;
+  --pause-splash-prompt-font-size: 1.15rem;
+  --pause-heading-font-size: 1.45rem;
+  --pause-copy-font-size: 0.68rem;
+  --pause-title-font-size: 4.2rem;
+  --pause-primary-font-size: 1rem;
+  --pause-button-label-font-size: 0.95rem;
+  --pause-button-hint-font-size: 0.64rem;
+  --pause-rule-label-font-size: 0.66rem;
+  --pause-rule-value-font-size: 0.8rem;
+  --pause-rule-hint-font-size: 0.58rem;
+  --pause-invite-font-size: 0.68rem;
+  --pause-utility-font-size: 0.72rem;
+  --pause-panel-gap: 0.85rem;
+}
+
+.pause-splash-title,
+.pause-splash-prompt,
+.pause-menu-heading,
+.pause-menu-copy,
+.pause-resume-title,
+.pause-primary-button,
+.pause-menu-button,
+.pause-menu-button-label,
+.pause-menu-button-hint,
+.pause-rule-button,
+.pause-rule-label,
+.pause-rule-value,
+.pause-rule-hint,
+.pause-invite-header,
+.pause-invite-input,
+.pause-invite-submit,
+.pause-invite-message,
+.pause-utility-button {
+  letter-spacing: 0 !important;
+}
+
+.pause-splash-title {
+  font-size: var(--pause-splash-title-font-size);
+}
+
+.pause-splash-prompt {
+  font-size: var(--pause-splash-prompt-font-size);
+  line-height: 1.2;
+}
+
+.pause-menu-heading {
+  font-size: var(--pause-heading-font-size);
+  line-height: 1.15;
+}
+
+.pause-menu-copy {
+  font-size: var(--pause-copy-font-size);
+  line-height: 1.35;
+}
+
+.pause-resume-title {
+  font-size: var(--pause-title-font-size);
+}
+
+.pause-action-column {
+  gap: var(--pause-panel-gap);
+}
+
+.pause-primary-button {
+  min-height: 3rem;
+  padding: 0.72rem 1.4rem;
+  font-size: var(--pause-primary-font-size) !important;
+}
+
+.pause-menu-button {
+  min-height: 4.3rem;
+}
+
+.pause-menu-button-label {
+  font-size: var(--pause-button-label-font-size);
+  line-height: 1.15;
+}
+
+.pause-menu-button-hint {
+  font-size: var(--pause-button-hint-font-size);
+  line-height: 1.35;
+}
+
+.pause-rule-button {
+  min-height: 4.3rem;
+}
+
+.pause-rule-label {
+  font-size: var(--pause-rule-label-font-size);
+  line-height: 1.25;
+}
+
+.pause-rule-value {
+  font-size: var(--pause-rule-value-font-size);
+  line-height: 1.2;
+}
+
+.pause-rule-hint {
+  font-size: var(--pause-rule-hint-font-size);
+  line-height: 1.35;
+}
+
+.pause-invite-form {
+  max-width: min(100%, 520px);
+}
+
+.pause-invite-header,
+.pause-invite-input,
+.pause-invite-submit,
+.pause-invite-message {
+  font-size: var(--pause-invite-font-size) !important;
+  line-height: 1.25;
+}
+
+.pause-utility-button {
+  font-size: var(--pause-utility-font-size) !important;
+  line-height: 1.25;
+}
+
+.pause-invite-input {
+  min-height: 2.5rem;
+}
+
+.pause-invite-submit,
+.pause-utility-button {
+  min-height: 2.5rem;
+}
+
+.pause-utility-row {
+  margin-top: 0.65rem;
+}
+
+.pause-utility-button {
+  padding: 0.5rem 0.85rem;
+}
+
 .hud-shell {
   --hud-status-height: clamp(84px, 12vh, 108px);
 }
@@ -1661,9 +1799,48 @@ html.wizards-touch-layout .magic-hands-fill-offset {
     padding: 6px 10px !important;
   }
 
+  #play-button-overlay {
+    --pause-splash-title-font-size: 2.25rem;
+    --pause-splash-prompt-font-size: 0.78rem;
+    --pause-heading-font-size: 0.9rem;
+    --pause-copy-font-size: 0.56rem;
+    --pause-title-font-size: 2.1rem;
+    --pause-primary-font-size: 0.78rem;
+    --pause-button-label-font-size: 0.74rem;
+    --pause-button-hint-font-size: 0.52rem;
+    --pause-rule-label-font-size: 0.56rem;
+    --pause-rule-value-font-size: 0.64rem;
+    --pause-rule-hint-font-size: 0.5rem;
+    --pause-invite-font-size: 0.58rem;
+    --pause-utility-font-size: 0.62rem;
+    --pause-panel-gap: 0.45rem;
+  }
+
   #play-button-overlay .font-bold.tracking-\[0\.1em\] {
     font-size: clamp(1.4rem, 13cqh, 2.8rem) !important;
     margin-bottom: 6px !important;
+  }
+
+  #play-button-overlay .pause-resume-title {
+    font-size: var(--pause-title-font-size) !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .pause-splash-title {
+    font-size: var(--pause-splash-title-font-size) !important;
+  }
+
+  .pause-splash-prompt {
+    margin-top: 1rem !important;
+    font-size: var(--pause-splash-prompt-font-size) !important;
+  }
+
+  .pause-menu-heading {
+    font-size: var(--pause-heading-font-size) !important;
+  }
+
+  .pause-menu-copy {
+    font-size: var(--pause-copy-font-size) !important;
   }
 
   #play-button-overlay form[data-testid="invite-code-form"] {
@@ -1674,11 +1851,55 @@ html.wizards-touch-layout .magic-hands-fill-offset {
   #play-button-overlay input[data-testid="invite-code-input"] {
     min-width: 140px !important;
     padding: 6px 8px !important;
-    font-size: 10px !important;
+    font-size: var(--pause-invite-font-size) !important;
   }
 
   #play-button-overlay button {
     font-size: 9px !important;
+  }
+
+  .pause-primary-button {
+    min-height: 2.6rem !important;
+    padding: 0.5rem 0.8rem !important;
+    font-size: var(--pause-primary-font-size) !important;
+  }
+
+  .pause-menu-button,
+  .pause-rule-button {
+    min-height: 3.2rem !important;
+    padding: 0.55rem 0.7rem !important;
+  }
+
+  .pause-menu-button-label {
+    font-size: var(--pause-button-label-font-size) !important;
+  }
+
+  .pause-menu-button-hint {
+    font-size: var(--pause-button-hint-font-size) !important;
+  }
+
+  .pause-rule-label {
+    font-size: var(--pause-rule-label-font-size) !important;
+  }
+
+  .pause-rule-value {
+    font-size: var(--pause-rule-value-font-size) !important;
+  }
+
+  .pause-rule-hint {
+    font-size: var(--pause-rule-hint-font-size) !important;
+  }
+
+  .pause-invite-header,
+  .pause-invite-submit,
+  .pause-invite-message {
+    font-size: var(--pause-invite-font-size) !important;
+  }
+
+  .pause-utility-button {
+    min-height: 2.15rem !important;
+    padding: 0.4rem 0.6rem !important;
+    font-size: var(--pause-utility-font-size) !important;
   }
 
   .settings-panel {

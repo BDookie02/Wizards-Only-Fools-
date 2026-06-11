@@ -402,9 +402,10 @@ Done:
 - Improved the expanded map with a responsive topbar, compact page tabs, safer full-map/live-map frame sizing, route-selectable map pages, compressed world-map status/village controls, and compact minimap compass/player marker sizing.
 - Improved the command console with a runtime-owned suggestion catalog, touch-friendly command chips, safer app-viewport sizing, and clearer input text.
 - Improved the settings panel with shared readability class hooks, larger tab/card/control text floors, two-column tab wrapping on narrow panels, and mobile overrides that no longer force 7px tabs.
+- Improved the pause/start/lobby menu surface with shared readable text variables, class-owned title/button/rule/invite sizing, mobile overrides that protect labels from the broad overlay button rule, and normalized letter spacing on menu controls.
 
 Next:
-- Upgrade pause/game menus for readability on PC and mobile.
+- Run real PC/Android/iOS visual passes once the built-in browser path is available again.
 
 ## 6. Optimization And Smoothness
 
@@ -826,6 +827,9 @@ Next:
 
 ## Latest Verification
 
+- Focused pause/start menu readability check: `HUD.tsx` now uses pause-menu class hooks for start/lobby headings, primary resume action, menu buttons, rule rows, invite forms, and utility buttons, while `src/index.css` owns the readable PC/mobile sizing variables and compact overlay overrides.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the pause/start menu visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the pause/start menu readability pass. Current warning remains chunk size only; `HUD` is about 80.49 kB / 24.06 kB gzip and CSS is about 167.28 kB / 24.50 kB gzip.
 - Focused settings readability check: `SettingsPanel.tsx` now uses settings-owned tab/card/hint/control class hooks, `src/index.css` owns the readable PC/mobile sizing variables, and the narrow/mobile settings overrides keep tabs and controls legible without changing controller focus indexes.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the settings-panel visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the settings readability pass. Current warning remains chunk size only; `SettingsPanel` is about 20.29 kB / 5.69 kB gzip, `HUD` is about 81.14 kB / 24.18 kB gzip, and CSS is about 163.92 kB / 23.99 kB gzip.
