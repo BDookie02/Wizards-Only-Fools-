@@ -346,10 +346,6 @@ function fillImmediateSurvivalVisibleChunkKeys(
   return immediateKeys;
 }
 
-export function getImmediateSurvivalVisibleChunkKeys(chunks: SurvivalChunkInfo[]) {
-  return fillImmediateSurvivalVisibleChunkKeys(chunks, new Set<string>());
-}
-
 export function makeSurvivalVisibleChunkKeySet(chunks: readonly Pick<SurvivalChunkInfo, "key">[]) {
   const keys = new Set<string>();
   for (const chunk of chunks) {
