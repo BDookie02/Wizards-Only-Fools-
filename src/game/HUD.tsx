@@ -1,199 +1,165 @@
-import { lazy, memo, startTransition, Suspense, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { startTransition, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import {
-  ACID_DURATION_MS,
   ALL_SPELLS,
-  ARMOR_MAX,
-  ASPECT_RATIO_OPTIONS,
   HOTBAR_SIZE,
-  POISON_DURATION_MS,
-  RUNE_POWER_MAX,
   SPELL_DISPLAY_NAMES,
   SPELL_QUEST_DEFINITIONS,
   SLEEP_DURATION_MS,
   TUNGSTON_SLOW_DURATION_MS,
-  CONTROLLER_LOOK_SENSITIVITY_100_PERCENT,
   DEFAULT_CONTROLLER_LOOK_SENSITIVITY,
-  DEFAULT_MOBILE_LOOK_SENSITIVITY,
-  DEFAULT_MOUSE_SENSITIVITY,
   DEFAULT_VOICE_OUTPUT_VOLUME,
   DEFAULT_VOICE_PROXIMITY_RANGE,
   DEFAULT_VOICE_PUSH_TO_TALK_KEY,
-  DARREL_QUEST_CHUNK,
-  DARREL_QUEST_SPAWN,
-  DARREL_QUEST_SPAWN_YAW,
   ENEMY_DIFFICULTY_SETTINGS,
-  FORCED_DAY_ELAPSED_SECONDS,
-  FORCED_NIGHT_ELAPSED_SECONDS,
-  LILY_COIL_QUEST_CHUNK,
   LOBBY_MAP_PRESETS,
   MANA_SPAWN_RATE_SETTINGS,
-  hasRunePower,
-  getDarrelQuestSpawn,
-  getLilyCoilQuestSpawn,
   getSurvivalDifficultyMultiplier,
-  SURVIVAL_BLOCK_SIZE,
   useGameStore,
   SpellType,
   HandType,
   GameMode,
-  PlayerState,
   ControllerAction,
-  ControllerButtonName,
-  AvatarAnimation,
-  CharacterCustomization,
-  DEFAULT_CHARACTER_CUSTOMIZATION,
-  LobbyMessage,
-  QuestNpcProgram,
-  QuestNpcEditorTarget,
-  QuestNpcRole,
-  QuestScriptPoint,
-  QuestFlagValue,
-  QuestNpcAssignment,
-  INVENTORY_ITEM_DEFINITIONS,
-  type InventoryItemId,
-  createDefaultQuestNpcProgram,
-  makeQuestScriptPointId,
+  type QuestDialogSession,
   sanitizePlayerName,
-  clearDarrelQuestSpawnOverride,
-  saveDarrelQuestSpawnOverride
 } from "../store/gameStore";
 import { Copy } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { getSpriteUrl } from "./SpriteManifest";
-import { getGamepadAxis, getPrimaryGamepad, isGamepadButtonPressed, type GamepadButtonName } from "./controllerInput";
 import {
-  clearNavigationRecordings,
-  exportNavigationRecording,
-  getNavigationRecorderStatus,
-  startNavigationRecording,
-  stopNavigationRecording,
-} from "./navigationRecorder";
-import { socket } from "../lib/socket";
-import { drawPixelAvatarFrame } from "./PixelAvatar";
-import { isMobileLikeDevice } from "./performanceMode";
+  MULTIPLAYER_MAX_PLAYERS_PER_ROOM,
+  MULTIPLAYER_MIN_CUSTOM_LOBBY_PLAYERS,
+  MULTIPLAYER_MIN_SURVIVAL_PLAYERS,
+} from "./network/multiplayerSessionConfig";
+import {
+  canRequestPointerLockHere,
+  isPermanentPointerLockRejection,
+  isPointerLockSecurityError,
+  setMouseLookFallbackActive,
+  shouldUseRemoteMouseLookFallback,
+} from "./systems/input/browserDisplayMode";
+import {
+  createControllerPollScheduler,
+  GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS,
+  getPrimaryGamepad,
+  isGamepadButtonPressed,
+  type GamepadButtonName,
+} from "./systems/input/controllerInput";
+import { controllerActionRows, controllerButtonOptions } from "./systems/input/controllerSettingsConfig";
+import { isEditableTarget } from "./systems/input/editableTargets";
+import { requestTouchFullscreenMode, subscribeDocumentFullscreenState } from "./systems/input/fullscreenRuntime";
+import { CONTROLLER_INVENTORY_HOLD_MS, MAGIC_UNARM_HOLD_MS, getPlatformDefaultLookSensitivity } from "./systems/input/hudInputConfig";
+import { getNumberSlotFromCode } from "./systems/input/playerInputState";
+import type { DevFastTravelLocation } from "./tools/devFastTravel";
+import { releaseMobileGameplayInputs } from "./ui/hud/mobileTouchEvents";
+import { isQuestNpcEditorTarget } from "./ui/hud/questNpcEditorGuard";
+import { dispatchEnginePlaceableSignal, subscribeEnginePlaceableEvent } from "./systems/placeables/enginePlaceableEvents";
+import { cycleOption, formatCharacterOption, wrapIndex } from "./ui/hud/hudSettingsUtils";
+import { useHudLobbyMessageCleanup } from "./ui/hud/useHudLobbyMessageCleanup";
+import { clampMenuIndex, findDirectionalMenuIndex, type MenuDirection } from "./ui/hud/hudMenuNavigation";
+import {
+  clearHudEnginePlaceables,
+  deleteHudEnginePlacedObject,
+  moveHudEnginePlacedObject,
+  previewHudEnginePlaceable,
+  previewHudEnginePlacedObject,
+  requestHudEnginePlaceable,
+  type EnginePlaceableOptions,
+  type EnginePlaceableSelection,
+  type EnginePlacedObjectSelection,
+} from "./ui/hud/hudEnginePlaceableRuntime";
+import {
+  LazyCommandConsole,
+  LazyDevFastTravelMenu,
+  LazyEngineMenu,
+  LazyFullscreenHelpModal,
+  LazyHudLayoutQaMetricsProbe,
+  LazyHudStateQaRuntimeProbe,
+  LazyHudSettingsPanel,
+  LazyInventoryPanel,
+  LazyLobbyChatBox,
+  LazyMagicHands,
+  LazyMobileTouchControls,
+  LazyPlayerNamePrompt,
+  LazyPlayerScoreMenu,
+  LazyQuestDialogPanel,
+  LazyQuestNpcEditor,
+  LazySpellMenu,
+} from "./ui/hud/hudLazyModules";
+import {
+  aspectRatioOptions,
+  keybindBackIndex,
+  keybindArrowLookIndex,
+  keybindControlStartIndex,
+  keybindSensitivityStartIndex,
+  pauseMenuItemCount,
+  settingsTabCount,
+  videoAspectStartIndex,
+  videoBackIndex,
+  voiceEnabledIndex,
+  voiceInputModeIndex,
+  voiceOutputVolumeIndex,
+  voiceProximityRangeIndex,
+  voicePushToTalkKeyIndex,
+  type SettingsPane,
+  getSettingsActionCount,
+  getSettingsPaneForTabIndex,
+} from "./ui/hud/hudSettingsPanelConfig";
+import { getCharacterCustomizationStep } from "./ui/hud/characterCustomizationRuntime";
+import { closeHudCommandConsole, openHudCommandConsole } from "./ui/hud/hudCommandConsoleRuntime";
+import {
+  dispatchHudGameplayModalOpened,
+  exitPointerLockIfActive,
+  getHudPointerLockRequester,
+  getHudPointerLockTarget,
+  isHudMouseLookFallbackActive,
+  isPointerLockActive,
+  setHudMouseGameplayActive,
+  shouldTreatPointerLockLossAsResumeGrace,
+} from "./ui/hud/hudMouseGameplayRuntime";
+import {
+  consumeHudControllerPress,
+  consumeHudControllerRepeat,
+  canOpenControllerDevFastTravelMenu,
+  canUseControllerInventory,
+  canUseControllerMagicShortcut,
+  canUseControllerMapShortcut,
+  dispatchInventoryControllerBack,
+  dispatchInventoryControllerMove,
+  dispatchInventoryControllerSelect,
+  dispatchSpellMenuControllerScroll,
+  hasHudControllerGameplaySignal,
+  isStandingStillForControllerInventory,
+  createHudControllerInputSnapshot,
+  readHudControllerInputSnapshotInto,
+  resetHudControllerInventoryHoldState,
+  resetHudControllerMagicHoldState,
+  resetHudControllerTransientState,
+} from "./ui/hud/hudControllerRuntime";
+import { GameplayHudOverlay } from "./ui/hud/GameplayHudOverlay";
+import { extractInviteRoomCode, getCurrentInviteRoomCode, type LanInfoResponse } from "./network/inviteRoom";
+import { useHudTouchGameplayRuntime } from "./ui/hud/useHudTouchGameplayRuntime";
+import { setHudMapSuppressedByToolOverlay } from "./ui/hud/hudMapSuppressionRuntime";
+import { getDecayedRunePower, RUNE_POWER_DECAY_INTERVAL_MS } from "./systems/spells/manaRechargeRuntime";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const LazyMagicHands = lazy(() => import("./MagicHands").then((module) => ({ default: module.MagicHands })));
+let hudCommandConsoleModulePromise: Promise<typeof import("./ui/hud/hudCommandConsole")> | null = null;
 
-function getPlatformDefaultLookSensitivity() {
-  return isMobileLikeDevice() ? DEFAULT_MOBILE_LOOK_SENSITIVITY : DEFAULT_MOUSE_SENSITIVITY;
+function loadHudCommandConsoleModule() {
+  hudCommandConsoleModulePromise ??= import("./ui/hud/hudCommandConsole");
+  return hudCommandConsoleModulePromise;
 }
 
-function isTouchGameplayDevice() {
-  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+let devFastTravelModulePromise: Promise<typeof import("./tools/devFastTravel")> | null = null;
 
-  const userAgent = navigator.userAgent || "";
-  const platform = navigator.platform || "";
-  const maxTouchPoints = navigator.maxTouchPoints || 0;
-  const iosLike = /iPad|iPhone|iPod/.test(userAgent) || (platform === "MacIntel" && maxTouchPoints > 1);
-  const androidLike = /Android/i.test(userAgent);
-  const mobileUserAgent = /Android|Mobile|Tablet|iPhone|iPad|iPod/i.test(userAgent);
-  const desktopUserAgent = /Windows NT|Macintosh|X11|Linux x86_64/i.test(userAgent);
-  const coarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
-  const noHover = window.matchMedia?.("(hover: none)").matches ?? false;
-
-  if (iosLike || androidLike) return true;
-  if (desktopUserAgent) return false;
-
-  return mobileUserAgent && coarsePointer && noHover;
+function loadDevFastTravelModule() {
+  devFastTravelModulePromise ??= import("./tools/devFastTravel");
+  return devFastTravelModulePromise;
 }
 
-function isEditableTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-  const tagName = target.tagName.toLowerCase();
-  return tagName === "input" || tagName === "textarea" || tagName === "select" || target.isContentEditable;
-}
-
-const spellColors: Record<SpellType, string> = {
-  fireball: "text-orange-500",
-  iceshard: "text-cyan-400",
-  arcanebeam: "text-fuchsia-500",
-  healspell: "text-emerald-400",
-  icespell: "text-blue-300",
-  ringsofpower: "text-purple-400",
-  lightning: "text-blue-200",
-  smokebomb: "text-gray-400",
-  portal: "text-indigo-400",
-  blink: "text-teal-300",
-  grab: "text-pink-300",
-  tornado: "text-gray-300",
-  meteorshower: "text-orange-300",
-  flamethrower: "text-red-500",
-  discshield: "text-purple-500",
-  orbshield: "text-pink-500",
-  kunai: "text-gray-200",
-  healingcrystals: "text-green-300",
-  magicarmor: "text-sky-300",
-  jumpboost: "text-lime-300",
-  speedboost: "text-yellow-300",
-  tungstonballsack: "text-slate-300",
-  sleep: "text-sky-200",
-  poison: "text-purple-300",
-  acid: "text-green-300",
-  magicglassorb: "text-cyan-100"
-};
-
-const spellNames: Record<SpellType, string> = {
-  fireball: "Fireball",
-  iceshard: "Biden Blast",
-  arcanebeam: "Hands",
-  healspell: "Heal",
-  icespell: "Plasma Flash",
-  ringsofpower: "Rings of Power",
-  lightning: "Chidori",
-  smokebomb: "Smoke Bomb",
-  portal: "Portal",
-  blink: "Blink",
-  grab: "Grab",
-  tornado: "Tornado",
-  meteorshower: "Meteor Shower",
-  flamethrower: "Flamethrower",
-  discshield: "Disc Shield",
-  orbshield: "Orb Shield",
-  kunai: "Kunai",
-  healingcrystals: "Healing Crystals",
-  magicarmor: "Magic Armor",
-  jumpboost: "Up and Over!",
-  speedboost: "Speed Boost",
-  tungstonballsack: "Tungston Ballsack",
-  sleep: "Sleep",
-  poison: "Poison",
-  acid: "Acid",
-  magicglassorb: "Magic Glass Orb"
-};
-
-const spellThumbnails: Partial<Record<SpellType, string>> = {
-  fireball: "/sprites/fireball/fireball_1.png",
-  iceshard: "/sprites/iceshard/spells_1.png",
-  arcanebeam: "/sprites/misc/idle_1.png",
-  healspell: "/sprites/healspell/healspell_1.png",
-  icespell: "/sprites/icespell/icespell_1.png",
-  ringsofpower: "/sprites/ringsofpower/ringsofpower_1.png",
-  lightning: "/sprites/lightning/lightning_1.png",
-  smokebomb: "/sprites/misc/smoke_bomb.gif",
-  portal: "/sprites/misc/portal.gif",
-  blink: "/sprites/misc/blink.gif",
-  flamethrower: "/sprites/fireball/castfireball_1.png",
-  discshield: "/sprites/shields/disc_shield.png",
-  orbshield: "/sprites/shields/orb_shield.png",
-  kunai: "/sprites/misc/kunai.gif",
-  healingcrystals: "/sprites/misc/healing_gems.gif",
-};
-
-const hotkeyLabels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
-const aspectRatioOptions = ASPECT_RATIO_OPTIONS;
-const pauseMenuItemCount = 4;
-const settingsTabCount = 4;
-const videoAspectStartIndex = settingsTabCount;
-const videoBackIndex = videoAspectStartIndex + aspectRatioOptions.length;
-const settingsVideoActionCount = videoBackIndex + 1;
-
-type SettingsPane = "video" | "keybinds" | "voice" | "character";
 type StartMenuStage = "press-start" | "mode-select" | "multiplayer-select" | "custom-lobby" | "survival-options" | "resume";
 type GameplayInputMode = "mouse" | "touch" | "controller";
 type HudPlayerState = {
@@ -204,3024 +170,14 @@ type HudPlayerState = {
   isGrounded: boolean;
   isMeditating: boolean;
 };
-const settingsPaneOrder: SettingsPane[] = ["video", "keybinds", "voice", "character"];
-type MenuDirection = "up" | "down" | "left" | "right";
+const SURVIVAL_AUTOSAVE_INTERVAL_MS = 15000;
 
-function clampMenuIndex(index: number, count: number) {
-  return Math.max(0, Math.min(count - 1, index));
-}
-
-function findDirectionalMenuIndex(selector: string, attribute: string, currentIndex: number, direction: MenuDirection, count: number) {
-  if (typeof document === "undefined") return clampMenuIndex(currentIndex, count);
-
-  const targets = Array.from(document.querySelectorAll<HTMLElement>(selector))
-    .map((element) => ({
-      element,
-      index: Number(element.getAttribute(attribute)),
-      rect: element.getBoundingClientRect(),
-    }))
-    .filter(({ element, index, rect }) => (
-      Number.isFinite(index) &&
-      !element.hasAttribute("disabled") &&
-      rect.width > 0 &&
-      rect.height > 0
-    ));
-  const current = targets.find((target) => target.index === currentIndex);
-
-  if (!current) {
-    const fallbackDelta = direction === "down" || direction === "right" ? 1 : -1;
-    return clampMenuIndex(currentIndex + fallbackDelta, count);
+function countOwnRecordEntries(record: Record<string, unknown>): number {
+  let count = 0;
+  for (const key in record) {
+    if (Object.prototype.hasOwnProperty.call(record, key)) count += 1;
   }
-
-  const currentCenterX = current.rect.left + current.rect.width / 2;
-  const currentCenterY = current.rect.top + current.rect.height / 2;
-  const isVertical = direction === "up" || direction === "down";
-  const candidates = targets
-    .filter((target) => target.index !== currentIndex)
-    .map((target) => {
-      const centerX = target.rect.left + target.rect.width / 2;
-      const centerY = target.rect.top + target.rect.height / 2;
-      const primaryDistance =
-        direction === "up" ? currentCenterY - centerY :
-        direction === "down" ? centerY - currentCenterY :
-        direction === "left" ? currentCenterX - centerX :
-        centerX - currentCenterX;
-      if (primaryDistance <= 4) return null;
-
-      const perpendicularDistance = isVertical
-        ? Math.abs(centerX - currentCenterX)
-        : Math.abs(centerY - currentCenterY);
-      const overlaps = isVertical
-        ? target.rect.right >= current.rect.left && target.rect.left <= current.rect.right
-        : target.rect.bottom >= current.rect.top && target.rect.top <= current.rect.bottom;
-      const score = primaryDistance * 1000 + perpendicularDistance + (overlaps ? 0 : 500);
-      return { index: target.index, score };
-    })
-    .filter((candidate): candidate is { index: number; score: number } => candidate !== null)
-    .sort((a, b) => a.score - b.score);
-
-  return candidates[0]?.index ?? currentIndex;
-}
-
-type ScoreboardRow = {
-  id: string;
-  label: string;
-  status: string;
-  health: number;
-  armor: number;
-  score: number;
-  isLocal?: boolean;
-};
-
-function LobbyChatBox({ messages }: { messages: LobbyMessage[] }) {
-  const visibleMessages = messages.slice(-5);
-  if (visibleMessages.length === 0) return null;
-
-  return (
-    <div
-      data-testid="lobby-chat-box"
-      className="lobby-notification-feed pointer-events-none absolute z-[90] flex w-[min(330px,calc(100cqw-24px))] flex-col gap-1 font-mono"
-    >
-      {visibleMessages.map((message) => (
-        <div
-          key={message.id}
-          className={cn(
-            "normal-case text-[10px] leading-4 tracking-wider drop-shadow-[2px_2px_0_rgba(0,0,0,0.95)]",
-            message.tone === "join" && "text-emerald-100",
-            message.tone === "death" && "text-red-100",
-            message.tone === "system" && "text-cyan-50"
-          )}
-        >
-          {message.text}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CommandConsole({
-  value,
-  isVClipEnabled,
-  onChange,
-  onClose,
-  onSubmit,
-}: {
-  value: string;
-  isVClipEnabled: boolean;
-  onChange: (value: string) => void;
-  onClose: () => void;
-  onSubmit: () => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const input = inputRef.current;
-    input?.focus();
-    input?.setSelectionRange(input.value.length, input.value.length);
-  }, []);
-
-  return createPortal(
-    <div
-      data-testid="command-console"
-      className="fixed left-1/2 top-4 z-[235] w-[min(680px,calc(100dvw-24px))] -translate-x-1/2 border-2 border-cyan-200/70 bg-[#050711]/92 p-2 font-mono text-cyan-50 shadow-[0_0_30px_rgba(34,211,238,0.32)] pointer-events-auto"
-      onMouseDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-    >
-      <div className="mb-1 flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.22em] text-cyan-100/70">
-        <span>Chat Console</span>
-        <span className={isVClipEnabled ? "text-emerald-200" : "text-slate-400"}>
-          VCLIP {isVClipEnabled ? "ON" : "OFF"}
-        </span>
-      </div>
-      <input
-        ref={inputRef}
-        aria-label="Chat command console"
-        autoCapitalize="off"
-        autoCorrect="off"
-        autoFocus
-        spellCheck={false}
-        maxLength={90}
-        value={value}
-        className="normal-case w-full border border-cyan-300/55 bg-black/80 px-3 py-2 text-[13px] tracking-wide text-cyan-50 outline-none placeholder:text-cyan-100/35 focus:border-yellow-200"
-        placeholder="/navrecord start"
-        onChange={(e) => onChange(e.currentTarget.value)}
-        onKeyDown={(e) => {
-          e.stopPropagation();
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onSubmit();
-          } else if (e.key === "Escape") {
-            e.preventDefault();
-            onClose();
-          }
-        }}
-      />
-      <div className="mt-1 text-[8px] uppercase tracking-[0.18em] text-cyan-100/45">
-        Try /inventory, /forage leaves, /questdev on, /day, or /vclip on
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-function PlayerNamePrompt({
-  value,
-  onChange,
-  onSubmit,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
-}) {
-  const cleaned = sanitizePlayerName(value);
-  const canSubmit = cleaned.length >= 2;
-
-  return createPortal(
-    <div
-      data-testid="player-name-prompt"
-      className="fixed inset-0 z-[240] flex items-center justify-center bg-[#050207]/92 px-4 font-mono text-white pointer-events-auto"
-      style={{ width: "var(--app-vw, 100dvw)", height: "var(--app-vh, 100dvh)" }}
-      onMouseDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-    >
-      <form
-        className="w-[min(520px,calc(100vw-28px))] border-2 border-purple-300/70 bg-[#100718]/95 p-4 shadow-[0_0_40px_rgba(168,85,247,0.35)]"
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (canSubmit) onSubmit();
-        }}
-      >
-        <div className="text-center text-[clamp(1rem,4vmin,1.65rem)] tracking-[0.18em] text-yellow-200">
-          Name Your Wizard
-        </div>
-        <div className="mt-3 text-center text-[10px] leading-5 tracking-widest text-purple-100/75">
-          This is what other players will see when you join the lobby and when you get defeated.
-        </div>
-        <input
-          autoFocus
-          aria-label="Player name"
-          value={value}
-          maxLength={18}
-          autoCapitalize="words"
-          autoCorrect="off"
-          spellCheck={false}
-          placeholder="enter wizard name"
-          className="normal-case mt-4 w-full border-2 border-[#888] border-b-[#222] border-r-[#222] bg-black px-3 py-3 text-center text-[clamp(0.9rem,3vmin,1.3rem)] text-white outline-none focus:border-yellow-200"
-          onChange={(e) => onChange(sanitizePlayerName(e.target.value))}
-          onKeyDown={(e) => e.stopPropagation()}
-        />
-        <div className="mt-2 min-h-[1rem] text-center text-[9px] tracking-widest text-cyan-100/55">
-          Letters, numbers, spaces, underscores, and hyphens. 2-18 characters.
-        </div>
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className={cn(
-            "mt-4 w-full border-2 px-4 py-3 text-[clamp(0.78rem,2.3vmin,1rem)] tracking-widest transition-all",
-            canSubmit
-              ? "border-yellow-200 bg-yellow-300/15 text-yellow-100 hover:bg-yellow-300/25"
-              : "cursor-not-allowed border-gray-600 bg-gray-900 text-gray-500"
-          )}
-        >
-          Join Lobby
-        </button>
-      </form>
-    </div>,
-    document.body
-  );
-}
-
-function sanitizeInviteRoomCode(value: string) {
-  return value
-    .replace(/[\u0000-\u001f\u007f]/g, "")
-    .trim()
-    .slice(0, 64);
-}
-
-function extractInviteRoomCode(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  try {
-    const url = new URL(trimmed, window.location.origin);
-    const room = url.searchParams.get("room");
-    if (room) return sanitizeInviteRoomCode(room);
-  } catch {
-    // Treat non-URL input as a raw room code below.
-  }
-
-  const roomParamMatch = trimmed.match(/[?&]room=([^&\s]+)/i);
-  if (roomParamMatch?.[1]) {
-    return sanitizeInviteRoomCode(decodeURIComponent(roomParamMatch[1]));
-  }
-
-  return sanitizeInviteRoomCode(trimmed);
-}
-
-function getCurrentInviteRoomCode() {
-  if (typeof window === "undefined") return "lobby";
-  return sanitizeInviteRoomCode(new URL(window.location.href).searchParams.get("room") || "lobby");
-}
-
-type LanInfoResponse = {
-  lanAddresses?: string[];
-  httpPort?: number;
-  httpsPort?: number | null;
-  secure?: boolean;
-};
-
-const controllerButtonLabels: Record<ControllerButtonName, string> = {
-  a: "A",
-  b: "B",
-  x: "X",
-  y: "Y",
-  leftBumper: "LB",
-  rightBumper: "RB",
-  leftTrigger: "LT",
-  rightTrigger: "RT",
-  back: "Select",
-  start: "Start",
-  leftStick: "Left Stick",
-  rightStick: "Right Stick",
-  dpadUp: "D-Pad Up",
-  dpadDown: "D-Pad Down",
-  dpadLeft: "D-Pad Left",
-  dpadRight: "D-Pad Right",
-};
-
-const controllerButtonOptions = Object.keys(controllerButtonLabels) as ControllerButtonName[];
-
-const controllerActionRows: { action: ControllerAction; label: string; hint: string }[] = [
-  { action: "leftCast", label: "Left Cast", hint: "fires left hand" },
-  { action: "rightCast", label: "Right Cast", hint: "fires right hand" },
-  { action: "jump", label: "Jump / Thruster", hint: "jump and air boost" },
-  { action: "slide", label: "Slide", hint: "hold to slide" },
-  { action: "sprint", label: "Sprint Toggle", hint: "click once while moving" },
-  { action: "inventory", label: "Inventory", hint: "tap while standing still" },
-  { action: "interact", label: "Interact", hint: "talk / use, hold to stow magic" },
-  { action: "spellMenu", label: "Spell Book", hint: "open spell menu" },
-  { action: "map", label: "Map", hint: "toggle minimap" },
-  { action: "scoreboard", label: "Player List", hint: "hold to view score" },
-  { action: "pause", label: "Pause / Resume", hint: "pause menu" },
-  { action: "menuSelect", label: "Menu Select", hint: "confirm highlighted option" },
-  { action: "menuBack", label: "Menu Back", hint: "exit/back from menus" },
-  { action: "leftHotbar", label: "Left Hotbar", hint: "tap next, D-pad changes direction" },
-  { action: "rightHotbar", label: "Right Hotbar", hint: "tap next, D-pad changes direction" },
-  { action: "voicePushToTalk", label: "Voice Push-To-Talk", hint: "hold to talk when voice is press-to-talk" },
-];
-
-const keybindSensitivityStartIndex = settingsTabCount;
-const keybindArrowLookIndex = keybindSensitivityStartIndex + 2;
-const keybindControlStartIndex = keybindSensitivityStartIndex + 3;
-const keybindBackIndex = keybindControlStartIndex + controllerActionRows.length;
-const settingsKeybindActionCount = keybindBackIndex + 1;
-const CONTROLLER_INVENTORY_HOLD_MS = 3000;
-const MAGIC_UNARM_HOLD_MS = 650;
-
-const voiceSettingsStartIndex = settingsTabCount;
-const voiceEnabledIndex = voiceSettingsStartIndex;
-const voiceInputModeIndex = voiceSettingsStartIndex + 1;
-const voicePushToTalkKeyIndex = voiceSettingsStartIndex + 2;
-const voiceOutputVolumeIndex = voiceSettingsStartIndex + 3;
-const voiceProximityRangeIndex = voiceSettingsStartIndex + 4;
-const voiceBackIndex = voiceSettingsStartIndex + 5;
-const settingsVoiceActionCount = voiceBackIndex + 1;
-
-const characterColorRows: { key: keyof CharacterCustomization; label: string; hint: string }[] = [
-  { key: "skinColor", label: "Skin", hint: "base body color" },
-  { key: "topColor", label: "Top", hint: "shirt / robe color" },
-  { key: "pantsColor", label: "Pants", hint: "legs color" },
-  { key: "shoesColor", label: "Shoes", hint: "feet color" },
-  { key: "hatColor", label: "Hat", hint: "hat color" },
-  { key: "hairColor", label: "Hair", hint: "head hair color" },
-  { key: "facialHairColor", label: "Facial Hair", hint: "beard / mustache color" },
-];
-
-const characterStyleRows: {
-  key: keyof CharacterCustomization;
-  label: string;
-  options: string[];
-}[] = [
-  { key: "topStyle", label: "Top Style", options: ["simple", "robe", "vest", "tunic"] },
-  { key: "pantsStyle", label: "Pants Style", options: ["pants", "shorts", "skirt", "robe"] },
-  { key: "shoesStyle", label: "Shoes", options: ["boots", "shoes", "sandals", "barefoot"] },
-  { key: "hatStyle", label: "Hat", options: ["none", "wizard", "floppy-wizard", "cap", "hood", "pharaoh"] },
-  { key: "hairStyle", label: "Hair", options: ["none", "short", "bob", "spikes", "long"] },
-  { key: "facialHairStyle", label: "Facial Hair", options: ["none", "mustache", "goatee", "beard"] },
-  { key: "eyeStyle", label: "Eyes", options: ["calm", "angry", "content", "dull", "sus", "sus-shadow", "terrified", "sad", "hard-shut", "done", "happy", "nervous", "nervous-teary"] },
-];
-
-const characterMouthRows: {
-  key: keyof CharacterCustomization;
-  label: string;
-  options: string[];
-}[] = [
-  { key: "mouthStyle", label: "Mouth Shape", options: ["neutral", "smile", "frown", "open"] },
-];
-
-const characterColorPresets = [
-  "#d6cf91",
-  "#8d5524",
-  "#c68642",
-  "#f1c27d",
-  "#ffdbac",
-  "#f472b6",
-  "#60a5fa",
-  "#22c55e",
-  "#facc15",
-  "#f8fafc",
-];
-const characterColorStartIndex = settingsTabCount;
-const characterStyleStartIndex = characterColorStartIndex + characterColorRows.length;
-const characterMouthStartIndex = characterStyleStartIndex + characterStyleRows.length;
-const characterBackIndex = characterMouthStartIndex + characterMouthRows.length;
-const settingsCharacterActionCount = characterBackIndex + 1;
-
-const keyboardKeybindRows = [
-  {
-    title: "Keyboard",
-    rows: [
-      ["Move", "W A S D"],
-      ["Look", "Mouse / optional arrow keys"],
-      ["Left Cast", "Mouse 1"],
-      ["Right Cast", "Mouse 2 or hold Q + Mouse 1"],
-      ["Spell Book", "E"],
-      ["Interact", "F"],
-      ["Inventory", "I"],
-      ["Map", "M"],
-      ["Player List", "Tab"],
-      ["Hotbar", "1-0, hold Q for right hand"],
-      ["Voice Push-To-Talk", "V by default"],
-      ["Jump / Thruster", "Space"],
-      ["Sprint", "Shift"],
-      ["Slide", "C"],
-    ],
-  }
-];
-
-function getNumberSlot(code: string) {
-  if (code === "Digit0") return 9;
-  const match = code.match(/^Digit([1-9])$/);
-  return match ? Number(match[1]) - 1 : -1;
-}
-
-function canRequestPointerLockHere() {
-  try {
-    if (window.self === window.top) return true;
-
-    const frame = window.frameElement as HTMLIFrameElement | null;
-    const allow = frame?.allow ?? "";
-    return /\bpointer-lock\b/i.test(allow);
-  } catch {
-    return false;
-  }
-}
-
-function shouldUseRemoteMouseLookFallback() {
-  if (typeof window === "undefined") return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.get("remoteInput") === "1" ||
-    params.get("rustdesk") === "1" ||
-    params.get("qaHideMenu") === "1";
-}
-
-function getFullscreenElement() {
-  const webkitDocument = document as Document & { webkitFullscreenElement?: Element | null };
-  return document.fullscreenElement ?? webkitDocument.webkitFullscreenElement ?? null;
-}
-
-function isStandaloneDisplayMode() {
-  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
-  return (
-    navigatorWithStandalone.standalone === true ||
-    window.matchMedia?.("(display-mode: fullscreen)").matches ||
-    window.matchMedia?.("(display-mode: standalone)").matches
-  );
-}
-
-function isPointerLockSecurityError(reason: unknown) {
-  if (!reason) return false;
-
-  const message = typeof reason === "string"
-    ? reason
-    : reason instanceof Error
-      ? `${reason.name}: ${reason.message}`
-      : String(reason);
-
-  return /pointer lock|pointerlock/i.test(message);
-}
-
-function isPermanentPointerLockRejection(reason: unknown) {
-  if (!reason) return false;
-
-  const message = typeof reason === "string"
-    ? reason
-    : reason instanceof Error
-      ? `${reason.name}: ${reason.message}`
-      : String(reason);
-
-  return /pointer lock|pointerlock/i.test(message) && /sandbox|permission|policy|iframe|frame|allow/i.test(message);
-}
-
-function setMouseLookFallbackActive(active: boolean) {
-  if (active) {
-    document.documentElement.dataset.wizardsMouseLookFallback = "true";
-    return;
-  }
-
-  delete document.documentElement.dataset.wizardsMouseLookFallback;
-}
-
-function wrapIndex(index: number, count: number) {
-  if (count <= 0) return 0;
-  return ((index % count) + count) % count;
-}
-
-type DevFastTravelSpawn = { x: number; y: number; z: number; yaw?: number };
-
-type DevFastTravelLocation = {
-  id: string;
-  label: string;
-  detail: string;
-  chunk: { cx: number; cz: number };
-  getSpawn: () => DevFastTravelSpawn;
-  spawnSpellDummies?: boolean;
-};
-
-function makeDevFastTravelSpawn(
-  cx: number,
-  cz: number,
-  options: { y?: number; localX?: number; localZ?: number; yaw?: number } = {},
-): DevFastTravelSpawn {
-  return {
-    x: cx * SURVIVAL_BLOCK_SIZE + (options.localX ?? 0),
-    y: options.y ?? 150,
-    z: cz * SURVIVAL_BLOCK_SIZE + (options.localZ ?? 214),
-    yaw: options.yaw,
-  };
-}
-
-function getDevFastTravelChunkCoord(value: number) {
-  return Math.floor((value + SURVIVAL_BLOCK_SIZE / 2) / SURVIVAL_BLOCK_SIZE);
-}
-
-function getDevDarrelQuestSpawn(): DevFastTravelSpawn {
-  const spawn = getDarrelQuestSpawn();
-  const spawnCx = getDevFastTravelChunkCoord(spawn.x);
-  const spawnCz = getDevFastTravelChunkCoord(spawn.z);
-  if (spawnCx === DARREL_QUEST_CHUNK.cx && spawnCz === DARREL_QUEST_CHUNK.cz) {
-    return spawn;
-  }
-
-  return { ...DARREL_QUEST_SPAWN, yaw: DARREL_QUEST_SPAWN_YAW };
-}
-
-const DEV_FAST_TRAVEL_LOCATIONS: DevFastTravelLocation[] = [
-  {
-    id: "spiral-dimension",
-    label: "Spiral Dimension",
-    detail: "Lily Coil realm",
-    chunk: { cx: LILY_COIL_QUEST_CHUNK.cx, cz: LILY_COIL_QUEST_CHUNK.cz },
-    getSpawn: getLilyCoilQuestSpawn,
-  },
-  {
-    id: "darrel-grove",
-    label: "Darrel Grove",
-    detail: "Unfinished garden realm",
-    chunk: { cx: DARREL_QUEST_CHUNK.cx, cz: DARREL_QUEST_CHUNK.cz },
-    getSpawn: getDevDarrelQuestSpawn,
-  },
-  {
-    id: "base-village",
-    label: "Base Village",
-    detail: "Original survival town",
-    chunk: { cx: 0, cz: 0 },
-    getSpawn: () => ({ x: 0, y: 15, z: 30, yaw: 0 }),
-  },
-  {
-    id: "swamp-village",
-    label: "Swamp Village",
-    detail: "Route town",
-    chunk: { cx: 0, cz: -3 },
-    getSpawn: () => makeDevFastTravelSpawn(0, -3, { y: 150, localZ: 214 }),
-  },
-  {
-    id: "chicago-city",
-    label: "Chicago City",
-    detail: "Dense authored city chunk",
-    chunk: { cx: -3, cz: -3 },
-    getSpawn: () => makeDevFastTravelSpawn(-3, -3, { y: 150, localZ: 214 }),
-  },
-  {
-    id: "desert-village",
-    label: "Desert Village",
-    detail: "Meadow route settlement",
-    chunk: { cx: 4, cz: -4 },
-    getSpawn: () => makeDevFastTravelSpawn(4, -4, { y: 150, localZ: 214 }),
-  },
-  {
-    id: "mountain-village",
-    label: "Mountain Village",
-    detail: "Highland authored village",
-    chunk: { cx: 3, cz: 0 },
-    getSpawn: () => makeDevFastTravelSpawn(3, 0, { y: 86, localX: -36, localZ: 182, yaw: 1.68 }),
-  },
-  {
-    id: "graveyard-village",
-    label: "Graveyard Village",
-    detail: "Ring quest landmark",
-    chunk: { cx: 5, cz: 2 },
-    getSpawn: () => makeDevFastTravelSpawn(5, 2, { y: 92, localZ: 132 }),
-  },
-  {
-    id: "spell-dummy-range",
-    label: "Spell Dummy Range",
-    detail: "Health targets for combat QA",
-    chunk: { cx: 4, cz: -3 },
-    getSpawn: () => makeDevFastTravelSpawn(4, -3, { y: 150, localZ: 214, yaw: 0 }),
-    spawnSpellDummies: true,
-  },
-];
-
-function getRemotePlayerStatus(player: PlayerState, now: number) {
-  if (player.health <= 0) return "DOWN";
-  const statuses = [
-    player.sleepUntil && player.sleepUntil > now ? "SLEEP" : "",
-    player.slowUntil && player.slowUntil > now ? "SLOWED" : "",
-    player.poisonUntil && player.poisonUntil > now ? "POISON" : "",
-    player.acidUntil && player.acidUntil > now ? "ACID" : "",
-  ].filter(Boolean);
-  return statuses.length > 0 ? statuses.join(" / ") : "READY";
-}
-
-function normalizeHexInput(value: string) {
-  const trimmed = value.trim();
-  return trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
-}
-
-function isValidHexColor(value: string) {
-  return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
-}
-
-function cycleOption(options: string[], current: string, direction: 1 | -1) {
-  const index = Math.max(0, options.indexOf(current));
-  return options[wrapIndex(index + direction, options.length)];
-}
-
-function formatCharacterOption(value: string) {
-  return value
-    .split(/(?=[A-Z])|[-_\s]+/)
-    .filter(Boolean)
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join(" ");
-}
-
-function formatKeyboardCode(code: string) {
-  if (code.startsWith("Key")) return code.slice(3);
-  if (code.startsWith("Digit")) return code.slice(5);
-  if (code === "Space") return "Space";
-  if (code === "Escape") return "Escape";
-  return code
-    .replace(/(Left|Right)$/, " $1")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .trim();
-}
-
-function CharacterPreview({ character }: { character: CharacterCustomization }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [frame, setFrame] = useState(0);
-  const [isBlinking, setIsBlinking] = useState(false);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setFrame((current) => (current + 1) % 24), 160);
-    return () => window.clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    let blinkStartTimeout: number | null = null;
-    let blinkEndTimeout: number | null = null;
-    const scheduleBlink = () => {
-      blinkStartTimeout = window.setTimeout(() => {
-        if (cancelled) return;
-        setIsBlinking(true);
-        blinkEndTimeout = window.setTimeout(() => {
-          if (cancelled) return;
-          setIsBlinking(false);
-          scheduleBlink();
-        }, 95 + Math.random() * 70);
-      }, 2400 + Math.random() * 5200);
-    };
-
-    scheduleBlink();
-    return () => {
-      cancelled = true;
-      if (blinkStartTimeout !== null) window.clearTimeout(blinkStartTimeout);
-      if (blinkEndTimeout !== null) window.clearTimeout(blinkEndTimeout);
-    };
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const previewWidth = 360;
-    const previewHeight = 360;
-    const previewResolutionScale = 2;
-    canvas.width = previewWidth * previewResolutionScale;
-    canvas.height = previewHeight * previewResolutionScale;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.imageSmoothingEnabled = false;
-    ctx.setTransform(previewResolutionScale, 0, 0, previewResolutionScale, 0, 0);
-    ctx.clearRect(0, 0, previewWidth, previewHeight);
-    ctx.fillStyle = "rgba(12, 7, 18, 0.92)";
-    ctx.fillRect(0, 0, previewWidth, previewHeight);
-
-    ctx.fillStyle = "rgba(34, 211, 238, 0.06)";
-    for (let x = 0; x < previewWidth; x += 18) {
-      ctx.fillRect(x, 0, 1, previewHeight);
-    }
-    for (let y = 0; y < previewHeight; y += 18) {
-      ctx.fillRect(0, y, previewWidth, 1);
-    }
-
-    const glow = ctx.createRadialGradient(180, 188, 18, 180, 188, 150);
-    glow.addColorStop(0, "rgba(250, 204, 21, 0.22)");
-    glow.addColorStop(0.42, "rgba(236, 72, 153, 0.12)");
-    glow.addColorStop(1, "rgba(12, 7, 18, 0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, previewWidth, previewHeight);
-
-    ctx.strokeStyle = "rgba(250, 204, 21, 0.28)";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(39, 34, 282, 292);
-    ctx.strokeStyle = "rgba(34, 211, 238, 0.18)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(51, 46, 258, 268);
-
-    ctx.fillStyle = "rgba(250, 204, 21, 0.9)";
-    ctx.font = "13px monospace";
-    ctx.fillText("LIVE CHARACTER VIEW", 84, 24);
-
-    const animation = frame % 12 < 6 ? "holding" : "walk";
-    drawPixelAvatarFrame(ctx, {
-      character,
-      direction: 0,
-      animation,
-      frame,
-      x: 52,
-      y: 62,
-      scale: 2,
-      detailScale: 2,
-      isBlinking,
-    });
-
-    ctx.fillStyle = "rgba(240, 249, 255, 0.78)";
-    ctx.font = "10px monospace";
-    ctx.fillText("FRONT PREVIEW UPDATES LIVE", 90, 342);
-  }, [character, frame, isBlinking]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="character-preview-canvas h-auto w-full border border-yellow-200/30 bg-black shadow-[0_0_18px_rgba(250,204,21,0.16)]"
-      style={{ imageRendering: "pixelated" }}
-    />
-  );
-}
-
-function getInventoryPreviewAnimation(playerState: HudPlayerState): AvatarAnimation {
-  if (playerState.isMeditating) return "meditate";
-  if (playerState.isSliding) return "slide";
-  if (playerState.isCrouching) return playerState.isMoving ? "crouchwalk" : "crouch";
-  if (!playerState.isGrounded) return "jump";
-  if (playerState.isSprinting) return "sprint";
-  if (playerState.isMoving) return "walk";
-  return "holding";
-}
-
-function InventoryWizardPreview({
-  character,
-  playerState,
-}: {
-  character: CharacterCustomization;
-  playerState: HudPlayerState;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [frame, setFrame] = useState(0);
-  const [isBlinking, setIsBlinking] = useState(false);
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setFrame((current) => (current + 1) % 24), 130);
-    return () => window.clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    let blinkStartTimeout: number | null = null;
-    let blinkEndTimeout: number | null = null;
-    const scheduleBlink = () => {
-      blinkStartTimeout = window.setTimeout(() => {
-        if (cancelled) return;
-        setIsBlinking(true);
-        blinkEndTimeout = window.setTimeout(() => {
-          if (cancelled) return;
-          setIsBlinking(false);
-          scheduleBlink();
-        }, 85 + Math.random() * 80);
-      }, 1800 + Math.random() * 4200);
-    };
-
-    scheduleBlink();
-    return () => {
-      cancelled = true;
-      if (blinkStartTimeout !== null) window.clearTimeout(blinkStartTimeout);
-      if (blinkEndTimeout !== null) window.clearTimeout(blinkEndTimeout);
-    };
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const previewWidth = 220;
-    const previewHeight = 188;
-    const resolutionScale = 2;
-    canvas.width = previewWidth * resolutionScale;
-    canvas.height = previewHeight * resolutionScale;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.imageSmoothingEnabled = false;
-    ctx.setTransform(resolutionScale, 0, 0, resolutionScale, 0, 0);
-    ctx.clearRect(0, 0, previewWidth, previewHeight);
-    ctx.fillStyle = "#020906";
-    ctx.fillRect(0, 0, previewWidth, previewHeight);
-
-    ctx.fillStyle = "rgba(16, 185, 129, 0.07)";
-    for (let x = 0; x < previewWidth; x += 12) ctx.fillRect(x, 0, 1, previewHeight);
-    for (let y = 0; y < previewHeight; y += 12) ctx.fillRect(0, y, previewWidth, 1);
-
-    const glow = ctx.createRadialGradient(112, 118, 8, 112, 118, 112);
-    glow.addColorStop(0, "rgba(250, 204, 21, 0.18)");
-    glow.addColorStop(0.45, "rgba(16, 185, 129, 0.14)");
-    glow.addColorStop(1, "rgba(2, 9, 6, 0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, previewWidth, previewHeight);
-
-    ctx.strokeStyle = "rgba(167, 243, 208, 0.28)";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(12, 10, previewWidth - 24, previewHeight - 20);
-    ctx.strokeStyle = "rgba(250, 204, 21, 0.22)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(22, 20, previewWidth - 44, previewHeight - 40);
-
-    drawPixelAvatarFrame(ctx, {
-      character,
-      direction: 0,
-      animation: getInventoryPreviewAnimation(playerState),
-      frame,
-      x: 48,
-      y: 21,
-      scale: 1.35,
-      detailScale: 2,
-      isBlinking,
-    });
-  }, [character, frame, isBlinking, playerState]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      aria-label="Wizard avatar preview"
-      className="h-auto w-full border border-emerald-100/25 bg-[#020906] shadow-[inset_0_0_24px_rgba(16,185,129,0.08)]"
-      style={{ imageRendering: "pixelated" }}
-    />
-  );
-}
-
-function PlayerScoreMenu({ rows }: { rows: ScoreboardRow[] }) {
-  return (
-    <div className="player-score-menu absolute inset-0 z-[160] flex items-start justify-center px-4 pt-[8dvh] pointer-events-none">
-      <div
-        className="player-score-panel border border-cyan-200/60 bg-[#090510]/78 p-3 text-cyan-50 shadow-[0_0_35px_rgba(34,211,238,0.38)] backdrop-blur-sm"
-        style={{ width: 'min(760px, calc(var(--app-vw, 100dvw) - 28px))' }}
-      >
-        <div className="player-score-header mb-3 flex items-center justify-between border-b border-cyan-200/30 pb-2">
-          <div>
-            <div className="text-[9px] tracking-[0.35em] text-cyan-200/70">ARENA ROSTER</div>
-            <div className="text-xl tracking-[0.16em] text-white">PLAYER LIST / SCORE</div>
-          </div>
-          <div className="text-right text-[8px] tracking-widest text-cyan-100/55">
-            HOLD TAB / SELECT
-          </div>
-        </div>
-
-        <div className="player-score-row player-score-headings grid grid-cols-[1.35fr_1fr_0.55fr_0.65fr_0.6fr] gap-2 border-b border-cyan-200/25 pb-1 text-[8px] tracking-[0.18em] text-cyan-100/55">
-          <span>PLAYER</span>
-          <span>STATE</span>
-          <span className="text-right">HP</span>
-          <span className="text-right">ARMOR</span>
-          <span className="text-right">SCORE</span>
-        </div>
-
-        <div className="mt-1 flex flex-col gap-1">
-          {rows.map((row) => (
-            <div
-              key={row.id}
-              className={cn(
-                "player-score-row grid grid-cols-[1.35fr_1fr_0.55fr_0.65fr_0.6fr] gap-2 border px-2 py-1.5 text-[10px] tracking-widest",
-                row.isLocal
-                  ? "border-yellow-200/55 bg-yellow-200/10 text-yellow-50 shadow-[0_0_14px_rgba(250,204,21,0.18)]"
-                  : "border-cyan-200/20 bg-cyan-400/5 text-cyan-100/85"
-              )}
-            >
-              <span className="truncate">{row.label}</span>
-              <span className="truncate">{row.status}</span>
-              <span className="text-right">{Math.round(row.health)}</span>
-              <span className="text-right">{Math.round(row.armor)}</span>
-              <span className="text-right">{row.score}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-3 border-t border-cyan-200/20 pt-2 text-[8px] tracking-widest text-cyan-100/45">
-          SCORE IS CURRENT BATTLE POWER UNTIL KILL TRACKING IS ADDED
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function getSpellThumbnail(spell: SpellType) {
-  const thumbnail = spellThumbnails[spell] ?? "/sprites/fireball/fireball_1.png";
-  return getSpriteUrl(thumbnail) || thumbnail;
-}
-
-function isAnimatedThumbnailSource(src: string) {
-  return /\.gif(?:[?#]|$)/i.test(src);
-}
-
-const SpellThumbnail = memo(function SpellThumbnail({
-  spell,
-  animate = false,
-  deferRank = 0,
-}: {
-  spell: SpellType;
-  animate?: boolean;
-  deferRank?: number;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const [src, setSrc] = useState(() => getSpellThumbnail(spell));
-  const [imageFrameVersion, setImageFrameVersion] = useState(0);
-
-  useEffect(() => {
-    setSrc(getSpellThumbnail(spell));
-  }, [spell]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return;
-
-    const outputSize = 64;
-    const sampleSize = 36;
-    const sampleCanvas = document.createElement("canvas");
-    const sampleCtx = sampleCanvas.getContext("2d", { willReadFrequently: true });
-    if (!sampleCtx) return;
-
-    canvas.width = outputSize;
-    canvas.height = outputSize;
-    sampleCanvas.width = sampleSize;
-    sampleCanvas.height = sampleSize;
-    ctx.imageSmoothingEnabled = false;
-    sampleCtx.imageSmoothingEnabled = false;
-
-    const drawPixelBlocks = (blocks: Array<[number, number, number, number, string, number?]>) => {
-      blocks.forEach(([x, y, width, height, color, rotation = 0]) => {
-        ctx.save();
-        ctx.fillStyle = color;
-        if (rotation) {
-          ctx.translate(x + width / 2, y + height / 2);
-          ctx.rotate((rotation * Math.PI) / 180);
-          ctx.fillRect(-width / 2, -height / 2, width, height);
-        } else {
-          ctx.fillRect(x, y, width, height);
-        }
-        ctx.restore();
-      });
-    };
-
-    const drawOrbShieldHex = () => {
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      ctx.fillStyle = "rgba(217, 70, 239, 0.18)";
-      ctx.beginPath();
-      ctx.arc(outputSize / 2, outputSize / 2, 25, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(253, 244, 255, 0.82)";
-      ctx.lineWidth = 2;
-
-      const radius = 7;
-      const height = Math.sqrt(3) * radius;
-      for (let y = 9; y < outputSize - 5; y += height * 0.75) {
-        const rowOffset = Math.round(y / (height * 0.75)) % 2 === 0 ? 0 : radius * 1.5;
-        for (let x = 7 + rowOffset; x < outputSize - 5; x += radius * 3) {
-          const dx = x - outputSize / 2;
-          const dy = y - outputSize / 2;
-          if (Math.sqrt(dx * dx + dy * dy) > 27) continue;
-
-          ctx.beginPath();
-          for (let i = 0; i < 6; i++) {
-            const angle = Math.PI / 6 + (Math.PI / 3) * i;
-            const px = x + Math.cos(angle) * radius;
-            const py = y + Math.sin(angle) * radius;
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-          }
-          ctx.closePath();
-          ctx.stroke();
-        }
-      }
-
-      ctx.strokeStyle = "rgba(244, 114, 182, 0.95)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(outputSize / 2, outputSize / 2, 27, 0, Math.PI * 2);
-      ctx.stroke();
-    };
-
-    const drawGrabThumbnail = () => {
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      const glow = ctx.createRadialGradient(32, 32, 2, 32, 32, 30);
-      glow.addColorStop(0, "rgba(255, 244, 255, 0.95)");
-      glow.addColorStop(0.35, "rgba(244, 114, 182, 0.72)");
-      glow.addColorStop(1, "rgba(126, 34, 206, 0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, outputSize, outputSize);
-
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = "rgba(244, 114, 182, 0.5)";
-      ctx.lineWidth = 15;
-      ctx.beginPath();
-      ctx.moveTo(8, 44);
-      ctx.bezierCurveTo(18, 35, 24, 28, 36, 24);
-      ctx.stroke();
-
-      ctx.strokeStyle = "rgba(255, 214, 251, 0.95)";
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.moveTo(8, 44);
-      ctx.bezierCurveTo(20, 36, 25, 29, 38, 24);
-      ctx.stroke();
-
-      ctx.fillStyle = "rgba(244, 114, 182, 0.72)";
-      ctx.beginPath();
-      ctx.ellipse(42, 24, 10, 12, -0.4, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = "rgba(255, 214, 251, 0.9)";
-      ctx.lineWidth = 5;
-      [[45, 12, 56, 7], [51, 20, 62, 18], [50, 28, 60, 32], [43, 34, 49, 45], [35, 19, 29, 8]].forEach(([x1, y1, x2, y2]) => {
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      });
-
-      ctx.strokeStyle = "rgba(244, 114, 182, 0.5)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(34, 31, 25, 0.2, Math.PI * 1.6);
-      ctx.stroke();
-    };
-
-    const drawTornadoThumbnail = () => {
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      drawPixelBlocks([
-        [12, 6, 40, 4, "rgba(209, 213, 219, 0.18)"],
-        [7, 18, 52, 8, "rgba(156, 163, 175, 0.14)"],
-        [10, 31, 46, 8, "rgba(75, 85, 99, 0.2)"],
-        [16, 46, 32, 6, "rgba(248, 250, 252, 0.14)"],
-        [20, 7, 22, 4, "#f8fafc"],
-        [10, 11, 46, 4, "#9ca3af"],
-        [16, 15, 24, 4, "#e5e7eb"],
-        [42, 15, 12, 4, "#4b5563"],
-        [8, 22, 18, 5, "#4b5563"],
-        [26, 22, 30, 5, "#d1d5db"],
-        [15, 28, 38, 5, "#f3f4f6"],
-        [11, 34, 18, 5, "#9ca3af"],
-        [31, 34, 20, 5, "#374151"],
-        [15, 40, 38, 5, "#6b7280"],
-        [22, 46, 26, 5, "#d1d5db"],
-        [26, 52, 18, 5, "#9ca3af"],
-        [30, 58, 10, 4, "#f8fafc"],
-        [4, 16, 4, 4, "rgba(229, 231, 235, 0.75)"],
-        [56, 25, 4, 4, "rgba(156, 163, 175, 0.75)"],
-        [7, 52, 4, 4, "rgba(107, 114, 128, 0.62)"],
-        [52, 54, 5, 5, "rgba(161, 98, 7, 0.55)"],
-        [3, 24, 13, 3, "rgba(248, 250, 252, 0.72)", -14],
-        [45, 27, 15, 3, "rgba(209, 213, 219, 0.68)", 16],
-        [5, 40, 15, 3, "rgba(156, 163, 175, 0.64)", 18],
-        [43, 43, 13, 3, "rgba(229, 231, 235, 0.62)", -16],
-        [12, 55, 10, 3, "rgba(75, 85, 99, 0.58)", -12],
-        [55, 8, 3, 3, "rgba(248, 250, 252, 0.8)"],
-        [2, 36, 3, 3, "rgba(156, 163, 175, 0.72)"],
-        [57, 50, 3, 3, "rgba(107, 114, 128, 0.7)"],
-      ]);
-    };
-
-    const drawMeteorThumbnail = () => {
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      drawPixelBlocks([
-        [22, 9, 20, 5, "rgba(254, 215, 170, 0.22)"],
-        [17, 16, 30, 8, "rgba(251, 146, 60, 0.22)"],
-        [12, 25, 40, 12, "rgba(239, 68, 68, 0.2)"],
-        [17, 39, 30, 10, "rgba(250, 204, 21, 0.16)"],
-        [22, 10, 20, 5, "#fed7aa"],
-        [17, 15, 30, 7, "#fb923c"],
-        [13, 22, 38, 10, "#ef4444"],
-        [11, 32, 42, 13, "#f97316"],
-        [16, 45, 32, 10, "#b91c1c"],
-        [23, 55, 18, 5, "#fb923c"],
-        [23, 17, 18, 6, "#fff7ed"],
-        [18, 25, 28, 10, "#fde68a"],
-        [22, 35, 20, 10, "#facc15"],
-        [28, 45, 10, 7, "#fffbeb"],
-        [28, 28, 10, 7, "#7c2d12"],
-        [40, 31, 9, 7, "#9a3412"],
-        [18, 36, 9, 8, "#c2410c"],
-        [35, 41, 11, 8, "#ea580c"],
-        [7, 20, 3, 3, "rgba(255, 247, 237, 0.74)"],
-        [54, 24, 4, 4, "rgba(254, 215, 170, 0.66)"],
-        [8, 50, 3, 3, "rgba(249, 115, 22, 0.68)"],
-        [54, 51, 3, 3, "rgba(254, 243, 199, 0.68)"],
-      ]);
-    };
-
-    const drawMagicArmorThumbnail = () => {
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      const glow = ctx.createRadialGradient(32, 32, 4, 32, 32, 31);
-      glow.addColorStop(0, "rgba(224, 242, 254, 0.85)");
-      glow.addColorStop(0.45, "rgba(56, 189, 248, 0.36)");
-      glow.addColorStop(1, "rgba(14, 116, 144, 0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, outputSize, outputSize);
-      drawPixelBlocks([
-        [25, 7, 14, 5, "#e0f2fe"],
-        [18, 12, 28, 6, "#7dd3fc"],
-        [14, 18, 36, 10, "#38bdf8"],
-        [14, 28, 36, 9, "#0284c7"],
-        [18, 37, 28, 8, "#0369a1"],
-        [22, 45, 20, 7, "#0c4a6e"],
-        [27, 52, 10, 5, "#bae6fd"],
-        [22, 20, 20, 4, "rgba(255,255,255,0.8)"],
-        [27, 28, 10, 18, "rgba(224,242,254,0.45)"],
-        [10, 11, 4, 4, "rgba(125,211,252,0.8)"],
-        [50, 20, 4, 4, "rgba(186,230,253,0.72)"],
-        [9, 47, 5, 5, "rgba(56,189,248,0.6)"],
-      ]);
-    };
-
-    const drawJumpBoostThumbnail = () => {
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      drawPixelBlocks([
-        [29, 7, 6, 40, "rgba(190, 242, 100, 0.26)"],
-        [21, 14, 22, 7, "#bef264"],
-        [16, 21, 32, 7, "#84cc16"],
-        [24, 28, 16, 19, "#22c55e"],
-        [20, 47, 24, 6, "#14532d"],
-        [14, 53, 12, 5, "#a3e635"],
-        [38, 53, 12, 5, "#a3e635"],
-        [8, 35, 7, 7, "rgba(34,197,94,0.78)"],
-        [49, 32, 7, 7, "rgba(190,242,100,0.78)"],
-        [27, 3, 10, 5, "#f7fee7"],
-      ]);
-    };
-
-    const drawSpeedBoostThumbnail = () => {
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      drawPixelBlocks([
-        [7, 14, 34, 5, "#fef08a", -8],
-        [19, 22, 38, 6, "#facc15", -8],
-        [11, 32, 44, 7, "#22d3ee", -8],
-        [25, 42, 28, 5, "#fde047", -8],
-        [6, 49, 24, 4, "rgba(14,165,233,0.82)", -8],
-        [45, 10, 7, 7, "#fefce8"],
-        [51, 27, 5, 5, "#fef08a"],
-        [54, 39, 4, 4, "#67e8f9"],
-        [11, 24, 5, 5, "rgba(253,224,71,0.78)"],
-      ]);
-    };
-
-    const drawStatusBoltThumbnail = (variant: "tungston" | "sleep" | "poison" | "acid") => {
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      const palette = {
-        tungston: ["#e2e8f0", "#94a3b8", "#475569", "rgba(148,163,184,0.26)"],
-        sleep: ["#e0f2fe", "#60a5fa", "#1d4ed8", "rgba(125,211,252,0.26)"],
-        poison: ["#f0abfc", "#a855f7", "#581c87", "rgba(168,85,247,0.26)"],
-        acid: ["#bbf7d0", "#22c55e", "#166534", "rgba(34,197,94,0.26)"],
-      }[variant];
-      const glow = ctx.createRadialGradient(32, 32, 3, 32, 32, 31);
-      glow.addColorStop(0, palette[0]);
-      glow.addColorStop(0.42, palette[3]);
-      glow.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, outputSize, outputSize);
-
-      if (variant === "tungston") {
-        drawPixelBlocks([
-          [12, 12, 5, 4, "#e2e8f0", -28],
-          [18, 16, 5, 4, "#64748b", -28],
-          [24, 20, 5, 4, "#cbd5e1", -28],
-          [30, 24, 5, 4, "#475569", -28],
-          [36, 28, 5, 4, "#94a3b8", -28],
-          [35, 29, 18, 4, "#cbd5e1"],
-          [31, 33, 26, 6, "#94a3b8"],
-          [27, 39, 34, 12, "#64748b"],
-          [31, 51, 26, 6, "#334155"],
-          [37, 57, 16, 3, "#1f2937"],
-          [33, 34, 9, 3, "#f8fafc"],
-          [51, 43, 6, 6, "#0f172a"],
-        ]);
-        return;
-      }
-
-      if (variant === "sleep") {
-        drawPixelBlocks([
-          [9, 26, 46, 6, "#dbeafe"],
-          [5, 32, 54, 15, "#60a5fa"],
-          [9, 47, 46, 6, "#1d4ed8"],
-          [4, 36, 7, 8, "#93c5fd"],
-          [53, 36, 7, 8, "#1e3a8a"],
-          [12, 34, 22, 10, "rgba(191,219,254,0.75)"],
-          [36, 34, 18, 10, "rgba(37,99,235,0.85)"],
-          [32, 31, 2, 23, "rgba(224,242,254,0.82)"],
-          [15, 35, 10, 3, "#ffffff"],
-        ]);
-        ctx.fillStyle = "#e0f2fe";
-        ctx.font = "bold 15px monospace";
-        ctx.fillText("ZZZ", 18, 22);
-        ctx.fillStyle = "rgba(37,99,235,0.55)";
-        ctx.fillText("ZZZ", 20, 22);
-        return;
-      }
-
-      const isAcid = variant === "acid";
-      const liquid = isAcid ? "#22c55e" : "#a855f7";
-      const liquidDark = isAcid ? "#166534" : "#581c87";
-      const liquidLight = isAcid ? "#bbf7d0" : "#f0abfc";
-      const glass = isAcid ? "#dcfce7" : "#fae8ff";
-      const rim = isAcid ? "#86efac" : "#e879f9";
-
-      ctx.save();
-      ctx.translate(32, 34);
-      ctx.rotate((-7 * Math.PI) / 180);
-      ctx.translate(-32, -34);
-
-      ctx.fillStyle = liquid;
-      ctx.globalAlpha = 0.12;
-      ctx.beginPath();
-      ctx.moveTo(32, 16);
-      ctx.lineTo(8, 60);
-      ctx.lineTo(56, 60);
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalAlpha = 1;
-
-      ctx.fillStyle = glass;
-      ctx.globalAlpha = 0.92;
-      ctx.fillRect(26, 7, 12, 5);
-      ctx.globalAlpha = 0.82;
-      ctx.fillStyle = rim;
-      ctx.fillRect(23, 12, 18, 4);
-      ctx.globalAlpha = 0.28;
-      ctx.fillStyle = glass;
-      ctx.fillRect(28, 16, 8, 8);
-      ctx.globalAlpha = 1;
-
-      ctx.beginPath();
-      ctx.moveTo(32, 22);
-      ctx.lineTo(11, 60);
-      ctx.lineTo(53, 60);
-      ctx.closePath();
-      ctx.fillStyle = "rgba(255,255,255,0.13)";
-      ctx.fill();
-      ctx.strokeStyle = glass;
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(32, 32);
-      ctx.lineTo(18, 57);
-      ctx.lineTo(46, 57);
-      ctx.closePath();
-      ctx.fillStyle = liquidDark;
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(32, 36);
-      ctx.lineTo(23, 54);
-      ctx.lineTo(43, 54);
-      ctx.closePath();
-      ctx.fillStyle = liquid;
-      ctx.fill();
-
-      ctx.fillStyle = liquidLight;
-      ctx.globalAlpha = 0.78;
-      ctx.fillRect(24, 45, 5, 5);
-      ctx.globalAlpha = 0.7;
-      ctx.fillRect(36, 39, 4, 4);
-      ctx.globalAlpha = 0.58;
-      ctx.fillStyle = glass;
-      ctx.fillRect(30, 51, 3, 3);
-      ctx.globalAlpha = 0.72;
-      ctx.fillStyle = liquidDark;
-      ctx.fillRect(20, 58, 25, 2);
-      ctx.globalAlpha = 0.76;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(28, 9, 6, 2);
-      ctx.globalAlpha = 0.34;
-      ctx.fillRect(18, 37, 3, 12);
-      ctx.restore();
-    };
-
-    const drawGlassOrbThumbnail = () => {
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      const glow = ctx.createRadialGradient(32, 32, 4, 32, 32, 31);
-      glow.addColorStop(0, "rgba(240,249,255,0.95)");
-      glow.addColorStop(0.45, "rgba(34,211,238,0.34)");
-      glow.addColorStop(1, "rgba(8,47,73,0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, outputSize, outputSize);
-      drawPixelBlocks([
-        [19, 13, 26, 5, "#e0f2fe"],
-        [14, 18, 36, 8, "#67e8f9"],
-        [11, 26, 42, 16, "rgba(34,211,238,0.72)"],
-        [15, 42, 34, 8, "#0891b2"],
-        [24, 50, 16, 5, "#cffafe"],
-        [21, 21, 14, 5, "rgba(255,255,255,0.92)"],
-        [31, 28, 7, 14, "rgba(255,255,255,0.42)"],
-        [31, 29, 4, 18, "#fef08a"],
-        [32, 19, 3, 8, "#fef08a"],
-        [32, 49, 3, 8, "#fef08a"],
-        [24, 37, 18, 4, "#facc15", -28],
-      ]);
-    };
-
-    const scheduleDraw = (drawFn: () => void, allowAnimatedRefresh = false) => {
-      const delay = animate || spell === "tornado" ? 0 : Math.min(420, deferRank * 16);
-      let interval: number | null = null;
-      const timeout = window.setTimeout(() => {
-        drawFn();
-        if (animate && allowAnimatedRefresh && isAnimatedThumbnailSource(src)) {
-          interval = window.setInterval(drawFn, 180);
-        }
-      }, delay);
-
-      return () => {
-        window.clearTimeout(timeout);
-        if (interval !== null) window.clearInterval(interval);
-      };
-    };
-
-    if (spell === "orbshield") {
-      return scheduleDraw(drawOrbShieldHex);
-    }
-
-    if (spell === "grab") {
-      return scheduleDraw(drawGrabThumbnail);
-    }
-
-    if (spell === "tornado") {
-      return scheduleDraw(drawTornadoThumbnail);
-    }
-
-    if (spell === "meteorshower") {
-      return scheduleDraw(drawMeteorThumbnail);
-    }
-
-    if (spell === "magicarmor") {
-      return scheduleDraw(drawMagicArmorThumbnail);
-    }
-
-    if (spell === "jumpboost") {
-      return scheduleDraw(drawJumpBoostThumbnail);
-    }
-
-    if (spell === "speedboost") {
-      return scheduleDraw(drawSpeedBoostThumbnail);
-    }
-
-    if (spell === "tungstonballsack") {
-      return scheduleDraw(() => drawStatusBoltThumbnail("tungston"));
-    }
-
-    if (spell === "sleep") {
-      return scheduleDraw(() => drawStatusBoltThumbnail("sleep"));
-    }
-
-    if (spell === "poison") {
-      return scheduleDraw(() => drawStatusBoltThumbnail("poison"));
-    }
-
-    if (spell === "acid") {
-      return scheduleDraw(() => drawStatusBoltThumbnail("acid"));
-    }
-
-    if (spell === "magicglassorb") {
-      return scheduleDraw(drawGlassOrbThumbnail);
-    }
-
-    const draw = () => {
-      const img = imgRef.current;
-      if (!img || !img.complete || img.naturalWidth <= 0 || img.naturalHeight <= 0) return;
-
-      sampleCtx.clearRect(0, 0, sampleSize, sampleSize);
-      const scale = Math.min(sampleSize / img.naturalWidth, sampleSize / img.naturalHeight);
-      const width = img.naturalWidth * scale;
-      const height = img.naturalHeight * scale;
-      const x = (sampleSize - width) / 2;
-      const y = (sampleSize - height) / 2;
-      sampleCtx.drawImage(img, x, y, width, height);
-
-      try {
-        const imageData = sampleCtx.getImageData(0, 0, sampleSize, sampleSize);
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-          if (brightness < 18) {
-            data[i + 3] = 0;
-          } else if (brightness < 42) {
-            data[i + 3] = Math.min(data[i + 3], Math.round(data[i + 3] * ((brightness - 18) / 24)));
-          }
-        }
-        sampleCtx.putImageData(imageData, 0, 0);
-      } catch {
-        // If a browser marks a GIF frame as tainted, keep the thumbnail visible.
-      }
-
-      ctx.clearRect(0, 0, outputSize, outputSize);
-      ctx.drawImage(sampleCanvas, 0, 0, outputSize, outputSize);
-    };
-
-    return scheduleDraw(draw, true);
-  }, [spell, src, animate, deferRank, imageFrameVersion]);
-
-  const portalMask = spell === "portal"
-    ? {
-        mixBlendMode: "screen" as const,
-        filter: "brightness(1.45) contrast(1.25) saturate(1.35)",
-        WebkitMaskImage: "radial-gradient(circle at center, transparent 0 28%, black 34%, black 51%, transparent 61%)",
-        maskImage: "radial-gradient(circle at center, transparent 0 28%, black 34%, black 51%, transparent 61%)",
-      }
-    : {};
-
-  return (
-    <>
-      <canvas
-        ref={canvasRef}
-        className="h-full w-full object-contain"
-        style={{ imageRendering: "pixelated", ...portalMask }}
-      />
-      <img
-        ref={imgRef}
-        src={src}
-        alt=""
-        crossOrigin="anonymous"
-        className="pointer-events-none absolute h-px w-px opacity-0"
-        onLoad={() => setImageFrameVersion((version) => version + 1)}
-        onError={() => {
-          const fallback = getSpriteUrl("/sprites/fireball/fireball_1.png") || "/sprites/fireball/fireball_1.png";
-          if (src !== fallback) setSrc(fallback);
-        }}
-      />
-    </>
-  );
-});
-
-function emitMobileControl(detail: Record<string, unknown>) {
-  window.dispatchEvent(new CustomEvent("mobile-control", { detail }));
-}
-
-function emitMobileHotbar(hand: HandType, direction: 1 | -1) {
-  window.dispatchEvent(new CustomEvent("mobile-hotbar", { detail: { hand, direction } }));
-}
-
-function releaseMobileGameplayInputs() {
-  emitMobileControl({ type: "move", x: 0, y: 0 });
-  (["jump", "slide", "sprint"] as const).forEach((button) => {
-    emitMobileControl({ type: "button", button, pressed: false });
-  });
-  window.dispatchEvent(new CustomEvent("mobile-cast", { detail: { hand: "left", phase: "end" } }));
-  window.dispatchEvent(new CustomEvent("mobile-cast", { detail: { hand: "right", phase: "end" } }));
-}
-
-function MobileHotbarWheel({ hand }: { hand: HandType }) {
-  const startYRef = useRef<number | null>(null);
-  const hasDraggedRef = useRef(false);
-
-  const emitFromPoint = (clientY: number, target: HTMLDivElement) => {
-    const rect = target.getBoundingClientRect();
-    const direction: 1 | -1 = clientY < rect.top + rect.height / 2 ? -1 : 1;
-    emitMobileHotbar(hand, direction);
-  };
-
-  const beginWheel = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    startYRef.current = e.clientY;
-    hasDraggedRef.current = false;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-
-  const moveWheel = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (startYRef.current === null) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const delta = e.clientY - startYRef.current;
-    if (Math.abs(delta) < 18) return;
-    hasDraggedRef.current = true;
-    emitMobileHotbar(hand, delta > 0 ? 1 : -1);
-    startYRef.current = e.clientY;
-  };
-
-  const endWheel = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (startYRef.current !== null && !hasDraggedRef.current) {
-      emitFromPoint(e.clientY, e.currentTarget);
-    }
-    startYRef.current = null;
-    hasDraggedRef.current = false;
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-  };
-
-  const cancelWheel = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    startYRef.current = null;
-    hasDraggedRef.current = false;
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-  };
-
-  return (
-    <div
-      data-testid={`mobile-${hand}-hotbar-wheel`}
-      aria-label={`${hand} spell scroll wheel`}
-      role="button"
-      tabIndex={0}
-      className="mobile-scroll-wheel pointer-events-auto relative h-16 w-12 overflow-hidden rounded-full border-2 border-cyan-100/45 bg-black/55 text-cyan-50 active:scale-95"
-      style={{ touchAction: "none" }}
-      onPointerDown={beginWheel}
-      onPointerMove={moveWheel}
-      onPointerUp={endWheel}
-      onPointerCancel={cancelWheel}
-      onWheel={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.deltaY !== 0) emitMobileHotbar(hand, e.deltaY > 0 ? 1 : -1);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          emitMobileHotbar(hand, -1);
-        }
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          emitMobileHotbar(hand, 1);
-        }
-      }}
-    >
-      <div className="absolute inset-x-0 top-1 flex justify-center text-[10px] leading-none text-cyan-100/80">^</div>
-      <div className="absolute inset-x-1 top-1/2 h-px -translate-y-1/2 bg-cyan-100/35" />
-      <div className="absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-100/55 bg-cyan-200/15 shadow-[inset_0_0_10px_rgba(125,211,252,0.25)]">
-        <div className="absolute left-1/2 top-1/2 h-6 w-px -translate-x-1/2 -translate-y-1/2 bg-cyan-100/30" />
-        <div className="absolute left-1/2 top-1/2 h-px w-6 -translate-x-1/2 -translate-y-1/2 bg-cyan-100/30" />
-      </div>
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold tracking-widest text-cyan-50">
-        {hand === "left" ? "L" : "R"}
-      </div>
-      <div className="absolute inset-x-0 bottom-1 flex justify-center text-[10px] leading-none text-cyan-100/80">v</div>
-    </div>
-  );
-}
-
-function MobileTouchControls({
-  openSpellMenu,
-  pauseTouchGameplay,
-}: {
-  openSpellMenu: () => void;
-  pauseTouchGameplay: () => void;
-}) {
-  const joystickRef = useRef<HTMLDivElement>(null);
-  const joystickKnobRef = useRef<HTMLDivElement>(null);
-  const joystickPointerRef = useRef<number | null>(null);
-  const lookPointerRef = useRef<number | null>(null);
-  const lastLookRef = useRef({ x: 0, y: 0 });
-  const pendingMoveRef = useRef<{ x: number; y: number } | null>(null);
-  const moveRafRef = useRef<number | null>(null);
-  const pendingLookRef = useRef({ dx: 0, dy: 0 });
-  const lookRafRef = useRef<number | null>(null);
-
-  const setStickVisual = (x: number, y: number) => {
-    if (!joystickKnobRef.current) return;
-    const rect = joystickRef.current?.getBoundingClientRect();
-    const travel = rect ? Math.min(rect.width, rect.height) * 0.3 : 34;
-    joystickKnobRef.current.style.transform = `translate(calc(-50% + ${x * travel}px), calc(-50% + ${y * travel}px))`;
-  };
-
-  const flushQueuedMove = () => {
-    moveRafRef.current = null;
-    const move = pendingMoveRef.current;
-    pendingMoveRef.current = null;
-    if (move) emitMobileControl({ type: "move", x: move.x, y: move.y });
-  };
-
-  const queueMove = (x: number, y: number) => {
-    pendingMoveRef.current = { x, y };
-    if (moveRafRef.current === null) {
-      moveRafRef.current = window.requestAnimationFrame(flushQueuedMove);
-    }
-  };
-
-  const flushQueuedLook = () => {
-    lookRafRef.current = null;
-    const { dx, dy } = pendingLookRef.current;
-    pendingLookRef.current = { dx: 0, dy: 0 };
-    if (dx !== 0 || dy !== 0) emitMobileControl({ type: "look", dx, dy });
-  };
-
-  const queueLook = (dx: number, dy: number) => {
-    pendingLookRef.current.dx += dx;
-    pendingLookRef.current.dy += dy;
-    if (lookRafRef.current === null) {
-      lookRafRef.current = window.requestAnimationFrame(flushQueuedLook);
-    }
-  };
-
-  useEffect(() => () => {
-    if (moveRafRef.current !== null) window.cancelAnimationFrame(moveRafRef.current);
-    if (lookRafRef.current !== null) window.cancelAnimationFrame(lookRafRef.current);
-  }, []);
-
-  const resetMove = () => {
-    joystickPointerRef.current = null;
-    if (moveRafRef.current !== null) {
-      window.cancelAnimationFrame(moveRafRef.current);
-      moveRafRef.current = null;
-    }
-    pendingMoveRef.current = null;
-    setStickVisual(0, 0);
-    emitMobileControl({ type: "move", x: 0, y: 0 });
-  };
-
-  const updateMove = (clientX: number, clientY: number) => {
-    const rect = joystickRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const radius = Math.max(1, Math.min(rect.width, rect.height) / 2);
-    const rawX = (clientX - (rect.left + rect.width / 2)) / radius;
-    const rawY = (clientY - (rect.top + rect.height / 2)) / radius;
-    const length = Math.hypot(rawX, rawY);
-    const scale = length > 1 ? 1 / length : 1;
-    const x = rawX * scale;
-    const y = rawY * scale;
-    setStickVisual(x, y);
-    queueMove(x, y);
-  };
-
-  const beginMove = (e: any) => {
-    e.preventDefault();
-    e.stopPropagation();
-    joystickPointerRef.current = e.pointerId;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    updateMove(e.clientX, e.clientY);
-  };
-
-  const moveStick = (e: any) => {
-    if (joystickPointerRef.current !== e.pointerId) return;
-    e.preventDefault();
-    updateMove(e.clientX, e.clientY);
-  };
-
-  const beginLook = (e: any) => {
-    e.preventDefault();
-    e.stopPropagation();
-    lookPointerRef.current = e.pointerId;
-    lastLookRef.current = { x: e.clientX, y: e.clientY };
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-
-  const moveLook = (e: any) => {
-    if (lookPointerRef.current !== e.pointerId) return;
-    e.preventDefault();
-    const dx = e.clientX - lastLookRef.current.x;
-    const dy = e.clientY - lastLookRef.current.y;
-    lastLookRef.current = { x: e.clientX, y: e.clientY };
-    queueLook(dx, dy);
-  };
-
-  const endLook = (e: any) => {
-    if (lookPointerRef.current !== e.pointerId) return;
-    lookPointerRef.current = null;
-  };
-
-  const setButton = (button: "jump" | "slide" | "sprint", pressed: boolean) => (e: ReactPointerEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (pressed) {
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-    } else {
-      e.currentTarget.releasePointerCapture?.(e.pointerId);
-    }
-    emitMobileControl({ type: "button", button, pressed });
-  };
-
-  const setCast = (hand: HandType, phase: "start" | "end") => (e: ReactPointerEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (phase === "start") {
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-    } else {
-      e.currentTarget.releasePointerCapture?.(e.pointerId);
-    }
-    window.dispatchEvent(new CustomEvent("mobile-cast", { detail: { hand, phase } }));
-  };
-
-  const actionButtonClass = "mobile-action-button pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-white/35 bg-black/55 text-[10px] text-white active:scale-95 active:bg-white/20";
-  const spellbookIconUrl =
-    getSpriteUrl("/sprites/misc/spellbook_icon.png") ||
-    getSpriteUrl("/sprites/misc/spellbook.gif") ||
-    "/sprites/misc/spellbook_icon.png";
-
-  return (
-    <div data-testid="mobile-touch-controls" className="mobile-touch-controls pointer-events-none absolute inset-0 z-[85] select-none">
-      <div
-        className="pointer-events-auto absolute inset-y-0 right-0 w-[58%]"
-        style={{ touchAction: "none" }}
-        onPointerDown={beginLook}
-        onPointerMove={moveLook}
-        onPointerUp={endLook}
-        onPointerCancel={endLook}
-      />
-
-      <div className="mobile-top-actions absolute left-3 top-3 z-10 flex max-w-[calc(100%-24px)] flex-wrap gap-2">
-        <button
-          data-testid="mobile-open-spell-menu"
-          aria-label="Open spell book"
-          title="Open spell book"
-          className="mobile-spellbook-button pointer-events-auto flex h-12 w-12 items-center justify-center overflow-visible border-0 bg-transparent p-0 text-[9px] text-cyan-50 active:scale-95"
-          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); openSpellMenu(); }}
-        >
-          <img
-            src={spellbookIconUrl}
-            alt=""
-            crossOrigin="anonymous"
-            className="h-full w-full object-contain [image-rendering:pixelated]"
-            style={{
-              filter: "brightness(1.12) contrast(1.1) saturate(1.08)",
-            }}
-            onError={(e) => {
-              e.currentTarget.classList.add("hidden");
-              e.currentTarget.nextElementSibling?.classList.remove("hidden");
-            }}
-          />
-          <span className="hidden font-mono tracking-widest">SPELL</span>
-        </button>
-        <button
-          data-testid="mobile-pause"
-          aria-label="Pause"
-          title="Pause"
-          className="mobile-pause-button pointer-events-auto flex h-11 w-11 items-center justify-center rounded-md border-2 border-cyan-100/40 bg-black/55 active:scale-95 active:bg-white/15"
-          onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); pauseTouchGameplay(); }}
-        >
-          <span className="flex h-5 w-4 items-center justify-between" aria-hidden="true">
-            <span className="h-full w-1.5 rounded-sm bg-cyan-50" />
-            <span className="h-full w-1.5 rounded-sm bg-cyan-50" />
-          </span>
-        </button>
-      </div>
-
-      <div className="mobile-joystick-zone absolute left-3 bottom-[118px] z-10 flex flex-col gap-2">
-        <div
-          ref={joystickRef}
-          className="mobile-joystick pointer-events-auto relative h-28 w-28 rounded-full border-2 border-cyan-100/35 bg-black/40"
-          style={{ touchAction: "none" }}
-          onPointerDown={beginMove}
-          onPointerMove={moveStick}
-          onPointerUp={(e) => {
-            e.preventDefault();
-            resetMove();
-          }}
-          onPointerCancel={resetMove}
-        >
-          <div className="mobile-joystick-center absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-100/25" />
-          <div
-            ref={joystickKnobRef}
-            className="mobile-joystick-knob absolute left-1/2 top-1/2 h-12 w-12 rounded-full border border-cyan-100/55 bg-cyan-200/20"
-            style={{
-              transform: "translate(calc(-50% + 0px), calc(-50% + 0px))",
-            }}
-          />
-        </div>
-      </div>
-
-      <div className="mobile-action-cluster absolute right-3 bottom-[108px] z-10 flex items-end gap-4">
-        <div className="flex flex-col items-center gap-2">
-          <MobileHotbarWheel hand="left" />
-          <button
-            data-testid="mobile-left-cast"
-            className={actionButtonClass}
-            onPointerDown={setCast("left", "start")}
-            onPointerUp={setCast("left", "end")}
-            onPointerCancel={setCast("left", "end")}
-          >
-            L
-          </button>
-        </div>
-        <div className="mobile-movement-column mb-1 flex flex-col items-center gap-4">
-          <button
-            data-testid="mobile-jump"
-            className={actionButtonClass}
-            onPointerDown={setButton("jump", true)}
-            onPointerUp={setButton("jump", false)}
-            onPointerCancel={setButton("jump", false)}
-          >
-            JUMP
-          </button>
-          <button
-            data-testid="mobile-slide"
-            className={actionButtonClass}
-            onPointerDown={setButton("slide", true)}
-            onPointerUp={setButton("slide", false)}
-            onPointerCancel={setButton("slide", false)}
-          >
-            SLIDE
-          </button>
-          <button
-            data-testid="mobile-sprint"
-            className={actionButtonClass}
-            onPointerDown={setButton("sprint", true)}
-            onPointerUp={setButton("sprint", false)}
-            onPointerCancel={setButton("sprint", false)}
-          >
-            RUN
-          </button>
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          <MobileHotbarWheel hand="right" />
-          <button
-            data-testid="mobile-right-cast"
-            className={actionButtonClass}
-            onPointerDown={setCast("right", "start")}
-            onPointerUp={setCast("right", "end")}
-            onPointerCancel={setCast("right", "end")}
-          >
-            R
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const SpellMenu = memo(function SpellMenu({
-  menuSpellIndex,
-  setMenuSpellIndex,
-  setMenuBindingHand,
-  onClose,
-  bindingHand,
-}: {
-  menuSpellIndex: number;
-  setMenuSpellIndex: (value: number | ((prev: number) => number)) => void;
-  setMenuBindingHand: (hand: HandType) => void;
-  onClose: () => void;
-  bindingHand: HandType;
-}) {
-  const leftHotbarSpells = useGameStore(s => s.leftHotbarSpells);
-  const rightHotbarSpells = useGameStore(s => s.rightHotbarSpells);
-  const leftSelectedHotbarIndex = useGameStore(s => s.leftSelectedHotbarIndex);
-  const rightSelectedHotbarIndex = useGameStore(s => s.rightSelectedHotbarIndex);
-  const leftCurrentSpell = useGameStore(s => s.leftCurrentSpell);
-  const rightCurrentSpell = useGameStore(s => s.rightCurrentSpell);
-  const setHotbarSpell = useGameStore(s => s.setHotbarSpell);
-  const selectHotbarSlot = useGameStore(s => s.selectHotbarSlot);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const highlightedSpell = ALL_SPELLS[menuSpellIndex];
-  const bindingHotbar = bindingHand === "right" ? rightHotbarSpells : leftHotbarSpells;
-  const bindingSelectedIndex = bindingHand === "right" ? rightSelectedHotbarIndex : leftSelectedHotbarIndex;
-
-  useEffect(() => {
-    const focusedCard = scrollRef.current?.querySelector<HTMLElement>(`[data-spell-index="${menuSpellIndex}"]`);
-    focusedCard?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [menuSpellIndex]);
-
-  useEffect(() => {
-    const handleControllerScroll = (event: Event) => {
-      const amount = (event as CustomEvent<number>).detail ?? 0;
-      if (!scrollRef.current || amount === 0) return;
-      scrollRef.current.scrollTop += amount;
-    };
-
-    window.addEventListener("spell-menu-controller-scroll", handleControllerScroll);
-    return () => window.removeEventListener("spell-menu-controller-scroll", handleControllerScroll);
-  }, []);
-
-  const assignSpellToSlot = (slotIndex: number, spell: SpellType, hand: HandType = bindingHand) => {
-    setMenuBindingHand(hand);
-    setHotbarSpell(slotIndex, spell, hand);
-    selectHotbarSlot(slotIndex, hand);
-  };
-
-  const renderHotbarColumn = (hand: HandType, spells: SpellType[], selectedIndex: number) => (
-    <div
-      className={cn(
-        "spell-menu-hotbar-column relative min-w-0 border p-1.5 shadow-[0_0_22px_rgba(8,47,73,0.75),inset_0_0_20px_rgba(34,211,238,0.12)]",
-        hand === "right"
-          ? "border-fuchsia-300/55 bg-fuchsia-950/55"
-          : "border-yellow-200/55 bg-yellow-950/45",
-        bindingHand === hand ? "ring-1 ring-white/70" : ""
-      )}
-    >
-      <div className={cn(
-        "border-b pb-1 text-center text-[8px] tracking-[0.25em]",
-        hand === "right" ? "border-fuchsia-300/35 text-fuchsia-100" : "border-yellow-200/35 text-yellow-100"
-      )}>
-        {hand === "left" ? "LEFT" : "RIGHT"}
-      </div>
-      <div className="mt-1.5 flex flex-col gap-1">
-        {spells.map((spell, index) => (
-          <button
-            key={`${hand}-${spell}-${index}`}
-            className={cn(
-              "spell-menu-hotbar-slot grid h-8 min-w-0 grid-cols-[16px_1fr] items-center gap-1 border bg-black/45 px-1 text-left transition-all",
-              selectedIndex === index
-                ? hand === "right"
-                  ? "border-fuchsia-200 bg-fuchsia-300/20 text-fuchsia-50 shadow-[0_0_14px_rgba(217,70,239,0.65)]"
-                  : "border-yellow-200 bg-yellow-200/20 text-yellow-50 shadow-[0_0_14px_rgba(253,224,71,0.55)]"
-                : hand === "right"
-                  ? "border-fuchsia-300/25 text-fuchsia-100/75 hover:border-fuchsia-200/80"
-                  : "border-yellow-200/25 text-yellow-100/75 hover:border-yellow-100/80",
-              bindingHand === hand ? "brightness-125" : ""
-            )}
-            onClick={() => {
-              setMenuBindingHand(hand);
-              selectHotbarSlot(index, hand);
-            }}
-          >
-            <div className="text-center text-[9px] text-white/80">{hotkeyLabels[index]}</div>
-            <div className="truncate text-[7px] leading-3">{spellNames[spell]}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="absolute inset-0 z-[130] flex items-center justify-center pointer-events-auto">
-      <div className="absolute inset-0 bg-[#02040c]/55 pointer-events-none" />
-      <div
-        ref={scrollRef}
-        data-testid="spell-menu"
-        className="spell-menu-hologram relative overflow-x-hidden overflow-y-auto rounded-[2px] border border-cyan-200/60 bg-[#12071f]/92 p-3 text-cyan-100 shadow-[0_0_35px_rgba(34,211,238,0.45)] backdrop-blur-[2px]"
-        style={{
-          width: 'min(920px, calc(var(--app-vw, 100dvw) - 32px))',
-          maxHeight: 'calc(var(--app-vh, 100dvh) - 96px)',
-        }}
-      >
-        <div className="spell-menu-scanline pointer-events-none absolute inset-0 opacity-40" />
-        <div className="spell-menu-header sticky top-0 z-20 flex items-start justify-between gap-4 border-b border-cyan-300/40 bg-[#12071f]/95 pb-3 backdrop-blur-[2px]">
-          <div>
-            <div className="text-[10px] tracking-[0.4em] text-cyan-300/80">ARCANE LOADOUT</div>
-            <div className="spell-menu-title mt-2 text-2xl text-white drop-shadow-[0_0_8px_rgba(103,232,249,0.9)]">SPELL BOOK</div>
-          </div>
-          <button
-            data-testid="spell-menu-close"
-            className="spell-menu-close-button border border-cyan-300/70 bg-cyan-300/10 px-3 py-2 text-[10px] tracking-widest text-cyan-100 hover:bg-cyan-200/20"
-            onClick={onClose}
-          >
-            E CLOSE
-          </button>
-        </div>
-
-        <div className="spell-menu-layout relative mt-3 grid grid-cols-[78px_minmax(0,1fr)_78px] gap-2">
-          {renderHotbarColumn("left", leftHotbarSpells, leftSelectedHotbarIndex)}
-
-          <div className="spell-menu-spell-panel min-w-0 border border-cyan-300/20 bg-black/10 p-2">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[8px] tracking-widest text-cyan-100/70">
-              <span>NUMBER ROW BINDS ACTIVE HAND</span>
-              <span>{bindingHand === "right" ? "RIGHT HAND TARGET" : "LEFT HAND TARGET"}</span>
-            </div>
-
-            <div className="spell-menu-grid grid grid-cols-3 gap-2 md:grid-cols-5">
-              {ALL_SPELLS.map((spell, index) => {
-                const isHighlighted = index === menuSpellIndex;
-                const leftAssignedSlot = leftHotbarSpells.indexOf(spell);
-                const rightAssignedSlot = rightHotbarSpells.indexOf(spell);
-                const assignedSlot = bindingHotbar.indexOf(spell);
-                const isCurrent = spell === leftCurrentSpell || spell === rightCurrentSpell;
-
-                return (
-                  <button
-                    key={spell}
-                    data-spell-index={index}
-                    className={cn(
-                      "spell-menu-card group relative min-h-[84px] min-w-0 border p-1.5 text-left transition-all",
-                      isHighlighted
-                        ? "border-yellow-200 bg-yellow-200/10 text-yellow-100 shadow-[0_0_20px_rgba(250,204,21,0.45)]"
-                        : "border-cyan-300/30 bg-cyan-400/5 text-cyan-100 hover:border-cyan-200/80 hover:bg-cyan-300/10",
-                      isCurrent ? "ring-1 ring-white/70" : ""
-                    )}
-                    onMouseEnter={() => setMenuSpellIndex(index)}
-                    onFocus={() => setMenuSpellIndex(index)}
-                    onClick={() => assignSpellToSlot(bindingSelectedIndex, spell)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className={cn(
-                        "spell-menu-thumb relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden border border-cyan-200/30",
-                        spell === "portal" ? "bg-indigo-300/10" : "bg-cyan-300/5"
-                      )}>
-                        <SpellThumbnail spell={spell} animate={isHighlighted} deferRank={index} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className={cn("truncate text-[8px] leading-4", spellColors[spell])}>{spellNames[spell]}</div>
-                        <div className="text-[8px] tracking-widest text-cyan-100/60">
-                          {assignedSlot === -1 ? "UNBOUND" : `${bindingHand.toUpperCase()} ${hotkeyLabels[assignedSlot]}`}
-                        </div>
-                        <div className="text-[7px] tracking-widest text-cyan-100/35">
-                          {leftAssignedSlot === -1 ? "" : `L${hotkeyLabels[leftAssignedSlot]} `}
-                          {rightAssignedSlot === -1 ? "" : `R${hotkeyLabels[rightAssignedSlot]}`}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-3 h-[2px] bg-cyan-200/20">
-                      <div className={cn("h-full transition-all", isHighlighted ? "w-full bg-yellow-200" : "w-1/3 bg-cyan-300/70")} />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {renderHotbarColumn("right", rightHotbarSpells, rightSelectedHotbarIndex)}
-        </div>
-
-        <div className="spell-menu-footer relative mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-cyan-300/30 pt-3 text-[9px] tracking-widest text-cyan-100/70">
-          <span>ARROWS/WHEEL/D-PAD SELECT SPELL</span>
-          <span>PRESS 1-0 OR A TO BIND, HOLD Q OR LB/RB CHOOSE HAND</span>
-          <span>HIGHLIGHTED: {bindingHand.toUpperCase()} {hotkeyLabels[bindingSelectedIndex]} / {spellNames[highlightedSpell]}</span>
-        </div>
-      </div>
-    </div>
-  );
-}, (previous, next) => (
-  previous.menuSpellIndex === next.menuSpellIndex &&
-  previous.bindingHand === next.bindingHand
-));
-
-const questNpcRoles: QuestNpcRole[] = ["villager", "quest-giver", "town-leader"];
-const questEventPresetButtons = [
-  { label: "RANDOM SPELL", line: "unlockRandomLockedSpell" },
-  { label: "BLINK", line: "unlockSpell blink" },
-  { label: "START QUEST", line: "startQuest town_01_quest" },
-  { label: "COMPLETE", line: "completeQuest town_01_quest" },
-  { label: "FLAG", line: "setFlag town_01_quests=1" },
-  { label: "DARREL GROVE", line: "teleportQuestRealm darrel" },
-  { label: "MESSAGE", line: "message Good work, wizard." },
-] as const;
-
-function cloneQuestNpcProgram(program: QuestNpcProgram): QuestNpcProgram {
-  return {
-    ...program,
-    scriptPoints: program.scriptPoints.map((point) => ({ ...point })),
-  };
-}
-
-function isQuestNpcEditorTarget(value: unknown): value is QuestNpcEditorTarget {
-  if (typeof value !== "object" || value === null) return false;
-  const target = value as Partial<QuestNpcEditorTarget>;
-  return typeof target.npcId === "string" &&
-    typeof target.townId === "string" &&
-    typeof target.hutId === "string" &&
-    typeof target.defaultName === "string" &&
-    Array.isArray(target.position) &&
-    target.position.length === 3 &&
-    target.position.every((coordinate) => typeof coordinate === "number" && Number.isFinite(coordinate));
-}
-
-function QuestNpcEditor() {
-  const target = useGameStore(s => s.questNpcEditorTarget);
-  const savedProgram = useGameStore(s => {
-    const npcId = s.questNpcEditorTarget?.npcId;
-    return npcId ? s.questNpcPrograms[npcId] : undefined;
-  });
-  const questUnlockedSpellCount = useGameStore(s => s.questUnlockedSpells.length);
-  const upsertQuestNpcProgram = useGameStore(s => s.upsertQuestNpcProgram);
-  const removeQuestNpcProgram = useGameStore(s => s.removeQuestNpcProgram);
-  const closeQuestNpcEditor = useGameStore(s => s.closeQuestNpcEditor);
-  const runQuestScriptPoint = useGameStore(s => s.runQuestScriptPoint);
-  const addLobbyMessage = useGameStore(s => s.addLobbyMessage);
-  const [draft, setDraft] = useState<QuestNpcProgram | null>(null);
-  const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
-  const [eventMessage, setEventMessage] = useState("Good work, wizard.");
-  const [eventQuestId, setEventQuestId] = useState("town_01_quest");
-  const [eventFlag, setEventFlag] = useState("town_01_quests=1");
-
-  useEffect(() => {
-    if (!target) {
-      setDraft(null);
-      setSelectedPointId(null);
-      return;
-    }
-
-    const program = savedProgram ?? createDefaultQuestNpcProgram(target);
-    setDraft(cloneQuestNpcProgram(program));
-    setSelectedPointId(program.scriptPoints[0]?.id ?? null);
-  }, [savedProgram, target]);
-
-  if (!target || !draft) return null;
-
-  const selectedPoint = draft.scriptPoints.find((point) => point.id === selectedPointId) ?? draft.scriptPoints[0];
-  const selectedIndex = selectedPoint ? draft.scriptPoints.indexOf(selectedPoint) : -1;
-  const selectedEventCount = selectedPoint
-    ? selectedPoint.eventScript.split(/\r?\n/).filter((line) => line.trim()).length
-    : 0;
-
-  const updateDraft = (updates: Partial<QuestNpcProgram>) => {
-    setDraft((current) => current ? { ...current, ...updates } : current);
-  };
-
-  const updatePoint = (updates: Partial<QuestScriptPoint>) => {
-    if (!selectedPoint) return;
-    setDraft((current) => {
-      if (!current) return current;
-      return {
-        ...current,
-        scriptPoints: current.scriptPoints.map((point) => (
-          point.id === selectedPoint.id ? { ...point, ...updates } : point
-        )),
-      };
-    });
-  };
-
-  const addScriptPoint = () => {
-    const nextPoint: QuestScriptPoint = {
-      id: makeQuestScriptPointId(),
-      title: `Point ${draft.scriptPoints.length + 1}`,
-      dialog: '',
-      eventScript: '',
-    };
-    setDraft((current) => current ? {
-      ...current,
-      scriptPoints: [...current.scriptPoints, nextPoint],
-    } : current);
-    setSelectedPointId(nextPoint.id);
-  };
-
-  const duplicateSelectedPoint = () => {
-    if (!selectedPoint) return;
-    const nextPoint: QuestScriptPoint = {
-      ...selectedPoint,
-      id: makeQuestScriptPointId(),
-      title: `${selectedPoint.title || "Point"} Copy`.slice(0, 48),
-    };
-    setDraft((current) => current ? {
-      ...current,
-      scriptPoints: [
-        ...current.scriptPoints.slice(0, selectedIndex + 1),
-        nextPoint,
-        ...current.scriptPoints.slice(selectedIndex + 1),
-      ],
-    } : current);
-    setSelectedPointId(nextPoint.id);
-  };
-
-  const moveSelectedPoint = (direction: -1 | 1) => {
-    if (!selectedPoint || selectedIndex < 0) return;
-    const nextIndex = selectedIndex + direction;
-    if (nextIndex < 0 || nextIndex >= draft.scriptPoints.length) return;
-    setDraft((current) => {
-      if (!current) return current;
-      const currentIndex = current.scriptPoints.findIndex((point) => point.id === selectedPoint.id);
-      const targetIndex = currentIndex + direction;
-      if (currentIndex < 0 || targetIndex < 0 || targetIndex >= current.scriptPoints.length) return current;
-      const nextPoints = [...current.scriptPoints];
-      [nextPoints[currentIndex], nextPoints[targetIndex]] = [nextPoints[targetIndex], nextPoints[currentIndex]];
-      return { ...current, scriptPoints: nextPoints };
-    });
-  };
-
-  const appendEventLine = (line: string) => {
-    if (!selectedPoint) return;
-    const cleanedLine = line.trim();
-    if (!cleanedLine) return;
-    const currentScript = selectedPoint.eventScript.trimEnd();
-    updatePoint({ eventScript: currentScript ? `${currentScript}\n${cleanedLine}` : cleanedLine });
-  };
-
-  const appendEventFromBuilder = (kind: "message" | "startQuest" | "completeQuest" | "setFlag") => {
-    if (kind === "message") {
-      appendEventLine(`message ${eventMessage.trim() || "Good work, wizard."}`);
-      return;
-    }
-    if (kind === "setFlag") {
-      appendEventLine(`setFlag ${eventFlag.trim() || "town_01_quests=1"}`);
-      return;
-    }
-    const questId = eventQuestId.trim() || "town_01_quest";
-    appendEventLine(`${kind} ${questId}`);
-  };
-
-  const removeSelectedPoint = () => {
-    if (!selectedPoint || draft.scriptPoints.length <= 1) {
-      addLobbyMessage("A dialog needs at least one scriptpoint", "system");
-      return;
-    }
-    const nextPoints = draft.scriptPoints.filter((point) => point.id !== selectedPoint.id);
-    setDraft((current) => current ? { ...current, scriptPoints: nextPoints } : current);
-    setSelectedPointId(nextPoints[Math.max(0, selectedIndex - 1)]?.id ?? nextPoints[0]?.id ?? null);
-  };
-
-  const saveDraft = () => {
-    const cleanedName = draft.displayName.trim() || target.defaultName;
-    const cleanedGreeting = draft.greeting.trim();
-    const cleanedPoints = draft.scriptPoints.map((point, index) => ({
-      ...point,
-      title: point.title.trim() || `Point ${index + 1}`,
-      dialog: point.dialog.trim(),
-      eventScript: point.eventScript.trim(),
-    }));
-    upsertQuestNpcProgram({
-      ...draft,
-      displayName: cleanedName,
-      greeting: cleanedGreeting,
-      scriptPoints: cleanedPoints,
-      updatedAt: Date.now(),
-    });
-    addLobbyMessage(`Saved ${cleanedName}`, "system");
-  };
-
-  const resetProgram = () => {
-    removeQuestNpcProgram(target.npcId);
-    const fresh = createDefaultQuestNpcProgram(target);
-    setDraft(fresh);
-    setSelectedPointId(fresh.scriptPoints[0]?.id ?? null);
-    addLobbyMessage("NPC program reset", "system");
-  };
-
-  const runSelectedPoint = () => {
-    if (!selectedPoint) return;
-    saveDraft();
-    window.setTimeout(() => {
-      runQuestScriptPoint(target.npcId, selectedPoint.id);
-    }, 0);
-  };
-
-  return createPortal(
-    <div
-      data-testid="quest-npc-editor"
-      className="fixed inset-0 z-[245] flex items-center justify-center bg-black/72 px-3 py-3 font-mono text-cyan-50 pointer-events-auto"
-      style={{ width: "var(--app-vw, 100dvw)", height: "var(--app-vh, 100dvh)" }}
-      onMouseDown={(e) => e.stopPropagation()}
-      onContextMenu={(e) => e.preventDefault()}
-      onWheel={(e) => e.stopPropagation()}
-    >
-      <div className="flex max-h-[min(800px,calc(var(--app-vh,100dvh)-24px))] w-[min(1180px,calc(var(--app-vw,100dvw)-24px))] flex-col overflow-hidden border-2 border-cyan-200/70 bg-[#050711]/96 shadow-[0_0_36px_rgba(34,211,238,0.28)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-300/35 px-3 py-2">
-          <div>
-            <div className="text-[9px] tracking-[0.26em] text-cyan-100/55">QUEST NPC DEV</div>
-            <div className="normal-case text-lg font-bold tracking-wide text-yellow-100">{draft.displayName || target.defaultName}</div>
-          </div>
-          <div className="flex flex-wrap gap-2 text-[10px] tracking-widest">
-            <button className="border border-emerald-200/70 bg-emerald-400/10 px-3 py-2 text-emerald-50 hover:bg-emerald-300/20" onClick={saveDraft}>SAVE</button>
-            <button className="border border-cyan-200/60 bg-cyan-300/10 px-3 py-2 text-cyan-50 hover:bg-cyan-200/20" onClick={closeQuestNpcEditor}>CLOSE</button>
-          </div>
-        </div>
-
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-y-auto md:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="border-b border-cyan-300/25 bg-cyan-950/25 p-3 md:border-b-0 md:border-r">
-            <label className="block text-[9px] tracking-[0.2em] text-cyan-100/65">
-              NAME
-              <input
-                className="normal-case mt-1 w-full border border-cyan-300/45 bg-black/65 px-2 py-2 text-sm tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                maxLength={42}
-                value={draft.displayName}
-                onChange={(e) => updateDraft({ displayName: e.currentTarget.value })}
-              />
-            </label>
-            <label className="mt-3 block text-[9px] tracking-[0.2em] text-cyan-100/65">
-              ROLE
-              <select
-                className="mt-1 w-full border border-cyan-300/45 bg-black/80 px-2 py-2 text-xs tracking-widest text-cyan-50 outline-none focus:border-yellow-200"
-                value={draft.role}
-                onChange={(e) => updateDraft({ role: e.currentTarget.value as QuestNpcRole })}
-              >
-                {questNpcRoles.map((role) => (
-                  <option key={role} value={role}>{role.toUpperCase()}</option>
-                ))}
-              </select>
-            </label>
-            <label className="mt-3 block text-[9px] tracking-[0.2em] text-cyan-100/65">
-              TOWN
-              <input
-                className="normal-case mt-1 w-full border border-cyan-300/45 bg-black/65 px-2 py-2 text-xs tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                maxLength={64}
-                value={draft.townId}
-                onChange={(e) => updateDraft({ townId: e.currentTarget.value })}
-              />
-            </label>
-            <label className="mt-3 block text-[9px] tracking-[0.2em] text-cyan-100/65">
-              OPENING LINE
-              <textarea
-                className="normal-case mt-1 h-24 w-full resize-none border border-cyan-300/45 bg-black/65 px-2 py-2 text-xs leading-5 tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                maxLength={900}
-                value={draft.greeting}
-                onChange={(e) => updateDraft({ greeting: e.currentTarget.value })}
-              />
-            </label>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-[9px] tracking-widest">
-              <button className="border border-cyan-200/55 bg-cyan-300/10 px-2 py-2 hover:bg-cyan-200/20" onClick={addScriptPoint}>ADD POINT</button>
-              <button className="border border-red-200/55 bg-red-400/10 px-2 py-2 text-red-50 hover:bg-red-300/20" onClick={removeSelectedPoint}>DELETE</button>
-            </div>
-            <button className="mt-2 w-full border border-zinc-300/45 bg-zinc-500/10 px-2 py-2 text-[9px] tracking-widest text-zinc-100 hover:bg-zinc-300/15" onClick={resetProgram}>RESET NPC</button>
-            <div className="normal-case mt-3 text-[10px] leading-4 text-cyan-100/45">
-              {target.npcId} - {target.theme ?? "village"} - unlocked spells tracked: {questUnlockedSpellCount}
-            </div>
-          </div>
-
-          <div className="grid min-h-0 grid-cols-1 gap-3 p-3 lg:grid-cols-[190px_minmax(0,1fr)]">
-            <div className="min-h-0">
-              <div className="mb-2 text-[9px] tracking-[0.22em] text-cyan-100/60">SCRIPTPOINTS</div>
-              <div className="flex max-h-52 flex-col gap-1 overflow-y-auto pr-1 lg:max-h-none">
-                {draft.scriptPoints.map((point, index) => (
-                  <button
-                    key={point.id}
-                    className={cn(
-                      "normal-case border px-2 py-2 text-left text-xs leading-4 transition-colors",
-                      selectedPoint?.id === point.id
-                        ? "border-yellow-200 bg-yellow-200/12 text-yellow-50"
-                        : "border-cyan-300/25 bg-black/30 text-cyan-100/75 hover:border-cyan-200/70"
-                    )}
-                    onClick={() => setSelectedPointId(point.id)}
-                  >
-                    <span className="mr-1 text-[9px] text-cyan-100/45">{index + 1}.</span>
-                    {point.title || `Point ${index + 1}`}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-2 grid grid-cols-3 gap-1 text-[9px] tracking-widest">
-                <button className="border border-cyan-200/45 bg-cyan-300/10 px-2 py-2 hover:bg-cyan-200/20" onClick={() => moveSelectedPoint(-1)}>UP</button>
-                <button className="border border-cyan-200/45 bg-cyan-300/10 px-2 py-2 hover:bg-cyan-200/20" onClick={() => moveSelectedPoint(1)}>DOWN</button>
-                <button className="border border-cyan-200/45 bg-cyan-300/10 px-2 py-2 hover:bg-cyan-200/20" onClick={duplicateSelectedPoint}>COPY</button>
-              </div>
-            </div>
-
-            {selectedPoint && (
-              <div className="min-w-0">
-                <label className="block text-[9px] tracking-[0.2em] text-cyan-100/65">
-                  POINT TITLE
-                  <input
-                    className="normal-case mt-1 w-full border border-cyan-300/45 bg-black/65 px-2 py-2 text-sm tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                    maxLength={48}
-                    value={selectedPoint.title}
-                    onChange={(e) => updatePoint({ title: e.currentTarget.value })}
-                  />
-                </label>
-                <label className="mt-3 block text-[9px] tracking-[0.2em] text-cyan-100/65">
-                  DIALOG
-                  <textarea
-                    className="normal-case mt-1 h-28 w-full resize-none border border-cyan-300/45 bg-black/65 px-2 py-2 text-sm leading-5 tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                    maxLength={900}
-                    value={selectedPoint.dialog}
-                    onChange={(e) => updatePoint({ dialog: e.currentTarget.value })}
-                  />
-                </label>
-                <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
-                  <label className="block text-[9px] tracking-[0.2em] text-cyan-100/65">
-                    EVENTS
-                    <textarea
-                      className="normal-case mt-1 h-44 w-full resize-none border border-cyan-300/45 bg-black/65 px-2 py-2 text-xs leading-5 tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                      maxLength={900}
-                      value={selectedPoint.eventScript}
-                      onChange={(e) => updatePoint({ eventScript: e.currentTarget.value })}
-                      placeholder={"unlockSpell blink\nunlockRandomLockedSpell\nstartQuest town_01_fetch\ncompleteQuest town_01_fetch\nsetFlag town_01_quests=1\nmessage Good work, wizard."}
-                    />
-                  </label>
-                  <div className="border border-cyan-300/30 bg-cyan-950/15 p-2">
-                    <div className="text-[9px] tracking-[0.22em] text-cyan-100/60">EVENT BUILDER</div>
-                    <div className="mt-2 grid grid-cols-2 gap-1 text-[9px] tracking-widest">
-                      {questEventPresetButtons.map((preset) => (
-                        <button
-                          key={preset.label}
-                          className="border border-cyan-200/40 bg-black/35 px-2 py-2 text-cyan-50 hover:bg-cyan-200/15"
-                          onClick={() => appendEventLine(preset.line)}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
-                    </div>
-                    <label className="mt-3 block text-[8px] tracking-[0.18em] text-cyan-100/55">
-                      MESSAGE
-                      <input
-                        className="normal-case mt-1 w-full border border-cyan-300/35 bg-black/60 px-2 py-1.5 text-[11px] tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                        maxLength={120}
-                        value={eventMessage}
-                        onChange={(e) => setEventMessage(e.currentTarget.value)}
-                      />
-                    </label>
-                    <button className="mt-1 w-full border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 text-[9px] tracking-widest hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("message")}>ADD MESSAGE</button>
-                    <label className="mt-2 block text-[8px] tracking-[0.18em] text-cyan-100/55">
-                      QUEST ID
-                      <input
-                        className="normal-case mt-1 w-full border border-cyan-300/35 bg-black/60 px-2 py-1.5 text-[11px] tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                        maxLength={80}
-                        value={eventQuestId}
-                        onChange={(e) => setEventQuestId(e.currentTarget.value)}
-                      />
-                    </label>
-                    <div className="mt-1 grid grid-cols-2 gap-1 text-[9px] tracking-widest">
-                      <button className="border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("startQuest")}>START</button>
-                      <button className="border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("completeQuest")}>COMPLETE</button>
-                    </div>
-                    <label className="mt-2 block text-[8px] tracking-[0.18em] text-cyan-100/55">
-                      FLAG
-                      <input
-                        className="normal-case mt-1 w-full border border-cyan-300/35 bg-black/60 px-2 py-1.5 text-[11px] tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                        maxLength={120}
-                        value={eventFlag}
-                        onChange={(e) => setEventFlag(e.currentTarget.value)}
-                      />
-                    </label>
-                    <button className="mt-1 w-full border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 text-[9px] tracking-widest hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("setFlag")}>SET FLAG</button>
-                  </div>
-                </div>
-                <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
-                  <div className="border border-cyan-300/25 bg-black/35 p-2">
-                    <div className="text-[9px] tracking-[0.22em] text-cyan-100/60">PREVIEW</div>
-                    <div className="normal-case mt-2 text-sm font-bold tracking-wide text-yellow-100">{draft.displayName || target.defaultName}</div>
-                    <div className="normal-case mt-1 min-h-12 border border-cyan-300/20 bg-cyan-950/10 px-2 py-2 text-xs leading-5 tracking-wide text-cyan-50">
-                      {selectedPoint.dialog || draft.greeting || "Need something, wizard?"}
-                    </div>
-                  </div>
-                  <div className="flex flex-col justify-between gap-2 border border-yellow-200/35 bg-yellow-300/5 p-2">
-                    <div>
-                      <div className="text-[9px] tracking-[0.22em] text-yellow-100/65">SCRIPTPOINT</div>
-                      <div className="normal-case mt-1 text-xs leading-5 text-yellow-50">
-                        {selectedPoint.title || `Point ${selectedIndex + 1}`} - {selectedEventCount} event{selectedEventCount === 1 ? "" : "s"}
-                      </div>
-                    </div>
-                    <button
-                      className="border border-yellow-200/70 bg-yellow-300/10 px-3 py-2 text-[10px] tracking-widest text-yellow-50 hover:bg-yellow-200/20"
-                      onClick={runSelectedPoint}
-                    >
-                      TEST POINT
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-function QuestDialogPanel() {
-  const session = useGameStore(s => s.questDialogSession);
-  const closeQuestDialog = useGameStore(s => s.closeQuestDialog);
-  const chooseQuestDialogChoice = useGameStore(s => s.chooseQuestDialogChoice);
-  const controllerBindings = useGameStore(s => s.controllerBindings);
-  const [controllerChoiceIndex, setControllerChoiceIndex] = useState(0);
-  const controllerChoiceIndexRef = useRef(0);
-  const controllerButtonsRef = useRef<Record<string, boolean>>({});
-  const controllerRepeatRef = useRef<Partial<Record<string, number>>>({});
-
-  useEffect(() => {
-    controllerChoiceIndexRef.current = 0;
-    setControllerChoiceIndex(0);
-    controllerButtonsRef.current = {};
-    controllerRepeatRef.current = {};
-  }, [session?.line, session?.npcId, session?.choices.length]);
-
-  useEffect(() => {
-    if (!session) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isEditableTarget(event.target)) return;
-
-      if (event.code === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        closeQuestDialog();
-        return;
-      }
-
-      const slotIndex = getNumberSlot(event.code);
-      const choice = slotIndex >= 0 ? session.choices[slotIndex] : undefined;
-      if (!choice) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      chooseQuestDialogChoice(choice.id);
-    };
-
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [chooseQuestDialogChoice, closeQuestDialog, session]);
-
-  useEffect(() => {
-    if (!session) return;
-
-    const consumePress = (key: string, pressed: boolean) => {
-      const wasPressed = controllerButtonsRef.current[key] ?? false;
-      controllerButtonsRef.current[key] = pressed;
-      return pressed && !wasPressed;
-    };
-
-    const consumeRepeat = (key: string, pressed: boolean, firstDelay = 260, repeatDelay = 160) => {
-      const now = performance.now();
-      const wasPressed = controllerButtonsRef.current[key] ?? false;
-      controllerButtonsRef.current[key] = pressed;
-
-      if (!pressed) {
-        delete controllerRepeatRef.current[key];
-        return false;
-      }
-
-      if (!wasPressed) {
-        controllerRepeatRef.current[key] = now + firstDelay;
-        return true;
-      }
-
-      if (now >= (controllerRepeatRef.current[key] ?? 0)) {
-        controllerRepeatRef.current[key] = now + repeatDelay;
-        return true;
-      }
-
-      return false;
-    };
-
-    const moveChoice = (direction: 1 | -1) => {
-      const choiceCount = session.choices.length;
-      if (choiceCount <= 0) return;
-      const nextIndex = (controllerChoiceIndexRef.current + direction + choiceCount) % choiceCount;
-      controllerChoiceIndexRef.current = nextIndex;
-      setControllerChoiceIndex(nextIndex);
-    };
-
-    let raf = 0;
-    const pollQuestDialogController = () => {
-      const gamepad = getPrimaryGamepad();
-      if (!gamepad) {
-        controllerButtonsRef.current = {};
-        controllerRepeatRef.current = {};
-        raf = window.requestAnimationFrame(pollQuestDialogController);
-        return;
-      }
-
-      const axisY = getGamepadAxis(gamepad, 1, 0.55);
-      const selectPressed = consumePress("questDialogSelect", isGamepadButtonPressed(gamepad, controllerBindings.menuSelect as GamepadButtonName));
-      const backPressed = consumePress("questDialogBack", isGamepadButtonPressed(gamepad, controllerBindings.menuBack as GamepadButtonName));
-      const startPressed = consumePress("questDialogStart", isGamepadButtonPressed(gamepad, controllerBindings.pause as GamepadButtonName));
-      const nextPressed = consumeRepeat(
-        "questDialogNext",
-        isGamepadButtonPressed(gamepad, "dpadDown") || axisY > 0.6,
-      );
-      const prevPressed = consumeRepeat(
-        "questDialogPrev",
-        isGamepadButtonPressed(gamepad, "dpadUp") || axisY < -0.6,
-      );
-
-      if (nextPressed) {
-        moveChoice(1);
-      } else if (prevPressed) {
-        moveChoice(-1);
-      }
-
-      if (selectPressed) {
-        const choice = session.choices[controllerChoiceIndexRef.current] ?? session.choices[0];
-        if (choice) {
-          chooseQuestDialogChoice(choice.id);
-        }
-      } else if (backPressed || startPressed) {
-        closeQuestDialog();
-      }
-
-      raf = window.requestAnimationFrame(pollQuestDialogController);
-    };
-
-    raf = window.requestAnimationFrame(pollQuestDialogController);
-    return () => {
-      window.cancelAnimationFrame(raf);
-      controllerButtonsRef.current = {};
-      controllerRepeatRef.current = {};
-    };
-  }, [chooseQuestDialogChoice, closeQuestDialog, controllerBindings, session]);
-
-  if (!session) return null;
-
-  return createPortal(
-    <div
-      data-no-resume-click
-      data-testid="quest-dialog-panel"
-      className="fixed inset-0 z-[244] flex items-end justify-center bg-black/35 px-3 pb-5 pt-20 font-mono normal-case text-slate-50 pointer-events-auto sm:items-center sm:py-5"
-      style={{ width: "var(--app-vw, 100dvw)", height: "var(--app-vh, 100dvh)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${session.displayName} quest dialog`}
-      onMouseDown={(event) => event.stopPropagation()}
-      onContextMenu={(event) => event.preventDefault()}
-      onWheel={(event) => event.stopPropagation()}
-    >
-      <div className="w-[min(760px,calc(var(--app-vw,100dvw)-24px))] border-2 border-yellow-100/65 bg-[#070611]/96 shadow-[0_0_36px_rgba(250,204,21,0.2)]">
-        <div className="flex items-center justify-between gap-3 border-b border-yellow-100/25 px-4 py-3">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.24em] text-yellow-100/60">Quest</div>
-            <div className="text-xl font-bold tracking-wide text-yellow-50">{session.displayName}</div>
-          </div>
-          <button
-            className="border border-yellow-100/50 bg-yellow-200/10 px-3 py-2 text-xs uppercase tracking-[0.18em] text-yellow-50 hover:bg-yellow-100/20"
-            onClick={closeQuestDialog}
-          >
-            Close
-          </button>
-        </div>
-        <div className="px-4 py-4">
-          <div className="whitespace-pre-line border border-cyan-200/20 bg-cyan-950/20 px-3 py-3 text-sm leading-6 text-cyan-50">
-            {session.line}
-          </div>
-          <div className="mt-3 grid gap-2">
-            {session.choices.map((choice, index) => (
-              <button
-                key={choice.id}
-                className={cn(
-                  "flex min-h-12 items-center gap-3 border px-3 py-2 text-left text-sm leading-5 text-yellow-50 transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-100/60",
-                  index === controllerChoiceIndex
-                    ? "border-yellow-100 bg-yellow-100/18 shadow-[0_0_18px_rgba(250,204,21,0.26)]"
-                    : "border-yellow-100/40 bg-black/35 hover:border-yellow-100/75 hover:bg-yellow-100/15",
-                )}
-                onMouseEnter={() => {
-                  controllerChoiceIndexRef.current = index;
-                  setControllerChoiceIndex(index);
-                }}
-                onClick={() => chooseQuestDialogChoice(choice.id)}
-              >
-                <span className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center border text-xs uppercase text-yellow-100",
-                  index === controllerChoiceIndex ? "border-yellow-50 bg-yellow-200/25" : "border-yellow-100/50 bg-yellow-200/10",
-                )}>
-                  {index + 1}
-                </span>
-                <span className="min-w-0 flex-1 break-words">{choice.label}</span>
-              </button>
-            ))}
-            <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-yellow-100/45">
-              D-Pad / Stick choose · A select · B close
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-const inventoryItemOrder = Object.keys(INVENTORY_ITEM_DEFINITIONS) as InventoryItemId[];
-const inventoryBackpackSlotCount = 27;
-const inventoryQuickSlotCount = 9;
-
-type InventoryControllerMoveDetail = {
-  direction: 1 | -1;
-};
-
-function isInventoryQuestFlagTruthy(value: QuestFlagValue | undefined) {
-  return value === true || value === "true" || value === "completed" || value === "ready" || value === "1";
-}
-
-function getQuestDefinitionForAssignment(assignment: QuestNpcAssignment) {
-  return SPELL_QUEST_DEFINITIONS.find((quest) => quest.id === assignment.questId || quest.spell === assignment.spell) ?? null;
-}
-
-function QuestInventoryIcon({ active }: { active: boolean }) {
-  return (
-    <span
-      className={cn(
-        "grid h-10 w-10 shrink-0 place-items-center border bg-black shadow-[inset_0_0_0_2px_rgba(255,255,255,0.05)] sm:h-14 sm:w-14",
-        active ? "border-yellow-100/80" : "border-emerald-100/35",
-      )}
-      aria-hidden="true"
-    >
-      <svg viewBox="0 0 48 48" className="h-8 w-8 sm:h-12 sm:w-12" role="img">
-        <rect x="0" y="0" width="48" height="48" fill="#000000" />
-        <path
-          d="M12 9h19c3.6 0 6 2.2 6 5.6v22.7c0 .9-.7 1.7-1.7 1.7H15.8c-3.6 0-6-2.2-6-5.6V12c0-1.7 1.4-3 3.2-3Z"
-          fill="none"
-          stroke="#ffffff"
-          strokeWidth="3.2"
-          strokeLinejoin="round"
-        />
-        <path d="M17 16h14M17 23h12M17 30h8" stroke="#ffffff" strokeWidth="3" strokeLinecap="square" />
-        <path d="M32 10v27M12 36h23" stroke="#ffffff" strokeWidth="2.4" strokeLinecap="square" />
-        <path d="M34 18h7l-3.5 6 3.5 6h-7" fill="#ffffff" />
-      </svg>
-    </span>
-  );
-}
-
-function InventoryPanel({ playerState }: { playerState: HudPlayerState }) {
-  const isOpen = useGameStore(s => s.isInventoryOpen);
-  const inventory = useGameStore(s => s.inventory);
-  const setInventoryOpen = useGameStore(s => s.setInventoryOpen);
-  const characterCustomization = useGameStore(s => s.characterCustomization);
-  const spellQuestAssignments = useGameStore(s => s.spellQuestAssignments);
-  const questFlags = useGameStore(s => s.questFlags);
-  const questUnlockedSpells = useGameStore(s => s.questUnlockedSpells);
-  const [isQuestJournalOpen, setQuestJournalOpen] = useState(false);
-  const [selectedQuestIndex, setSelectedQuestIndex] = useState(0);
-
-  const activeQuestEntries = Object.values(spellQuestAssignments)
-    .map((assignment) => ({
-      assignment,
-      definition: getQuestDefinitionForAssignment(assignment),
-    }))
-    .filter((entry): entry is { assignment: QuestNpcAssignment; definition: NonNullable<ReturnType<typeof getQuestDefinitionForAssignment>> } => (
-      entry.definition !== null &&
-      entry.assignment.status !== "completed" &&
-      !questUnlockedSpells.includes(entry.assignment.spell)
-    ));
-  const selectedQuestEntry = activeQuestEntries[selectedQuestIndex] ?? activeQuestEntries[0] ?? null;
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isEditableTarget(event.target)) return;
-      if (event.code === "KeyJ") {
-        event.preventDefault();
-        event.stopPropagation();
-        setQuestJournalOpen((open) => !open);
-        return;
-      }
-
-      if (isQuestJournalOpen && (event.code === "ArrowDown" || event.code === "ArrowUp")) {
-        event.preventDefault();
-        event.stopPropagation();
-        const direction = event.code === "ArrowDown" ? 1 : -1;
-        setSelectedQuestIndex((index) => {
-          const count = activeQuestEntries.length;
-          return count > 0 ? (index + direction + count) % count : 0;
-        });
-        return;
-      }
-
-      if (event.code === "Enter" && !isQuestJournalOpen) {
-        event.preventDefault();
-        event.stopPropagation();
-        setQuestJournalOpen(true);
-        return;
-      }
-
-      if (event.code !== "Escape" && event.code !== "KeyI") return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (isQuestJournalOpen) {
-        setQuestJournalOpen(false);
-        return;
-      }
-      setInventoryOpen(false);
-    };
-
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [activeQuestEntries.length, isOpen, isQuestJournalOpen, setInventoryOpen]);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setQuestJournalOpen(false);
-      setSelectedQuestIndex(0);
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    setSelectedQuestIndex((index) => Math.min(index, Math.max(0, activeQuestEntries.length - 1)));
-  }, [activeQuestEntries.length]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleControllerSelect = () => {
-      if (isQuestJournalOpen) return;
-      setQuestJournalOpen(true);
-    };
-
-    const handleControllerBack = (event: Event) => {
-      const detail = (event as CustomEvent<{ handled?: boolean }>).detail;
-      if (!isQuestJournalOpen) return;
-      if (detail) detail.handled = true;
-      setQuestJournalOpen(false);
-    };
-
-    const handleControllerMove = (event: Event) => {
-      if (!isQuestJournalOpen) return;
-      const direction = (event as CustomEvent<InventoryControllerMoveDetail>).detail?.direction;
-      if (direction !== 1 && direction !== -1) return;
-      setSelectedQuestIndex((index) => {
-        const count = activeQuestEntries.length;
-        return count > 0 ? (index + direction + count) % count : 0;
-      });
-    };
-
-    window.addEventListener("inventory-controller-select", handleControllerSelect);
-    window.addEventListener("inventory-controller-back", handleControllerBack);
-    window.addEventListener("inventory-controller-move", handleControllerMove);
-    return () => {
-      window.removeEventListener("inventory-controller-select", handleControllerSelect);
-      window.removeEventListener("inventory-controller-back", handleControllerBack);
-      window.removeEventListener("inventory-controller-move", handleControllerMove);
-    };
-  }, [activeQuestEntries.length, isOpen, isQuestJournalOpen]);
-
-  if (!isOpen) return null;
-
-  const entries = inventoryItemOrder
-    .map((itemId) => ({ definition: INVENTORY_ITEM_DEFINITIONS[itemId], quantity: inventory[itemId]?.quantity ?? 0 }))
-    .filter((entry) => entry.quantity > 0);
-  const inventorySlots = Array.from(
-    { length: inventoryBackpackSlotCount + inventoryQuickSlotCount },
-    (_, index) => entries[index] ?? null
-  );
-  const backpackSlots = inventorySlots.slice(0, inventoryBackpackSlotCount);
-  const quickSlots = inventorySlots.slice(inventoryBackpackSlotCount);
-
-  const renderInventorySlot = (
-    entry: (typeof entries)[number] | null,
-    index: number,
-    label?: string,
-    visibleLabel = label
-  ) => {
-    const definition = entry?.definition;
-    const quantity = entry?.quantity ?? 0;
-
-    return (
-      <div
-        key={`${label ?? "slot"}-${index}`}
-        className={cn(
-          "relative aspect-square min-w-[34px] overflow-hidden border bg-black/45 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]",
-          definition
-            ? "border-emerald-100/55 bg-emerald-200/12"
-            : "border-emerald-100/20 bg-[#020906]/70"
-        )}
-        title={definition ? `${definition.name} x${quantity}` : label ?? `Slot ${index + 1}`}
-        aria-label={definition ? `${definition.name} x${quantity}` : label ?? `Empty slot ${index + 1}`}
-      >
-        <div className="absolute inset-[3px] border border-black/45 bg-gradient-to-br from-white/8 via-transparent to-black/35" />
-        {definition ? (
-          <>
-            <div className="absolute inset-1 flex items-center justify-center text-[8px] font-bold uppercase text-emerald-50 sm:text-xs">
-              <span className="flex h-[68%] w-[68%] max-w-full items-center justify-center overflow-hidden text-ellipsis whitespace-nowrap border border-emerald-100/35 bg-emerald-300/15 px-0.5 text-center leading-none shadow-[0_0_16px_rgba(110,231,183,0.14)]">
-                {definition.name.slice(0, 2)}
-              </span>
-            </div>
-            <div className="absolute bottom-0.5 right-0.5 max-w-[82%] overflow-hidden text-ellipsis whitespace-nowrap rounded-sm bg-black/70 px-1 text-[8px] font-bold leading-3 text-emerald-50 sm:right-1 sm:text-[10px] sm:leading-4">
-              {quantity}
-            </div>
-          </>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center overflow-hidden text-ellipsis whitespace-nowrap px-1 text-center text-[8px] uppercase text-emerald-100/20 sm:text-[9px]">
-            {visibleLabel ?? index + 1}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderQuestStatus = (entry: typeof selectedQuestEntry) => {
-    if (!entry) return "No active quest selected.";
-    const requiredReady = isInventoryQuestFlagTruthy(questFlags[entry.definition.requiredFlag]);
-    const questState = questFlags[`quest:${entry.definition.id}`];
-    if (questState === "completed") return "Complete";
-    if (requiredReady || questState === "ready") return "Ready to turn in";
-    if (questState === "started" || entry.assignment.status === "assigned") return "In progress";
-    return "Discovered";
-  };
-
-  const renderDarrelProgress = () => {
-    const stepRows = [
-      ["Leaves", questFlags["darrel:ingredient:leaves"]],
-      ["Berries", questFlags["darrel:ingredient:berries"]],
-      ["Roots", questFlags["darrel:ingredient:roots"]],
-      ["Garden Draught", questFlags["darrel:garden-draught"]],
-    ] as const;
-
-    return (
-      <div className="mt-3 grid gap-1.5">
-        {stepRows.map(([label, value]) => {
-          const done = value === "gathered" || value === "brewed" || value === "drunk" || isInventoryQuestFlagTruthy(value);
-          return (
-            <div key={label} className="flex min-w-0 flex-wrap items-center justify-between gap-2 border border-emerald-100/20 bg-black/25 px-2 py-1.5 text-[10px] uppercase tracking-[0.14em] text-emerald-50/75">
-              <span className="min-w-0 break-words">{label}</span>
-              <span className={cn("shrink-0", done ? "text-yellow-100" : "text-emerald-100/40")}>{done ? "Done" : "Needed"}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  return createPortal(
-    <div
-      data-no-resume-click
-      data-testid="inventory-panel"
-      className="fixed inset-0 z-[243] flex items-end justify-center bg-black/45 px-3 pb-5 pt-20 font-mono normal-case text-slate-50 pointer-events-auto sm:items-center sm:py-5"
-      style={{ width: "var(--app-vw, 100dvw)", height: "var(--app-vh, 100dvh)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Inventory"
-      onMouseDown={(event) => event.stopPropagation()}
-      onContextMenu={(event) => event.preventDefault()}
-      onWheel={(event) => event.stopPropagation()}
-    >
-      <div className="max-h-[min(760px,calc(var(--app-vh,100dvh)-24px))] w-[min(1060px,calc(var(--app-vw,100dvw)-24px))] overflow-hidden border-2 border-emerald-100/65 bg-[#06100c]/96 shadow-[0_0_38px_rgba(52,211,153,0.22)]">
-        <div className="flex items-center justify-between gap-3 border-b border-emerald-100/25 bg-emerald-950/20 px-3 py-3 sm:px-4">
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-emerald-100/60">Survival Pack</div>
-            <div className="truncate text-xl font-bold tracking-wide text-emerald-50">Inventory</div>
-          </div>
-          <button
-            className="flex h-9 w-9 shrink-0 items-center justify-center border border-emerald-100/50 bg-emerald-200/10 text-base font-bold text-emerald-50 hover:bg-emerald-100/20"
-            aria-label="Close inventory"
-            onClick={() => setInventoryOpen(false)}
-          >
-            X
-          </button>
-        </div>
-
-        <div className="grid max-h-[calc(min(760px,calc(var(--app-vh,100dvh)-24px))-62px)] min-w-0 content-start gap-3 overflow-x-hidden overflow-y-auto overscroll-contain p-3 sm:gap-4 sm:p-4">
-          <div className="grid min-w-0 grid-cols-1 items-start gap-3 min-[520px]:grid-cols-[112px_minmax(0,1fr)] sm:grid-cols-[180px_minmax(0,1fr)] lg:grid-cols-[220px_minmax(0,1fr)]">
-            <div className="grid min-w-0 content-start gap-2 overflow-hidden border border-emerald-100/30 bg-black/35 p-2 sm:p-3">
-              <div className="truncate text-[10px] uppercase tracking-[0.22em] text-emerald-100/50">Wizard</div>
-              <InventoryWizardPreview character={characterCustomization} playerState={playerState} />
-              <button
-                className={cn(
-                  "mt-1 grid min-w-0 justify-items-center gap-1 overflow-hidden border px-1 py-2 text-center text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-50 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-100/60 sm:px-2 sm:tracking-[0.16em]",
-                  isQuestJournalOpen
-                    ? "border-yellow-100 bg-yellow-100/18 shadow-[0_0_18px_rgba(250,204,21,0.22)]"
-                    : "border-emerald-100/40 bg-emerald-300/10 hover:border-emerald-100/70 hover:bg-emerald-200/18",
-                )}
-                aria-label={`Quests journal, ${activeQuestEntries.length} active`}
-                title={`Quests journal (${activeQuestEntries.length} active)`}
-                onClick={() => setQuestJournalOpen((open) => !open)}
-              >
-                <QuestInventoryIcon active={isQuestJournalOpen} />
-                <span className={cn("block max-w-full truncate text-[10px] sm:text-[11px]", isQuestJournalOpen ? "text-yellow-50" : "text-emerald-50")}>Quests</span>
-              </button>
-            </div>
-            {isQuestJournalOpen ? (
-              <div className="grid min-w-0 content-start gap-3 overflow-hidden border border-yellow-100/35 bg-black/35 p-3">
-                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-[10px] uppercase tracking-[0.22em] text-yellow-100/50">Quest Journal</div>
-                    <div className="truncate text-sm font-bold uppercase tracking-[0.16em] text-yellow-50">Active Quests</div>
-                  </div>
-                  <button
-                    className="shrink-0 border border-yellow-100/45 bg-yellow-200/10 px-2 py-1.5 text-[10px] uppercase tracking-[0.14em] text-yellow-50 hover:bg-yellow-100/20"
-                    onClick={() => setQuestJournalOpen(false)}
-                  >
-                    Back
-                  </button>
-                </div>
-                {activeQuestEntries.length === 0 ? (
-                  <div className="grid min-h-36 min-w-0 place-items-center border border-emerald-100/20 bg-black/30 px-4 py-8 text-center text-xs uppercase tracking-[0.16em] text-emerald-100/45">
-                    No active spell quests yet.
-                  </div>
-                ) : (
-                  <div className="grid min-w-0 gap-3 xl:grid-cols-[minmax(180px,0.8fr)_minmax(0,1.2fr)]">
-                    <div className="grid max-h-64 min-w-0 content-start gap-1.5 overflow-y-auto pr-1">
-                      {activeQuestEntries.map((entry, index) => {
-                        const selected = index === selectedQuestIndex;
-                        return (
-                          <button
-                            key={entry.assignment.npcId}
-                            className={cn(
-                              "min-h-14 min-w-0 overflow-hidden border px-2 py-2 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-100/60",
-                              selected
-                                ? "border-yellow-100 bg-yellow-100/18 shadow-[0_0_14px_rgba(250,204,21,0.22)]"
-                                : "border-emerald-100/25 bg-black/35 hover:border-emerald-100/55 hover:bg-emerald-200/10",
-                            )}
-                            onMouseEnter={() => setSelectedQuestIndex(index)}
-                            onClick={() => setSelectedQuestIndex(index)}
-                          >
-                            <div className="truncate text-xs font-bold uppercase tracking-[0.12em] text-emerald-50">{entry.definition.title}</div>
-                            <div className="mt-1 truncate text-[10px] uppercase tracking-[0.12em] text-emerald-100/45">
-                              {entry.assignment.displayName} / {SPELL_DISPLAY_NAMES[entry.assignment.spell]}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="min-h-64 min-w-0 overflow-hidden border border-emerald-100/25 bg-[#030906]/75 p-3">
-                      {selectedQuestEntry && (
-                        <>
-                          <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-yellow-100/50">Selected Quest</div>
-                              <div className="mt-1 break-words text-sm font-black uppercase tracking-[0.1em] text-yellow-50 sm:text-lg sm:tracking-[0.12em]">{selectedQuestEntry.definition.title}</div>
-                            </div>
-                            <div className="max-w-full shrink-0 break-words border border-yellow-100/35 bg-yellow-200/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-yellow-50">
-                              {renderQuestStatus(selectedQuestEntry)}
-                            </div>
-                          </div>
-                          <div className="mt-3 grid min-w-0 gap-2 text-xs leading-5 text-emerald-50/80">
-                            <div className="min-w-0 break-words"><span className="uppercase tracking-[0.14em] text-emerald-100/45">Giver:</span> {selectedQuestEntry.assignment.displayName}</div>
-                            <div className="min-w-0 break-words"><span className="uppercase tracking-[0.14em] text-emerald-100/45">Reward:</span> {SPELL_DISPLAY_NAMES[selectedQuestEntry.assignment.spell]}</div>
-                            <div className="max-h-36 min-w-0 overflow-y-auto break-words border border-cyan-100/15 bg-cyan-950/20 px-3 py-2 text-cyan-50/90">
-                              {selectedQuestEntry.definition.objective}
-                            </div>
-                          </div>
-                          {selectedQuestEntry.assignment.spell === "healingcrystals" && renderDarrelProgress()}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <div className="break-words text-[10px] uppercase tracking-[0.18em] text-yellow-100/40">
-                  D-Pad / Stick choose / A open / B back
-                </div>
-              </div>
-            ) : (
-              <div className="grid min-w-0 content-start gap-3 overflow-hidden">
-                <div className="flex min-w-0 items-center justify-between gap-2">
-                  <div className="text-[10px] uppercase tracking-[0.22em] text-emerald-100/50">Backpack</div>
-                  <div className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-emerald-100/35">{entries.length}/36</div>
-                </div>
-                <div className="min-w-0 overflow-x-auto border border-emerald-100/25 bg-black/35 p-1.5 sm:p-2">
-                  <div className="grid min-w-[360px] grid-cols-[repeat(9,minmax(34px,1fr))] gap-1 sm:min-w-[468px] sm:gap-1.5">
-                    {backpackSlots.map((entry, index) => renderInventorySlot(entry, index))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="mt-1 truncate text-[10px] uppercase tracking-[0.22em] text-emerald-100/50">Quick Row</div>
-          <div className="min-w-0 overflow-x-auto border border-yellow-100/35 bg-yellow-200/8 p-2">
-            <div className="grid min-w-[360px] grid-cols-[repeat(9,minmax(34px,1fr))] gap-1.5 sm:min-w-[468px]">
-              {quickSlots.map((entry, index) => renderInventorySlot(entry, index, `${index + 1}`))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
+  return count;
 }
 
 export function HUD() {
@@ -3238,6 +194,7 @@ export function HUD() {
   const setActiveHand = useGameStore(s => s.setActiveHand);
   const isMagicArmed = useGameStore(s => s.isMagicArmed);
   const setMagicArmed = useGameStore(s => s.setMagicArmed);
+  const setSpell = useGameStore(s => s.setSpell);
   const selectHotbarSlot = useGameStore(s => s.selectHotbarSlot);
   const setHotbarSpell = useGameStore(s => s.setHotbarSpell);
   const isSpellMenuOpen = useGameStore(s => s.isSpellMenuOpen);
@@ -3255,8 +212,10 @@ export function HUD() {
   const flashbangOpacity = useGameStore(s => s.flashbangOpacity);
   const setLeftRunePower = useGameStore(s => s.setLeftRunePower);
   const setRightRunePower = useGameStore(s => s.setRightRunePower);
+  const setHandCharging = useGameStore(s => s.setHandCharging);
   const isMapExpanded = useGameStore(s => s.isMapExpanded);
   const toggleMap = useGameStore(s => s.toggleMap);
+  const setExpandedMapPage = useGameStore(s => s.setExpandedMapPage);
   const setPauseMenuOpen = useGameStore(s => s.setPauseMenuOpen);
   const isScoreboardOpen = useGameStore(s => s.isScoreboardOpen);
   const setScoreboardOpen = useGameStore(s => s.setScoreboardOpen);
@@ -3314,6 +273,7 @@ export function HUD() {
   const questNpcEditorTarget = useGameStore(s => s.questNpcEditorTarget);
   const questDialogSession = useGameStore(s => s.questDialogSession);
   const openQuestNpcEditor = useGameStore(s => s.openQuestNpcEditor);
+  const closeQuestNpcEditor = useGameStore(s => s.closeQuestNpcEditor);
 
   const aspectRatio = useGameStore(s => s.aspectRatio);
   const setAspectRatio = useGameStore(s => s.setAspectRatio);
@@ -3328,7 +288,6 @@ export function HUD() {
   const [showVideoMenu, setShowVideoMenu] = useState(false);
 
   const [isLocked, setIsLocked] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [isDocumentFullscreen, setIsDocumentFullscreen] = useState(false);
   const [isFullscreenHintOpen, setIsFullscreenHintOpen] = useState(false);
   const [canLock, setCanLock] = useState(true);
@@ -3348,10 +307,12 @@ export function HUD() {
   const [menuSpellIndex, setMenuSpellIndex] = useState(0);
   const [isRightHandModifier, setIsRightHandModifier] = useState(false);
   const [menuBindingHand, setMenuBindingHand] = useState<HandType>("left");
-  const [isSpellMenuPreloaded, setSpellMenuPreloaded] = useState(false);
   const [pauseMenuIndex, setPauseMenuIndex] = useState(0);
   const [isDevFastTravelOpen, setDevFastTravelOpen] = useState(false);
   const [devFastTravelIndex, setDevFastTravelIndex] = useState(0);
+  const [devFastTravelLocations, setDevFastTravelLocations] = useState<DevFastTravelLocation[]>([]);
+  const [isEngineMenuOpen, setEngineMenuOpen] = useState(false);
+  const [engineMenuSelectedId, setEngineMenuSelectedId] = useState<string | undefined>();
   const [startMenuStage, setStartMenuStage] = useState<StartMenuStage>(() => (
     useGameStore.getState().isGameLaunched ? "resume" : "press-start"
   ));
@@ -3363,7 +324,6 @@ export function HUD() {
   const [settingsPane, setSettingsPane] = useState<SettingsPane>("video");
   const [remappingAction, setRemappingAction] = useState<ControllerAction | null>(null);
   const [remappingVoiceKey, setRemappingVoiceKey] = useState(false);
-  const [buffClock, setBuffClock] = useState(() => Date.now());
   const qHeldRef = useRef(false);
   const keyboardScoreboardRef = useRef(false);
   const controllerScoreboardRef = useRef(false);
@@ -3391,6 +351,7 @@ export function HUD() {
   const settingsScrollRef = useRef<HTMLDivElement>(null);
   const controllerButtonsRef = useRef<Record<string, boolean>>({});
   const controllerRepeatRef = useRef<Partial<Record<string, number>>>({});
+  const controllerInputSnapshot = useMemo(createHudControllerInputSnapshot, []);
   const controllerInventoryHoldStartedAtRef = useRef<number | null>(null);
   const controllerInventoryTapEligibleRef = useRef(false);
   const controllerInventoryIgnoreUntilReleaseRef = useRef(false);
@@ -3401,52 +362,23 @@ export function HUD() {
   const controllerMagicHoldStartedAtRef = useRef<number | null>(null);
   const controllerMagicHoldConsumedRef = useRef(false);
 
-  useEffect(() => {
-    const updateTouchCapability = () => {
-      setIsTouchDevice(isTouchGameplayDevice());
-    };
-
-    updateTouchCapability();
-    window.addEventListener("resize", updateTouchCapability);
-    return () => window.removeEventListener("resize", updateTouchCapability);
-  }, []);
+  const isTouchDevice = useHudTouchGameplayRuntime({
+    isGameLaunched,
+    isTouchControlsActive,
+    lastGameplayInputModeRef,
+    setControllerGameplayActive,
+    setIsReturningToGame,
+    setPauseMenuOpen,
+    setPauseOverlayOpen,
+    setShowVideoMenu,
+    setTouchControlsActive,
+  });
 
   useEffect(() => () => {
-    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+    setHudMouseGameplayActive(false);
   }, []);
 
-  useEffect(() => {
-    const updateFullscreenState = () => {
-      setIsDocumentFullscreen(Boolean(getFullscreenElement()) || isStandaloneDisplayMode());
-    };
-
-    updateFullscreenState();
-    document.addEventListener("fullscreenchange", updateFullscreenState);
-    document.addEventListener("webkitfullscreenchange", updateFullscreenState as EventListener);
-    window.matchMedia?.("(display-mode: fullscreen)").addEventListener?.("change", updateFullscreenState);
-    window.matchMedia?.("(display-mode: standalone)").addEventListener?.("change", updateFullscreenState);
-
-    return () => {
-      document.removeEventListener("fullscreenchange", updateFullscreenState);
-      document.removeEventListener("webkitfullscreenchange", updateFullscreenState as EventListener);
-      window.matchMedia?.("(display-mode: fullscreen)").removeEventListener?.("change", updateFullscreenState);
-      window.matchMedia?.("(display-mode: standalone)").removeEventListener?.("change", updateFullscreenState);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isTouchDevice || !isTouchControlsActive) return;
-    setTouchControlsActive(false);
-    releaseMobileGameplayInputs();
-  }, [isTouchControlsActive, isTouchDevice, setTouchControlsActive]);
-
-  useEffect(() => {
-    const touchGameplayLayout = isTouchDevice && isTouchControlsActive;
-    document.documentElement.classList.toggle("wizards-touch-gameplay", touchGameplayLayout);
-    return () => {
-      document.documentElement.classList.remove("wizards-touch-gameplay");
-    };
-  }, [isTouchControlsActive, isTouchDevice]);
+  useEffect(() => subscribeDocumentFullscreenState(setIsDocumentFullscreen), []);
 
   useEffect(() => {
     if (localPlayerName) {
@@ -3455,6 +387,8 @@ export function HUD() {
   }, [localPlayerName]);
 
   useEffect(() => {
+    if (!isQuestDevModeEnabled) return undefined;
+
     const handleQuestNpcEditorRequest = (event: Event) => {
       const target = (event as CustomEvent<unknown>).detail;
       if (!isQuestNpcEditorTarget(target)) return;
@@ -3464,7 +398,7 @@ export function HUD() {
 
     window.addEventListener("quest-npc-editor-request", handleQuestNpcEditorRequest);
     return () => window.removeEventListener("quest-npc-editor-request", handleQuestNpcEditorRequest);
-  }, [addLobbyMessage, openQuestNpcEditor]);
+  }, [addLobbyMessage, isQuestDevModeEnabled, openQuestNpcEditor]);
 
   useEffect(() => {
     if (isGameLaunched && startMenuStage === "press-start") {
@@ -3473,37 +407,42 @@ export function HUD() {
   }, [isGameLaunched, startMenuStage]);
 
   useEffect(() => {
-    if (isSpellMenuPreloaded) return;
-    const timeout = window.setTimeout(() => setSpellMenuPreloaded(true), 1800);
-    return () => window.clearTimeout(timeout);
-  }, [isSpellMenuPreloaded]);
+    if (!isDevFastTravelOpen) return undefined;
 
-  useEffect(() => {
-    if (isSpellMenuOpen) {
-      setSpellMenuPreloaded(true);
-    }
-  }, [isSpellMenuOpen]);
+    let cancelled = false;
+    void loadDevFastTravelModule().then((module) => {
+      if (!cancelled) setDevFastTravelLocations(module.DEV_FAST_TRAVEL_LOCATIONS);
+    }).catch(() => {
+      if (!cancelled) {
+        setDevFastTravelLocations([]);
+        addLobbyMessage("Fast travel locations unavailable.", "system");
+      }
+    });
 
-  useEffect(() => {
-    if (lobbyMessages.length === 0) return;
+    return () => {
+      cancelled = true;
+    };
+  }, [addLobbyMessage, isDevFastTravelOpen]);
 
-    const interval = window.setInterval(() => {
-      const now = Date.now();
-      lobbyMessages.forEach((message) => {
-        if (now - message.createdAt > 12000) {
-          removeLobbyMessage(message.id);
-        }
-      });
-    }, 1000);
-
-    return () => window.clearInterval(interval);
-  }, [lobbyMessages, removeLobbyMessage]);
+  useHudLobbyMessageCleanup(lobbyMessages, removeLobbyMessage);
 
   const touchGameplayActive = isTouchDevice && isTouchControlsActive;
   const controllerGameplayActive = isControllerGameplayActive;
-  const qaParams = typeof window !== "undefined" && import.meta.env.DEV
-    ? new URLSearchParams(window.location.search)
-    : null;
+  const hasRunePowerToDecay = leftRunePower > 0 || rightRunePower > 0;
+  const qaParams = useMemo(() => (
+    typeof window !== "undefined" && import.meta.env.DEV
+      ? new URLSearchParams(window.location.search)
+      : null
+  ), []);
+  const qaHudState = qaParams?.get("qaHudState")?.trim().toLowerCase() ?? "";
+  const shouldMountHudStateQaRuntimeProbe = Boolean(qaHudState);
+  const qaMagicSpell = qaParams?.get("qaMagicSpell")?.trim().toLowerCase() ?? "";
+  const qaMapPage = qaParams?.get("qaMapPage")?.trim().toLowerCase() ?? "";
+  const qaSettingsPane = qaParams?.get("qaSettingsPane")?.trim().toLowerCase() ?? "";
+  const shouldMountHudLayoutQaMetricsProbe = Boolean(
+    qaParams?.get("qaHudLayout") === "1" ||
+    qaParams?.get("qaAspectMatrix") === "1"
+  );
   const isMenuOverlaySuppressedForQa = Boolean(
     qaParams?.get("qaHideMenu") === "1" ||
     qaParams?.get("qaSurvivalWalk") === "1" ||
@@ -3521,8 +460,8 @@ export function HUD() {
     qaParams?.get("qaCleanView") === "1" ||
     qaParams?.get("qaGrassView") === "1",
   );
-  const hasPointerLock = typeof document !== "undefined" && document.pointerLockElement !== null;
-  const hasMouseLookFallback = typeof document !== "undefined" && document.documentElement.dataset.wizardsMouseLookFallback === "true";
+  const hasPointerLock = isPointerLockActive();
+  const hasMouseLookFallback = isHudMouseLookFallbackActive();
   const mouseGameplayActive = !pauseMenuRequestedRef.current && (hasPointerLock || hasMouseLookFallback);
   const isGameplayActive = mouseGameplayActive || touchGameplayActive || controllerGameplayActive;
   const isResumePauseOverlayRequested = isGameLaunched
@@ -3552,40 +491,22 @@ export function HUD() {
   const shouldRenderGameplayHud = isGameplayActive
     || isReturningToGame
     || (isGameLaunched && startMenuStage === "resume" && !shouldShowMenuOverlay);
-  const leftRuneReady = hasRunePower(leftRunePower);
-  const rightRuneReady = hasRunePower(rightRunePower);
-  const healthPercent = (health / 100) * 100;
-  const armorPercent = (armor / ARMOR_MAX) * 100;
-  const speedBoostSeconds = Math.ceil(Math.max(0, speedBoostUntil - buffClock) / 1000);
-  const jumpBoostSeconds = Math.ceil(Math.max(0, jumpBoostUntil - buffClock) / 1000);
-  const slowSeconds = Math.ceil(Math.max(0, slowUntil - buffClock) / 1000);
-  const sleepSeconds = Math.ceil(Math.max(0, sleepUntil - buffClock) / 1000);
-  const poisonSeconds = Math.ceil(Math.max(0, poisonUntil - buffClock) / 1000);
-  const acidSeconds = Math.ceil(Math.max(0, acidUntil - buffClock) / 1000);
-  const glassOrbActive = magicGlassOrbUntil > buffClock;
-  const hasActiveBuff = speedBoostSeconds > 0 || jumpBoostSeconds > 0 || slowSeconds > 0 || sleepSeconds > 0 || poisonSeconds > 0 || acidSeconds > 0 || glassOrbActive;
-  const poisonPercent = Math.min(100, (Math.max(0, poisonUntil - buffClock) / POISON_DURATION_MS) * 100);
-  const acidPercent = Math.min(100, (Math.max(0, acidUntil - buffClock) / ACID_DURATION_MS) * 100);
   const roomUrl = window.location.href;
   const currentInviteRoomCode = getCurrentInviteRoomCode();
   const isLocalHttpOrigin = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   const voiceNeedsSecureOrigin = !window.isSecureContext && !isLocalHttpOrigin;
   const isMultiplayerMode = gameMode !== "solo-survival";
   const isSurvivalMode = gameMode === "solo-survival" || gameMode === "multiplayer-survival";
-  const isDevFastTravelAllowed = isSurvivalMode && (
+  const areDeveloperToolsAllowed = isSurvivalMode && (
     import.meta.env.DEV ||
     isQuestDevModeEnabled ||
     (gameMode as string) === "creative"
   );
-  const devFastTravelLocationCount = DEV_FAST_TRAVEL_LOCATIONS.length;
+  const isDevFastTravelAllowed = areDeveloperToolsAllowed;
+  const isEngineMenuAllowed = areDeveloperToolsAllowed;
+  const devFastTravelLocationCount = devFastTravelLocations.length;
   const resumeMenuActionCount = isMultiplayerMode ? pauseMenuItemCount : 2;
-  const settingsActionCount = settingsPane === "video"
-    ? settingsVideoActionCount
-    : settingsPane === "keybinds"
-      ? settingsKeybindActionCount
-      : settingsPane === "voice"
-        ? settingsVoiceActionCount
-        : settingsCharacterActionCount;
+  const settingsActionCount = getSettingsActionCount(settingsPane);
   const mainMenuActionCount = startMenuStage === "press-start"
     ? 1
     : startMenuStage === "mode-select"
@@ -3597,60 +518,13 @@ export function HUD() {
           : startMenuStage === "survival-options"
             ? 7
             : resumeMenuActionCount;
-  const settingsMenuStyle = {
-    width: settingsPane === "video"
-      ? 'min(520px, calc(100cqw - 24px))'
-      : settingsPane === "voice"
-        ? 'min(720px, calc(100cqw - 24px))'
-        : 'min(920px, calc(100cqw - 24px))',
-    maxHeight: 'calc(100cqh - 20px)',
-    padding: 'clamp(0.35rem, 1.2cqh, 0.9rem)',
-  } as CSSProperties;
-  const settingsScrollPanelStyle = {
-    maxHeight: settingsPane === "character"
-      ? 'max(128px, calc(100cqh - 150px))'
-      : 'max(128px, calc(100cqh - 148px))',
-  } as CSSProperties;
   const isPauseMenuVisible = shouldShowMenuOverlay && isGameLaunched && startMenuStage === "resume";
   const activeBindingHand: HandType = isRightHandModifier ? "right" : menuBindingHand;
-  const requestMapToggle = () => {
-    const now = performance.now();
+  const requestMapToggle = (now: number) => {
     if (now - lastMapToggleRef.current < 180) return;
     lastMapToggleRef.current = now;
     startTransition(toggleMap);
   };
-  const localStatuses = [
-    sleepSeconds > 0 ? "SLEEP" : "",
-    slowSeconds > 0 ? "SLOWED" : "",
-    poisonSeconds > 0 ? "POISON" : "",
-    acidSeconds > 0 ? "ACID" : "",
-  ].filter(Boolean);
-  const localPlayerStatus = health <= 0 ? "DOWN" : (localStatuses.length > 0 ? localStatuses.join(" / ") : "READY");
-  const scoreboardRows: ScoreboardRow[] = [
-    {
-      id: socket.id ?? "local",
-      label: localPlayerName
-        ? `YOU - ${localPlayerName}${isSurvivalMode ? ` LVL ${survivalLevel}` : ""}`
-        : `YOU${isSurvivalMode ? ` LVL ${survivalLevel}` : ""}`,
-      status: localPlayerStatus,
-      health,
-      armor,
-      score: Math.max(0, Math.round(health + armor)),
-      isLocal: true,
-    },
-    ...Object.values(players)
-      .filter(player => player.id !== socket.id)
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .map((player, index) => ({
-        id: player.id,
-        label: `${player.playerName || `WIZARD ${index + 1} (${player.id.slice(0, 4).toUpperCase()})`}${isSurvivalMode && player.survivalLevel ? ` LVL ${player.survivalLevel}` : ""}`,
-        status: getRemotePlayerStatus(player, buffClock),
-        health: player.health,
-        armor: player.armor ?? 0,
-        score: Math.max(0, Math.round(player.health + (player.armor ?? 0))),
-      })),
-  ];
-
   const copyInvite = () => {
     void (async () => {
       let inviteUrl = roomUrl;
@@ -3718,7 +592,7 @@ export function HUD() {
     pauseMenuExplicitlyRequestedRef.current = false;
     pauseMenuRequestedRef.current = false;
     pointerLockResumeGraceUntilRef.current = 0;
-    document.documentElement.classList.add("wizards-mouse-gameplay-active");
+    setHudMouseGameplayActive(true);
     setMouseLookFallbackActive(mode === "fallback");
     lastGameplayInputModeRef.current = "mouse";
     setIsLocked(true);
@@ -3733,8 +607,7 @@ export function HUD() {
     setControllerGameplayActive(false);
     setScoreboardSource("keyboard", false);
     setScoreboardSource("controller", false);
-    const canvas = document.getElementById("game-canvas") as HTMLCanvasElement | null;
-    canvas?.focus({ preventScroll: true });
+    getHudPointerLockTarget()?.focus({ preventScroll: true });
   };
 
   const openPauseMenuFromGameplay = (inputMode: GameplayInputMode) => {
@@ -3742,7 +615,7 @@ export function HUD() {
     pauseMenuExplicitlyRequestedRef.current = true;
     pauseMenuRequestedRef.current = true;
     pointerLockResumeGraceUntilRef.current = 0;
-    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+    setHudMouseGameplayActive(false);
     setMouseLookFallbackActive(false);
     lastGameplayInputModeRef.current = inputMode;
     setStartMenuStage("resume");
@@ -3760,9 +633,7 @@ export function HUD() {
     setIsLocked(false);
     setCanLock(true);
     setPauseMenuOpen(true);
-    if (document.pointerLockElement) {
-      document.exitPointerLock();
-    }
+    exitPointerLockIfActive();
   };
 
   const beginControllerRemap = (action: ControllerAction) => {
@@ -3784,21 +655,6 @@ export function HUD() {
     const panel = settingsScrollRef.current;
     if (!panel) return;
     panel.scrollTop += amount;
-  };
-
-  const updateCharacterField = (key: keyof CharacterCustomization, value: string) => {
-    setCharacterCustomization({ [key]: value } as Partial<CharacterCustomization>);
-  };
-
-  const cycleCharacterColor = (key: keyof CharacterCustomization, direction: 1 | -1) => {
-    const current = normalizeHexInput(String(characterCustomization[key] ?? "")).toLowerCase();
-    const presetIndex = characterColorPresets.findIndex((color) => color.toLowerCase() === current);
-    const nextColor = characterColorPresets[wrapIndex((presetIndex === -1 ? 0 : presetIndex) + direction, characterColorPresets.length)];
-    updateCharacterField(key, nextColor);
-  };
-
-  const cycleCharacterStyle = (key: keyof CharacterCustomization, options: string[], direction: 1 | -1) => {
-    updateCharacterField(key, cycleOption(options, String(characterCustomization[key]), direction));
   };
 
   const adjustFocusedSetting = (direction: 1 | -1) => {
@@ -3878,23 +734,9 @@ export function HUD() {
     }
 
     if (settingsPane === "character") {
-      const colorIndex = pauseMenuIndex - characterColorStartIndex;
-      if (colorIndex >= 0 && colorIndex < characterColorRows.length) {
-        cycleCharacterColor(characterColorRows[colorIndex].key, direction);
-        return true;
-      }
-
-      const styleIndex = pauseMenuIndex - characterStyleStartIndex;
-      if (styleIndex >= 0 && styleIndex < characterStyleRows.length) {
-        const row = characterStyleRows[styleIndex];
-        cycleCharacterStyle(row.key, row.options, direction);
-        return true;
-      }
-
-      const mouthIndex = pauseMenuIndex - characterMouthStartIndex;
-      if (mouthIndex >= 0 && mouthIndex < characterMouthRows.length) {
-        const row = characterMouthRows[mouthIndex];
-        cycleCharacterStyle(row.key, row.options, direction);
+      const nextCharacterUpdate = getCharacterCustomizationStep(characterCustomization, pauseMenuIndex, direction);
+      if (nextCharacterUpdate) {
+        setCharacterCustomization(nextCharacterUpdate);
         return true;
       }
     }
@@ -3907,26 +749,14 @@ export function HUD() {
     return () => setPauseMenuOpen(false);
   }, [isGameLaunched, isPauseMenuVisible, setPauseMenuOpen, startMenuStage]);
 
+  // Deplete rune energy
   useEffect(() => {
-    if (
-      speedBoostUntil <= Date.now() &&
-      jumpBoostUntil <= Date.now() &&
-      slowUntil <= Date.now() &&
-      sleepUntil <= Date.now() &&
-      poisonUntil <= Date.now() &&
-      acidUntil <= Date.now() &&
-      magicGlassOrbUntil <= Date.now()
-    ) {
-      setBuffClock(Date.now());
+    if (!isGameLaunched) {
+      qHeldRef.current = false;
+      setIsRightHandModifier(false);
       return;
     }
 
-    const interval = window.setInterval(() => setBuffClock(Date.now()), 250);
-    return () => window.clearInterval(interval);
-  }, [acidUntil, jumpBoostUntil, magicGlassOrbUntil, poisonUntil, sleepUntil, slowUntil, speedBoostUntil]);
-
-  // Deplete rune energy
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
       if (e.code !== "KeyQ" || e.repeat) return;
@@ -3953,7 +783,7 @@ export function HUD() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [isCommandConsoleOpen, isInventoryOpen, questDialogSession, questNpcEditorTarget, setActiveHand]);
+  }, [isCommandConsoleOpen, isGameLaunched, isInventoryOpen, questDialogSession, questNpcEditorTarget, setActiveHand]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -4009,28 +839,54 @@ export function HUD() {
 
   useEffect(() => {
     if (!isLocked && !touchGameplayActive && !controllerGameplayActive) return;
-    const interval = setInterval(() => {
+    if (!hasRunePowerToDecay) return;
+
+    let cancelled = false;
+    let decayTimeout: number | null = null;
+
+    const decayRunePower = () => {
+      if (cancelled) return;
       const state = useGameStore.getState();
-      setLeftRunePower(Math.max(0, state.leftRunePower - 1));
-      setRightRunePower(Math.max(0, state.rightRunePower - 1));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [controllerGameplayActive, isLocked, setLeftRunePower, setRightRunePower, touchGameplayActive]);
+      const decay = getDecayedRunePower(state);
+      if (decay) {
+        if (decay.leftChanged) setLeftRunePower(decay.leftRunePower);
+        if (decay.rightChanged) setRightRunePower(decay.rightRunePower);
+      }
+      decayTimeout = window.setTimeout(decayRunePower, RUNE_POWER_DECAY_INTERVAL_MS);
+    };
+
+    decayTimeout = window.setTimeout(decayRunePower, RUNE_POWER_DECAY_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      if (decayTimeout !== null) window.clearTimeout(decayTimeout);
+    };
+  }, [
+    controllerGameplayActive,
+    hasRunePowerToDecay,
+    isLocked,
+    setLeftRunePower,
+    setRightRunePower,
+    touchGameplayActive,
+  ]);
 
   useEffect(() => {
     const handleLockChange = () => {
-      const locked = document.pointerLockElement !== null;
+      const locked = isPointerLockActive();
       setIsLocked(locked);
       if (locked) {
-        document.documentElement.classList.add("wizards-mouse-gameplay-active");
+        setHudMouseGameplayActive(true);
         finishMouseGameplayResume();
       } else {
-        if (!pauseMenuRequestedRef.current && performance.now() < pointerLockResumeGraceUntilRef.current) {
-          document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+        if (shouldTreatPointerLockLossAsResumeGrace({
+          nowMs: performance.now(),
+          pauseRequested: pauseMenuRequestedRef.current,
+          resumeGraceUntilMs: pointerLockResumeGraceUntilRef.current,
+        })) {
+          setHudMouseGameplayActive(false);
           setCanLock(true);
           return;
         }
-        document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+        setHudMouseGameplayActive(false);
         setCanLock(true);
         if (
           useGameStore.getState().isGameLaunched &&
@@ -4060,10 +916,6 @@ export function HUD() {
       ) return prev;
       return { ...e.detail, isCrouching: Boolean(e.detail.isCrouching) };
     });
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Intentionally left blank or handle other keys
-    };
-
     const handlePointerError = (e: Event) => {
       // Embedded browsers may reject pointer lock; keep the fallback quiet and recoverable.
       e.stopImmediatePropagation();
@@ -4080,14 +932,12 @@ export function HUD() {
     document.addEventListener("pointerlockerror", handlePointerError, true);
     window.addEventListener("unhandledrejection", handleUnhandledRejection);
     window.addEventListener("player-state", handlePlayerState);
-    window.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("pointerlockchange", handleLockChange);
       window.removeEventListener("pointerlockerror", handlePointerError, true);
       document.removeEventListener("pointerlockerror", handlePointerError, true);
       window.removeEventListener("unhandledrejection", handleUnhandledRejection);
       window.removeEventListener("player-state", handlePlayerState);
-      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isCommandConsoleOpen, isReturningToGame, setPauseMenuOpen, setTouchControlsActive]);
 
@@ -4095,10 +945,10 @@ export function HUD() {
     if (!isGameLaunched) return;
 
     const reconcileMouseGameplayResume = () => {
-      if (pauseMenuRequestedRef.current || !document.pointerLockElement) return;
+      if (pauseMenuRequestedRef.current || !isPointerLockActive()) return;
       if (!isPauseOverlayOpen && !isReturningToGame && !showVideoMenu && isLocked) return;
 
-      document.documentElement.classList.add("wizards-mouse-gameplay-active");
+      setHudMouseGameplayActive(true);
       lastGameplayInputModeRef.current = "mouse";
       setIsLocked(true);
       setPauseOverlayOpen(false);
@@ -4114,9 +964,34 @@ export function HUD() {
       setScoreboardSource("controller", false);
     };
 
+    const shouldPollMouseGameplayResume = () => isPointerLockActive() && (
+      !isLocked ||
+      isPauseOverlayOpen ||
+      isReturningToGame ||
+      showVideoMenu ||
+      controllerGameplayActive ||
+      touchGameplayActive
+    );
+
     reconcileMouseGameplayResume();
-    const interval = window.setInterval(reconcileMouseGameplayResume, 120);
-    return () => window.clearInterval(interval);
+    if (!shouldPollMouseGameplayResume()) return;
+
+    let cancelled = false;
+    let resumeTimeout: number | null = null;
+    const scheduleMouseGameplayResumeCheck = () => {
+      if (cancelled) return;
+      resumeTimeout = window.setTimeout(() => {
+        if (cancelled) return;
+        reconcileMouseGameplayResume();
+        if (shouldPollMouseGameplayResume()) scheduleMouseGameplayResumeCheck();
+      }, 120);
+    };
+
+    scheduleMouseGameplayResumeCheck();
+    return () => {
+      cancelled = true;
+      if (resumeTimeout !== null) window.clearTimeout(resumeTimeout);
+    };
   }, [
     controllerGameplayActive,
     isGameLaunched,
@@ -4127,6 +1002,7 @@ export function HUD() {
     setPauseMenuOpen,
     setTouchControlsActive,
     showVideoMenu,
+    touchGameplayActive,
   ]);
 
   useEffect(() => {
@@ -4136,55 +1012,10 @@ export function HUD() {
   }, [currentSpell, isSpellMenuOpen]);
 
   const requestMobileFullscreen = (showHintOnFailure = true) => {
-    const webkitDocument = document as Document & {
-      webkitExitFullscreen?: () => Promise<void> | void;
-    };
-    const fullscreenTarget = document.documentElement as HTMLElement & {
-      webkitRequestFullscreen?: () => Promise<void> | void;
-    };
-
-    try {
-      if (getFullscreenElement()) {
-        const exitRequest = document.exitFullscreen?.() ?? webkitDocument.webkitExitFullscreen?.();
-        setIsFullscreenHintOpen(false);
-        if (exitRequest && typeof exitRequest.catch === "function") {
-          exitRequest.catch(() => {
-            if (showHintOnFailure) setIsFullscreenHintOpen(true);
-          });
-        }
-        return true;
-      }
-
-      if (isStandaloneDisplayMode()) {
-        setIsDocumentFullscreen(true);
-        setIsFullscreenHintOpen(false);
-        return true;
-      }
-
-      const request = fullscreenTarget.requestFullscreen?.({ navigationUI: "hide" }) ?? fullscreenTarget.webkitRequestFullscreen?.();
-      if (!request) {
-        if (showHintOnFailure) setIsFullscreenHintOpen(true);
-        return false;
-      }
-
-      if (request && typeof request.catch === "function") {
-        request
-          .then(() => {
-            setIsDocumentFullscreen(true);
-            setIsFullscreenHintOpen(false);
-          })
-          .catch(() => {
-            if (showHintOnFailure) setIsFullscreenHintOpen(true);
-          });
-      } else {
-        setIsDocumentFullscreen(true);
-        setIsFullscreenHintOpen(false);
-      }
-      return true;
-    } catch {
-      if (showHintOnFailure) setIsFullscreenHintOpen(true);
-      return false;
-    }
+    return requestTouchFullscreenMode({
+      onFullscreenStateChange: setIsDocumentFullscreen,
+      onFullscreenHintChange: setIsFullscreenHintOpen,
+    }, showHintOnFailure);
   };
 
   const startTouchGameplay = () => {
@@ -4196,7 +1027,7 @@ export function HUD() {
     pauseMenuExplicitlyRequestedRef.current = false;
     pauseMenuRequestedRef.current = false;
     pointerLockResumeGraceUntilRef.current = 0;
-    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+    setHudMouseGameplayActive(false);
     if (!isTouchDevice) {
       setTouchControlsActive(false);
       releaseMobileGameplayInputs();
@@ -4230,7 +1061,7 @@ export function HUD() {
     pauseMenuExplicitlyRequestedRef.current = false;
     pauseMenuRequestedRef.current = false;
     pointerLockResumeGraceUntilRef.current = 0;
-    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+    setHudMouseGameplayActive(false);
     setTouchControlsActive(false);
     releaseMobileGameplayInputs();
     lastGameplayInputModeRef.current = "controller";
@@ -4252,9 +1083,146 @@ export function HUD() {
 
   const pauseGameplayFromController = () => {
     openPauseMenuFromGameplay(touchGameplayActive ? "touch" : "controller");
-    if (document.pointerLockElement) {
-      document.exitPointerLock();
+    exitPointerLockIfActive();
+  };
+
+  const previewEnginePlaceable = (placeable: EnginePlaceableSelection | string, options?: EnginePlaceableOptions) => {
+    return previewHudEnginePlaceable(placeable, options, setEngineMenuSelectedId);
+  };
+
+  const requestEnginePlaceable = (placeable: EnginePlaceableSelection | string, options?: EnginePlaceableOptions) => {
+    return requestHudEnginePlaceable(placeable, options, setEngineMenuSelectedId);
+  };
+
+  const clearEnginePlaceables = () => {
+    clearHudEnginePlaceables();
+  };
+
+  const previewEnginePlacedObject = (object: EnginePlacedObjectSelection, options?: EnginePlaceableOptions) => {
+    return previewHudEnginePlacedObject(object, options, setEngineMenuSelectedId);
+  };
+
+  const moveEnginePlacedObject = (object: EnginePlacedObjectSelection, options?: EnginePlaceableOptions) => {
+    return moveHudEnginePlacedObject(object, options, setEngineMenuSelectedId);
+  };
+
+  const deleteEnginePlacedObject = (instanceId: string) => {
+    return deleteHudEnginePlacedObject(instanceId);
+  };
+
+  const closeEngineMenu = (resumeGameplay = true) => {
+    setEngineMenuOpen(false);
+    dispatchEnginePlaceableSignal("wof-engine-placeable-preview-clear");
+    if (!resumeGameplay) return;
+
+    const inputMode = lastGameplayInputModeRef.current;
+    window.setTimeout(() => {
+      if (inputMode === "controller") {
+        startControllerGameplay();
+      } else if (inputMode === "touch") {
+        startTouchGameplay();
+      } else {
+        setIsReturningToGame(true);
+        requestGamePointerLock();
+      }
+    }, 0);
+  };
+
+  const openEngineMenu = (inputMode: GameplayInputMode) => {
+    if (
+      !isEngineMenuAllowed ||
+      !isGameLaunched ||
+      isEngineMenuOpen ||
+      isInventoryOpen ||
+      isSpellMenuOpen ||
+      questDialogSession ||
+      questNpcEditorTarget
+    ) {
+      return false;
     }
+
+    pointerLockRequestIdRef.current += 1;
+    pointerLockResumeGraceUntilRef.current = 0;
+    lastGameplayInputModeRef.current = inputMode;
+    pauseMenuExplicitlyRequestedRef.current = false;
+    pauseMenuRequestedRef.current = false;
+    setHudMouseGameplayActive(false);
+    setMouseLookFallbackActive(false);
+    setScoreboardSource("keyboard", false);
+    setScoreboardSource("controller", false);
+    setPauseOverlayOpen(false);
+    setPauseMenuOpen(false);
+    setShowVideoMenu(false);
+    setRemappingAction(null);
+    setRemappingVoiceKey(false);
+    setTouchControlsActive(false);
+    releaseMobileGameplayInputs();
+    setControllerGameplayActive(false);
+    if (isMapExpanded) {
+      startTransition(toggleMap);
+    }
+    setIsReturningToGame(false);
+    setIsLocked(false);
+    setCanLock(true);
+    setEngineMenuOpen(true);
+    dispatchHudGameplayModalOpened();
+
+    exitPointerLockIfActive();
+    return true;
+  };
+  const setQuestDialogSessionForQa = (questDialogSession: QuestDialogSession | null) => {
+    useGameStore.setState({ questDialogSession });
+  };
+
+  const hudStateQaOptions = {
+    activeHand,
+    controllerGameplayActive,
+    isGameLaunched,
+    isMapExpanded,
+    qaHudState,
+    qaMagicSpell,
+    qaMapPage,
+    qaSettingsPane,
+    touchGameplayActive,
+    lastGameplayInputModeRef,
+    pauseMenuExplicitlyRequestedRef,
+    pauseMenuRequestedRef,
+    pointerLockRequestIdRef,
+    pointerLockResumeGraceUntilRef,
+    closeQuestNpcEditor,
+    openEngineMenu,
+    openQuestNpcEditor,
+    releaseMobileGameplayInputs,
+    setCanLock,
+    setControllerGameplayActive,
+    setDevFastTravelOpen,
+    setEngineMenuOpen,
+    setHandCharging,
+    setInventoryOpen,
+    setIsLocked,
+    setIsReturningToGame,
+    setLeftRunePower,
+    setMagicArmed,
+    setMenuBindingHand,
+    setExpandedMapPage,
+    setMouseLookFallbackActive,
+    setPauseMenuIndex,
+    setPauseMenuOpen,
+    setPauseOverlayOpen,
+    setQuestDialogSession: setQuestDialogSessionForQa,
+    setQuestDevModeEnabled,
+    setRemappingAction,
+    setRemappingVoiceKey,
+    setRightRunePower,
+    setScoreboardSource,
+    setSettingsPane,
+    setShowVideoMenu,
+    setSpell,
+    setSpellMenuOpen,
+    setStartMenuStage,
+    setTouchControlsActive,
+    toggleMap,
+    videoAspectStartIndex,
   };
 
   const closeDevFastTravelMenu = (resumeGameplay = true) => {
@@ -4292,7 +1260,7 @@ export function HUD() {
     lastGameplayInputModeRef.current = inputMode;
     pauseMenuExplicitlyRequestedRef.current = false;
     pauseMenuRequestedRef.current = false;
-    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
+    setHudMouseGameplayActive(false);
     setMouseLookFallbackActive(false);
     setScoreboardSource("keyboard", false);
     setScoreboardSource("controller", false);
@@ -4304,49 +1272,30 @@ export function HUD() {
     setTouchControlsActive(false);
     releaseMobileGameplayInputs();
     setControllerGameplayActive(false);
+    if (isMapExpanded) {
+      startTransition(toggleMap);
+    }
     setIsReturningToGame(false);
     setIsLocked(false);
     setCanLock(true);
     setDevFastTravelIndex(0);
     devFastTravelOpenedAtRef.current = performance.now();
     setDevFastTravelOpen(true);
-    window.dispatchEvent(new Event("command-console-opened"));
+    dispatchHudGameplayModalOpened();
 
-    if (document.pointerLockElement) {
-      document.exitPointerLock();
-    }
+    exitPointerLockIfActive();
     return true;
   };
 
   const runDevFastTravel = (location: DevFastTravelLocation) => {
-    const spawn = location.getSpawn();
-    document.documentElement.dataset.wofFastTravelTarget = location.id;
-    document.documentElement.dataset.wofFastTravelX = String(Math.round(spawn.x));
-    document.documentElement.dataset.wofFastTravelY = String(Math.round(spawn.y));
-    document.documentElement.dataset.wofFastTravelZ = String(Math.round(spawn.z));
-    window.dispatchEvent(new Event("wof-reset-perf-stats"));
-    window.dispatchEvent(new CustomEvent("teleportPlayer", {
-      detail: {
-        x: spawn.x,
-        y: spawn.y,
-        z: spawn.z,
-        yaw: Number.isFinite(spawn.yaw) ? spawn.yaw : undefined,
-      },
-    }));
-    if (location.spawnSpellDummies) {
-      window.setTimeout(() => {
-        window.dispatchEvent(new CustomEvent("wof-spawn-spell-dummies", {
-          detail: {
-            x: spawn.x,
-            y: spawn.y,
-            z: spawn.z,
-            yaw: Number.isFinite(spawn.yaw) ? spawn.yaw : 0,
-          },
-        }));
-      }, 120);
-    }
-    addLobbyMessage(`FAST TRAVEL: ${location.label} (${location.chunk.cx},${location.chunk.cz})`, "system");
-    closeDevFastTravelMenu(true);
+    void loadDevFastTravelModule().then(({ runDevFastTravelLocation }) => {
+      runDevFastTravelLocation(location);
+      addLobbyMessage(`FAST TRAVEL: ${location.label} (${location.chunk.cx},${location.chunk.cz})`, "system");
+      closeDevFastTravelMenu(true);
+    }).catch(() => {
+      addLobbyMessage("Fast travel runtime unavailable.", "system");
+      closeDevFastTravelMenu(true);
+    });
   };
 
   const requestGamePointerLock = () => {
@@ -4355,8 +1304,8 @@ export function HUD() {
       return false;
     }
 
-    if (document.pointerLockElement) {
-      document.documentElement.classList.add("wizards-mouse-gameplay-active");
+    if (isPointerLockActive()) {
+      setHudMouseGameplayActive(true);
       finishMouseGameplayResume();
       return true;
     }
@@ -4369,7 +1318,7 @@ export function HUD() {
 
     const handlePointerLockGranted = () => {
       if (pointerLockRequestIdRef.current !== requestId) return;
-      if (!document.pointerLockElement) return;
+      if (!isPointerLockActive()) return;
       finishMouseGameplayResume();
     };
 
@@ -4388,10 +1337,7 @@ export function HUD() {
       return false;
     }
 
-    const lockTarget =
-      document.getElementById("game-canvas") ??
-      document.querySelector("canvas") ??
-      document.body;
+    const lockTarget = getHudPointerLockTarget();
 
     try {
       setCanLock(false);
@@ -4400,7 +1346,7 @@ export function HUD() {
       setPauseOverlayOpen(false);
       setPauseMenuOpen(false);
       setIsReturningToGame(true);
-      const requestPointerLock = (lockTarget as HTMLElement & { requestPointerLock?: () => Promise<void> | void }).requestPointerLock;
+      const requestPointerLock = getHudPointerLockRequester(lockTarget);
       if (!requestPointerLock) {
         pointerLockUnavailableRef.current = true;
         handlePointerLockDenied();
@@ -4411,7 +1357,7 @@ export function HUD() {
         request.then(handlePointerLockGranted).catch(handlePointerLockDenied);
       } else {
         window.setTimeout(() => {
-          if (document.pointerLockElement) {
+          if (isPointerLockActive()) {
             handlePointerLockGranted();
           } else {
             handlePointerLockDenied();
@@ -4446,7 +1392,7 @@ export function HUD() {
       return;
     }
 
-    if (document.pointerLockElement || document.documentElement.dataset.wizardsMouseLookFallback === "true") {
+    if (isPointerLockActive() || isHudMouseLookFallbackActive()) {
       return;
     }
 
@@ -4490,12 +1436,11 @@ export function HUD() {
         return;
       }
 
-      const canvas = document.getElementById("game-canvas") as HTMLCanvasElement | null;
-      canvas?.focus({ preventScroll: true });
+      getHudPointerLockTarget()?.focus({ preventScroll: true });
 
       if (
-        document.pointerLockElement ||
-        document.documentElement.dataset.wizardsMouseLookFallback === "true" ||
+        isPointerLockActive() ||
+        isHudMouseLookFallbackActive() ||
         touchGameplayActive ||
         controllerGameplayActive
       ) {
@@ -4532,38 +1477,34 @@ export function HUD() {
   ]);
 
   const closeCommandConsole = (resumeGameplay = true) => {
-    setCommandConsoleOpen(false);
-    setCommandConsoleValue("/");
-
-    if (resumeGameplay && commandConsoleShouldRelockRef.current) {
-      setIsReturningToGame(true);
-      window.setTimeout(requestGamePointerLock, 0);
-    }
-
-    commandConsoleShouldRelockRef.current = false;
+    closeHudCommandConsole({
+      resumeGameplay,
+      shouldRelockRef: commandConsoleShouldRelockRef,
+      setCommandConsoleOpen,
+      setCommandConsoleValue,
+      setIsReturningToGame,
+      requestGamePointerLock,
+    });
   };
 
   const openCommandConsole = () => {
-    if (!isGameLaunched || isCommandConsoleOpen || isSpellMenuOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen) return;
-
-    commandConsoleShouldRelockRef.current = Boolean(
-      (document.pointerLockElement || document.documentElement.dataset.wizardsMouseLookFallback === "true") &&
-      !isTouchDevice
-    );
-    setScoreboardSource("keyboard", false);
-    setScoreboardSource("controller", false);
-    setControllerGameplayActive(false);
-    setShowVideoMenu(false);
-    setCommandConsoleValue("/");
-    setCommandConsoleOpen(true);
-    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
-    setMouseLookFallbackActive(false);
-    setIsLocked(false);
-    window.dispatchEvent(new Event("command-console-opened"));
-
-    if (document.pointerLockElement) {
-      document.exitPointerLock();
-    }
+    openHudCommandConsole({
+      isGameLaunched,
+      isCommandConsoleOpen,
+      isSpellMenuOpen,
+      isInventoryOpen,
+      isTouchDevice,
+      hasQuestNpcEditorTarget: Boolean(questNpcEditorTarget),
+      hasQuestDialogSession: Boolean(questDialogSession),
+      shouldRelockRef: commandConsoleShouldRelockRef,
+      setKeyboardScoreboardOpen: (open) => setScoreboardSource("keyboard", open),
+      setControllerScoreboardOpen: (open) => setScoreboardSource("controller", open),
+      setControllerGameplayActive,
+      setShowVideoMenu,
+      setCommandConsoleValue,
+      setCommandConsoleOpen,
+      setIsLocked,
+    });
   };
 
   useEffect(() => {
@@ -4591,224 +1532,30 @@ export function HUD() {
   }, [controllerGameplayActive, isCommandConsoleOpen, isInventoryOpen, isLocked, isReturningToGame, isSpellMenuOpen, isTouchDevice, questDialogSession, requestGamePointerLock, showVideoMenu]);
 
   const submitCommandConsole = () => {
-    const rawCommand = commandConsoleValue.trim();
-    const commandParts = rawCommand.replace(/^\/+/, "").trim().split(/\s+/).filter(Boolean);
-    const [commandName = "", ...commandArgs] = commandParts;
-    const rawValue = commandArgs.join(" ");
-    const normalizedCommand = commandName.toLowerCase();
-    const normalizedValue = rawValue.toLowerCase();
-
-    if (!rawCommand.startsWith("/") || normalizedCommand.length === 0) {
-      addLobbyMessage("Commands must start with /", "system");
-      closeCommandConsole();
-      return;
-    }
-
-    if (normalizedCommand === "vclip") {
-      const truthy = ["on", "true", "1", "yes", "enable", "enabled"];
-      const falsy = ["off", "false", "0", "no", "disable", "disabled"];
-      const nextEnabled = normalizedValue.length === 0 || normalizedValue === "toggle"
-        ? !useGameStore.getState().isVClipEnabled
-        : truthy.includes(normalizedValue)
-          ? true
-          : falsy.includes(normalizedValue)
-            ? false
-            : null;
-
-      if (nextEnabled === null) {
-        addLobbyMessage("Usage: /vclip on or /vclip off", "system");
-      } else {
-        setVClipEnabled(nextEnabled);
-        addLobbyMessage(`VCLIP ${nextEnabled ? "ENABLED" : "DISABLED"}`, "system");
-      }
-
-      closeCommandConsole();
-      return;
-    }
-
-    if (normalizedCommand === "questdev" || normalizedCommand === "npcdev" || normalizedCommand === "devquests") {
-      const [rawAction = "", ...openTargetParts] = commandArgs;
-      const action = rawAction.toLowerCase();
-      if (action === "open" || action === "editor") {
-        const requestedNpcId = openTargetParts.join("-").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
-        const npcId = requestedNpcId || "manual-dev-npc";
-        setQuestDevModeEnabled(true);
-        openQuestNpcEditor({
-          npcId,
-          townId: "manual-dev-town",
-          hutId: npcId,
-          defaultName: "Manual Quest NPC",
-          theme: "village",
-          position: [0, 0, 0],
-        });
-        addLobbyMessage(`Editing ${npcId}`, "system");
-        closeCommandConsole(false);
-        return;
-      }
-
-      const truthy = ["on", "true", "1", "yes", "enable", "enabled"];
-      const falsy = ["off", "false", "0", "no", "disable", "disabled"];
-      const nextEnabled = normalizedValue.length === 0 || normalizedValue === "toggle"
-        ? !useGameStore.getState().isQuestDevModeEnabled
-        : truthy.includes(normalizedValue)
-          ? true
-          : falsy.includes(normalizedValue)
-            ? false
-            : null;
-
-      if (nextEnabled === null) {
-        addLobbyMessage("Usage: /questdev on or /questdev off", "system");
-      } else {
-        setQuestDevModeEnabled(nextEnabled);
-        addLobbyMessage(`QUEST DEV ${nextEnabled ? "ENABLED" : "DISABLED"}`, "system");
-      }
-
-      closeCommandConsole();
-      return;
-    }
-
-    if (normalizedCommand === "darrelhere" || normalizedCommand === "claimdarrel" || normalizedCommand === "setdarrel") {
-      window.dispatchEvent(new Event("quest-claim-darrel-here"));
-      addLobbyMessage("Claiming Darrel at your current hut or target.", "system");
-      closeCommandConsole();
-      return;
-    }
-
-    if (normalizedCommand === "darrelspawnhere" || normalizedCommand === "darrelquestspawnhere" || normalizedCommand === "setdarrelquestspawn") {
-      const position = (window as any).__wofLastPlayerPosition ?? (window as any).localPlayerPos;
-      const x = Number(position?.x);
-      const y = Number(position?.y);
-      const z = Number(position?.z);
-      const yaw = Number((window as any).__wofLastPlayerYaw);
-      const spawn = saveDarrelQuestSpawnOverride({
-        x,
-        y,
-        z,
-        yaw: Number.isFinite(yaw) ? yaw : undefined,
+    void loadHudCommandConsoleModule().then(({ submitHudCommandConsoleCommand }) => {
+      submitHudCommandConsoleCommand({
+        commandValue: commandConsoleValue,
+        touchGameplayActive,
+        controllerGameplayActive,
+        addLobbyMessage,
+        closeCommandConsole,
+        setVClipEnabled,
+        setQuestDevModeEnabled,
+        openEngineMenu,
+        requestEnginePlaceable,
+        openQuestNpcEditor,
+        setInventoryOpen,
+        setSurvivalTimeOverrideSeconds,
       });
-
-      if (spawn) {
-        addLobbyMessage(`Darrel realm spawn set: X ${spawn.x.toFixed(1)} Y ${spawn.y.toFixed(1)} Z ${spawn.z.toFixed(1)}`, "system");
-      } else {
-        addLobbyMessage("Could not read current player position for Darrel spawn.", "system");
-      }
+    }).catch(() => {
+      addLobbyMessage("Command runtime unavailable.", "system");
       closeCommandConsole();
-      return;
-    }
-
-    if (normalizedCommand === "resetdarrelspawn" || normalizedCommand === "cleardarrelspawn") {
-      clearDarrelQuestSpawnOverride();
-      addLobbyMessage("Darrel realm spawn reset to authored default.", "system");
-      closeCommandConsole();
-      return;
-    }
-
-    if (normalizedCommand === "inventory" || normalizedCommand === "inv") {
-      setInventoryOpen(true);
-      closeCommandConsole(false);
-      return;
-    }
-
-    if (normalizedCommand === "forage") {
-      const ingredient = normalizedValue === "leaf" ? "leaves" : normalizedValue;
-      if (ingredient === "leaves" || ingredient === "berries" || ingredient === "roots") {
-        useGameStore.getState().collectDarrelIngredient(ingredient);
-      } else {
-        addLobbyMessage("Usage: /forage leaves, /forage berries, or /forage roots", "system");
-      }
-      closeCommandConsole();
-      return;
-    }
-
-    if (normalizedCommand === "brew") {
-      useGameStore.getState().brewDarrelGardenDraught();
-      closeCommandConsole();
-      return;
-    }
-
-    if (normalizedCommand === "drinkpotion" || normalizedCommand === "drinkdraught" || normalizedCommand === "drink") {
-      closeCommandConsole(false);
-      useGameStore.getState().drinkDarrelGardenDraught();
-      return;
-    }
-
-    if (normalizedCommand === "night") {
-      const truthy = ["", "on", "true", "1", "yes", "enable", "enabled"];
-      const falsy = ["off", "false", "0", "no", "disable", "disabled", "clear", "reset", "day"];
-
-      if (truthy.includes(normalizedValue)) {
-        setSurvivalTimeOverrideSeconds(FORCED_NIGHT_ELAPSED_SECONDS);
-        addLobbyMessage("NIGHT FORCED", "system");
-      } else if (falsy.includes(normalizedValue)) {
-        setSurvivalTimeOverrideSeconds(null);
-        addLobbyMessage("DAY/NIGHT CYCLE RESUMED", "system");
-      } else {
-        addLobbyMessage("Usage: /night or /night off", "system");
-      }
-
-      closeCommandConsole();
-      return;
-    }
-
-    if (normalizedCommand === "day") {
-      const truthy = ["", "on", "true", "1", "yes", "enable", "enabled"];
-      const falsy = ["off", "false", "0", "no", "disable", "disabled", "clear", "reset", "cycle"];
-
-      if (truthy.includes(normalizedValue)) {
-        setSurvivalTimeOverrideSeconds(FORCED_DAY_ELAPSED_SECONDS);
-        addLobbyMessage("DAY FORCED", "system");
-      } else if (falsy.includes(normalizedValue)) {
-        setSurvivalTimeOverrideSeconds(null);
-        addLobbyMessage("DAY/NIGHT CYCLE RESUMED", "system");
-      } else {
-        addLobbyMessage("Usage: /day or /day off", "system");
-      }
-
-      closeCommandConsole();
-      return;
-    }
-
-    if (normalizedCommand === "navrecord" || normalizedCommand === "nav") {
-      const [rawAction = "status", ...labelParts] = commandArgs;
-      const action = rawAction.toLowerCase();
-      const label = labelParts.join(" ");
-      const activeStatus = getNavigationRecorderStatus();
-
-      if (["start", "on", "begin", "record"].includes(action)) {
-        const result = startNavigationRecording(label || undefined);
-        addLobbyMessage(result.message, "system");
-      } else if (["stop", "off", "end", "finish"].includes(action)) {
-        const result = stopNavigationRecording();
-        addLobbyMessage(result.message, "system");
-      } else if (["export", "save", "download"].includes(action)) {
-        const result = exportNavigationRecording();
-        addLobbyMessage(result.message, "system");
-      } else if (["clear", "reset", "delete"].includes(action)) {
-        const result = clearNavigationRecordings();
-        addLobbyMessage(result.message, "system");
-      } else if (["status", "info"].includes(action)) {
-        const seconds = Math.round(activeStatus.durationMs / 1000);
-        addLobbyMessage(
-          activeStatus.active
-            ? `NAV recording ${activeStatus.label}: ${activeStatus.sampleCount} samples, ${seconds}s`
-            : `NAV idle: ${activeStatus.storedSessionCount} saved sessions`,
-          "system"
-        );
-      } else {
-        addLobbyMessage("Usage: /navrecord start, stop, export, status, or clear", "system");
-      }
-
-      closeCommandConsole();
-      return;
-    }
-
-    addLobbyMessage(`Unknown command: /${normalizedCommand}`, "system");
-    closeCommandConsole();
+    });
   };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || remappingAction || remappingVoiceKey || isEditableTarget(e.target)) return;
+      if (isCommandConsoleOpen || isEngineMenuOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || remappingAction || remappingVoiceKey || isEditableTarget(e.target)) return;
       if (e.key !== "/" && e.code !== "Slash") return;
       e.preventDefault();
       e.stopPropagation();
@@ -4817,7 +1564,21 @@ export function HUD() {
 
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [isCommandConsoleOpen, isInventoryOpen, openCommandConsole, questDialogSession, questNpcEditorTarget, remappingAction, remappingVoiceKey]);
+  }, [isCommandConsoleOpen, isEngineMenuOpen, isInventoryOpen, openCommandConsole, questDialogSession, questNpcEditorTarget, remappingAction, remappingVoiceKey]);
+
+  useEffect(() => {
+    const handlePlaceableResult = (event: { detail: { ok?: boolean; label?: string; reason?: string } | undefined }) => {
+      const detail = event.detail;
+      if (!detail) return;
+      if (detail.ok) {
+        addLobbyMessage(`PLACED: ${detail.label ?? "object"}`, "system");
+      } else {
+        addLobbyMessage(`PLACE BLOCKED: ${detail.reason ?? "invalid area"}`, "system");
+      }
+    };
+
+    return subscribeEnginePlaceableEvent("wof-engine-placeable-result", handlePlaceableResult);
+  }, [addLobbyMessage]);
 
   const launchMode = (mode: GameMode) => {
     if (mode === "solo-survival" || mode === "multiplayer-survival") {
@@ -4831,13 +1592,13 @@ export function HUD() {
     setPauseOverlayOpen(false);
     setPauseMenuIndex(0);
 
-    if (isTouchDevice) {
-      startTouchGameplay();
+    if (controllerResumeRequestedRef.current) {
+      startControllerGameplay();
       return;
     }
 
-    if (controllerResumeRequestedRef.current) {
-      startControllerGameplay();
+    if (isTouchDevice) {
+      startTouchGameplay();
       return;
     }
 
@@ -4850,10 +1611,22 @@ export function HUD() {
 
   useEffect(() => {
     if (!isGameLaunched || !survivalSave || (gameMode !== "solo-survival" && gameMode !== "multiplayer-survival")) return;
-    const interval = window.setInterval(() => {
-      saveSurvivalProgress({ lastMode: gameMode });
-    }, 15000);
-    return () => window.clearInterval(interval);
+    let cancelled = false;
+    let autosaveTimeout: number | null = null;
+
+    const scheduleSurvivalAutosave = () => {
+      autosaveTimeout = window.setTimeout(() => {
+        if (cancelled) return;
+        saveSurvivalProgress({ lastMode: gameMode });
+        scheduleSurvivalAutosave();
+      }, SURVIVAL_AUTOSAVE_INTERVAL_MS);
+    };
+
+    scheduleSurvivalAutosave();
+    return () => {
+      cancelled = true;
+      if (autosaveTimeout !== null) window.clearTimeout(autosaveTimeout);
+    };
   }, [gameMode, isGameLaunched, saveSurvivalProgress, survivalSave]);
 
   const cycleLobbyMap = (direction: 1 | -1) => {
@@ -4887,11 +1660,21 @@ export function HUD() {
   };
 
   const adjustLobbyMaxPlayers = (direction: 1 | -1) => {
-    setLobbyRules({ maxPlayers: Math.max(2, Math.min(16, lobbyRules.maxPlayers + direction)) });
+    setLobbyRules({
+      maxPlayers: Math.max(
+        MULTIPLAYER_MIN_CUSTOM_LOBBY_PLAYERS,
+        Math.min(MULTIPLAYER_MAX_PLAYERS_PER_ROOM, lobbyRules.maxPlayers + direction),
+      ),
+    });
   };
 
   const adjustSurvivalMaxPlayers = (direction: 1 | -1) => {
-    setSurvivalRules({ maxPlayers: Math.max(1, Math.min(12, survivalRules.maxPlayers + direction)) });
+    setSurvivalRules({
+      maxPlayers: Math.max(
+        MULTIPLAYER_MIN_SURVIVAL_PLAYERS,
+        Math.min(MULTIPLAYER_MAX_PLAYERS_PER_ROOM, survivalRules.maxPlayers + direction),
+      ),
+    });
   };
 
   const closePauseMenu = (preferredInput: GameplayInputMode | "last" = "last") => {
@@ -4906,15 +1689,15 @@ export function HUD() {
 
     const inputMode = preferredInput === "last" ? lastGameplayInputModeRef.current : preferredInput;
 
-    if (isTouchDevice || inputMode === "touch") {
-      if (startTouchGameplay()) {
-        return;
-      }
-    }
-
     if (controllerResumeRequestedRef.current || inputMode === "controller") {
       startControllerGameplay();
       return;
+    }
+
+    if (inputMode === "touch" || isTouchDevice) {
+      if (startTouchGameplay()) {
+        return;
+      }
     }
 
     if (canLock) {
@@ -4964,11 +1747,11 @@ export function HUD() {
     }
 
     requestAnimationFrame(() => {
-      if (!document.pointerLockElement) {
+      if (!isPointerLockActive()) {
         requestGamePointerLock();
       }
       window.setTimeout(() => {
-        if (!document.pointerLockElement) {
+        if (!isPointerLockActive()) {
           setCanLock(true);
         }
       }, 900);
@@ -5015,7 +1798,7 @@ export function HUD() {
       isPauseMenuVisible ||
       isSpellMenuOpen ||
       questDialogSession ||
-      !(isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)
+      !(isLocked || isPointerLockActive() || touchGameplayActive || controllerGameplayActive)
     ) {
       return;
     }
@@ -5027,11 +1810,9 @@ export function HUD() {
     setScoreboardSource("keyboard", false);
     setScoreboardSource("controller", false);
     setInventoryOpen(true);
-    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
-    window.dispatchEvent(new Event("command-console-opened"));
-    if (document.pointerLockElement) {
-      document.exitPointerLock();
-    }
+    setHudMouseGameplayActive(false);
+    dispatchHudGameplayModalOpened();
+    exitPointerLockIfActive();
   };
 
   const openSpellMenuFromGame = () => {
@@ -5040,7 +1821,7 @@ export function HUD() {
       showVideoMenu ||
       isPauseMenuVisible ||
       isInventoryOpen ||
-      !(isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)
+      !(isLocked || isPointerLockActive() || touchGameplayActive || controllerGameplayActive)
     ) {
       return;
     }
@@ -5053,10 +1834,8 @@ export function HUD() {
     setScoreboardSource("controller", false);
     setMenuBindingHand(qHeldRef.current ? "right" : activeHand);
     setSpellMenuOpen(true);
-    document.documentElement.classList.remove("wizards-mouse-gameplay-active");
-    if (document.pointerLockElement) {
-      document.exitPointerLock();
-    }
+    setHudMouseGameplayActive(false);
+    exitPointerLockIfActive();
   };
 
   const toggleMagicArmedFromGame = () => {
@@ -5067,7 +1846,7 @@ export function HUD() {
       isInventoryOpen ||
       isSpellMenuOpen ||
       questDialogSession ||
-      !(isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)
+      !(isLocked || isPointerLockActive() || touchGameplayActive || controllerGameplayActive)
     ) {
       return false;
     }
@@ -5089,7 +1868,7 @@ export function HUD() {
       isSpellMenuOpen ||
       questDialogSession ||
       questNpcEditorTarget ||
-      !(isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)
+      !(isLocked || isPointerLockActive() || touchGameplayActive || controllerGameplayActive)
     ) {
       return false;
     }
@@ -5179,23 +1958,9 @@ export function HUD() {
       }
 
       if (settingsPane === "character") {
-        const colorIndex = index - characterColorStartIndex;
-        if (colorIndex >= 0 && colorIndex < characterColorRows.length) {
-          cycleCharacterColor(characterColorRows[colorIndex].key, 1);
-          return;
-        }
-
-        const styleIndex = index - characterStyleStartIndex;
-        if (styleIndex >= 0 && styleIndex < characterStyleRows.length) {
-          const row = characterStyleRows[styleIndex];
-          cycleCharacterStyle(row.key, row.options, 1);
-          return;
-        }
-
-        const mouthIndex = index - characterMouthStartIndex;
-        if (mouthIndex >= 0 && mouthIndex < characterMouthRows.length) {
-          const row = characterMouthRows[mouthIndex];
-          cycleCharacterStyle(row.key, row.options, 1);
+        const nextCharacterUpdate = getCharacterCustomizationStep(characterCustomization, index, 1);
+        if (nextCharacterUpdate) {
+          setCharacterCustomization(nextCharacterUpdate);
           return;
         }
       }
@@ -5353,8 +2118,9 @@ export function HUD() {
     const attribute = showVideoMenu ? "data-settings-index" : "data-menu-index";
     setPauseMenuIndex((prev) => {
       const nextIndex = findDirectionalMenuIndex(selector, attribute, prev, direction, count);
-      if (showVideoMenu && nextIndex >= 0 && nextIndex < settingsTabCount) {
-        setSettingsPane(settingsPaneOrder[nextIndex]);
+      const nextPane = showVideoMenu ? getSettingsPaneForTabIndex(nextIndex) : null;
+      if (nextPane) {
+        setSettingsPane(nextPane);
       }
       return nextIndex;
     });
@@ -5389,6 +2155,14 @@ export function HUD() {
         return;
       }
 
+      if (isEngineMenuOpen) {
+        if (e.code === "Escape" || e.code === "KeyL") {
+          e.preventDefault();
+          closeEngineMenu(true);
+        }
+        return;
+      }
+
       if (isDevFastTravelOpen) {
         if (e.code === "Escape" || e.code === "F8") {
           e.preventDefault();
@@ -5398,22 +2172,36 @@ export function HUD() {
 
         if (e.code === "ArrowDown" || e.code === "ArrowRight") {
           e.preventDefault();
+          if (devFastTravelLocationCount <= 0) return;
           setDevFastTravelIndex(prev => wrapIndex(prev + 1, devFastTravelLocationCount));
           return;
         }
 
         if (e.code === "ArrowUp" || e.code === "ArrowLeft") {
           e.preventDefault();
+          if (devFastTravelLocationCount <= 0) return;
           setDevFastTravelIndex(prev => wrapIndex(prev - 1, devFastTravelLocationCount));
           return;
         }
 
         if (e.code === "Enter" || e.code === "Space") {
           e.preventDefault();
-          runDevFastTravel(DEV_FAST_TRAVEL_LOCATIONS[devFastTravelIndex]);
+          const location = devFastTravelLocations[devFastTravelIndex];
+          if (location) runDevFastTravel(location);
           return;
         }
 
+        return;
+      }
+
+      if (e.code === "KeyL" && !e.repeat && isEngineMenuAllowed) {
+        e.preventDefault();
+        const inputMode: GameplayInputMode = controllerGameplayActive
+          ? "controller"
+          : touchGameplayActive
+            ? "touch"
+            : "mouse";
+        openEngineMenu(inputMode);
         return;
       }
 
@@ -5478,7 +2266,7 @@ export function HUD() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [closeDevFastTravelMenu, closePauseMenu, controllerGameplayActive, devFastTravelIndex, devFastTravelLocationCount, isCommandConsoleOpen, isDevFastTravelAllowed, isDevFastTravelOpen, isInventoryOpen, isPauseMenuVisible, movePauseMenuFocus, openDevFastTravelMenu, questDialogSession, questNpcEditorTarget, remappingVoiceKey, runDevFastTravel, runPauseMenuAction, setScoreboardSource, setVoicePushToTalkKey, touchGameplayActive]);
+  }, [closeDevFastTravelMenu, closeEngineMenu, closePauseMenu, controllerGameplayActive, devFastTravelIndex, devFastTravelLocationCount, devFastTravelLocations, isCommandConsoleOpen, isDevFastTravelAllowed, isDevFastTravelOpen, isEngineMenuAllowed, isEngineMenuOpen, isInventoryOpen, isPauseMenuVisible, movePauseMenuFocus, openDevFastTravelMenu, openEngineMenu, questDialogSession, questNpcEditorTarget, remappingVoiceKey, runDevFastTravel, runPauseMenuAction, setScoreboardSource, setVoicePushToTalkKey, touchGameplayActive]);
 
   useEffect(() => {
     const clearKeyboardMagicHold = () => {
@@ -5490,9 +2278,14 @@ export function HUD() {
       keyboardMagicHoldConsumedRef.current = false;
     };
 
+    if (!isGameLaunched) {
+      clearKeyboardMagicHold();
+      return;
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isEditableTarget(e.target)) return;
-      const slotIndex = getNumberSlot(e.code);
+      const slotIndex = getNumberSlotFromCode(e.code);
       const hand: HandType = isSpellMenuOpen
         ? (qHeldRef.current ? "right" : menuBindingHand)
         : (qHeldRef.current ? "right" : "left");
@@ -5528,7 +2321,7 @@ export function HUD() {
           return;
         }
 
-        keyboardMagicHoldStartedAtRef.current = performance.now();
+        keyboardMagicHoldStartedAtRef.current = e.timeStamp;
         keyboardMagicHoldConsumedRef.current = false;
         if (keyboardMagicHoldTimeoutRef.current !== null) {
           window.clearTimeout(keyboardMagicHoldTimeoutRef.current);
@@ -5580,7 +2373,7 @@ export function HUD() {
         return;
       }
 
-      if (slotIndex !== -1 && slotIndex < HOTBAR_SIZE && (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive)) {
+      if (slotIndex !== -1 && slotIndex < HOTBAR_SIZE && (isLocked || isPointerLockActive() || touchGameplayActive || controllerGameplayActive)) {
         e.preventDefault();
         selectHotbarSlot(slotIndex, hand);
       }
@@ -5593,7 +2386,7 @@ export function HUD() {
 
       e.preventDefault();
       const wasConsumed = keyboardMagicHoldConsumedRef.current;
-      const holdDuration = performance.now() - holdStartedAt;
+      const holdDuration = e.timeStamp - holdStartedAt;
       clearKeyboardMagicHold();
 
       if (!wasConsumed && holdDuration < MAGIC_UNARM_HOLD_MS) {
@@ -5608,6 +2401,7 @@ export function HUD() {
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [
+    isGameLaunched,
     isLocked,
     isCommandConsoleOpen,
     controllerGameplayActive,
@@ -5638,51 +2432,31 @@ export function HUD() {
 
   useEffect(() => {
     const consumePress = (key: string, pressed: boolean) => {
-      const wasPressed = controllerButtonsRef.current[key] ?? false;
-      controllerButtonsRef.current[key] = pressed;
-      return pressed && !wasPressed;
+      return consumeHudControllerPress(controllerButtonsRef, key, pressed);
     };
 
-    const consumeRepeat = (key: string, pressed: boolean, firstDelay = 260, repeatDelay = 170) => {
-      const now = performance.now();
-      const wasPressed = controllerButtonsRef.current[key as keyof typeof controllerButtonsRef.current] ?? false;
-      controllerButtonsRef.current[key as keyof typeof controllerButtonsRef.current] = pressed;
-
-      if (!pressed) {
-        delete controllerRepeatRef.current[key];
-        return false;
-      }
-
-      if (!wasPressed) {
-        controllerRepeatRef.current[key] = now + firstDelay;
-        return true;
-      }
-
-      if (now >= (controllerRepeatRef.current[key] ?? 0)) {
-        controllerRepeatRef.current[key] = now + repeatDelay;
-        return true;
-      }
-
-      return false;
+    const consumeRepeat = (key: string, pressed: boolean, now: number, firstDelay = 260, repeatDelay = 170) => {
+      return consumeHudControllerRepeat(controllerButtonsRef, controllerRepeatRef, key, pressed, now, firstDelay, repeatDelay);
     };
 
-    let raf = 0;
-    const pollController = () => {
-      const now = performance.now();
-      const gamepad = getPrimaryGamepad();
-
+    let controllerPollScheduler: ReturnType<typeof createControllerPollScheduler>;
+    const pollController = (now: number) => {
       if (questNpcEditorTarget || questDialogSession) {
-        controllerButtonsRef.current = {};
-        controllerRepeatRef.current = {};
-        controllerInventoryHoldStartedAtRef.current = null;
-        controllerInventoryTapEligibleRef.current = false;
-        controllerInventoryIgnoreUntilReleaseRef.current = false;
-        controllerMagicHoldStartedAtRef.current = null;
-        controllerMagicHoldConsumedRef.current = false;
+        resetHudControllerTransientState({
+          controllerButtonsRef,
+          controllerRepeatRef,
+          controllerInventoryHoldStartedAtRef,
+          controllerInventoryTapEligibleRef,
+          controllerInventoryIgnoreUntilReleaseRef,
+          controllerMagicHoldStartedAtRef,
+          controllerMagicHoldConsumedRef,
+        });
         setScoreboardSource("controller", false);
-        raf = window.requestAnimationFrame(pollController);
+        controllerPollScheduler.schedule(GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS);
         return;
       }
+
+      const gamepad = getPrimaryGamepad();
 
       if (!gamepad) {
         if (controllerGameplayActive) {
@@ -5695,83 +2469,95 @@ export function HUD() {
         } else {
           controllerLastSeenAtRef.current = 0;
         }
-        controllerButtonsRef.current = {};
-        controllerRepeatRef.current = {};
-        controllerInventoryHoldStartedAtRef.current = null;
-        controllerInventoryTapEligibleRef.current = false;
-        controllerInventoryIgnoreUntilReleaseRef.current = false;
-        controllerMagicHoldStartedAtRef.current = null;
-        controllerMagicHoldConsumedRef.current = false;
+        resetHudControllerTransientState({
+          controllerButtonsRef,
+          controllerRepeatRef,
+          controllerInventoryHoldStartedAtRef,
+          controllerInventoryTapEligibleRef,
+          controllerInventoryIgnoreUntilReleaseRef,
+          controllerMagicHoldStartedAtRef,
+          controllerMagicHoldConsumedRef,
+        });
         setScoreboardSource("controller", false);
-        raf = window.requestAnimationFrame(pollController);
+        controllerPollScheduler.schedule(GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS);
         return;
       }
       controllerLastSeenAtRef.current = now;
 
       if (remappingAction) {
-        if (performance.now() >= remapReadyAtRef.current) {
+        if (now >= remapReadyAtRef.current) {
           const backPressedForRemap = isGamepadButtonPressed(gamepad, controllerBindings.menuBack as GamepadButtonName);
           if (backPressedForRemap) {
             setRemappingAction(null);
-            raf = window.requestAnimationFrame(pollController);
+            controllerPollScheduler.schedule(0);
             return;
           }
 
-          const capturedButton = controllerButtonOptions.find(button =>
-            isGamepadButtonPressed(gamepad, button as GamepadButtonName)
-          );
+          let capturedButton: GamepadButtonName | null = null;
+          for (let index = 0; index < controllerButtonOptions.length; index += 1) {
+            const button = controllerButtonOptions[index];
+            if (!isGamepadButtonPressed(gamepad, button as GamepadButtonName)) continue;
+            capturedButton = button;
+            break;
+          }
           if (capturedButton) {
             setControllerBinding(remappingAction, capturedButton);
             setRemappingAction(null);
           }
         }
-        raf = window.requestAnimationFrame(pollController);
+        controllerPollScheduler.schedule(0);
         return;
       }
 
-      const bindings = controllerBindings;
-      const leftBumperHeld = isGamepadButtonPressed(gamepad, bindings.leftHotbar as GamepadButtonName);
-      const rightBumperHeld = isGamepadButtonPressed(gamepad, bindings.rightHotbar as GamepadButtonName);
-      const hotbarModifierHeld = leftBumperHeld || rightBumperHeld;
-      const leftBumperPressed = consumePress("leftBumper", leftBumperHeld);
-      const rightBumperPressed = consumePress("rightBumper", rightBumperHeld);
-
-      const aPressed = consumePress("a", isGamepadButtonPressed(gamepad, bindings.menuSelect as GamepadButtonName));
-      const bPressed = consumePress("b", isGamepadButtonPressed(gamepad, bindings.menuBack as GamepadButtonName));
-      const inventoryHeld = isGamepadButtonPressed(gamepad, bindings.inventory as GamepadButtonName);
-      const inventoryPressed = consumePress("inventory", inventoryHeld);
-      const spellMenuHeld = isGamepadButtonPressed(gamepad, bindings.spellMenu as GamepadButtonName);
-      const spellMenuPressed = consumePress("spellMenu", spellMenuHeld);
-      const interactHeld = isGamepadButtonPressed(gamepad, bindings.interact as GamepadButtonName);
-      const yPressed = consumePress("y", isGamepadButtonPressed(gamepad, bindings.map as GamepadButtonName));
-      const backHeld = isGamepadButtonPressed(gamepad, bindings.scoreboard as GamepadButtonName);
-      const startPressed = consumePress("start", isGamepadButtonPressed(gamepad, bindings.pause as GamepadButtonName));
+      const {
+        leftBumperHeld,
+        rightBumperHeld,
+        hotbarModifierHeld,
+        leftBumperPressed,
+        rightBumperPressed,
+        aPressed,
+        bPressed,
+        inventoryHeld,
+        spellMenuPressed,
+        interactHeld,
+        yPressed,
+        backHeld,
+        startPressed,
+        dpadLeft,
+        dpadRight,
+        dpadUp,
+        dpadDown,
+        movementAxisX,
+        movementAxisY,
+        menuAxisX,
+        menuAxisY,
+        scrollAxisY,
+      } = readHudControllerInputSnapshotInto(gamepad, controllerBindings, consumePress, controllerInputSnapshot);
 
       if (isInventoryOpen) {
-        controllerMagicHoldStartedAtRef.current = null;
-        controllerMagicHoldConsumedRef.current = false;
+        resetHudControllerMagicHoldState({
+          controllerMagicHoldStartedAtRef,
+          controllerMagicHoldConsumedRef,
+        });
         setScoreboardSource("controller", false);
-        const inventoryAxisY = getGamepadAxis(gamepad, 1, 0.55);
         const inventoryNextPressed = consumeRepeat(
           "controllerInventoryNext",
-          isGamepadButtonPressed(gamepad, "dpadDown") || inventoryAxisY > 0.6,
+          dpadDown || menuAxisY > 0.6,
+          now,
         );
         const inventoryPrevPressed = consumeRepeat(
           "controllerInventoryPrev",
-          isGamepadButtonPressed(gamepad, "dpadUp") || inventoryAxisY < -0.6,
+          dpadUp || menuAxisY < -0.6,
+          now,
         );
         if (inventoryNextPressed || inventoryPrevPressed) {
-          window.dispatchEvent(new CustomEvent<InventoryControllerMoveDetail>("inventory-controller-move", {
-            detail: { direction: inventoryNextPressed ? 1 : -1 },
-          }));
+          dispatchInventoryControllerMove(inventoryNextPressed ? 1 : -1);
         }
         if (aPressed) {
-          window.dispatchEvent(new Event("inventory-controller-select"));
+          dispatchInventoryControllerSelect();
         }
         if (bPressed || startPressed) {
-          const detail = { handled: false };
-          window.dispatchEvent(new CustomEvent("inventory-controller-back", { detail }));
-          if (!detail.handled) {
+          if (!dispatchInventoryControllerBack()) {
             if (inventoryHeld) {
               controllerInventoryIgnoreUntilReleaseRef.current = true;
               controllerInventoryHoldStartedAtRef.current = null;
@@ -5780,44 +2566,52 @@ export function HUD() {
             closeInventoryAndResume();
           }
         }
-        raf = window.requestAnimationFrame(pollController);
+        controllerPollScheduler.schedule(0);
         return;
       }
 
-      const dpadLeft = isGamepadButtonPressed(gamepad, "dpadLeft");
-      const dpadRight = isGamepadButtonPressed(gamepad, "dpadRight");
-      const dpadUp = isGamepadButtonPressed(gamepad, "dpadUp");
-      const dpadDown = isGamepadButtonPressed(gamepad, "dpadDown");
-      const movementAxisX = getGamepadAxis(gamepad, 0, 0.25);
-      const movementAxisY = getGamepadAxis(gamepad, 1, 0.25);
-      const menuAxisX = getGamepadAxis(gamepad, 0, 0.55);
-      const menuAxisY = getGamepadAxis(gamepad, 1, 0.55);
-      const scrollAxisY = getGamepadAxis(gamepad, 3, 0.25);
       const pauseMenuOpen = isPauseMenuVisible;
+      const pointerLockActive = isPointerLockActive();
+      const gameplayInputActive = hasHudControllerGameplaySignal({
+        isLocked,
+        pointerLockActive,
+        touchGameplayActive,
+        controllerGameplayActive,
+      });
+      const inventoryInputActive = hasHudControllerGameplaySignal({
+        isLocked,
+        pointerLockActive,
+        controllerGameplayActive,
+      });
 
       if (isDevFastTravelOpen) {
         setScoreboardSource("controller", false);
         const canNavigateFastTravel = now - devFastTravelOpenedAtRef.current > 220;
-        const fastTravelNextPressed = canNavigateFastTravel && consumeRepeat("controllerDevFastTravelNext", dpadDown || menuAxisY > 0.6);
-        const fastTravelPrevPressed = canNavigateFastTravel && consumeRepeat("controllerDevFastTravelPrev", dpadUp || menuAxisY < -0.6);
+        const fastTravelNextPressed = canNavigateFastTravel && consumeRepeat("controllerDevFastTravelNext", dpadDown || menuAxisY > 0.6, now);
+        const fastTravelPrevPressed = canNavigateFastTravel && consumeRepeat("controllerDevFastTravelPrev", dpadUp || menuAxisY < -0.6, now);
 
         if (fastTravelNextPressed || fastTravelPrevPressed) {
+          if (devFastTravelLocationCount <= 0) {
+            controllerPollScheduler.schedule(0);
+            return;
+          }
           setDevFastTravelIndex(prev => wrapIndex(prev + (fastTravelNextPressed ? 1 : -1), devFastTravelLocationCount));
         }
 
         if (bPressed || startPressed) {
           closeDevFastTravelMenu(true);
-          raf = window.requestAnimationFrame(pollController);
+          controllerPollScheduler.schedule(0);
           return;
         }
 
         if (aPressed) {
-          runDevFastTravel(DEV_FAST_TRAVEL_LOCATIONS[devFastTravelIndex]);
-          raf = window.requestAnimationFrame(pollController);
+          const location = devFastTravelLocations[devFastTravelIndex];
+          if (location) runDevFastTravel(location);
+          controllerPollScheduler.schedule(0);
           return;
         }
 
-        raf = window.requestAnimationFrame(pollController);
+        controllerPollScheduler.schedule(0);
         return;
       }
 
@@ -5826,17 +2620,17 @@ export function HUD() {
         scrollSettingsPanel(scrollAxisY * 18);
       }
       if (isSpellMenuOpen && Math.abs(scrollAxisY) > 0.05) {
-        window.dispatchEvent(new CustomEvent("spell-menu-controller-scroll", { detail: scrollAxisY * 18 }));
+        dispatchSpellMenuControllerScroll(scrollAxisY * 18);
       }
 
-      const menuNextSpellPressed = consumeRepeat("controllerMenuNextSpell", isSpellMenuOpen && (dpadRight || menuAxisX > 0.6));
-      const menuPrevSpellPressed = consumeRepeat("controllerMenuPrevSpell", isSpellMenuOpen && (dpadLeft || menuAxisX < -0.6));
-      const menuNextSlotPressed = consumeRepeat("controllerMenuNextSlot", isSpellMenuOpen && (dpadDown || menuAxisY > 0.6));
-      const menuPrevSlotPressed = consumeRepeat("controllerMenuPrevSlot", isSpellMenuOpen && (dpadUp || menuAxisY < -0.6));
-      const pauseNextPressed = consumeRepeat("controllerPauseNext", pauseMenuOpen && (dpadDown || menuAxisY > 0.6));
-      const pausePrevPressed = consumeRepeat("controllerPausePrev", pauseMenuOpen && (dpadUp || menuAxisY < -0.6));
-      const pauseRightPressed = consumeRepeat("controllerPauseRight", pauseMenuOpen && (dpadRight || menuAxisX > 0.6));
-      const pauseLeftPressed = consumeRepeat("controllerPauseLeft", pauseMenuOpen && (dpadLeft || menuAxisX < -0.6));
+      const menuNextSpellPressed = consumeRepeat("controllerMenuNextSpell", isSpellMenuOpen && (dpadRight || menuAxisX > 0.6), now);
+      const menuPrevSpellPressed = consumeRepeat("controllerMenuPrevSpell", isSpellMenuOpen && (dpadLeft || menuAxisX < -0.6), now);
+      const menuNextSlotPressed = consumeRepeat("controllerMenuNextSlot", isSpellMenuOpen && (dpadDown || menuAxisY > 0.6), now);
+      const menuPrevSlotPressed = consumeRepeat("controllerMenuPrevSlot", isSpellMenuOpen && (dpadUp || menuAxisY < -0.6), now);
+      const pauseNextPressed = consumeRepeat("controllerPauseNext", pauseMenuOpen && (dpadDown || menuAxisY > 0.6), now);
+      const pausePrevPressed = consumeRepeat("controllerPausePrev", pauseMenuOpen && (dpadUp || menuAxisY < -0.6), now);
+      const pauseRightPressed = consumeRepeat("controllerPauseRight", pauseMenuOpen && (dpadRight || menuAxisX > 0.6), now);
+      const pauseLeftPressed = consumeRepeat("controllerPauseLeft", pauseMenuOpen && (dpadLeft || menuAxisX < -0.6), now);
       if (isSpellMenuOpen) {
         if (rightBumperHeld || rightBumperPressed) {
           setMenuBindingHand("right");
@@ -5846,7 +2640,7 @@ export function HUD() {
 
         if (bPressed || startPressed) {
           closeSpellMenuAndResume();
-          raf = window.requestAnimationFrame(pollController);
+          controllerPollScheduler.schedule(0);
           return;
         }
 
@@ -5870,7 +2664,7 @@ export function HUD() {
           selectHotbarSlot(selectedIndex, bindingHand);
         }
 
-        raf = window.requestAnimationFrame(pollController);
+        controllerPollScheduler.schedule(0);
         return;
       }
 
@@ -5886,7 +2680,8 @@ export function HUD() {
           if (!adjustFocusedSetting(1)) {
             if (showVideoMenu && pauseMenuIndex < settingsTabCount) {
               const nextTabIndex = wrapIndex(pauseMenuIndex + 1, settingsTabCount);
-              setSettingsPane(settingsPaneOrder[nextTabIndex]);
+              const nextPane = getSettingsPaneForTabIndex(nextTabIndex);
+              if (nextPane) setSettingsPane(nextPane);
               setPauseMenuIndex(nextTabIndex);
             } else {
               movePauseMenuFocus("right");
@@ -5896,7 +2691,8 @@ export function HUD() {
           if (!adjustFocusedSetting(-1)) {
             if (showVideoMenu && pauseMenuIndex < settingsTabCount) {
               const nextTabIndex = wrapIndex(pauseMenuIndex - 1, settingsTabCount);
-              setSettingsPane(settingsPaneOrder[nextTabIndex]);
+              const nextPane = getSettingsPaneForTabIndex(nextTabIndex);
+              if (nextPane) setSettingsPane(nextPane);
               setPauseMenuIndex(nextTabIndex);
             } else {
               movePauseMenuFocus("left");
@@ -5908,7 +2704,7 @@ export function HUD() {
           controllerResumeRequestedRef.current = true;
           closePauseMenu("controller");
           controllerResumeRequestedRef.current = false;
-          raf = window.requestAnimationFrame(pollController);
+          controllerPollScheduler.schedule(0);
           return;
         }
 
@@ -5916,83 +2712,80 @@ export function HUD() {
           controllerResumeRequestedRef.current = true;
           runPauseMenuAction();
           controllerResumeRequestedRef.current = false;
-          raf = window.requestAnimationFrame(pollController);
+          controllerPollScheduler.schedule(0);
           return;
         }
 
         if (startPressed) {
           startControllerGameplay();
-          raf = window.requestAnimationFrame(pollController);
+          controllerPollScheduler.schedule(0);
           return;
         }
 
-        raf = window.requestAnimationFrame(pollController);
+        controllerPollScheduler.schedule(0);
         return;
       }
 
-      const canOpenDevFastTravelMenu =
-        isDevFastTravelAllowed &&
-        isGameLaunched &&
-        startMenuStage === "resume" &&
-        !showVideoMenu &&
-        !isMapExpanded &&
-        !isScoreboardOpen &&
-        !isSpellMenuOpen &&
-        !isInventoryOpen &&
-        !isCommandConsoleOpen &&
-        !hotbarModifierHeld &&
-        (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive);
+      const canOpenDevFastTravelMenu = canOpenControllerDevFastTravelMenu({
+        isDevFastTravelAllowed,
+        isGameLaunched,
+        startMenuStage,
+        showVideoMenu,
+        isMapExpanded,
+        isScoreboardOpen,
+        isSpellMenuOpen,
+        isInventoryOpen,
+        isCommandConsoleOpen,
+        hotbarModifierHeld,
+        gameplayInputActive,
+      });
       const fastTravelOpenPressed = consumePress("controllerDevFastTravelOpen", dpadDown && !hotbarModifierHeld);
       if (fastTravelOpenPressed && canOpenDevFastTravelMenu) {
         openDevFastTravelMenu("controller");
-        raf = window.requestAnimationFrame(pollController);
+        controllerPollScheduler.schedule(0);
         return;
       }
 
       if (startPressed) {
-        const controllerCanPauseActiveGameplay = Boolean(
-          touchGameplayActive ||
-          controllerGameplayActive ||
-          isLocked ||
-          document.pointerLockElement ||
-          document.documentElement.dataset.wizardsMouseLookFallback === "true"
-        );
+        const controllerCanPauseActiveGameplay = hasHudControllerGameplaySignal({
+          isLocked,
+          pointerLockActive,
+          touchGameplayActive,
+          controllerGameplayActive,
+          mouseLookFallbackActive: isHudMouseLookFallbackActive(),
+        });
 
         if (touchGameplayActive) {
           pauseGameplayFromController();
         } else if (controllerCanPauseActiveGameplay) {
           pauseGameplayFromController();
-        } else if (isTouchDevice) {
-          startTouchGameplay();
         } else {
           startControllerGameplay();
         }
-        raf = window.requestAnimationFrame(pollController);
+        controllerPollScheduler.schedule(0);
         return;
       }
 
       if ((aPressed || startPressed) && !isLocked && !controllerGameplayActive && !isReturningToGame) {
-        if (isTouchDevice) {
-          startTouchGameplay();
-        } else {
-          startControllerGameplay();
-        }
+        startControllerGameplay();
       }
 
-      const isStandingStillForInventory =
-        controllerGameplayActive &&
-        !playerState.isMoving &&
-        !playerState.isSprinting &&
-        !playerState.isSliding &&
-        !playerState.isCrouching &&
-        Math.abs(movementAxisX) === 0 &&
-        Math.abs(movementAxisY) === 0;
-      const canUseControllerInventory =
-        (isLocked || document.pointerLockElement || controllerGameplayActive) &&
-        !isMapExpanded &&
-        !isScoreboardOpen &&
-        !isSpellMenuOpen &&
-        !hotbarModifierHeld;
+      const isStandingStillForInventory = isStandingStillForControllerInventory({
+        controllerGameplayActive,
+        playerMoving: playerState.isMoving,
+        playerSprinting: playerState.isSprinting,
+        playerSliding: playerState.isSliding,
+        playerCrouching: playerState.isCrouching,
+        movementAxisX,
+        movementAxisY,
+      });
+      const canUseControllerInventoryShortcut = canUseControllerInventory({
+        inventoryInputActive,
+        isMapExpanded,
+        isScoreboardOpen,
+        isSpellMenuOpen,
+        hotbarModifierHeld,
+      });
 
       if (controllerInventoryIgnoreUntilReleaseRef.current) {
         controllerInventoryHoldStartedAtRef.current = null;
@@ -6001,7 +2794,7 @@ export function HUD() {
           controllerInventoryIgnoreUntilReleaseRef.current = false;
         }
       } else if (inventoryHeld) {
-        if (isStandingStillForInventory && canUseControllerInventory) {
+        if (isStandingStillForInventory && canUseControllerInventoryShortcut) {
           if (controllerInventoryHoldStartedAtRef.current === null) {
             controllerInventoryHoldStartedAtRef.current = now;
             controllerInventoryTapEligibleRef.current = true;
@@ -6017,31 +2810,36 @@ export function HUD() {
           controllerInventoryTapEligibleRef.current &&
           holdDuration < CONTROLLER_INVENTORY_HOLD_MS &&
           isStandingStillForInventory &&
-          canUseControllerInventory;
-        controllerInventoryHoldStartedAtRef.current = null;
-        controllerInventoryTapEligibleRef.current = false;
+          canUseControllerInventoryShortcut;
+        resetHudControllerInventoryHoldState({
+          controllerInventoryHoldStartedAtRef,
+          controllerInventoryTapEligibleRef,
+          controllerInventoryIgnoreUntilReleaseRef,
+        });
 
         if (shouldOpenInventory) {
           openInventoryFromGame();
-          raf = window.requestAnimationFrame(pollController);
+          controllerPollScheduler.schedule(0);
           return;
         }
       }
 
-      const canUseControllerMagicShortcut =
-        (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive) &&
-        !isMapExpanded &&
-        !isScoreboardOpen;
-      const canUseControllerMapShortcut =
-        (isLocked || document.pointerLockElement || touchGameplayActive || controllerGameplayActive) &&
-        !isMapExpanded &&
-        !isScoreboardOpen &&
-        !isSpellMenuOpen &&
-        !isInventoryOpen &&
-        !hotbarModifierHeld;
+      const canUseControllerMagic = canUseControllerMagicShortcut({
+        gameplayInputActive,
+        isMapExpanded,
+        isScoreboardOpen,
+      });
+      const canUseControllerMap = canUseControllerMapShortcut({
+        gameplayInputActive,
+        isMapExpanded,
+        isScoreboardOpen,
+        isSpellMenuOpen,
+        isInventoryOpen,
+        hotbarModifierHeld,
+      });
 
       if (interactHeld) {
-        if (canUseControllerMagicShortcut) {
+        if (canUseControllerMagic) {
           if (controllerMagicHoldStartedAtRef.current === null) {
             controllerMagicHoldStartedAtRef.current = now;
             controllerMagicHoldConsumedRef.current = false;
@@ -6049,36 +2847,41 @@ export function HUD() {
             controllerMagicHoldConsumedRef.current = toggleMagicArmedFromGame();
           }
         } else {
-          controllerMagicHoldStartedAtRef.current = null;
-          controllerMagicHoldConsumedRef.current = false;
+          resetHudControllerMagicHoldState({
+            controllerMagicHoldStartedAtRef,
+            controllerMagicHoldConsumedRef,
+          });
         }
       } else if (controllerMagicHoldStartedAtRef.current !== null) {
         const holdDuration = now - controllerMagicHoldStartedAtRef.current;
         const shouldInteract =
           !controllerMagicHoldConsumedRef.current &&
           holdDuration < MAGIC_UNARM_HOLD_MS &&
-          canUseControllerMagicShortcut;
-        controllerMagicHoldStartedAtRef.current = null;
-        controllerMagicHoldConsumedRef.current = false;
+          canUseControllerMagic;
+        resetHudControllerMagicHoldState({
+          controllerMagicHoldStartedAtRef,
+          controllerMagicHoldConsumedRef,
+        });
 
         if (shouldInteract) {
           requestVillagerInteractionFromGame("controller");
         }
       }
 
-      if (spellMenuPressed && canUseControllerMagicShortcut) {
+      if (spellMenuPressed && canUseControllerMagic) {
         openSpellMenuFromGame();
       }
 
-      if (yPressed && canUseControllerMapShortcut) {
-        requestMapToggle();
+      if (yPressed && canUseControllerMap) {
+        requestMapToggle(now);
       }
 
-      raf = window.requestAnimationFrame(pollController);
+      controllerPollScheduler.schedule(0);
     };
 
-    raf = window.requestAnimationFrame(pollController);
-    return () => window.cancelAnimationFrame(raf);
+    controllerPollScheduler = createControllerPollScheduler(pollController);
+    controllerPollScheduler.schedule(0);
+    return () => controllerPollScheduler.cancel();
   }, [
     activeBindingHand,
     adjustFocusedSetting,
@@ -6086,10 +2889,12 @@ export function HUD() {
     closeDevFastTravelMenu,
     closePauseMenu,
     closeSpellMenuAndResume,
+    controllerInputSnapshot,
     controllerGameplayActive,
     controllerBindings,
     devFastTravelIndex,
     devFastTravelLocationCount,
+    devFastTravelLocations,
     isLocked,
     isCommandConsoleOpen,
     isDevFastTravelAllowed,
@@ -6137,25 +2942,18 @@ export function HUD() {
   ]);
 
   useEffect(() => {
+    if (!isSpellMenuOpen) return undefined;
+
     const handleWheel = (e: WheelEvent) => {
-      if (!useGameStore.getState().isSpellMenuOpen) return;
       setMenuSpellIndex(prev => (prev + (e.deltaY > 0 ? 1 : -1) + ALL_SPELLS.length) % ALL_SPELLS.length);
     };
 
     window.addEventListener("wheel", handleWheel, { passive: false });
     return () => window.removeEventListener("wheel", handleWheel);
-  }, []);
+  }, [isSpellMenuOpen]);
 
   const mainMenuFocus = (index: number) => !showVideoMenu && pauseMenuIndex === index;
-  const settingsFocus = (index: number) => showVideoMenu && pauseMenuIndex === index;
   const focusedMenuClass = "ring-2 ring-yellow-200 ring-offset-2 ring-offset-black shadow-[0_0_20px_rgba(250,204,21,0.55)] brightness-125";
-  const settingsBackIndex = settingsPane === "video"
-    ? videoBackIndex
-    : settingsPane === "keybinds"
-      ? keybindBackIndex
-      : settingsPane === "voice"
-        ? voiceBackIndex
-        : characterBackIndex;
 
   const renderMenuButton = (index: number, label: string, hint: string, onClick: () => void) => (
     <button
@@ -6261,7 +3059,7 @@ export function HUD() {
 
   const renderStartMenuContent = () => {
     const survivalPlayerEstimate = gameMode === "multiplayer-survival"
-      ? Math.max(1, Object.keys(players).length + 1)
+      ? Math.max(1, countOwnRecordEntries(players) + 1)
       : 1;
     const survivalDifficulty = getSurvivalDifficultyMultiplier(survivalPlayerEstimate, survivalRules.enemyDifficulty);
 
@@ -6386,8 +3184,55 @@ export function HUD() {
     closePauseMenu("mouse");
   };
 
+  const shouldShowMagicHands = shouldRenderGameplayHud
+    && !shouldHideGameplayViewObstructionsForQa
+    && !isSpellMenuOpen
+    && !isInventoryOpen
+    && !isMapExpanded
+    && !isScoreboardOpen
+    && !isEngineMenuOpen
+    && !isDevFastTravelOpen
+    && !questNpcEditorTarget
+    && !questDialogSession;
+  const shouldExpectMagicHands = shouldShowMagicHands && isMagicArmed && !playerState.isMeditating;
+  const shouldShowTouchControls = touchGameplayActive && !shouldHideGameplayHudForQa && !isSpellMenuOpen && !isInventoryOpen && !isMapExpanded && !isScoreboardOpen && !isEngineMenuOpen && !questNpcEditorTarget && !questDialogSession;
+  const shouldShowGameplayOverlay = shouldRenderGameplayHud && !shouldHideGameplayHudForQa && !isSpellMenuOpen && !isInventoryOpen && !isMapExpanded && !isScoreboardOpen && !isEngineMenuOpen && !questNpcEditorTarget && !questDialogSession;
+  const shouldSuppressMapForHudToolOverlay = isEngineMenuOpen || isDevFastTravelOpen || Boolean(questNpcEditorTarget) || Boolean(questDialogSession);
+
+  useEffect(() => {
+    setHudMapSuppressedByToolOverlay(shouldSuppressMapForHudToolOverlay);
+    return () => setHudMapSuppressedByToolOverlay(false);
+  }, [shouldSuppressMapForHudToolOverlay]);
+
+  const hudLayoutQaOptions = {
+    gameplayHudVisible: shouldShowGameplayOverlay,
+    magicHandsVisible: shouldExpectMagicHands,
+    touchControlsVisible: shouldShowTouchControls,
+    compactMapVisible: isGameLaunched && !isMapExpanded && !isSpellMenuOpen && !isPauseMenuVisible && !isScoreboardOpen && !isEngineMenuOpen && !isDevFastTravelOpen && !isInventoryOpen && !questNpcEditorTarget && !questDialogSession,
+    expandedMapVisible: isGameLaunched && isMapExpanded && !isSpellMenuOpen && !isPauseMenuVisible && !isScoreboardOpen && !isEngineMenuOpen && !isDevFastTravelOpen && !isInventoryOpen && !questNpcEditorTarget && !questDialogSession,
+    spellMenuVisible: isSpellMenuOpen,
+    settingsPanelVisible: showVideoMenu && shouldShowMenuOverlay,
+    engineMenuVisible: isEngineMenuOpen && isEngineMenuAllowed,
+    inventoryVisible: isInventoryOpen && !isSpellMenuOpen,
+    questNpcEditorVisible: Boolean(questNpcEditorTarget),
+    questDialogVisible: Boolean(questDialogSession),
+    scoreboardVisible: isScoreboardOpen && !isSpellMenuOpen && !isInventoryOpen,
+  };
+
   return (
-    <div className="pointer-events-none absolute inset-0 text-white font-mono uppercase" style={hudRootStyle}>
+    <div data-wof-hud-qa="hud-root" className="pointer-events-none absolute inset-0 text-white font-mono uppercase" style={hudRootStyle}>
+      {shouldMountHudStateQaRuntimeProbe && (
+        <Suspense fallback={null}>
+          <LazyHudStateQaRuntimeProbe options={hudStateQaOptions} />
+        </Suspense>
+      )}
+
+      {shouldMountHudLayoutQaMetricsProbe && (
+        <Suspense fallback={null}>
+          <LazyHudLayoutQaMetricsProbe options={hudLayoutQaOptions} />
+        </Suspense>
+      )}
+
       {/* Flashbang Overlay */}
       {flashbangOpacity > 0 && (
         <div 
@@ -6396,7 +3241,11 @@ export function HUD() {
         />
       )}
 
-      {!shouldHideGameplayViewObstructionsForQa && <LobbyChatBox messages={lobbyMessages} />}
+      {!shouldHideGameplayViewObstructionsForQa && lobbyMessages.length > 0 && (
+        <Suspense fallback={null}>
+          <LazyLobbyChatBox messages={lobbyMessages} />
+        </Suspense>
+      )}
 
       {isQuestDevModeEnabled && !questNpcEditorTarget && !questDialogSession && !isInventoryOpen && (
         <div className="pointer-events-none absolute left-3 top-3 z-[92] border border-yellow-200/55 bg-black/65 px-2 py-1 text-[9px] tracking-[0.22em] text-yellow-100 shadow-[0_0_14px_rgba(250,204,21,0.25)]">
@@ -6405,25 +3254,41 @@ export function HUD() {
       )}
 
       {isCommandConsoleOpen && (
-        <CommandConsole
-          value={commandConsoleValue}
-          isVClipEnabled={isVClipEnabled}
-          onChange={setCommandConsoleValue}
-          onClose={() => closeCommandConsole()}
-          onSubmit={submitCommandConsole}
-        />
+        <Suspense fallback={null}>
+          <LazyCommandConsole
+            value={commandConsoleValue}
+            isVClipEnabled={isVClipEnabled}
+            onChange={setCommandConsoleValue}
+            onClose={() => closeCommandConsole()}
+            onSubmit={submitCommandConsole}
+          />
+        </Suspense>
       )}
 
-      <QuestNpcEditor />
-      <QuestDialogPanel />
-      <InventoryPanel playerState={playerState} />
+      {questNpcEditorTarget && (
+        <Suspense fallback={null}>
+          <LazyQuestNpcEditor />
+        </Suspense>
+      )}
+      {questDialogSession && (
+        <Suspense fallback={null}>
+          <LazyQuestDialogPanel />
+        </Suspense>
+      )}
+      {isInventoryOpen && (
+        <Suspense fallback={null}>
+          <LazyInventoryPanel playerState={playerState} />
+        </Suspense>
+      )}
 
       {!localPlayerName && startMenuStage !== "press-start" && (
-        <PlayerNamePrompt
-          value={playerNameInput}
-          onChange={setPlayerNameInput}
-          onSubmit={submitPlayerName}
-        />
+        <Suspense fallback={null}>
+          <LazyPlayerNamePrompt
+            value={playerNameInput}
+            onChange={setPlayerNameInput}
+            onSubmit={submitPlayerName}
+          />
+        </Suspense>
       )}
 
       {/* Reticle */}
@@ -6597,708 +3462,120 @@ export function HUD() {
           </>
           )
         ) : (
-          <div
-            className="settings-panel flex flex-col items-center gap-2 border-[3px] border-purple-500 bg-[#120c16] pointer-events-auto shadow-[0_0_28px_rgba(168,85,247,0.28)]"
-            style={settingsMenuStyle}
-          >
-             <h2 className="text-white font-bold tracking-widest" style={{ fontSize: 'clamp(0.9rem, 2.8vmin, 1.3rem)', marginBottom: 'clamp(0.05rem, 0.45vmin, 0.5rem)' }}>SETTINGS</h2>
-
-             <div className="grid w-full grid-cols-4 gap-2">
-               <button
-                 data-settings-index={0}
-                 className={cn(
-                   "border px-2 py-1 text-left font-mono tracking-widest uppercase transition-all",
-                   settingsPane === "video" ? "border-yellow-400 bg-yellow-400/10 text-yellow-300" : "border-gray-600 text-gray-300 hover:border-gray-400",
-                   settingsFocus(0) ? focusedMenuClass : ""
-                 )}
-                 style={{ fontSize: 'clamp(0.68rem, 1.7vmin, 0.9rem)' }}
-                 onMouseEnter={() => setPauseMenuIndex(0)}
-                 onMouseDown={(e) => e.stopPropagation()}
-                 onClick={(e) => {
-                   e.preventDefault();
-                   e.stopPropagation();
-                   setSettingsPane("video");
-                   setPauseMenuIndex(0);
-                 }}
-               >
-                 Video
-               </button>
-               <button
-                 data-settings-index={1}
-                 className={cn(
-                   "border px-2 py-1 text-left font-mono tracking-widest uppercase transition-all",
-                   settingsPane === "keybinds" ? "border-cyan-300 bg-cyan-300/10 text-cyan-100" : "border-gray-600 text-gray-300 hover:border-gray-400",
-                   settingsFocus(1) ? focusedMenuClass : ""
-                 )}
-                 style={{ fontSize: 'clamp(0.68rem, 1.7vmin, 0.9rem)' }}
-                 onMouseEnter={() => setPauseMenuIndex(1)}
-                 onMouseDown={(e) => e.stopPropagation()}
-                 onClick={(e) => {
-                   e.preventDefault();
-                   e.stopPropagation();
-                   setSettingsPane("keybinds");
-                   setPauseMenuIndex(1);
-                 }}
-               >
-                 Keybinds
-               </button>
-               <button
-                 data-settings-index={2}
-                 className={cn(
-                   "border px-2 py-1 text-left font-mono tracking-widest uppercase transition-all",
-                   settingsPane === "voice" ? "border-emerald-300 bg-emerald-300/10 text-emerald-100" : "border-gray-600 text-gray-300 hover:border-gray-400",
-                   settingsFocus(2) ? focusedMenuClass : ""
-                 )}
-                 style={{ fontSize: 'clamp(0.68rem, 1.7vmin, 0.9rem)' }}
-                 onMouseEnter={() => setPauseMenuIndex(2)}
-                 onMouseDown={(e) => e.stopPropagation()}
-                 onClick={(e) => {
-                   e.preventDefault();
-                   e.stopPropagation();
-                   setSettingsPane("voice");
-                   setPauseMenuIndex(2);
-                 }}
-               >
-                 Voice
-               </button>
-               <button
-                 data-settings-index={3}
-                 className={cn(
-                   "border px-2 py-1 text-left font-mono tracking-widest uppercase transition-all",
-                   settingsPane === "character" ? "border-pink-300 bg-pink-300/10 text-pink-100" : "border-gray-600 text-gray-300 hover:border-gray-400",
-                   settingsFocus(3) ? focusedMenuClass : ""
-                 )}
-                 style={{ fontSize: 'clamp(0.68rem, 1.7vmin, 0.9rem)' }}
-                 onMouseEnter={() => setPauseMenuIndex(3)}
-                 onMouseDown={(e) => e.stopPropagation()}
-                 onClick={(e) => {
-                   e.preventDefault();
-                   e.stopPropagation();
-                   setSettingsPane("character");
-                   setPauseMenuIndex(3);
-                 }}
-               >
-                 Character
-               </button>
-             </div>
-
-             {settingsPane === "video" ? (
-               <div className="flex w-full flex-col gap-1">
-                 <div className="text-gray-400" style={{ fontSize: 'clamp(0.6rem, 1.45vmin, 0.8rem)' }}>Aspect Ratio</div>
-                 <div className="flex flex-col gap-1">
-                   {aspectRatioOptions.map((ratio, index) => (
-                     <button
-                       key={ratio}
-                       data-settings-index={index + videoAspectStartIndex}
-                       className={cn(
-                         "py-0.5 px-2 border text-left font-mono transition-all",
-                         aspectRatio === ratio ? "border-yellow-400 text-yellow-400 bg-yellow-400/10" : "border-gray-600 text-gray-300 hover:border-gray-400",
-                         settingsFocus(index + videoAspectStartIndex) ? focusedMenuClass : ""
-                       )}
-                       style={{ fontSize: 'clamp(0.72rem, 1.9vmin, 0.95rem)' }}
-                       onMouseEnter={() => setPauseMenuIndex(index + videoAspectStartIndex)}
-                       onMouseDown={(e) => e.stopPropagation()}
-                       onClick={(e) => {
-                         e.preventDefault();
-                         e.stopPropagation();
-                         if (aspectRatio !== ratio) {
-                           setAspectRatio(ratio);
-                         }
-                       }}
-                     >
-                       {ratio}
-                     </button>
-                   ))}
-                 </div>
-               </div>
-             ) : settingsPane === "keybinds" ? (
-               <div ref={settingsScrollRef} className="menu-scroll-panel w-full overflow-y-auto pr-1" style={settingsScrollPanelStyle}>
-                 <div className="mb-2 text-[9px] tracking-widest text-cyan-100/60">CONTROLS / REMAP</div>
-                 <div className="mb-2 grid gap-2 md:grid-cols-3">
-                   <div
-                     data-settings-index={keybindSensitivityStartIndex}
-                     className={cn(
-                       "border p-2 text-left transition-all",
-                       settingsFocus(keybindSensitivityStartIndex) ? focusedMenuClass : "border-cyan-300/25 bg-cyan-400/5"
-                     )}
-                     onMouseEnter={() => setPauseMenuIndex(keybindSensitivityStartIndex)}
-                     onClick={() => setMouseSensitivity(getPlatformDefaultLookSensitivity())}
-                   >
-                     <div className="flex items-center justify-between text-[9px] tracking-widest text-cyan-100">
-                       <span>Look Sensitivity</span>
-                       <span>{Math.round((mouseSensitivity / DEFAULT_MOUSE_SENSITIVITY) * 100)}%</span>
-                     </div>
-                     <input
-                       className="mt-2 w-full accent-yellow-300"
-                       type="range"
-                       min={0.0005}
-                       max={0.006}
-                       step={0.0001}
-                       value={mouseSensitivity}
-                       onChange={(e) => setMouseSensitivity(Number(e.currentTarget.value))}
-                     />
-                     <div className="mt-1 text-[7px] tracking-widest text-cyan-100/45">A resets, D-pad left/right adjusts</div>
-                   </div>
-                   <div
-                     data-settings-index={keybindSensitivityStartIndex + 1}
-                     className={cn(
-                       "border p-2 text-left transition-all",
-                       settingsFocus(keybindSensitivityStartIndex + 1) ? focusedMenuClass : "border-cyan-300/25 bg-cyan-400/5"
-                     )}
-                     onMouseEnter={() => setPauseMenuIndex(keybindSensitivityStartIndex + 1)}
-                     onClick={() => setControllerLookSensitivity(DEFAULT_CONTROLLER_LOOK_SENSITIVITY)}
-                   >
-                     <div className="flex items-center justify-between text-[9px] tracking-widest text-cyan-100">
-                       <span>Joystick Sensitivity</span>
-                       <span>{Math.round((controllerLookSensitivity / CONTROLLER_LOOK_SENSITIVITY_100_PERCENT) * 100)}%</span>
-                     </div>
-                     <input
-                       className="mt-2 w-full accent-cyan-300"
-                       type="range"
-                       min={0.8}
-                       max={6}
-                       step={0.01}
-                       value={controllerLookSensitivity}
-                       onChange={(e) => setControllerLookSensitivity(Number(e.currentTarget.value))}
-                     />
-                     <div className="mt-1 text-[7px] tracking-widest text-cyan-100/45">A resets, D-pad left/right adjusts</div>
-                   </div>
-                   <button
-                     data-settings-index={keybindArrowLookIndex}
-                     className={cn(
-                       "border p-2 text-left transition-all",
-                       settingsFocus(keybindArrowLookIndex) ? focusedMenuClass : "border-cyan-300/25 bg-cyan-400/5 hover:border-cyan-200/70"
-                     )}
-                     onMouseEnter={() => setPauseMenuIndex(keybindArrowLookIndex)}
-                     onClick={() => setKeyboardArrowLookEnabled(!keyboardArrowLookEnabled)}
-                   >
-                     <div className="flex items-center justify-between gap-3 text-[9px] tracking-widest text-cyan-100">
-                       <span>Arrow Key Look</span>
-                       <span className={keyboardArrowLookEnabled ? "text-lime-200" : "text-red-200"}>
-                         {keyboardArrowLookEnabled ? "Enabled" : "Disabled"}
-                       </span>
-                     </div>
-                     <div className="mt-2 text-[8px] leading-4 tracking-widest text-cyan-100/55">
-                       Uses keyboard arrows to turn and aim while the mouse is locked in-game.
-                     </div>
-                     <div className="mt-1 text-[7px] tracking-widest text-cyan-100/45">Enter/A toggles, D-pad left/right toggles</div>
-                   </button>
-                 </div>
-
-                 <div className="grid gap-2 md:grid-cols-[0.82fr_1.18fr]">
-                   {keyboardKeybindRows.map((group) => (
-                     <div key={group.title} className="border border-cyan-300/25 bg-cyan-400/5 p-2">
-                       <div className="mb-1 border-b border-cyan-300/20 pb-1 text-[9px] tracking-[0.2em] text-cyan-100">{group.title}</div>
-                       <div className="flex flex-col gap-1">
-                         {group.rows.map(([action, bind]) => (
-                           <div key={`${group.title}-${action}`} className="grid grid-cols-[0.9fr_1.25fr] gap-2 text-[8px] leading-4">
-                             <span className="truncate text-cyan-100/55">{action}</span>
-                             <span className="text-right text-white/85">{bind}</span>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   ))}
-
-                   <div className="border border-cyan-300/25 bg-cyan-400/5 p-2">
-                     <div className="mb-1 border-b border-cyan-300/20 pb-1 text-[9px] tracking-[0.2em] text-cyan-100">Controller Remap</div>
-                     <div className="flex flex-col gap-1">
-                       {controllerActionRows.map((row, index) => {
-                         const settingIndex = keybindControlStartIndex + index;
-                         const isRemapping = remappingAction === row.action;
-                         return (
-                           <button
-                             key={row.action}
-                             data-settings-index={settingIndex}
-                             className={cn(
-                               "grid grid-cols-[1fr_auto] gap-2 border px-2 py-1 text-left text-[8px] leading-4 transition-all",
-                               isRemapping
-                                 ? "border-pink-300 bg-pink-400/15 text-pink-50 shadow-[0_0_16px_rgba(244,114,182,0.45)]"
-                                 : settingsFocus(settingIndex)
-                                   ? focusedMenuClass
-                                   : "border-cyan-300/20 bg-black/25 text-cyan-100/85 hover:border-cyan-200/60"
-                             )}
-                             onMouseEnter={() => setPauseMenuIndex(settingIndex)}
-                             onClick={() => beginControllerRemap(row.action)}
-                           >
-                             <span className="min-w-0">
-                               <span className="block truncate text-cyan-50">{row.label}</span>
-                               <span className="block truncate text-cyan-100/40">{isRemapping ? "Press any controller button..." : row.hint}</span>
-                             </span>
-                             <span className="self-center border border-yellow-200/50 bg-yellow-200/10 px-2 py-0.5 text-yellow-100">
-                               {controllerButtonLabels[controllerBindings[row.action]]}
-                             </span>
-                           </button>
-                         );
-                       })}
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             ) : settingsPane === "voice" ? (
-               <div ref={settingsScrollRef} className="menu-scroll-panel w-full overflow-y-auto pr-1" style={settingsScrollPanelStyle}>
-                 <div className="mb-2 text-[9px] tracking-widest text-emerald-100/65">PROXIMITY VOICE / MIC</div>
-                 {voiceNeedsSecureOrigin && (
-                   <div className="mb-2 border border-yellow-300/60 bg-yellow-300/10 p-2 text-[8px] leading-4 tracking-widest text-yellow-100">
-                     LAN mic access needs HTTPS. Restart with `npm run dev:https`, then join from the other PC using the HTTPS LAN URL.
-                   </div>
-                 )}
-                 <div className="grid gap-2 md:grid-cols-2">
-                   <button
-                     data-settings-index={voiceEnabledIndex}
-                     className={cn(
-                       "border p-3 text-left transition-all",
-                       settingsFocus(voiceEnabledIndex) ? focusedMenuClass : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70"
-                     )}
-                     onMouseEnter={() => setPauseMenuIndex(voiceEnabledIndex)}
-                     onClick={() => setVoiceChatEnabled(!voiceChatEnabled)}
-                   >
-                     <div className="flex items-center justify-between gap-3 text-[10px] tracking-widest text-emerald-50">
-                       <span>Voice Chat</span>
-                       <span className={voiceChatEnabled ? "text-lime-200" : "text-red-200"}>
-                         {voiceChatEnabled ? "Enabled" : "Disabled"}
-                       </span>
-                     </div>
-                     <div className="mt-2 text-[8px] leading-4 tracking-widest text-emerald-100/45">
-                       Turns your microphone and nearby player voices on or off.
-                     </div>
-                   </button>
-
-                   <button
-                     data-settings-index={voiceInputModeIndex}
-                     className={cn(
-                       "border p-3 text-left transition-all",
-                       settingsFocus(voiceInputModeIndex) ? focusedMenuClass : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70"
-                     )}
-                     onMouseEnter={() => setPauseMenuIndex(voiceInputModeIndex)}
-                     onClick={toggleVoiceInputMode}
-                   >
-                     <div className="flex items-center justify-between gap-3 text-[10px] tracking-widest text-emerald-50">
-                       <span>Input Mode</span>
-                       <span className="text-yellow-100">{voiceInputMode === "pushToTalk" ? "Press To Talk" : "Open Mic"}</span>
-                     </div>
-                     <div className="mt-2 text-[8px] leading-4 tracking-widest text-emerald-100/45">
-                       D-pad left/right or A toggles between open mic and press-to-talk.
-                     </div>
-                   </button>
-
-                   <button
-                     data-settings-index={voicePushToTalkKeyIndex}
-                     className={cn(
-                       "border p-3 text-left transition-all",
-                       remappingVoiceKey
-                         ? "border-pink-300 bg-pink-400/15 text-pink-50 shadow-[0_0_16px_rgba(244,114,182,0.45)]"
-                         : settingsFocus(voicePushToTalkKeyIndex)
-                           ? focusedMenuClass
-                           : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70"
-                     )}
-                     onMouseEnter={() => setPauseMenuIndex(voicePushToTalkKeyIndex)}
-                     onClick={beginVoiceKeyRemap}
-                   >
-                     <div className="flex items-center justify-between gap-3 text-[10px] tracking-widest text-emerald-50">
-                       <span>Press-To-Talk Key</span>
-                       <span className="border border-yellow-200/50 bg-yellow-200/10 px-2 py-0.5 text-yellow-100">
-                         {remappingVoiceKey ? "Press Key..." : formatKeyboardCode(voicePushToTalkKey)}
-                       </span>
-                     </div>
-                     <div className="mt-2 text-[8px] leading-4 tracking-widest text-emerald-100/45">
-                       Controller press-to-talk is remapped from the Keybinds tab.
-                     </div>
-                   </button>
-
-                   <div
-                     data-settings-index={voiceOutputVolumeIndex}
-                     className={cn(
-                       "border p-3 text-left transition-all",
-                       settingsFocus(voiceOutputVolumeIndex) ? focusedMenuClass : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70"
-                     )}
-                     onMouseEnter={() => setPauseMenuIndex(voiceOutputVolumeIndex)}
-                     onClick={() => setVoiceOutputVolume(DEFAULT_VOICE_OUTPUT_VOLUME)}
-                   >
-                     <div className="flex items-center justify-between gap-3 text-[10px] tracking-widest text-emerald-50">
-                       <span>Voice Volume</span>
-                       <span>{Math.round(voiceOutputVolume * 100)}%</span>
-                     </div>
-                     <input
-                       className="mt-3 w-full accent-emerald-300"
-                       type="range"
-                       min={0}
-                       max={1}
-                       step={0.01}
-                       value={voiceOutputVolume}
-                       onMouseDown={(e) => e.stopPropagation()}
-                       onClick={(e) => e.stopPropagation()}
-                       onChange={(e) => setVoiceOutputVolume(Number(e.currentTarget.value))}
-                     />
-                     <div className="mt-1 text-[7px] tracking-widest text-emerald-100/45">A resets, D-pad left/right adjusts</div>
-                   </div>
-
-                   <div
-                     data-settings-index={voiceProximityRangeIndex}
-                     className={cn(
-                       "border p-3 text-left transition-all",
-                       settingsFocus(voiceProximityRangeIndex) ? focusedMenuClass : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70"
-                     )}
-                     onMouseEnter={() => setPauseMenuIndex(voiceProximityRangeIndex)}
-                     onClick={() => setVoiceProximityRange(DEFAULT_VOICE_PROXIMITY_RANGE)}
-                   >
-                     <div className="flex items-center justify-between gap-3 text-[10px] tracking-widest text-emerald-50">
-                       <span>Proximity Range</span>
-                       <span>{Math.round(voiceProximityRange)}m</span>
-                     </div>
-                     <input
-                       className="mt-3 w-full accent-lime-300"
-                       type="range"
-                       min={8}
-                       max={64}
-                       step={1}
-                       value={voiceProximityRange}
-                       onMouseDown={(e) => e.stopPropagation()}
-                       onClick={(e) => e.stopPropagation()}
-                       onChange={(e) => setVoiceProximityRange(Number(e.currentTarget.value))}
-                     />
-                     <div className="mt-1 text-[7px] tracking-widest text-emerald-100/45">Nearby voices fade out smoothly with distance.</div>
-                   </div>
-
-                   <div className="border border-emerald-300/25 bg-black/30 p-3 text-left">
-                     <div className="flex items-center justify-between gap-3 text-[10px] tracking-widest text-emerald-50">
-                       <span>Mic Status</span>
-                       <span className={isVoiceSpeaking ? "text-lime-200" : "text-emerald-100/45"}>
-                         {isVoiceSpeaking ? "Talking" : voiceChatEnabled ? "Quiet" : "Off"}
-                       </span>
-                     </div>
-                     <div className="mt-2 h-2 overflow-hidden border border-emerald-200/30 bg-black">
-                       <div
-                         className={cn(
-                           "h-full transition-all duration-100",
-                           isVoiceSpeaking ? "bg-lime-300 shadow-[0_0_12px_rgba(190,242,100,0.85)]" : "bg-emerald-900"
-                         )}
-                         style={{ width: isVoiceSpeaking ? "100%" : voiceChatEnabled ? "32%" : "0%" }}
-                       />
-                     </div>
-                     <div className="mt-2 text-[8px] leading-4 tracking-widest text-emerald-100/45">
-                       Speaking animation is driven by detected mic volume, then synced to other players.
-                     </div>
-                     <div className={cn(
-                       "mt-2 border px-2 py-1 text-[8px] leading-4 tracking-widest",
-                       voiceError ? "border-red-300/50 bg-red-500/10 text-red-100" : "border-emerald-300/20 bg-emerald-400/5 text-emerald-100/65"
-                     )}>
-                       {voiceError ? `ERROR: ${voiceError}` : `STATUS: ${voiceStatus}`}
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             ) : (
-               <div ref={settingsScrollRef} className="menu-scroll-panel w-full overflow-y-auto pr-1" style={settingsScrollPanelStyle}>
-                 <div className="mb-2 text-[9px] tracking-widest text-pink-100/65">CHARACTER CUSTOMIZATION / BASE SPRITE</div>
-                 <div className="character-menu-grid grid gap-3">
-                   <div className="character-preview-card border border-pink-300/25 bg-pink-400/5 p-2">
-                     <div className="mb-2 flex items-center justify-between gap-2 border-b border-pink-300/20 pb-1">
-                       <div className="text-[9px] tracking-[0.2em] text-pink-100">Live Character View</div>
-                       <button
-                         className="border border-yellow-200/40 bg-yellow-200/10 px-2 py-1 text-[8px] tracking-widest text-yellow-100 hover:bg-yellow-200/20"
-                         onClick={() => setCharacterCustomization({ ...DEFAULT_CHARACTER_CUSTOMIZATION })}
-                       >
-                         Reset Base
-                       </button>
-                     </div>
-                     <CharacterPreview character={characterCustomization} />
-                     <div className="mt-2 text-[8px] leading-4 tracking-widest text-pink-100/50">
-                       Placeholder clothes and hair are procedural today; later sprite sheets can slot into these same style categories.
-                     </div>
-                   </div>
-
-                   <div className="flex flex-col gap-2">
-                     <div className="border border-pink-300/25 bg-pink-400/5 p-2">
-                       <div className="mb-2 border-b border-pink-300/20 pb-1 text-[9px] tracking-[0.2em] text-pink-100">Colors</div>
-                       <div className="character-control-grid grid gap-1.5">
-                         {characterColorRows.map((row, index) => {
-                           const settingIndex = characterColorStartIndex + index;
-                           const rawValue = String(characterCustomization[row.key] ?? "");
-                           const normalizedValue = normalizeHexInput(rawValue);
-                           const fallbackValue = String(DEFAULT_CHARACTER_CUSTOMIZATION[row.key] ?? "#ffffff");
-                           const pickerValue = isValidHexColor(normalizedValue) ? normalizedValue : fallbackValue;
-                           return (
-                             <div
-                               key={row.key}
-                               role="button"
-                               tabIndex={0}
-                               data-settings-index={settingIndex}
-                               className={cn(
-                                 "border bg-black/25 p-1.5 transition-all",
-                                 settingsFocus(settingIndex) ? focusedMenuClass : "border-pink-300/20 hover:border-pink-200/60"
-                               )}
-                               onMouseEnter={() => setPauseMenuIndex(settingIndex)}
-                               onClick={() => cycleCharacterColor(row.key, 1)}
-                             >
-                               <div className="mb-1 flex items-center justify-between gap-2 text-[8px] tracking-widest">
-                                 <span className="text-pink-50">{row.label}</span>
-                                 <span className={isValidHexColor(normalizedValue) ? "text-pink-100/50" : "text-red-200"}>{row.hint}</span>
-                               </div>
-                               <div className="grid grid-cols-[34px_1fr] gap-1">
-                                 <input
-                                   aria-label={`${row.label} color picker`}
-                                   className="h-8 w-8 cursor-pointer border border-pink-200/40 bg-black"
-                                   type="color"
-                                   value={pickerValue}
-                                   onMouseDown={(e) => e.stopPropagation()}
-                                   onClick={(e) => e.stopPropagation()}
-                                   onChange={(e) => updateCharacterField(row.key, e.currentTarget.value)}
-                                 />
-                                 <input
-                                   aria-label={`${row.label} hex color`}
-                                   className={cn(
-                                     "min-w-0 border bg-black/55 px-2 text-[10px] tracking-widest outline-none",
-                                     isValidHexColor(normalizedValue) ? "border-pink-300/25 text-pink-50 focus:border-yellow-200" : "border-red-300/70 text-red-100"
-                                   )}
-                                   value={rawValue}
-                                   spellCheck={false}
-                                   onMouseDown={(e) => e.stopPropagation()}
-                                   onClick={(e) => e.stopPropagation()}
-                                   onChange={(e) => updateCharacterField(row.key, normalizeHexInput(e.currentTarget.value))}
-                                 />
-                               </div>
-                               <div className="mt-1 grid grid-cols-[18px_1fr_18px] items-center gap-1">
-                                 <button
-                                   className="border border-pink-200/30 bg-pink-200/10 text-[8px] text-pink-50 hover:bg-pink-200/20"
-                                   onMouseDown={(e) => e.stopPropagation()}
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     cycleCharacterColor(row.key, -1);
-                                   }}
-                                 >
-                                   &lt;
-                                 </button>
-                                 <div className="flex min-w-0 justify-center gap-1">
-                                   {characterColorPresets.map((preset) => (
-                                     <span
-                                       key={`${row.key}-${preset}`}
-                                       className={cn(
-                                         "h-3 w-3 border",
-                                         pickerValue.toLowerCase() === preset.toLowerCase()
-                                           ? "border-yellow-200 shadow-[0_0_8px_rgba(250,204,21,0.75)]"
-                                           : "border-white/20"
-                                       )}
-                                       style={{ backgroundColor: preset }}
-                                     />
-                                   ))}
-                                 </div>
-                                 <button
-                                   className="border border-pink-200/30 bg-pink-200/10 text-[8px] text-pink-50 hover:bg-pink-200/20"
-                                   onMouseDown={(e) => e.stopPropagation()}
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     cycleCharacterColor(row.key, 1);
-                                   }}
-                                 >
-                                   &gt;
-                                 </button>
-                               </div>
-                               <div className="mt-1 text-[7px] tracking-widest text-pink-100/45">
-                                 Controller: A or D-pad left/right cycles presets. Keyboard/mouse: type exact hex.
-                               </div>
-                             </div>
-                           );
-                         })}
-                       </div>
-                     </div>
-
-                     <div className="border border-cyan-300/25 bg-cyan-400/5 p-2">
-                       <div className="mb-2 border-b border-cyan-300/20 pb-1 text-[9px] tracking-[0.2em] text-cyan-100">Body, Hair & Eyes</div>
-                       <div className="character-control-grid grid gap-1.5">
-                         {characterStyleRows.map((row, index) => {
-                           const settingIndex = characterStyleStartIndex + index;
-                           const currentValue = String(characterCustomization[row.key] ?? row.options[0]);
-                           return (
-                             <button
-                               key={row.key}
-                               data-settings-index={settingIndex}
-                               className={cn(
-                                 "grid grid-cols-[1fr_auto] gap-2 border px-2 py-1.5 text-left text-[8px] leading-4 transition-all",
-                                 settingsFocus(settingIndex)
-                                   ? focusedMenuClass
-                                   : "border-cyan-300/20 bg-black/25 text-cyan-100/85 hover:border-cyan-200/60"
-                               )}
-                               onMouseEnter={() => setPauseMenuIndex(settingIndex)}
-                               onClick={() => cycleCharacterStyle(row.key, row.options, 1)}
-                             >
-                               <span className="truncate text-cyan-50">{row.label}</span>
-                               <span className="border border-yellow-200/50 bg-yellow-200/10 px-2 py-0.5 text-yellow-100">
-                                 {formatCharacterOption(currentValue)}
-                               </span>
-                             </button>
-                           );
-                         })}
-                       </div>
-                     </div>
-
-                     <div className="border border-yellow-200/30 bg-yellow-200/10 p-2 shadow-[0_0_18px_rgba(250,204,21,0.08)]">
-                       <div className="mb-2 border-b border-yellow-200/25 pb-1 text-[9px] tracking-[0.2em] text-yellow-100">Mouth</div>
-                       <div className="character-control-grid grid gap-1.5">
-                         {characterMouthRows.map((row, index) => {
-                           const settingIndex = characterMouthStartIndex + index;
-                           const currentValue = String(characterCustomization[row.key] ?? row.options[0]);
-                           return (
-                             <button
-                               key={row.key}
-                               data-settings-index={settingIndex}
-                               className={cn(
-                                 "grid grid-cols-[1fr_auto] gap-2 border px-2 py-1.5 text-left text-[8px] leading-4 transition-all",
-                                 settingsFocus(settingIndex)
-                                   ? focusedMenuClass
-                                   : "border-yellow-200/25 bg-black/30 text-yellow-100/85 hover:border-yellow-100/70"
-                               )}
-                               onMouseEnter={() => setPauseMenuIndex(settingIndex)}
-                               onClick={() => cycleCharacterStyle(row.key, row.options, 1)}
-                             >
-                               <span className="truncate text-yellow-50">{row.label}</span>
-                               <span className="border border-pink-200/50 bg-pink-200/10 px-2 py-0.5 text-pink-100">
-                                 {formatCharacterOption(currentValue)}
-                               </span>
-                             </button>
-                           );
-                         })}
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             )}
-
-             <button 
-               data-settings-index={settingsBackIndex}
-               className={cn(
-                 "mt-1 bg-gray-800 border-[3px] border-gray-600 hover:bg-gray-700 text-white px-5 py-0.5 font-mono tracking-widest uppercase w-full transition-all",
-                 settingsFocus(settingsBackIndex) ? focusedMenuClass : ""
-               )}
-               style={{ fontSize: 'clamp(0.78rem, 2vmin, 1rem)' }}
-               onMouseEnter={() => setPauseMenuIndex(settingsBackIndex)}
-               onClick={() => {
-                 setShowVideoMenu(false);
-                 setSettingsPane("video");
-                 setRemappingAction(null);
-                 setRemappingVoiceKey(false);
-                 setPauseMenuIndex(3);
-               }}
-             >
-               Back
-             </button>
-          </div>
+          <Suspense fallback={null}>
+            <LazyHudSettingsPanel
+              settingsPane={settingsPane}
+              setSettingsPane={setSettingsPane}
+              pauseMenuIndex={pauseMenuIndex}
+              setPauseMenuIndex={setPauseMenuIndex}
+              settingsScrollRef={settingsScrollRef}
+              aspectRatio={aspectRatio}
+              setAspectRatio={setAspectRatio}
+              mouseSensitivity={mouseSensitivity}
+              setMouseSensitivity={setMouseSensitivity}
+              controllerLookSensitivity={controllerLookSensitivity}
+              setControllerLookSensitivity={setControllerLookSensitivity}
+              keyboardArrowLookEnabled={keyboardArrowLookEnabled}
+              setKeyboardArrowLookEnabled={setKeyboardArrowLookEnabled}
+              controllerBindings={controllerBindings}
+              remappingAction={remappingAction}
+              beginControllerRemap={beginControllerRemap}
+              voiceNeedsSecureOrigin={voiceNeedsSecureOrigin}
+              voiceChatEnabled={voiceChatEnabled}
+              setVoiceChatEnabled={setVoiceChatEnabled}
+              voiceInputMode={voiceInputMode}
+              toggleVoiceInputMode={toggleVoiceInputMode}
+              voicePushToTalkKey={voicePushToTalkKey}
+              beginVoiceKeyRemap={beginVoiceKeyRemap}
+              remappingVoiceKey={remappingVoiceKey}
+              voiceOutputVolume={voiceOutputVolume}
+              setVoiceOutputVolume={setVoiceOutputVolume}
+              voiceProximityRange={voiceProximityRange}
+              setVoiceProximityRange={setVoiceProximityRange}
+              isVoiceSpeaking={isVoiceSpeaking}
+              voiceStatus={voiceStatus}
+              voiceError={voiceError}
+              characterCustomization={characterCustomization}
+              setCharacterCustomization={setCharacterCustomization}
+              onBack={() => {
+                setShowVideoMenu(false);
+                setSettingsPane("video");
+                setRemappingAction(null);
+                setRemappingVoiceKey(false);
+                setPauseMenuIndex(3);
+              }}
+            />
+          </Suspense>
         )}
         </div>
       </div>,
       document.body
       )}
 
-      {isFullscreenHintOpen && createPortal(
-        <div
-          data-testid="fullscreen-help"
-          className="fixed inset-0 z-[190] flex items-center justify-center bg-black/72 px-4 font-mono uppercase text-white pointer-events-auto"
-          style={{ width: "var(--app-vw, 100dvw)", height: "var(--app-vh, 100dvh)" }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          <div className="max-w-[520px] border-2 border-cyan-200/70 bg-[#090510]/95 p-4 text-center shadow-[0_0_32px_rgba(34,211,238,0.38)]">
-            <div className="text-lg tracking-[0.22em] text-cyan-100">Full Screen</div>
-            <div className="mt-3 text-[10px] leading-5 tracking-widest text-cyan-50/80">
-              Android Chrome can enter full screen from the FULL button. iOS Safari blocks that API, so use Share, Add to Home Screen, then launch Wizards from the new icon for the cleanest full-screen mode.
-            </div>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <button
-                className="border border-cyan-200/70 bg-cyan-300/10 px-4 py-2 text-[10px] tracking-widest text-cyan-50 hover:bg-cyan-200/20"
-                onClick={() => requestMobileFullscreen(true)}
-              >
-                Try Again
-              </button>
-              <button
-                className="border border-yellow-200/70 bg-yellow-300/10 px-4 py-2 text-[10px] tracking-widest text-yellow-50 hover:bg-yellow-200/20"
-                onClick={() => setIsFullscreenHintOpen(false)}
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {isFullscreenHintOpen && (
+        <Suspense fallback={null}>
+          <LazyFullscreenHelpModal
+            onTryAgain={() => requestMobileFullscreen(true)}
+            onClose={() => setIsFullscreenHintOpen(false)}
+          />
+        </Suspense>
       )}
 
-      {isDevFastTravelOpen && isDevFastTravelAllowed && createPortal(
-        <div
-          data-testid="dev-fast-travel-menu"
-          className="fixed inset-0 z-[215] flex items-center justify-center bg-black/70 px-4 font-mono uppercase text-white pointer-events-auto"
-          style={{ width: "var(--app-vw, 100dvw)", height: "var(--app-vh, 100dvh)" }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          <div className="w-[min(92vw,640px)] border-2 border-lime-200/70 bg-[#06110b]/95 p-3 shadow-[0_0_30px_rgba(132,204,22,0.28)]">
-            <div className="flex items-center justify-between gap-3 border-b border-lime-200/25 pb-2">
-              <div>
-                <div className="text-[11px] tracking-[0.28em] text-lime-100/65">DEV</div>
-                <div className="text-lg tracking-[0.18em] text-lime-50">Fast Travel</div>
-              </div>
-              <button
-                type="button"
-                className="border border-lime-100/45 bg-lime-300/10 px-3 py-1 text-[10px] tracking-widest text-lime-50 hover:bg-lime-200/20"
-                onClick={() => closeDevFastTravelMenu(true)}
-              >
-                Close
-              </button>
-            </div>
+      {isDevFastTravelOpen && isDevFastTravelAllowed && (
+        <Suspense fallback={null}>
+          <LazyDevFastTravelMenu
+            locations={devFastTravelLocations}
+            selectedIndex={devFastTravelIndex}
+            onSelectIndex={setDevFastTravelIndex}
+            onTravel={runDevFastTravel}
+            onClose={() => closeDevFastTravelMenu(true)}
+          />
+        </Suspense>
+      )}
 
-            <div className="mt-3 grid max-h-[min(68dvh,520px)] gap-2 overflow-y-auto pr-1">
-              {DEV_FAST_TRAVEL_LOCATIONS.map((location, index) => {
-                const focused = index === devFastTravelIndex;
-                return (
-                  <button
-                    key={location.id}
-                    type="button"
-                    data-dev-fast-travel-index={index}
-                    data-testid={`dev-fast-travel-${location.id}`}
-                    className={cn(
-                      "grid grid-cols-[1fr_auto] gap-3 border px-3 py-2 text-left transition-all",
-                      focused
-                        ? "border-yellow-200 bg-yellow-200/12 text-yellow-50 shadow-[0_0_18px_rgba(250,204,21,0.35)]"
-                        : "border-lime-200/25 bg-black/25 text-lime-50/85 hover:border-lime-100/65 hover:bg-lime-200/10"
-                    )}
-                    onMouseEnter={() => setDevFastTravelIndex(index)}
-                    onClick={() => runDevFastTravel(location)}
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate text-[13px] tracking-widest">{location.label}</span>
-                      <span className="mt-1 block truncate text-[9px] tracking-[0.18em] text-lime-100/50">{location.detail}</span>
-                    </span>
-                    <span className="self-center border border-lime-100/35 bg-lime-100/10 px-2 py-1 text-[10px] tracking-widest text-lime-50">
-                      {location.chunk.cx},{location.chunk.cz}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-3 flex flex-wrap justify-between gap-2 border-t border-lime-200/20 pt-2 text-[8px] tracking-[0.2em] text-lime-100/45">
-              <span>D-PAD / LEFT STICK</span>
-              <span>A / ENTER TRAVEL</span>
-              <span>B / ESC CLOSE</span>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {isEngineMenuOpen && isEngineMenuAllowed && (
+        <Suspense fallback={null}>
+          <LazyEngineMenu
+            open
+            selectedId={engineMenuSelectedId}
+            onPreviewPlaceable={previewEnginePlaceable}
+            onSelectPlaceable={requestEnginePlaceable}
+            onPreviewPlacedObject={previewEnginePlacedObject}
+            onMovePlacedObject={moveEnginePlacedObject}
+            onDeletePlacedObject={deleteEnginePlacedObject}
+            onClearPlaceables={clearEnginePlaceables}
+            onClose={() => closeEngineMenu(true)}
+          />
+        </Suspense>
       )}
        
-      {isSpellMenuPreloaded && (
-        <div style={{ display: isSpellMenuOpen ? "contents" : "none" }} aria-hidden={!isSpellMenuOpen}>
-          <SpellMenu
+      {isSpellMenuOpen && (
+        <Suspense fallback={null}>
+          <LazySpellMenu
             menuSpellIndex={menuSpellIndex}
             setMenuSpellIndex={setMenuSpellIndex}
             setMenuBindingHand={setMenuBindingHand}
             onClose={closeSpellMenuAndResume}
             bindingHand={activeBindingHand}
           />
-        </div>
+        </Suspense>
       )}
 
       {isScoreboardOpen && !isSpellMenuOpen && !isInventoryOpen && (
-        <PlayerScoreMenu rows={scoreboardRows} />
+        <Suspense fallback={null}>
+          <LazyPlayerScoreMenu
+            localPlayerName={localPlayerName}
+            isSurvivalMode={isSurvivalMode}
+            survivalLevel={survivalLevel}
+            health={health}
+            armor={armor}
+            sleepUntil={sleepUntil}
+            slowUntil={slowUntil}
+            poisonUntil={poisonUntil}
+            acidUntil={acidUntil}
+            players={players}
+          />
+        </Suspense>
       )}
 
       {isReturningToGame && !isLocked && !controllerGameplayActive && !isSpellMenuOpen && !isInventoryOpen && (
@@ -7313,7 +3590,7 @@ export function HUD() {
       )}
 
       {/* Player Hands (DOOM Style) */}
-      {shouldRenderGameplayHud && !shouldHideGameplayViewObstructionsForQa && !isSpellMenuOpen && !isInventoryOpen && !isMapExpanded && (
+      {shouldExpectMagicHands && (
         <div
           className={isFillAspect
             ? "absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"
@@ -7328,189 +3605,40 @@ export function HUD() {
       )}
       
       {/* HUD WRAPPER TO FORBID OVERLAP AND MAINTAIN RATIO */}
-      {touchGameplayActive && !shouldHideGameplayHudForQa && !isSpellMenuOpen && !isInventoryOpen && !isMapExpanded && !isScoreboardOpen && (
-        <MobileTouchControls
-          openSpellMenu={openSpellMenuFromGame}
-          pauseTouchGameplay={pauseTouchGameplay}
-        />
+      {shouldShowTouchControls && (
+        <Suspense fallback={null}>
+          <LazyMobileTouchControls
+            openSpellMenu={openSpellMenuFromGame}
+            pauseTouchGameplay={pauseTouchGameplay}
+            openEngineMenu={() => openEngineMenu("touch")}
+            showEngineMenuButton={isEngineMenuAllowed}
+          />
+        </Suspense>
       )}
 
-      {shouldRenderGameplayHud && !shouldHideGameplayHudForQa && !isSpellMenuOpen && !isInventoryOpen && !isMapExpanded && !isScoreboardOpen && (
-      <div className="hud-shell absolute bottom-0 left-0 w-full z-50 pointer-events-none">
-         {/* RUNE TIMER BAR */}
-         <div
-           className="mana-meter absolute left-1/2 pointer-events-none"
-           style={{
-             bottom: 'calc(var(--hud-status-height) + 10px)',
-             width: 'min(clamp(220px, 72%, 400px), calc(100% - 32px))',
-           }}
-         >
-          <div className="mana-meter-panel flex flex-col">
-            <div className="mana-meter-title flex justify-center px-3 items-center text-[12px] text-[#a8a8a8] z-10 drop-shadow-[1px_1px_0_theme(colors.black)] font-mono pb-1 tracking-widest">
-               <span>MANA</span>
-            </div>
-            <div className="mana-meter-bar w-full h-5 bg-black rounded-lg relative overflow-hidden box-content shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] flex gap-1">
-               {/* Left Bar */}
-               <div className="flex-1 relative bg-[#1a0e24]">
-                  <div 
-                     className="absolute inset-y-0 left-0 bg-[#a855f7] shadow-[0_0_10px_rgba(168,85,247,0.8)] transition-all duration-300 ease-linear"
-                     style={{ width: `${(leftRunePower / RUNE_POWER_MAX) * 100}%` }}
-                  />
-               </div>
-               
-               {/* Middle Separator */}
-               <div className="w-[2px] bg-[#120c16] shrink-0" />
-               
-               {/* Right Bar */}
-               <div className="flex-1 relative bg-[#1a0e24]">
-                  <div 
-                     className="absolute inset-y-0 right-0 bg-[#a855f7] shadow-[0_0_10px_rgba(168,85,247,0.8)] transition-all duration-300 ease-linear"
-                     style={{ width: `${(rightRunePower / RUNE_POWER_MAX) * 100}%` }}
-                  />
-               </div>
-            </div>
-          </div>
-         </div>
-         
-         {/* WIZARD STATUS BAR */}
-         <div className="w-full wizard-panel flex items-center justify-between px-2 sm:px-4 overflow-hidden pointer-events-auto border-t-[6px] border-[#5d466e]" style={{ height: 'var(--hud-status-height)' }}>
-           <div className="hud-status-grid grid grid-cols-4 gap-1 sm:gap-2 md:gap-4 w-full h-full items-stretch p-1 sm:p-2">
-              
-              {/* SPELLS (GRIMOIRE) */}
-              <div className="flex-1 flex flex-col items-center justify-center wizard-inset h-full overflow-hidden">
-                <div className="hud-panel-title text-[#a8a8a8] text-[clamp(7px,1.2vw,12px)] mb-1 tracking-widest font-mono">GRIMOIRE</div>
-                <div className="hud-hotkey-list flex w-full flex-col gap-1 px-1.5 sm:px-3 pb-1 text-[clamp(6px,1.05vw,11px)] font-sans">
-                   <div className="hud-hotkey-row flex items-center gap-2">
-                     <span className={cn("hud-hotkey-label w-5 text-[8px]", activeHand === "left" ? "text-yellow-300" : "text-[#555]")}>L</span>
-                     <div className="hud-hotkey-slots flex flex-1 justify-between gap-1">
-                       {leftHotbarSpells.map((s, idx) => (
-                        <div key={`left-${s}-${idx}`} className={cn(
-                          "min-w-0 px-px transition-all duration-300",
-                          leftSelectedHotbarIndex === idx ? (s === 'lightning' ? "text-blue-300 drop-shadow-[1px_1px_0_theme(colors.black)] font-bold scale-110" : "text-yellow-400 drop-shadow-[1px_1px_0_theme(colors.black)] font-bold scale-110") : "text-[#555]"
-                        )}>
-                            {hotkeyLabels[idx]}
-                         </div>
-                       ))}
-                     </div>
-                   </div>
-                   <div className="hud-hotkey-row flex items-center gap-2">
-                     <span className={cn("hud-hotkey-label w-5 text-[8px]", activeHand === "right" ? "text-fuchsia-300" : "text-[#555]")}>R</span>
-                     <div className="hud-hotkey-slots flex flex-1 justify-between gap-1">
-                       {rightHotbarSpells.map((s, idx) => (
-                        <div key={`right-${s}-${idx}`} className={cn(
-                          "min-w-0 px-px transition-all duration-300",
-                          rightSelectedHotbarIndex === idx ? "text-fuchsia-300 drop-shadow-[1px_1px_0_theme(colors.black)] font-bold scale-110" : "text-[#555]"
-                        )}>
-                            {hotkeyLabels[idx]}
-                         </div>
-                       ))}
-                     </div>
-                   </div>
-                 </div>
-              </div>
-
-              {/* CURRENT SPELL NAME */}
-              <div className="flex-1 flex flex-col items-center justify-center wizard-inset h-full overflow-hidden">
-                 <div className="hud-panel-title text-[clamp(8px,1.3vw,12px)] text-[#a8a8a8] mb-1 tracking-widest font-mono">SPELLS</div>
-                 {!isMagicArmed ? (
-                   <div
-                     className="hud-spell-line max-w-full truncate px-1 text-center font-mono leading-none text-cyan-100/65 drop-shadow-[2px_2px_0_theme(colors.black)]"
-                     style={{ fontSize: 'clamp(0.52rem, 1.45vw, 1.05rem)' }}
-                   >
-                     MAGIC STOWED
-                   </div>
-                 ) : (
-                   <>
-                     <div className={cn(
-                        "hud-spell-line max-w-full truncate px-1 text-center leading-none drop-shadow-[2px_2px_0_theme(colors.black)] font-mono",
-                        leftRuneReady ? spellColors[leftCurrentSpell] : "text-[#555]"
-                     )}
-                     style={{ fontSize: 'clamp(0.52rem, 1.45vw, 1.05rem)' }}>
-                        L {leftRuneReady ? spellNames[leftCurrentSpell] : "No Mana"}
-                     </div>
-                     <div className={cn(
-                        "hud-spell-line max-w-full truncate px-1 text-center leading-none drop-shadow-[2px_2px_0_theme(colors.black)] font-mono",
-                        rightRuneReady ? spellColors[rightCurrentSpell] : "text-[#555]"
-                     )}
-                     style={{ fontSize: 'clamp(0.52rem, 1.45vw, 1.05rem)' }}>
-                        R {rightRuneReady ? spellNames[rightCurrentSpell] : "No Mana"}
-                     </div>
-                   </>
-                 )}
-                 {hasActiveBuff && (
-                   <div className="hud-buff-list mt-1 flex max-w-full flex-wrap justify-center gap-1 text-[8px] leading-3 tracking-widest">
-                     {speedBoostSeconds > 0 && <span className="border border-yellow-300/50 bg-yellow-500/15 px-1 text-yellow-200">SPD {speedBoostSeconds}s</span>}
-                     {jumpBoostSeconds > 0 && <span className="border border-lime-300/50 bg-lime-500/15 px-1 text-lime-200">JMP {jumpBoostSeconds}s</span>}
-                     {slowSeconds > 0 && <span className="border border-slate-300/50 bg-slate-500/20 px-1 text-slate-100">SLOW {slowSeconds}s</span>}
-                     {sleepSeconds > 0 && <span className="border border-sky-200/50 bg-sky-500/20 px-1 text-sky-100">SLEEP {sleepSeconds}s</span>}
-                     {poisonSeconds > 0 && <span className="border border-purple-300/50 bg-purple-500/20 px-1 text-purple-100">POISON {poisonSeconds}s</span>}
-                     {acidSeconds > 0 && <span className="border border-green-300/50 bg-green-500/20 px-1 text-green-100">ACID {acidSeconds}s</span>}
-                     {glassOrbActive && <span className="border border-cyan-100/50 bg-cyan-400/15 px-1 text-cyan-50">ORB</span>}
-                   </div>
-                 )}
-              </div>
-
-              {/* HEALTH (VITALITY) */}
-              <div className="hud-vitality-panel flex-1 flex flex-col items-center justify-center wizard-inset h-full px-2 sm:px-4">
-                 <div className="hud-panel-title text-[12px] text-[#a8a8a8] mb-1 tracking-widest font-mono">VITALITY</div>
-                 {(poisonSeconds > 0 || acidSeconds > 0) && (
-                   <div className="mb-1 flex w-full flex-col gap-0.5">
-                     {poisonSeconds > 0 && (
-                       <div className="relative h-2 w-full overflow-hidden border border-purple-300/45 bg-black shadow-[0_0_8px_rgba(168,85,247,0.45)]">
-                         <div
-                           className="absolute inset-y-0 left-0 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.95)] transition-all duration-200"
-                           style={{ width: `${poisonPercent}%` }}
-                         />
-                       </div>
-                     )}
-                     {acidSeconds > 0 && (
-                       <div className="relative h-2 w-full overflow-hidden border border-green-300/45 bg-black shadow-[0_0_8px_rgba(34,197,94,0.45)]">
-                         <div
-                           className="absolute inset-y-0 left-0 bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.95)] transition-all duration-200"
-                           style={{ width: `${acidPercent}%` }}
-                         />
-                       </div>
-                     )}
-                   </div>
-                 )}
-                 <div className="hud-health-bar relative h-5 w-full overflow-hidden border border-red-300/55 bg-black shadow-[inset_0_0_8px_rgba(0,0,0,0.9),0_0_10px_rgba(239,68,68,0.3)]">
-                    <div
-                      className="absolute inset-y-0 left-0 bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.9)] transition-all duration-200"
-                      style={{ width: `${healthPercent}%` }}
-                    />
-                    <div className="hud-bar-label absolute inset-0 flex items-center justify-between px-2 text-[9px] leading-none text-red-50 drop-shadow-[1px_1px_0_theme(colors.black)]">
-                      <span>HEALTH</span>
-                      <span>{Math.round(health)}%</span>
-                    </div>
-                 </div>
-                 <div className="hud-armor-bar relative mt-1 h-5 w-full overflow-hidden border border-sky-200/55 bg-black shadow-[inset_0_0_8px_rgba(0,0,0,0.9),0_0_10px_rgba(56,189,248,0.35)]">
-                    <div
-                      className="absolute inset-y-0 left-0 bg-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.95)] transition-all duration-200"
-                      style={{ width: `${armorPercent}%` }}
-                    />
-                    <div className="hud-bar-label absolute inset-0 flex items-center justify-between px-2 text-[9px] leading-none text-sky-50 drop-shadow-[1px_1px_0_theme(colors.black)]">
-                      <span>ARMOR</span>
-                      <span>{Math.round(armor)}/{ARMOR_MAX}</span>
-                    </div>
-                 </div>
-              </div>
-
-              {/* MANA (AETHER) */}
-              <div className="hud-aether-panel flex-1 flex flex-col items-center justify-center wizard-inset h-full px-2 sm:px-4">
-                 <div className="hud-panel-title text-[12px] text-[#a8a8a8] mb-2 tracking-widest font-mono">AETHER</div>
-                 <div className="w-full">
-                    <div className="hud-aether-bar w-full h-6 bg-black border border-[#211627] relative overflow-hidden box-content shadow-[0_0_0_2px_#4a3359]">
-                       <div 
-                         className="absolute inset-y-0 left-0 bg-blue-500"
-                         style={{ width: `${thrusterFuel * 100}%` }}
-                       />
-                    </div>
-                 </div>
-              </div>
-
-           </div>
-         </div>
-      </div>
+      {shouldShowGameplayOverlay && (
+        <GameplayHudOverlay
+          activeHand={activeHand}
+          isMagicArmed={isMagicArmed}
+          leftCurrentSpell={leftCurrentSpell}
+          rightCurrentSpell={rightCurrentSpell}
+          leftHotbarSpells={leftHotbarSpells}
+          rightHotbarSpells={rightHotbarSpells}
+          leftSelectedHotbarIndex={leftSelectedHotbarIndex}
+          rightSelectedHotbarIndex={rightSelectedHotbarIndex}
+          leftRunePower={leftRunePower}
+          rightRunePower={rightRunePower}
+          health={health}
+          armor={armor}
+          thrusterFuel={thrusterFuel}
+          speedBoostUntil={speedBoostUntil}
+          jumpBoostUntil={jumpBoostUntil}
+          slowUntil={slowUntil}
+          sleepUntil={sleepUntil}
+          poisonUntil={poisonUntil}
+          acidUntil={acidUntil}
+          magicGlassOrbUntil={magicGlassOrbUntil}
+        />
       )}
     </div>
   );

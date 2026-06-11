@@ -1,0 +1,264 @@
+import * as THREE from "three";
+import type { HandType, PlayerState } from "../../../store/gameStore";
+import {
+  DIRECT_STATUS_TARGET_RADIUS,
+  DIRECT_STATUS_TARGET_RANGE,
+  SPELL_SPAWN_FORWARD_OFFSET,
+  SPELL_SPAWN_VERTICAL_OFFSET,
+} from "../player/playerMovementConfig";
+
+export type SpellLaunch = {
+  spawnPos: { x: number; y: number; z: number };
+  realDir: THREE.Vector3;
+};
+
+export type SpellLaunchScratch = SpellLaunch & {
+  lateral: THREE.Vector3;
+};
+
+export type SpellAimRay = {
+  origin: THREE.Vector3;
+  dir: THREE.Vector3;
+  radius?: number;
+};
+
+export type RemoteSpellTarget = {
+  id: string;
+  distance: number;
+};
+
+export type RemoteSpellTargetScratch = {
+  playerCenter: THREE.Vector3;
+  rayDir: THREE.Vector3;
+  toPlayer: THREE.Vector3;
+  closestPoint: THREE.Vector3;
+  flatDir: THREE.Vector3;
+  flatToPlayer: THREE.Vector3;
+};
+
+export const WIDE_STATUS_AIM_RADIUS = DIRECT_STATUS_TARGET_RADIUS * 1.35;
+const PROJECTILE_TOKEN_SCALE = 0x100000000;
+
+type RandomSource = () => number;
+
+function createRandomToken(random: RandomSource, length = 7) {
+  const unit = THREE.MathUtils.clamp(random(), 0, 0.999999999999);
+  return Math.floor(unit * PROJECTILE_TOKEN_SCALE).toString(36).padStart(length, "0").slice(0, length);
+}
+
+function getHandHorizontalOffset(hand: HandType) {
+  return hand === "left" ? 1.15 : -1.15;
+}
+
+export function createPlayerSpellProjectileId(random: RandomSource = Math.random) {
+  return `spell-${createRandomToken(random)}`;
+}
+
+export function createPlayerGrabProjectileId(
+  playerId: string,
+  hand: HandType,
+  nowMs: number,
+  random: RandomSource = Math.random,
+) {
+  return `${playerId}-${hand}-grab-${nowMs}-${createRandomToken(random, 5)}`;
+}
+
+export function createQaWalkPracticeProjectileId(
+  spell: string,
+  nowMs: number,
+  random: RandomSource = Math.random,
+) {
+  return `qa-walk-practice-${spell}-${nowMs.toString(36)}-${createRandomToken(random, 5)}`;
+}
+
+export function getBlinkTeleportOffset(
+  random: RandomSource = Math.random,
+  minDistance = 20,
+  maxDistance = 60,
+) {
+  const angle = random() * Math.PI * 2;
+  const distance = minDistance + random() * Math.max(0, maxDistance - minDistance);
+  return {
+    angle,
+    distance,
+    x: Math.cos(angle) * distance,
+    z: Math.sin(angle) * distance,
+  };
+}
+
+export function applyFlamethrowerSpreadInto(
+  dir: THREE.Vector3,
+  random: RandomSource = Math.random,
+  spread = 0.15,
+) {
+  dir.x += (random() - 0.5) * spread;
+  dir.y += (random() - 0.5) * spread;
+  dir.z += (random() - 0.5) * spread;
+  return dir.normalize();
+}
+
+export function createPlayerSpellLaunchScratch(): SpellLaunchScratch {
+  return {
+    spawnPos: { x: 0, y: 0, z: 0 },
+    realDir: new THREE.Vector3(),
+    lateral: new THREE.Vector3(),
+  };
+}
+
+export function createRemoteSpellTargetScratch(): RemoteSpellTargetScratch {
+  return {
+    playerCenter: new THREE.Vector3(),
+    rayDir: new THREE.Vector3(),
+    toPlayer: new THREE.Vector3(),
+    closestPoint: new THREE.Vector3(),
+    flatDir: new THREE.Vector3(),
+    flatToPlayer: new THREE.Vector3(),
+  };
+}
+
+export function getPlayerSpellLaunchInto(
+  hand: HandType,
+  camera: THREE.Camera,
+  dir: THREE.Vector3,
+  target: SpellLaunchScratch,
+  aimFromCrosshair = true,
+  lateralOverride?: THREE.Vector3,
+): SpellLaunch {
+  const lateral = target.lateral;
+  if (lateralOverride && lateralOverride.lengthSq() > 0.0001) {
+    lateral.copy(lateralOverride).normalize();
+  } else {
+    lateral.crossVectors(camera.up, dir).normalize();
+  }
+  const horizontalOffset = getHandHorizontalOffset(hand);
+  const camPos = camera.position;
+  const spawnPos = target.spawnPos;
+  spawnPos.x = camPos.x + dir.x * SPELL_SPAWN_FORWARD_OFFSET + lateral.x * horizontalOffset;
+  spawnPos.y = camPos.y + SPELL_SPAWN_VERTICAL_OFFSET + dir.y * SPELL_SPAWN_FORWARD_OFFSET;
+  spawnPos.z = camPos.z + dir.z * SPELL_SPAWN_FORWARD_OFFSET + lateral.z * horizontalOffset;
+  const realDir = aimFromCrosshair
+    ? target.realDir.set(
+      camPos.x + dir.x * 50 - spawnPos.x,
+      camPos.y + dir.y * 50 - spawnPos.y,
+      camPos.z + dir.z * 50 - spawnPos.z,
+    ).normalize()
+    : target.realDir.copy(dir);
+
+  return target;
+}
+
+export function getPlayerSpellLaunch(
+  hand: HandType,
+  camera: THREE.Camera,
+  dir: THREE.Vector3,
+  aimFromCrosshair = true,
+  lateralOverride?: THREE.Vector3,
+): SpellLaunch {
+  return getPlayerSpellLaunchInto(
+    hand,
+    camera,
+    dir,
+    createPlayerSpellLaunchScratch(),
+    aimFromCrosshair,
+    lateralOverride,
+  );
+}
+
+export function findAimedRemotePlayer(
+  players: Record<string, PlayerState>,
+  rays: SpellAimRay[],
+): RemoteSpellTarget | null {
+  return findAimedRemotePlayerInto(players, rays, defaultRemoteSpellTargetScratch);
+}
+
+export function findAimedRemotePlayerInto(
+  players: Record<string, PlayerState>,
+  rays: SpellAimRay[],
+  scratch: RemoteSpellTargetScratch,
+): RemoteSpellTarget | null {
+  let bestTargetId = "";
+  let bestTargetDistance = Number.POSITIVE_INFINITY;
+  const { playerCenter, rayDir, toPlayer, closestPoint } = scratch;
+
+  for (const playerId in players) {
+    const player = players[playerId];
+    if (!player || player.health <= 0) continue;
+
+    playerCenter.set(player.pos[0], player.pos[1] + 0.85, player.pos[2]);
+    for (let rayIndex = 0; rayIndex < rays.length; rayIndex++) {
+      const ray = rays[rayIndex];
+      rayDir.copy(ray.dir).normalize();
+      toPlayer.copy(playerCenter).sub(ray.origin);
+      const projectedDistance = toPlayer.dot(rayDir);
+      if (projectedDistance <= 1.25 || projectedDistance > DIRECT_STATUS_TARGET_RANGE) continue;
+
+      closestPoint.copy(ray.origin).addScaledVector(rayDir, projectedDistance);
+      const allowedMiss = ray.radius ?? DIRECT_STATUS_TARGET_RADIUS;
+      if (playerCenter.distanceToSquared(closestPoint) > allowedMiss * allowedMiss) continue;
+
+      if (projectedDistance < bestTargetDistance) {
+        bestTargetId = playerId;
+        bestTargetDistance = projectedDistance;
+      }
+    }
+  }
+
+  return bestTargetId ? { id: bestTargetId, distance: bestTargetDistance } : null;
+}
+
+export function findRemotePlayerInAimCone(
+  players: Record<string, PlayerState>,
+  origin: THREE.Vector3,
+  dir: THREE.Vector3,
+): RemoteSpellTarget | null {
+  return findRemotePlayerInAimConeInto(players, origin, dir, defaultRemoteSpellTargetScratch);
+}
+
+export function findRemotePlayerInAimConeInto(
+  players: Record<string, PlayerState>,
+  origin: THREE.Vector3,
+  dir: THREE.Vector3,
+  scratch: RemoteSpellTargetScratch,
+): RemoteSpellTarget | null {
+  const { playerCenter, toPlayer, flatDir, flatToPlayer } = scratch;
+  flatDir.set(dir.x, 0, dir.z);
+  if (flatDir.lengthSq() < 0.001) return null;
+  flatDir.normalize();
+
+  let bestTargetId = "";
+  let bestTargetScore = Number.POSITIVE_INFINITY;
+  const minDistanceSq = 1.25 * 1.25;
+  const maxDistanceSq = DIRECT_STATUS_TARGET_RANGE * DIRECT_STATUS_TARGET_RANGE;
+  for (const playerId in players) {
+    const player = players[playerId];
+    if (!player || player.health <= 0) continue;
+
+    playerCenter.set(player.pos[0], player.pos[1] + 0.85, player.pos[2]);
+    toPlayer.copy(playerCenter).sub(origin);
+    flatToPlayer.set(toPlayer.x, 0, toPlayer.z);
+    const flatDistanceSq = flatToPlayer.lengthSq();
+    if (flatDistanceSq <= minDistanceSq || flatDistanceSq > maxDistanceSq) continue;
+
+    const flatDistance = Math.sqrt(flatDistanceSq);
+    flatToPlayer.multiplyScalar(1 / flatDistance);
+    const alignment = flatToPlayer.dot(flatDir);
+    if (alignment < 0.9) continue;
+
+    const forwardDistance = flatDistance * alignment;
+    const lateralMissSq = Math.max(0, flatDistanceSq - forwardDistance * forwardDistance);
+    const verticalMiss = Math.abs(toPlayer.y);
+    const allowedLateralMiss = THREE.MathUtils.clamp(2.4 + forwardDistance * 0.08, 2.4, 5.6);
+    if (lateralMissSq > allowedLateralMiss * allowedLateralMiss || verticalMiss > 9) continue;
+
+    const lateralMiss = Math.sqrt(lateralMissSq);
+    const score = forwardDistance + lateralMiss * 2.5 + verticalMiss * 0.5;
+    if (score < bestTargetScore) {
+      bestTargetId = playerId;
+      bestTargetScore = score;
+    }
+  }
+
+  return bestTargetId ? { id: bestTargetId, distance: bestTargetScore } : null;
+}
+
+const defaultRemoteSpellTargetScratch = createRemoteSpellTargetScratch();

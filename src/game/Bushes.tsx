@@ -1,8 +1,8 @@
 import { useRef, useMemo, useEffect } from "react";
 import * as THREE from "three";
-import { getTerrainHeight } from "./GameWorld";
-import { isHutCell } from "./Huts";
-import { isMobilePerformanceMode } from "./performanceMode";
+import { getBaseVillageTerrainHeight as getTerrainHeight } from "./systems/world/terrain/BaseVillageTerrain";
+import { isHutCell } from "./systems/world/villages/baseVillageHutLayout";
+import { isMobilePerformanceMode } from "./systems/input/performanceMode";
 
 type BushInstance = {
   x: number;
@@ -16,6 +16,14 @@ type BushInstance = {
 
 const BUSH_LOBE_COUNT = 5;
 const BUSH_CLUSTER_COLORS = ["#416035", "#5a8643", "#7dad52"];
+const BUSH_BLOCKER_RADIUS_SQ = 400;
+const BUSH_TREE_BLOCKERS: readonly [number, number][] = [
+  [0, 0],
+  [25, 20],
+  [-28, 15],
+  [18, -26],
+  [-22, -24],
+];
 type BushLineShader = Parameters<THREE.Material["onBeforeCompile"]>[0];
 
 function makeBushLobeGeometry() {
@@ -68,12 +76,30 @@ ${shader.fragmentShader.replace(
   )}`;
 }
 
+function isInsideHutBlocker(x: number, z: number, hutX: number, hutZ: number) {
+  if (!isHutCell(hutX, hutZ)) return false;
+  const dx = x - hutX;
+  const dz = z - hutZ;
+  return dx * dx + dz * dz < BUSH_BLOCKER_RADIUS_SQ;
+}
+
+function isInsideAnyBaseTreeBlocker(x: number, z: number) {
+  for (let index = 0; index < BUSH_TREE_BLOCKERS.length; index += 1) {
+    const [treeX, treeZ] = BUSH_TREE_BLOCKERS[index];
+    const dx = x - treeX;
+    const dz = z - treeZ;
+    if (dx * dx + dz * dz < BUSH_BLOCKER_RADIUS_SQ) return true;
+  }
+  return false;
+}
+
 export function Bushes({ amount = 600, mapSize = 510 }) {
   const bushRef0 = useRef<THREE.InstancedMesh>(null);
   const bushRef1 = useRef<THREE.InstancedMesh>(null);
   const bushRef2 = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const bushGeometry = useMemo(() => makeBushLobeGeometry(), []);
+  const boundingSphere = useMemo(() => new THREE.Sphere(new THREE.Vector3(0, 3, 0), mapSize * 0.78), [mapSize]);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const effectiveAmount = mobilePerformanceMode ? Math.min(amount, 150) : amount;
 
@@ -103,44 +129,16 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
       const fz = Math.floor(z / 16) * 16;
       const cz = Math.ceil(z / 16) * 16;
 
-      const corners = [
-        [fx, fz], [fx, cz], [cx, fz], [cx, cz]
-      ];
-      
-      let insideHut = false;
-      for (const [hx, hz] of corners) {
-        if (isHutCell(hx, hz)) {
-           const dx = x - hx;
-           const dz = z - hz;
-           if (dx * dx + dz * dz < 400) { // Radius 20 just to be safe
-               insideHut = true;
-               break;
-           }
-        }
+      if (
+        isInsideHutBlocker(x, z, fx, fz) ||
+        isInsideHutBlocker(x, z, fx, cz) ||
+        isInsideHutBlocker(x, z, cx, fz) ||
+        isInsideHutBlocker(x, z, cx, cz)
+      ) {
+        continue;
       }
-      
-      if (insideHut) {
-          continue;
-      }
-      
-      const TREE_POSITIONS = [
-        [0, 0],
-        [25, 20],
-        [-28, 15],
-        [18, -26],
-        [-22, -24]
-      ];
-      
-      let insideTree = false;
-      for (const [tx, tz] of TREE_POSITIONS) {
-        const dx = x - tx;
-        const dz = z - tz;
-        if (dx * dx + dz * dz < 400) { // Radius 20 for trees
-          insideTree = true;
-          break;
-        }
-      }
-      if (insideTree) {
+
+      if (isInsideAnyBaseTreeBlocker(x, z)) {
         continue;
       }
 
@@ -163,11 +161,13 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
   useEffect(() => {
     const meshes = [bushRef0.current, bushRef1.current, bushRef2.current];
 
-    meshes.forEach((mesh, colorIndex) => {
-      if (!mesh) return;
+    for (let colorIndex = 0; colorIndex < meshes.length; colorIndex += 1) {
+      const mesh = meshes[colorIndex];
+      if (!mesh) continue;
       let instance = 0;
 
-      bushData.forEach((bush, bushIndex) => {
+      for (let bushIndex = 0; bushIndex < bushData.length; bushIndex += 1) {
+        const bush = bushData[bushIndex];
         for (let lobeIndex = 0; lobeIndex < BUSH_LOBE_COUNT; lobeIndex += 1) {
           if ((bushIndex + lobeIndex) % BUSH_CLUSTER_COLORS.length !== colorIndex) continue;
 
@@ -190,13 +190,13 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
           mesh.setMatrixAt(instance, dummy.matrix);
           instance += 1;
         }
-      });
+      }
 
       mesh.count = instance;
       mesh.instanceMatrix.needsUpdate = true;
-      mesh.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 3, 0), mapSize * 0.78);
-    });
-  }, [bushData, dummy, mapSize]);
+      mesh.boundingSphere = boundingSphere;
+    }
+  }, [boundingSphere, bushData, dummy]);
 
   const capacity = Math.max(1, bushData.length * BUSH_LOBE_COUNT);
 

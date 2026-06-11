@@ -1,0 +1,398 @@
+import {
+  DARREL_QUEST_CHUNK,
+  LILY_COIL_QUEST_CHUNK,
+  SURVIVAL_BLOCK_SIZE,
+  getDarrelQuestSpawn,
+  getLilyCoilQuestSpawn,
+  useGameStore,
+} from "../../../../store/gameStore";
+import { readManualFastTravelSpawn } from "../../../tools/manualFastTravelSpawn";
+import { getBaseVillageTerrainHeight } from "../terrain/BaseVillageTerrain";
+import { QA_AUTHORED_VILLAGE_SAFE_LOCAL_Z } from "./survivalPosition";
+
+export type QaSurvivalSpawn = {
+  key: string;
+  position: [number, number, number];
+  yaw?: number;
+  pitch?: number;
+};
+
+type SurvivalSpawnOptions = {
+  y?: number;
+  localX?: number;
+  localZ?: number;
+  yaw?: number;
+  pitch?: number;
+};
+
+const TEMP_MOUNTAIN_VILLAGE_SPAWN_CHUNK: [number, number] = [3, 0];
+const TEMP_MOUNTAIN_VILLAGE_SPAWN_Y = 86;
+const TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_X = -36;
+const TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_Z = 182;
+const QA_SPELL_DUMMY_RANGE_CHUNK: [number, number] = [4, -3];
+const QA_SPELL_DUMMY_RANGE_Y = 150;
+const QA_SPELL_DUMMY_RANGE_LOCAL_Z = 214;
+const TEMP_GRAVEYARD_VILLAGE_SPAWN_CHUNK: [number, number] = [5, 2];
+const TEMP_GRAVEYARD_VILLAGE_SPAWN_Y = 92;
+const TEMP_GRAVEYARD_VILLAGE_SPAWN_LOCAL_Z = 132;
+const RANDOM_SURVIVAL_SPAWN_MIN_CHUNK_DISTANCE = 2;
+const RANDOM_SURVIVAL_SPAWN_MAX_CHUNK_DISTANCE = 8;
+const RANDOM_SURVIVAL_SPAWN_Y = 180;
+const RANDOM_SURVIVAL_SPAWN_LOCAL_MIN = SURVIVAL_BLOCK_SIZE * 0.3;
+const RANDOM_SURVIVAL_SPAWN_LOCAL_MAX = SURVIVAL_BLOCK_SIZE * 0.42;
+const QA_BASE_VILLAGE_MIN_SPAWN_CLEARANCE = 48;
+const RANDOM_SURVIVAL_RESERVED_CHUNKS: Array<[number, number]> = [
+  [0, 0],
+  [-3, -3],
+  [4, -4],
+  [0, -3],
+  QA_SPELL_DUMMY_RANGE_CHUNK,
+  TEMP_MOUNTAIN_VILLAGE_SPAWN_CHUNK,
+  TEMP_GRAVEYARD_VILLAGE_SPAWN_CHUNK,
+  [DARREL_QUEST_CHUNK.cx, DARREL_QUEST_CHUNK.cz],
+  [LILY_COIL_QUEST_CHUNK.cx, LILY_COIL_QUEST_CHUNK.cz],
+];
+
+const QA_SURVIVAL_CHUNK_SPAWN_OPTIONS: Record<string, SurvivalSpawnOptions> = {
+  "0,0": { y: 15, localX: 0, localZ: 30, yaw: 0 },
+  "4,-4": { y: 150, localX: 0, localZ: QA_AUTHORED_VILLAGE_SAFE_LOCAL_Z, yaw: Math.PI },
+  "0,-3": { y: 150, localX: 0, localZ: QA_AUTHORED_VILLAGE_SAFE_LOCAL_Z, yaw: Math.PI },
+  "-3,-3": { y: 150, localX: 0, localZ: QA_AUTHORED_VILLAGE_SAFE_LOCAL_Z, yaw: Math.PI },
+  "1,0": { y: 28, localX: 0, localZ: 24, yaw: 0 },
+  "3,0": {
+    y: TEMP_MOUNTAIN_VILLAGE_SPAWN_Y,
+    localX: TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_X,
+    localZ: TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_Z,
+    yaw: 1.68,
+  },
+  "5,2": { y: 92, localX: 0, localZ: 132, yaw: 0 },
+};
+
+export const DEFAULT_PLAYER_SPAWN_POSITION: [number, number, number] = [0, 5, 30];
+export const DEFAULT_FALL_RECOVERY_SPAWN_POSITION: [number, number, number] = [0, 15, 30];
+
+let randomSurvivalSpawn: QaSurvivalSpawn | null = null;
+let randomSurvivalSpawnMode: string | null = null;
+
+function getSurvivalChunkSpawn(
+  cx: number,
+  cz: number,
+  keyPrefix: string,
+  options: SurvivalSpawnOptions = {},
+): QaSurvivalSpawn {
+  return {
+    key: `${keyPrefix}:${cx},${cz}`,
+    position: [
+      cx * SURVIVAL_BLOCK_SIZE + (options.localX ?? 0),
+      options.y ?? 140,
+      cz * SURVIVAL_BLOCK_SIZE + (options.localZ ?? 214),
+    ],
+    yaw: options.yaw,
+    pitch: options.pitch,
+  };
+}
+
+function getQaSpellDummyRangeSpawn(runKey: string, sourceKey = "direct"): QaSurvivalSpawn {
+  const [dummyCx, dummyCz] = QA_SPELL_DUMMY_RANGE_CHUNK;
+  return getSurvivalChunkSpawn(dummyCx, dummyCz, `qa:spell-dummy-range:${sourceKey}:${runKey}`, {
+    y: QA_SPELL_DUMMY_RANGE_Y,
+    localZ: QA_SPELL_DUMMY_RANGE_LOCAL_Z,
+    yaw: 0,
+  });
+}
+
+function getNumericSearchParam(params: URLSearchParams, key: string) {
+  const value = params.get(key);
+  if (value === null) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function getQaSurvivalUrlSpawnOptions(params: URLSearchParams, cx?: number, cz?: number) {
+  const options: SurvivalSpawnOptions = {};
+  const y = getNumericSearchParam(params, "qaSurvivalY");
+  const localX = getNumericSearchParam(params, "qaSurvivalLocalX");
+  const localZ = getNumericSearchParam(params, "qaSurvivalLocalZ");
+  const yaw = getNumericSearchParam(params, "qaSurvivalYaw");
+  const pitch = getNumericSearchParam(params, "qaSurvivalPitch");
+  const shouldRescueBadLongHaulEndpoint =
+    cx === QA_SURVIVAL_BAD_LONG_HAUL_CHUNK.cx &&
+    cz === QA_SURVIVAL_BAD_LONG_HAUL_CHUNK.cz &&
+    localX !== undefined &&
+    localZ !== undefined &&
+    localX >= QA_SURVIVAL_BAD_LONG_HAUL_LOCAL_MIN_X &&
+    localZ <= QA_SURVIVAL_BAD_LONG_HAUL_LOCAL_MAX_Z;
+
+  if (y !== undefined) options.y = y;
+  if (shouldRescueBadLongHaulEndpoint) {
+    options.y = Math.max(options.y ?? QA_SURVIVAL_RESCUE_LONG_HAUL_Y, QA_SURVIVAL_RESCUE_LONG_HAUL_Y);
+    options.localX = QA_SURVIVAL_RESCUE_LONG_HAUL_LOCAL_X;
+    options.localZ = QA_SURVIVAL_RESCUE_LONG_HAUL_LOCAL_Z;
+  } else {
+    if (localX !== undefined) options.localX = localX;
+    if (localZ !== undefined) options.localZ = localZ;
+  }
+  if (yaw !== undefined) options.yaw = yaw;
+  if (pitch !== undefined) options.pitch = pitch;
+  return options;
+}
+
+function getQaSurvivalChunkSpawnOptions(cx: number, cz: number) {
+  return QA_SURVIVAL_CHUNK_SPAWN_OPTIONS[`${cx},${cz}`] ?? {};
+}
+
+function getQaSurvivalSpawnOptions(params: URLSearchParams, cx: number, cz: number) {
+  const options = {
+    ...getQaSurvivalChunkSpawnOptions(cx, cz),
+    ...getQaSurvivalUrlSpawnOptions(params, cx, cz),
+  };
+
+  if (cx === 0 && cz === 0) {
+    const localX = options.localX ?? 0;
+    const localZ = options.localZ ?? 30;
+    const minSafeY = getBaseVillageTerrainHeight(localX, localZ) + QA_BASE_VILLAGE_MIN_SPAWN_CLEARANCE;
+    options.y = Math.max(options.y ?? minSafeY, minSafeY);
+  }
+
+  return options;
+}
+
+function isSurvivalGameMode(gameMode: string) {
+  return gameMode === "solo-survival" || gameMode === "multiplayer-survival";
+}
+
+function getRandomUnit() {
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    const values = new Uint32Array(1);
+    crypto.getRandomValues(values);
+    return values[0] / 0xffffffff;
+  }
+
+  return Math.random();
+}
+
+function getRandomInteger(min: number, max: number) {
+  return Math.floor(getRandomUnit() * (max - min + 1)) + min;
+}
+
+function getRandomSignedLocalSpawnOffset() {
+  const magnitude = RANDOM_SURVIVAL_SPAWN_LOCAL_MIN +
+    getRandomUnit() * (RANDOM_SURVIVAL_SPAWN_LOCAL_MAX - RANDOM_SURVIVAL_SPAWN_LOCAL_MIN);
+  return (getRandomUnit() < 0.5 ? -1 : 1) * magnitude;
+}
+
+function isReservedSurvivalSpawnChunk(cx: number, cz: number) {
+  for (let index = 0; index < RANDOM_SURVIVAL_RESERVED_CHUNKS.length; index++) {
+    const [reservedCx, reservedCz] = RANDOM_SURVIVAL_RESERVED_CHUNKS[index];
+    if (Math.abs(cx - reservedCx) <= 1 && Math.abs(cz - reservedCz) <= 1) return true;
+  }
+  return false;
+}
+
+function formatSurvivalSpawnKeyPart(x: number, y: number, z: number, yaw = 0) {
+  return `${Number(x).toFixed(2)}:${Number(y).toFixed(2)}:${Number(z).toFixed(2)}:${Number(yaw).toFixed(2)}`;
+}
+
+function parseQaSurvivalChunkParam(chunkParam: string): { cx: number; cz: number; key: string } | null {
+  let decodedChunkParam = chunkParam;
+  try {
+    decodedChunkParam = decodeURIComponent(chunkParam);
+  } catch {
+    decodedChunkParam = chunkParam;
+  }
+
+  const commaIndex = decodedChunkParam.indexOf(",");
+  if (commaIndex < 0) return null;
+  const cx = Number(decodedChunkParam.slice(0, commaIndex).trim());
+  const cz = Number(decodedChunkParam.slice(commaIndex + 1).trim());
+  return Number.isFinite(cx) && Number.isFinite(cz)
+    ? { cx, cz, key: decodedChunkParam }
+    : null;
+}
+
+function getRandomSurvivalSpawnChunk() {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const cx = getRandomInteger(-RANDOM_SURVIVAL_SPAWN_MAX_CHUNK_DISTANCE, RANDOM_SURVIVAL_SPAWN_MAX_CHUNK_DISTANCE);
+    const cz = getRandomInteger(-RANDOM_SURVIVAL_SPAWN_MAX_CHUNK_DISTANCE, RANDOM_SURVIVAL_SPAWN_MAX_CHUNK_DISTANCE);
+    if (Math.max(Math.abs(cx), Math.abs(cz)) < RANDOM_SURVIVAL_SPAWN_MIN_CHUNK_DISTANCE) continue;
+    if (isReservedSurvivalSpawnChunk(cx, cz)) continue;
+    return { cx, cz };
+  }
+
+  return { cx: -RANDOM_SURVIVAL_SPAWN_MIN_CHUNK_DISTANCE, cz: RANDOM_SURVIVAL_SPAWN_MIN_CHUNK_DISTANCE };
+}
+
+function getRandomSurvivalWorldSpawn(): QaSurvivalSpawn | null {
+  const gameMode = useGameStore.getState().gameMode;
+  if (!isSurvivalGameMode(gameMode)) {
+    randomSurvivalSpawn = null;
+    randomSurvivalSpawnMode = null;
+    return null;
+  }
+
+  if (randomSurvivalSpawn && randomSurvivalSpawnMode === gameMode) {
+    return randomSurvivalSpawn;
+  }
+
+  const { cx, cz } = getRandomSurvivalSpawnChunk();
+  const localX = getRandomSignedLocalSpawnOffset();
+  const localZ = getRandomSignedLocalSpawnOffset();
+  const rollKey = `${Date.now().toString(36)}-${Math.floor(getRandomUnit() * 0xffffff).toString(36)}`;
+  randomSurvivalSpawn = getSurvivalChunkSpawn(cx, cz, `random-survival:${gameMode}:${rollKey}`, {
+    y: RANDOM_SURVIVAL_SPAWN_Y,
+    localX,
+    localZ,
+  });
+  randomSurvivalSpawnMode = gameMode;
+  return randomSurvivalSpawn;
+}
+
+function getManualFastTravelSpawn(): QaSurvivalSpawn | null {
+  const manual = readManualFastTravelSpawn();
+  if (!manual) return null;
+
+  return {
+    key: manual.key,
+    position: [manual.x, manual.y, manual.z],
+    yaw: manual.yaw,
+  };
+}
+
+function getQaSurvivalSpawnFromUrl(): QaSurvivalSpawn | null {
+  if (import.meta.env.DEV && typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    const runKey = params.get("qaPerfRun") || params.get("qaReload") || "";
+    if (params.get("qaSpellDummies") === "1") {
+      return getQaSpellDummyRangeSpawn(runKey);
+    }
+
+    const chunkParam = params.get("qaSurvivalChunk");
+    if (chunkParam) {
+      const parsedChunk = parseQaSurvivalChunkParam(chunkParam);
+      if (parsedChunk) {
+        const { cx, cz, key: decodedChunkParam } = parsedChunk;
+        const isDarrelQuestChunk = cx === DARREL_QUEST_CHUNK.cx && cz === DARREL_QUEST_CHUNK.cz;
+        const questSpawn = (params.get("qaQuestSpawn") || "").toLowerCase();
+        const isDarrelQuestRun = questSpawn === "darrel" || questSpawn === "darrel-grove";
+        if (isDarrelQuestChunk || isDarrelQuestRun) {
+          if (params.get("qaSurvivalWalk") === "1") {
+            return getSurvivalChunkSpawn(cx, cz, `qa:darrel-open-walk-spawn:${decodedChunkParam}:${runKey}`, {
+              y: 38,
+              localX: QA_DARREL_GROVE_CLEARING_LOCAL_X,
+              localZ: QA_DARREL_GROVE_CLEARING_LOCAL_Z,
+              yaw: -Math.PI * 0.35,
+            });
+          }
+
+          const darrelSpawn = getDarrelQuestSpawn();
+          const spawnKey = formatSurvivalSpawnKeyPart(darrelSpawn.x, darrelSpawn.y, darrelSpawn.z, darrelSpawn.yaw ?? 0);
+          return {
+            key: `qa:darrel-quest-spawn:${decodedChunkParam}:${runKey}:${spawnKey}`,
+            position: [darrelSpawn.x, darrelSpawn.y, darrelSpawn.z],
+            yaw: darrelSpawn.yaw,
+          };
+        }
+        const isLilyCoilQuestChunk = cx === LILY_COIL_QUEST_CHUNK.cx && cz === LILY_COIL_QUEST_CHUNK.cz;
+        const isLilyCoilQuestRun = questSpawn === "lily" || questSpawn === "lily-coil" || questSpawn === "coil";
+        if (isLilyCoilQuestChunk || isLilyCoilQuestRun) {
+          const coilSpawn = getLilyCoilQuestSpawn();
+          return {
+            key: `qa:lily-coil-spawn:${decodedChunkParam}:${runKey}`,
+            position: [coilSpawn.x, coilSpawn.y, coilSpawn.z],
+            yaw: coilSpawn.yaw,
+          };
+        }
+        if (params.get("qaSpellDummies") === "1") {
+          return getQaSpellDummyRangeSpawn(runKey, decodedChunkParam);
+        }
+        return getSurvivalChunkSpawn(cx, cz, `qa:${decodedChunkParam}:${runKey}`, {
+          ...getQaSurvivalSpawnOptions(params, cx, cz),
+        });
+      }
+    }
+  }
+
+  return null;
+}
+
+function getTemporaryMountainVillageSpawn(): QaSurvivalSpawn | null {
+  if (typeof window === "undefined") return null;
+
+  const params = new URLSearchParams(window.location.search);
+  if (
+    params.get("disableMountainSpawn") === "1"
+    || params.get("disableSwampSpawn") === "1"
+  ) return null;
+
+  const shouldSpawnAtMountainVillage = params.get("spawnMountain") === "1";
+  if (!shouldSpawnAtMountainVillage) return null;
+
+  const [cx, cz] = TEMP_MOUNTAIN_VILLAGE_SPAWN_CHUNK;
+  return getSurvivalChunkSpawn(cx, cz, "temp-mountain-village", {
+    y: TEMP_MOUNTAIN_VILLAGE_SPAWN_Y,
+    localX: TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_X,
+    localZ: TEMP_MOUNTAIN_VILLAGE_SPAWN_LOCAL_Z,
+    yaw: 1.68,
+  });
+}
+
+function getTemporaryGraveyardVillageSpawn(): QaSurvivalSpawn | null {
+  if (typeof window === "undefined") return null;
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("disableGraveyardSpawn") === "1") return null;
+
+  const shouldSpawnAtGraveyardVillage = params.get("spawnGraveyard") === "1";
+  if (!shouldSpawnAtGraveyardVillage) return null;
+
+  const [cx, cz] = TEMP_GRAVEYARD_VILLAGE_SPAWN_CHUNK;
+  return getSurvivalChunkSpawn(cx, cz, "temp-graveyard-village", {
+    y: TEMP_GRAVEYARD_VILLAGE_SPAWN_Y,
+    localZ: TEMP_GRAVEYARD_VILLAGE_SPAWN_LOCAL_Z,
+  });
+}
+
+function getTemporaryDefaultSurvivalSpawn(): QaSurvivalSpawn | null {
+  const gameMode = useGameStore.getState().gameMode;
+  if (!isSurvivalGameMode(gameMode)) return null;
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("disableDefaultQuestSpawn") === "1") return null;
+  }
+
+  const spawn = getLilyCoilQuestSpawn();
+  const spawnKey = formatSurvivalSpawnKeyPart(spawn.x, spawn.y, spawn.z, spawn.yaw ?? 0);
+  return {
+    key: `default-survival-lily-coil:${gameMode}:${spawnKey}`,
+    position: [spawn.x, spawn.y, spawn.z],
+    yaw: spawn.yaw,
+  };
+}
+
+export function getPlayerSpawnOverride(): QaSurvivalSpawn | null {
+  return getManualFastTravelSpawn()
+    ?? getTemporaryMountainVillageSpawn()
+    ?? getTemporaryGraveyardVillageSpawn()
+    ?? getQaSurvivalSpawnFromUrl()
+    ?? getTemporaryDefaultSurvivalSpawn()
+    ?? getRandomSurvivalWorldSpawn();
+}
+
+export function getPlayerSpawnPosition(
+  fallbackPosition = DEFAULT_PLAYER_SPAWN_POSITION,
+): [number, number, number] {
+  return getPlayerSpawnOverride()?.position ?? fallbackPosition;
+}
+
+export function getInitialPlayerPosition(): [number, number, number] {
+  return getPlayerSpawnPosition();
+}
+
+const QA_SURVIVAL_BAD_LONG_HAUL_CHUNK = { cx: 8, cz: -6 };
+const QA_SURVIVAL_BAD_LONG_HAUL_LOCAL_MIN_X = 120;
+const QA_SURVIVAL_BAD_LONG_HAUL_LOCAL_MAX_Z = -120;
+const QA_SURVIVAL_RESCUE_LONG_HAUL_LOCAL_X = -180;
+const QA_SURVIVAL_RESCUE_LONG_HAUL_LOCAL_Z = 160;
+const QA_SURVIVAL_RESCUE_LONG_HAUL_Y = 80;
+const QA_DARREL_GROVE_CLEARING_LOCAL_X = 86;
+const QA_DARREL_GROVE_CLEARING_LOCAL_Z = 170;

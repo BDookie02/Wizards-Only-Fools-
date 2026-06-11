@@ -1,45 +1,108 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { BallCollider, RigidBody } from "@react-three/rapier";
-import { getHutList } from "./Huts";
-import { getNearbySurvivalDesertManaWells, getNearbySurvivalManaFlowers, getTerrainHeight, type SurvivalManaFlowerSource, type SurvivalManaWellSource } from "./GameWorld";
+import { getHutList } from "./systems/world/villages/baseVillageHutLayout";
+import { areSurvivalManaSourceResolversConfigured, getNearbySurvivalDesertManaWells, getNearbySurvivalManaFlowers, type SurvivalManaFlowerSource, type SurvivalManaWellSource } from "./systems/world/survival/survivalManaSources";
+import { getBaseVillageTerrainHeight as getTerrainHeight } from "./systems/world/terrain/BaseVillageTerrain";
+import {
+  BASE_RUNE_SOURCE_CYCLE_INTERVAL_MS,
+  MANA_FLOWER_RESPAWN_MS,
+  getEpochMsFromManaRenderClock,
+  getNextManaFlowerCooldownExpiry,
+  pickActiveRuneIds,
+  pruneManaFlowerCooldowns,
+  publishManaFlowerQaDataset,
+  shouldReconcileManaSources,
+  shouldShowBaseVillageRuneSources,
+} from "./systems/spells/manaRechargeRuntime";
 import { RUNE_POWER_MAX, SURVIVAL_BLOCK_SIZE, useGameStore } from "../store/gameStore";
-import { isMobilePerformanceMode } from "./performanceMode";
-import { socket } from "../lib/socket";
+import { isMobilePerformanceMode } from "./systems/input/performanceMode";
+import {
+  emitGameNetworkEvent,
+  getLocalNetworkPlayerId,
+  isLocalPresencePlayerId,
+  isNetworkConnected,
+} from "./network/gameNetworkClient";
+import { getPublishedLocalPlayerPosition, type PlayerPositionLike } from "./systems/player/playerEventBridge";
 
-const MANA_FLOWER_RESPAWN_MS = 142000;
+type PlayerPositionRef = React.MutableRefObject<PlayerPositionLike | undefined>;
+const MOBILE_MANA_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 24;
+const MOBILE_MANA_PULSE_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 30;
+const MOBILE_RUNE_SOURCE_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 24;
 
 export function Runes() {
   const [manaPulses, setManaPulses] = useState<{ id: number; playerId: string }[]>([]);
+  const manaPulseIdRef = useRef(0);
   const [desertWellSources, setDesertWellSources] = useState<SurvivalManaWellSource[]>([]);
   const [manaFlowerSources, setManaFlowerSources] = useState<SurvivalManaFlowerSource[]>([]);
   const [collectedManaFlowers, setCollectedManaFlowers] = useState<Record<string, number>>({});
   const gameMode = useGameStore(s => s.gameMode);
   const manaSpawnRate = useGameStore(s => s.survivalRules.manaSpawnRate);
   const isSurvivalMode = gameMode === "solo-survival" || gameMode === "multiplayer-survival";
+  const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const hideManaFlowersForQa = useMemo(() => (
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("qaHideManaFlowers") === "1"
   ), []);
   const lastWellChunkRef = useRef("");
   const hutPositions = useMemo(() => {
-    return getHutList().map(h => ({
-      id: h.id,
-      x: h.x,
-      y: h.y,
-      z: h.z
-    }));
+    const huts = getHutList();
+    const positions = new Array<{ id: string; x: number; y: number; z: number }>(huts.length);
+    for (let index = 0; index < huts.length; index += 1) {
+      const hut = huts[index];
+      positions[index] = {
+        id: hut.id,
+        x: hut.x,
+        y: hut.y,
+        z: hut.z
+      };
+    }
+    return positions;
   }, []);
+  const hutById = useMemo(() => {
+    const lookup = new Map<string, { id: string; x: number; y: number; z: number }>();
+    for (let index = 0; index < hutPositions.length; index += 1) {
+      const hut = hutPositions[index];
+      lookup.set(hut.id, hut);
+    }
+    return lookup;
+  }, [hutPositions]);
 
   const [activeRunes, setActiveRunes] = useState<string[]>([]);
-  const spawnManaPulse = (playerId = socket.id || "local") => {
-    setManaPulses((current) => [...current.slice(-5), { id: performance.now() + Math.random(), playerId }]);
+  const [baseRuneSourcesVisible, setBaseRuneSourcesVisible] = useState(() => !isSurvivalMode);
+  const baseRuneSourcesVisibleRef = useRef(baseRuneSourcesVisible);
+  const latestManaEpochMsRef = useRef(0);
+  const latestPlayerPositionRef = useRef<PlayerPositionLike | undefined>(undefined);
+  const lastManaSourceReconcileAtRef = useRef(Number.NEGATIVE_INFINITY);
+  const previousActiveRunesRef = useRef<Set<string>>(new Set());
+  const lastBaseRuneCycleAtRef = useRef(Number.NEGATIVE_INFINITY);
+  const getLatestManaEpochMs = () => latestManaEpochMsRef.current || Date.now();
+  const setBaseRuneSourcesVisibility = useCallback((nextVisible: boolean) => {
+    if (baseRuneSourcesVisibleRef.current === nextVisible) return;
+    baseRuneSourcesVisibleRef.current = nextVisible;
+    setBaseRuneSourcesVisible(nextVisible);
+  }, []);
+  const spawnManaPulse = (playerId = getLocalNetworkPlayerId()) => {
+    const id = manaPulseIdRef.current;
+    manaPulseIdRef.current += 1;
+    setManaPulses((current) => {
+      const maxPreviousPulses = 5;
+      const startIndex = Math.max(0, current.length - maxPreviousPulses);
+      const nextPulses = new Array<{ id: number; playerId: string }>(current.length - startIndex + 1);
+      let writeIndex = 0;
+      for (let index = startIndex; index < current.length; index += 1) {
+        nextPulses[writeIndex] = current[index];
+        writeIndex += 1;
+      }
+      nextPulses[writeIndex] = { id, playerId };
+      return nextPulses;
+    });
   };
   const broadcastManaPulse = () => {
-    if (socket.connected) {
-      const playerPos = (window as any).localPlayerPos;
-      socket.emit("castSpell", {
+    if (isNetworkConnected()) {
+      const playerPos = latestPlayerPositionRef.current ?? getPublishedLocalPlayerPosition();
+      emitGameNetworkEvent("castSpell", {
         type: "__manaPulseAura",
         pos: playerPos ? { x: playerPos.x, y: playerPos.y, z: playerPos.z } : { x: 0, y: 0, z: 0 },
         dir: { x: 0, y: 1, z: 0 },
@@ -51,70 +114,93 @@ export function Runes() {
     broadcastManaPulse();
   };
 
+  const cycleBaseRuneSources = useCallback((nowMs: number) => {
+    if (!baseRuneSourcesVisible) {
+      return;
+    }
+
+    if (
+      lastBaseRuneCycleAtRef.current !== Number.NEGATIVE_INFINITY &&
+      nowMs - lastBaseRuneCycleAtRef.current < BASE_RUNE_SOURCE_CYCLE_INTERVAL_MS
+    ) {
+      return;
+    }
+
+    const newActive = pickActiveRuneIds(hutPositions, previousActiveRunesRef.current);
+    setActiveRunes(newActive);
+    previousActiveRunesRef.current = new Set(newActive);
+    lastBaseRuneCycleAtRef.current = nowMs;
+  }, [baseRuneSourcesVisible, hutPositions]);
+
   useEffect(() => {
-    let previousRunes = new Set<string>();
+    if (baseRuneSourcesVisible) {
+      lastBaseRuneCycleAtRef.current = Number.NEGATIVE_INFINITY;
+      return;
+    }
 
-    const cycleRunes = () => {
-      // Find all huts that didn't have runes in the previous interval
-      let availableHuts = hutPositions.filter((h) => !previousRunes.has(h.id));
-      
-      const targetCount = Math.floor(hutPositions.length * (2 / 3));
+    lastBaseRuneCycleAtRef.current = Number.NEGATIVE_INFINITY;
+    previousActiveRunesRef.current.clear();
+    setActiveRunes((current) => (current.length === 0 ? current : []));
+  }, [baseRuneSourcesVisible, hutPositions]);
 
-      // If availableHuts is smaller than targetCount because of some reason, add random huts to make up
-      if (availableHuts.length < targetCount) {
-         availableHuts = [...hutPositions];
-      }
-      
-      // Shuffle availableHuts
-      const shuffled = [...availableHuts].sort(() => Math.random() - 0.5);
-      
-      const newActive = shuffled.slice(0, targetCount).map((h) => h.id);
-      
-      setActiveRunes(newActive);
-      previousRunes = new Set(newActive);
-    };
+  const reconcileManaSources = useCallback((nowMs: number) => {
+    latestManaEpochMsRef.current = nowMs;
+    const playerPos = getPublishedLocalPlayerPosition() ?? latestPlayerPositionRef.current;
+    latestPlayerPositionRef.current = playerPos;
 
-    cycleRunes(); // initial
-    const interval = setInterval(cycleRunes, 15000);
-    return () => clearInterval(interval);
-  }, [hutPositions]);
-
-  useFrame(() => {
-    const playerPos = (window as any).localPlayerPos as { x: number; z: number } | undefined;
+    setBaseRuneSourcesVisibility(shouldShowBaseVillageRuneSources({
+      isSurvivalMode,
+      playerX: playerPos?.x,
+      playerZ: playerPos?.z,
+      blockSize: SURVIVAL_BLOCK_SIZE,
+    }));
     if (!playerPos) return;
 
     const chunkX = Math.floor((playerPos.x + SURVIVAL_BLOCK_SIZE / 2) / SURVIVAL_BLOCK_SIZE);
     const chunkZ = Math.floor((playerPos.z + SURVIVAL_BLOCK_SIZE / 2) / SURVIVAL_BLOCK_SIZE);
-    const chunkKey = `${gameMode}:${manaSpawnRate}:${chunkX}:${chunkZ}`;
+    if (!isSurvivalMode) {
+      const chunkKey = `${gameMode}:mana-disabled`;
+      if (chunkKey === lastWellChunkRef.current) return;
+
+      lastWellChunkRef.current = chunkKey;
+      setDesertWellSources([]);
+      setManaFlowerSources([]);
+      return;
+    }
+
+    if (!areSurvivalManaSourceResolversConfigured()) return;
+
+    const chunkKey = `${gameMode}:${manaSpawnRate}:${hideManaFlowersForQa ? "hide" : "show"}:${chunkX}:${chunkZ}`;
     if (chunkKey === lastWellChunkRef.current) return;
 
     lastWellChunkRef.current = chunkKey;
-    setDesertWellSources(isSurvivalMode ? getNearbySurvivalDesertManaWells(playerPos.x, playerPos.z) : []);
+    setDesertWellSources(getNearbySurvivalDesertManaWells(playerPos.x, playerPos.z));
     setManaFlowerSources(
-      isSurvivalMode && !hideManaFlowersForQa
+      !hideManaFlowersForQa
         ? getNearbySurvivalManaFlowers(playerPos.x, playerPos.z, manaSpawnRate)
         : [],
     );
+  }, [gameMode, hideManaFlowersForQa, isSurvivalMode, manaSpawnRate, setBaseRuneSourcesVisibility]);
+
+  useFrame(({ clock }) => {
+    const nowMs = getEpochMsFromManaRenderClock(clock.elapsedTime);
+    latestManaEpochMsRef.current = nowMs;
+    cycleBaseRuneSources(nowMs);
+    if (!shouldReconcileManaSources(nowMs, lastManaSourceReconcileAtRef.current)) return;
+    lastManaSourceReconcileAtRef.current = nowMs;
+    reconcileManaSources(nowMs);
   });
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      const now = Date.now();
-      setCollectedManaFlowers((current) => {
-        let changed = false;
-        const next: Record<string, number> = {};
-        Object.entries(current).forEach(([id, until]) => {
-          if (until > now) {
-            next[id] = until;
-          } else {
-            changed = true;
-          }
-        });
-        return changed ? next : current;
-      });
-    }, 1000);
-    return () => window.clearInterval(interval);
-  }, []);
+    const nextExpiry = getNextManaFlowerCooldownExpiry(collectedManaFlowers);
+    if (!Number.isFinite(nextExpiry)) return;
+
+    const delay = Math.max(0, Math.min(MANA_FLOWER_RESPAWN_MS, nextExpiry - getLatestManaEpochMs() + 50));
+    const timeout = window.setTimeout(() => {
+      setCollectedManaFlowers((current) => pruneManaFlowerCooldowns(current, getLatestManaEpochMs()));
+    }, delay);
+    return () => window.clearTimeout(timeout);
+  }, [collectedManaFlowers]);
 
   useEffect(() => {
     const handleRemoteManaPulse = (event: Event) => {
@@ -128,20 +214,7 @@ export function Runes() {
   }, []);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    const now = Date.now();
-    (window as any).__wofManaFlowerSources = manaFlowerSources;
-    document.documentElement.dataset.wofManaFlowerCount = String(manaFlowerSources.length);
-    document.documentElement.dataset.wofManaFlowerReady = String(
-      manaFlowerSources.filter((source) => (collectedManaFlowers[source.id] ?? 0) <= now).length,
-    );
-    document.documentElement.dataset.wofManaFlowerSample = manaFlowerSources
-      .slice(0, 4)
-      .map((source) => `${source.id}:${Math.round(source.x)},${Math.round(source.y)},${Math.round(source.z)}`)
-      .join("|");
-    document.documentElement.dataset.wofManaFlowerCooldowns = Object.entries(collectedManaFlowers)
-      .map(([id, until]) => `${id}:${Math.max(0, Math.ceil((until - now) / 1000))}`)
-      .join("|");
+    publishManaFlowerQaDataset(manaFlowerSources, collectedManaFlowers, getLatestManaEpochMs());
   }, [collectedManaFlowers, manaFlowerSources]);
 
   const collectRune = (id: string) => {
@@ -149,17 +222,34 @@ export function Runes() {
     if (!didRecharge) return;
 
     showAndBroadcastManaPulse();
-    setActiveRunes((prev) => prev.filter((r) => r !== id));
+    setActiveRunes((prev) => {
+      let removeIndex = -1;
+      for (let index = 0; index < prev.length; index += 1) {
+        if (prev[index] === id) {
+          removeIndex = index;
+          break;
+        }
+      }
+      if (removeIndex === -1) return prev;
+      const nextRunes = new Array<string>(prev.length - 1);
+      let writeIndex = 0;
+      for (let index = 0; index < prev.length; index += 1) {
+        if (index === removeIndex) continue;
+        nextRunes[writeIndex] = prev[index];
+        writeIndex += 1;
+      }
+      return nextRunes;
+    });
   };
 
-  const collectManaFlower = (id: string) => {
+  const collectManaFlower = (id: string, now: number) => {
     const didRecharge = rechargeMostEmptyManaBar();
     if (!didRecharge) return false;
 
     showAndBroadcastManaPulse();
     setCollectedManaFlowers((current) => ({
       ...current,
-      [id]: Date.now() + MANA_FLOWER_RESPAWN_MS,
+      [id]: now + MANA_FLOWER_RESPAWN_MS,
     }));
     if (typeof document !== "undefined") {
       document.documentElement.dataset.wofManaFlowerLastCollect = id;
@@ -169,12 +259,18 @@ export function Runes() {
 
   return (
     <group>
-      <InfiniteManaSpawner onRecharge={showAndBroadcastManaPulse} />
+      {baseRuneSourcesVisible && (
+        <InfiniteManaSpawner
+          playerPositionRef={latestPlayerPositionRef}
+          onRecharge={showAndBroadcastManaPulse}
+        />
+      )}
       {desertWellSources.map((source) => (
         <InfiniteManaSpawner
           key={source.id}
           source={source}
           variant="well"
+          playerPositionRef={latestPlayerPositionRef}
           onRecharge={showAndBroadcastManaPulse}
         />
       ))}
@@ -183,20 +279,40 @@ export function Runes() {
           key={source.id}
           source={source}
           collectedUntil={collectedManaFlowers[source.id] ?? 0}
-          onCollect={() => collectManaFlower(source.id)}
+          playerPositionRef={latestPlayerPositionRef}
+          onCollect={(now) => collectManaFlower(source.id, now)}
         />
       ))}
       {manaPulses.map((pulse) => (
         <ManaPickupPulse
           key={pulse.id}
           playerId={pulse.playerId}
-          onDone={() => setManaPulses((current) => current.filter((item) => item.id !== pulse.id))}
+          playerPositionRef={latestPlayerPositionRef}
+          mobilePerformanceMode={mobilePerformanceMode}
+          onDone={() => setManaPulses((current) => {
+            let removeIndex = -1;
+            for (let index = 0; index < current.length; index += 1) {
+              if (current[index].id === pulse.id) {
+                removeIndex = index;
+                break;
+              }
+            }
+            if (removeIndex === -1) return current;
+            const nextPulses = new Array<{ id: number; playerId: string }>(current.length - 1);
+            let writeIndex = 0;
+            for (let index = 0; index < current.length; index += 1) {
+              if (index === removeIndex) continue;
+              nextPulses[writeIndex] = current[index];
+              writeIndex += 1;
+            }
+            return nextPulses;
+          })}
         />
       ))}
-      {activeRunes.map((id, index) => {
-        const hut = hutPositions.find((h) => h.id === id);
+      {baseRuneSourcesVisible && activeRunes.map((id) => {
+        const hut = hutById.get(id);
         if (!hut) return null;
-        return <Rune key={index} hut={hut} onCollect={() => collectRune(id)} />;
+        return <Rune key={id} hut={hut} mobilePerformanceMode={mobilePerformanceMode} onCollect={() => collectRune(id)} />;
       })}
     </group>
   );
@@ -271,9 +387,9 @@ function isPlayerManaCollector(event: { other: { rigidBodyObject?: { name?: stri
   return event.other.rigidBodyObject?.name === "player";
 }
 
-function getManaPulseTargetPosition(playerId: string) {
-  if (playerId === "local" || playerId === socket.id) {
-    return (window as any).localPlayerPos as { x: number; y: number; z: number } | undefined;
+function getManaPulseTargetPosition(playerId: string, playerPositionRef: PlayerPositionRef) {
+  if (isLocalPresencePlayerId(playerId)) {
+    return playerPositionRef.current;
   }
 
   const player = useGameStore.getState().players[playerId];
@@ -281,16 +397,39 @@ function getManaPulseTargetPosition(playerId: string) {
   return { x: player.pos[0], y: player.pos[1], z: player.pos[2] };
 }
 
-function ManaPickupPulse({ playerId, onDone }: { playerId: string; onDone: () => void }) {
+function ManaPickupPulse({
+  playerId,
+  playerPositionRef,
+  mobilePerformanceMode,
+  onDone,
+}: {
+  playerId: string;
+  playerPositionRef: PlayerPositionRef;
+  mobilePerformanceMode: boolean;
+  onDone: () => void;
+}) {
   const groupRef = useRef<THREE.Group>(null);
   const ringRefs = useRef<THREE.Mesh[]>([]);
   const materialRefs = useRef<THREE.MeshBasicMaterial[]>([]);
-  const startedAtRef = useRef(performance.now());
+  const startedClockAtRef = useRef<number | null>(null);
   const finishedRef = useRef(false);
+  const lastMobileVisualUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
 
-  useFrame(() => {
+  useFrame((state) => {
+    const elapsed = state.clock.elapsedTime;
+    if (startedClockAtRef.current === null) {
+      startedClockAtRef.current = elapsed;
+    }
+    if (
+      mobilePerformanceMode &&
+      elapsed - lastMobileVisualUpdateAtRef.current < MOBILE_MANA_PULSE_VISUAL_UPDATE_INTERVAL_SECONDS
+    ) {
+      return;
+    }
+    lastMobileVisualUpdateAtRef.current = elapsed;
+
     const group = groupRef.current;
-    const playerPos = getManaPulseTargetPosition(playerId);
+    const playerPos = getManaPulseTargetPosition(playerId, playerPositionRef);
     if (group && playerPos) {
       group.position.set(playerPos.x, playerPos.y, playerPos.z);
       group.visible = true;
@@ -298,7 +437,7 @@ function ManaPickupPulse({ playerId, onDone }: { playerId: string; onDone: () =>
       group.visible = false;
     }
 
-    const progress = (performance.now() - startedAtRef.current) / 950;
+    const progress = (elapsed - startedClockAtRef.current) / 0.95;
     if (progress >= 1 && !finishedRef.current) {
       finishedRef.current = true;
       onDone();
@@ -361,9 +500,18 @@ function rechargeMostEmptyManaBar() {
   return true;
 }
 
-function Rune({ hut, onCollect }: { hut: { id: string; x: number; y: number; z: number }; onCollect: () => void }) {
+function Rune({
+  hut,
+  mobilePerformanceMode,
+  onCollect,
+}: {
+  hut: { id: string; x: number; y: number; z: number };
+  mobilePerformanceMode: boolean;
+  onCollect: () => void;
+}) {
   const ref = useRef<THREE.Mesh>(null);
   const bodyRef = useRef<any>(null);
+  const lastMobileVisualUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
   const startY = 0.6;
 
   useEffect(() => {
@@ -373,10 +521,22 @@ function Rune({ hut, onCollect }: { hut: { id: string; x: number; y: number; z: 
   }, [hut.x, hut.y, hut.z]);
 
   useFrame((state, delta) => {
+    const elapsed = state.clock.elapsedTime;
+    const previousVisualUpdateAt = lastMobileVisualUpdateAtRef.current;
+    if (
+      mobilePerformanceMode &&
+      elapsed - previousVisualUpdateAt < MOBILE_RUNE_SOURCE_VISUAL_UPDATE_INTERVAL_SECONDS
+    ) {
+      return;
+    }
+    lastMobileVisualUpdateAtRef.current = elapsed;
+    const visualDelta = previousVisualUpdateAt === Number.NEGATIVE_INFINITY
+      ? delta
+      : elapsed - previousVisualUpdateAt;
     if (ref.current) {
-      ref.current.rotation.y += delta * 2;
-      ref.current.rotation.x += delta * 1.5;
-      ref.current.position.y = Math.sin(state.clock.elapsedTime * 3) * 0.2;
+      ref.current.rotation.y += visualDelta * 2;
+      ref.current.rotation.x += visualDelta * 1.5;
+      ref.current.position.y = Math.sin(elapsed * 3) * 0.2;
     }
   });
 
@@ -403,51 +563,73 @@ function Rune({ hut, onCollect }: { hut: { id: string; x: number; y: number; z: 
 function ManaFlower({
   source,
   collectedUntil,
+  playerPositionRef,
   onCollect,
 }: {
   source: SurvivalManaFlowerSource;
   collectedUntil: number;
-  onCollect: () => boolean;
+  playerPositionRef: PlayerPositionRef;
+  onCollect: (now: number) => boolean;
 }) {
   const headRef = useRef<THREE.Sprite>(null);
   const glowRef = useRef<THREE.Sprite>(null);
   const collectedUntilRef = useRef(collectedUntil);
+  const latestEpochMsRef = useRef(0);
+  const lastMobileVisualUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const headTexture = useMemo(() => getManaFlowerBillboardTexture(), []);
-  const ready = collectedUntil <= Date.now();
+  const radiusSq = useMemo(() => source.radius * source.radius, [source.radius]);
+  const ready = collectedUntil <= 0;
 
   useEffect(() => {
     collectedUntilRef.current = collectedUntil;
   }, [collectedUntil]);
 
-  const tryCollect = () => {
-    if (collectedUntilRef.current > Date.now()) return;
-    if (onCollect()) {
-      collectedUntilRef.current = Date.now() + MANA_FLOWER_RESPAWN_MS;
+  const getLatestEpochMs = () => latestEpochMsRef.current || getEpochMsFromManaRenderClock(0);
+
+  const tryCollect = (now = getLatestEpochMs()) => {
+    if (collectedUntilRef.current > now) return;
+    if (onCollect(now)) {
+      collectedUntilRef.current = now + MANA_FLOWER_RESPAWN_MS;
     }
   };
 
   useFrame((state, delta) => {
-    const head = headRef.current;
-    const glow = glowRef.current;
-    const localHeadY = source.stemHeight + 0.46 + Math.sin(state.clock.elapsedTime * 2.9 + source.x * 0.01) * 0.06;
-    const pulse = 1 + Math.sin(state.clock.elapsedTime * 2.4 + source.x * 0.01) * 0.045;
-    if (head) {
-      head.position.y = localHeadY;
-      head.scale.set(source.headScale * 1.42 * pulse, source.headScale * 1.42 * pulse, 1);
-      const material = head.material as THREE.SpriteMaterial;
-      material.rotation += delta * 0.28;
-    }
-    if (glow) {
-      glow.position.y = localHeadY;
-      glow.scale.set(source.headScale * 2.05 * pulse, source.headScale * 2.05 * pulse, 1);
+    const elapsed = state.clock.elapsedTime;
+    const previousVisualUpdateAt = lastMobileVisualUpdateAtRef.current;
+    const shouldUpdateVisuals =
+      !mobilePerformanceMode ||
+      elapsed - previousVisualUpdateAt >= MOBILE_MANA_VISUAL_UPDATE_INTERVAL_SECONDS;
+    if (shouldUpdateVisuals) {
+      lastMobileVisualUpdateAtRef.current = elapsed;
+      const visualDelta = previousVisualUpdateAt === Number.NEGATIVE_INFINITY
+        ? delta
+        : elapsed - previousVisualUpdateAt;
+      const head = headRef.current;
+      const glow = glowRef.current;
+      const localHeadY = source.stemHeight + 0.46 + Math.sin(elapsed * 2.9 + source.x * 0.01) * 0.06;
+      const pulse = 1 + Math.sin(elapsed * 2.4 + source.x * 0.01) * 0.045;
+      if (head) {
+        head.position.y = localHeadY;
+        head.scale.set(source.headScale * 1.42 * pulse, source.headScale * 1.42 * pulse, 1);
+        const material = head.material as THREE.SpriteMaterial;
+        material.rotation += visualDelta * 0.28;
+      }
+      if (glow) {
+        glow.position.y = localHeadY;
+        glow.scale.set(source.headScale * 2.05 * pulse, source.headScale * 2.05 * pulse, 1);
+      }
     }
 
-    if (collectedUntilRef.current > Date.now()) return;
-    const playerPos = (window as any).localPlayerPos as { x: number; z: number } | undefined;
+    const now = getEpochMsFromManaRenderClock(elapsed);
+    latestEpochMsRef.current = now;
+    if (collectedUntilRef.current > now) return;
+    const playerPos = playerPositionRef.current;
     if (!playerPos) return;
-    if (Math.hypot(playerPos.x - source.x, playerPos.z - source.z) < source.radius) {
-      tryCollect();
+    const dx = playerPos.x - source.x;
+    const dz = playerPos.z - source.z;
+    if (dx * dx + dz * dz < radiusSq) {
+      tryCollect(now);
     }
   });
 
@@ -461,12 +643,12 @@ function ManaFlower({
       <BallCollider
         args={[source.radius]}
         position={[0, source.stemHeight * 0.6, 0]}
-        sensor
-        onIntersectionEnter={(event) => {
-          if (isPlayerManaCollector(event)) {
-            tryCollect();
-          }
-        }}
+      sensor
+      onIntersectionEnter={(event) => {
+        if (isPlayerManaCollector(event)) {
+          tryCollect();
+        }
+      }}
       />
       <group name="wilderness-mana-flower">
         <mesh
@@ -544,14 +726,17 @@ type InfiniteManaSource = {
 function InfiniteManaSpawner({
   onRecharge,
   source,
+  playerPositionRef,
   variant = "bonfire",
 }: {
   onRecharge: () => void;
   source?: InfiniteManaSource;
+  playerPositionRef: PlayerPositionRef;
   variant?: "bonfire" | "well";
 }) {
   const ref = useRef<THREE.Group>(null);
   const cooldownRef = useRef(0);
+  const lastMobileVisualUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const position = useMemo(() => {
     if (source) return source;
@@ -559,21 +744,32 @@ function InfiniteManaSpawner({
     const z = 31.5;
     return { id: "bonfire-mana-spawner", x, y: getTerrainHeight(x, z), z, radius: 2.6 };
   }, [source]);
+  const radiusSq = useMemo(() => position.radius * position.radius, [position.radius]);
 
   useFrame((state, delta) => {
     cooldownRef.current = Math.max(0, cooldownRef.current - delta);
 
-    if (ref.current) {
-      ref.current.rotation.y -= delta * (variant === "well" ? 0.72 : 1.4);
-      ref.current.position.y = (variant === "well" ? 0.45 : 0.72) + Math.sin(state.clock.elapsedTime * 2.4) * 0.12;
-      ref.current.scale.setScalar((variant === "well" ? 1.8 : 1) + Math.sin(state.clock.elapsedTime * 4) * 0.05);
+    const elapsed = state.clock.elapsedTime;
+    const previousVisualUpdateAt = lastMobileVisualUpdateAtRef.current;
+    const shouldUpdateVisuals =
+      !mobilePerformanceMode ||
+      elapsed - previousVisualUpdateAt >= MOBILE_MANA_VISUAL_UPDATE_INTERVAL_SECONDS;
+    if (ref.current && shouldUpdateVisuals) {
+      lastMobileVisualUpdateAtRef.current = elapsed;
+      const visualDelta = previousVisualUpdateAt === Number.NEGATIVE_INFINITY
+        ? delta
+        : elapsed - previousVisualUpdateAt;
+      ref.current.rotation.y -= visualDelta * (variant === "well" ? 0.72 : 1.4);
+      ref.current.position.y = (variant === "well" ? 0.45 : 0.72) + Math.sin(elapsed * 2.4) * 0.12;
+      ref.current.scale.setScalar((variant === "well" ? 1.8 : 1) + Math.sin(elapsed * 4) * 0.05);
     }
 
-    const playerPos = (window as any).localPlayerPos;
+    const playerPos = playerPositionRef.current;
     if (!playerPos || cooldownRef.current > 0) return;
 
-    const distance = Math.hypot(playerPos.x - position.x, playerPos.z - position.z);
-    if (distance < position.radius && rechargeMostEmptyManaBar()) {
+    const dx = playerPos.x - position.x;
+    const dz = playerPos.z - position.z;
+    if (dx * dx + dz * dz < radiusSq && rechargeMostEmptyManaBar()) {
       onRecharge();
       cooldownRef.current = 0.55;
     }

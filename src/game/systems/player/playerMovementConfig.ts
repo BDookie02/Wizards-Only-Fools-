@@ -1,0 +1,92 @@
+import * as THREE from "three";
+import type { SpellType } from "../../../store/gameStore";
+
+export const SPEED = 8;
+export const JUMP_FORCE = 8;
+export const BOOST_FORCE = 6;
+export const SLIDE_SPEED = 18;
+export const CROUCH_HOLD_MS = 3000;
+export const CROUCH_SPEED_MULTIPLIER = 0.44;
+export const SPEED_BOOST_MULTIPLIER = 2;
+export const JUMP_BOOST_MULTIPLIER = 2;
+export const TUNGSTON_SLOW_MULTIPLIER = 0.35;
+
+export const CONTROLLER_LOOK_VERTICAL_MULTIPLIER = 0.78;
+export const KEYBOARD_ARROW_LOOK_SPEED = 2.65;
+export const KEYBOARD_ARROW_LOOK_VERTICAL_MULTIPLIER = 0.78;
+
+export const PLAYER_COLLIDER_HALF_HEIGHT = 0.65;
+export const PLAYER_COLLIDER_RADIUS = 0.5;
+export const PLAYER_FOOT_OFFSET = PLAYER_COLLIDER_HALF_HEIGHT + PLAYER_COLLIDER_RADIUS;
+export const PLAYER_CAMERA_HEIGHT = 1.08;
+export const PLAYER_SLIDE_CAMERA_HEIGHT = 0.52;
+export const PLAYER_CROUCH_CAMERA_HEIGHT = 0.52;
+export const PLAYER_MEDITATION_CAMERA_HEIGHT = 0.58;
+
+export const FLOOR_RECOVERY_RAY_UP = 96;
+export const FLOOR_RECOVERY_RAY_DOWN = 188;
+export const FLOOR_RECOVERY_TRIGGER_DEPTH = 0.04;
+export const FLOOR_RECOVERY_MAX_LIFT = 96;
+export const FLOOR_RECOVERY_VERTICAL_SETTLE = 0.08;
+export const FLOOR_DEEP_RECOVERY_TRIGGER_Y = -12;
+export const FLOOR_DEEP_RECOVERY_RAY_UP = 260;
+export const FLOOR_DEEP_RECOVERY_RAY_DOWN = 420;
+export const FLOOR_DEEP_RECOVERY_MAX_LIFT = 320;
+
+export const GROUND_PROBE_ORIGIN_LIFT = 0.3;
+export const GROUND_PROBE_CAST_DISTANCE = 0.76;
+export const GROUND_PROBE_MAX_TOI = 0.68;
+export const GROUND_COYOTE_MS = 180;
+export const GROUND_JUMP_MAX_UPWARD_VELOCITY = 1.6;
+const GROUND_PROBE_EDGE_RADIUS = PLAYER_COLLIDER_RADIUS * 0.58;
+const GROUND_PROBE_DIAGONAL_RADIUS = PLAYER_COLLIDER_RADIUS * 0.42;
+export const GROUND_PROBE_OFFSETS = [
+  { x: 0, z: 0 },
+  { x: GROUND_PROBE_EDGE_RADIUS, z: 0 },
+  { x: -GROUND_PROBE_EDGE_RADIUS, z: 0 },
+  { x: 0, z: GROUND_PROBE_EDGE_RADIUS },
+  { x: 0, z: -GROUND_PROBE_EDGE_RADIUS },
+  { x: GROUND_PROBE_DIAGONAL_RADIUS, z: GROUND_PROBE_DIAGONAL_RADIUS },
+  { x: -GROUND_PROBE_DIAGONAL_RADIUS, z: GROUND_PROBE_DIAGONAL_RADIUS },
+  { x: GROUND_PROBE_DIAGONAL_RADIUS, z: -GROUND_PROBE_DIAGONAL_RADIUS },
+  { x: -GROUND_PROBE_DIAGONAL_RADIUS, z: -GROUND_PROBE_DIAGONAL_RADIUS },
+] as const;
+
+export const CAMERA_WALL_CLEARANCE = 0.64;
+export const CAMERA_WALL_PUSH_MAX = 0.54;
+export const CAMERA_WALL_INSIDE_EXTRA = 0.12;
+export const CAMERA_WALL_MIN_HORIZONTAL_PUSH_SQ = 0.0009;
+export const CAMERA_WALL_MAX_VERTICAL_SEPARATION = 2.4;
+export const CAMERA_TERRAIN_EYE_CLEARANCE = 0.42;
+export const CAMERA_TERRAIN_RAY_UP = 3.8;
+export const CAMERA_TERRAIN_RAY_DOWN = 7.2;
+export const CAMERA_TERRAIN_MAX_BODY_LIFT = 4.8;
+export const CAMERA_TERRAIN_MAX_SURFACE_ABOVE_BODY = PLAYER_CAMERA_HEIGHT + 0.95;
+
+export const SLIDE_START_MIN_SPEED_SQ = 0.55;
+export const SLIDE_RESTART_COOLDOWN_MS = 250;
+
+export const SPELL_SPAWN_FORWARD_OFFSET = 1.55;
+export const SPELL_SPAWN_VERTICAL_OFFSET = 0.08;
+export const DIRECT_STATUS_TARGET_RANGE = 48;
+export const DIRECT_STATUS_TARGET_RADIUS = 1.85;
+
+export const VCLIP_VERTICAL_SPEED = 10;
+export const VCLIP_SPRINT_MULTIPLIER = 3.2;
+export const LADDER_CLIMB_SPEED = 8.4;
+export const LADDER_IDLE_HOLD_SPEED = 0;
+export const ASTRAL_EXIT_HOLD_MS = 5000;
+
+export const GRAB_MAX_DURATION_MS = 6000;
+export const GRAB_DEFAULT_DISTANCE = 10;
+export const GRAB_FOLLOW_SPEED = 18;
+export const GRAB_THROW_SPEED = 42;
+
+export const SELF_BUFF_SPELLS = new Set<SpellType>(["magicarmor", "jumpboost", "speedboost", "magicglassorb"]);
+export const WORLD_UP = new THREE.Vector3(0, 1, 0);
+
+export function getPlayerCameraHeight(isSliding: boolean, isCrouching: boolean) {
+  if (isSliding) return PLAYER_SLIDE_CAMERA_HEIGHT;
+  if (isCrouching) return PLAYER_CROUCH_CAMERA_HEIGHT;
+  return PLAYER_CAMERA_HEIGHT;
+}

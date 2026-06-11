@@ -1,0 +1,1 @@
+export const SWAMP_VILLAGE_RADIUS = 214;

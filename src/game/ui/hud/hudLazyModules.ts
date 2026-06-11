@@ -1,0 +1,19 @@
+import { lazy } from "react";
+
+export const LazyMagicHands = lazy(() => import("../../MagicHands").then((module) => ({ default: module.MagicHands })));
+export const LazyEngineMenu = lazy(() => import("../../engine-menu/EngineMenu").then((module) => ({ default: module.EngineMenu })));
+export const LazyDevFastTravelMenu = lazy(() => import("../../tools/DevFastTravelMenu").then((module) => ({ default: module.DevFastTravelMenu })));
+export const LazyPlayerScoreMenu = lazy(() => import("./PlayerScoreMenu").then((module) => ({ default: module.PlayerScoreMenu })));
+export const LazyFullscreenHelpModal = lazy(() => import("./FullscreenHelpModal").then((module) => ({ default: module.FullscreenHelpModal })));
+export const LazyPlayerNamePrompt = lazy(() => import("./PlayerNamePrompt").then((module) => ({ default: module.PlayerNamePrompt })));
+export const LazyLobbyChatBox = lazy(() => import("./LobbyChatBox").then((module) => ({ default: module.LobbyChatBox })));
+export const LazyCommandConsole = lazy(() => import("./CommandConsole").then((module) => ({ default: module.CommandConsole })));
+export const LazyCharacterPreview = lazy(() => import("./CharacterPreview").then((module) => ({ default: module.CharacterPreview })));
+export const LazyHudSettingsPanel = lazy(() => import("./SettingsPanel").then((module) => ({ default: module.SettingsPanel })));
+export const LazySpellMenu = lazy(() => import("./SpellMenu").then((module) => ({ default: module.SpellMenu })));
+export const LazyMobileTouchControls = lazy(() => import("./MobileTouchControls").then((module) => ({ default: module.MobileTouchControls })));
+export const LazyInventoryPanel = lazy(() => import("./InventoryPanel").then((module) => ({ default: module.InventoryPanel })));
+export const LazyQuestNpcEditor = lazy(() => import("./QuestPanels").then((module) => ({ default: module.QuestNpcEditor })));
+export const LazyQuestDialogPanel = lazy(() => import("./QuestDialogPanel").then((module) => ({ default: module.QuestDialogPanel })));
+export const LazyHudLayoutQaMetricsProbe = lazy(() => import("../../tools/qa/hudLayoutQaMetrics").then((module) => ({ default: module.HudLayoutQaMetricsProbe })));
+export const LazyHudStateQaRuntimeProbe = lazy(() => import("../../tools/qa/hudStateQaRuntime").then((module) => ({ default: module.HudStateQaRuntimeProbe })));

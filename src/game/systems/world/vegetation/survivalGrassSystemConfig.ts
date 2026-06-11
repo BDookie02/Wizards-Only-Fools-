@@ -1,0 +1,1 @@
+export const SURVIVAL_GRASS_SYSTEM_ENABLED = true;

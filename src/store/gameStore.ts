@@ -1,4 +1,8 @@
 import { create } from 'zustand';
+import {
+  MULTIPLAYER_DEFAULT_CUSTOM_LOBBY_MAX_PLAYERS,
+  MULTIPLAYER_DEFAULT_SURVIVAL_MAX_PLAYERS,
+} from '../game/network/multiplayerSessionConfig';
 
 export type SpellType = 'fireball' | 'iceshard' | 'arcanebeam' | 'healspell' | 'icespell' | 'ringsofpower' | 'lightning' | 'smokebomb' | 'portal' | 'blink' | 'grab' | 'tornado' | 'meteorshower' | 'flamethrower' | 'discshield' | 'orbshield' | 'kunai' | 'healingcrystals' | 'magicarmor' | 'jumpboost' | 'speedboost' | 'tungstonballsack' | 'sleep' | 'poison' | 'acid' | 'magicglassorb';
 export type HandType = 'left' | 'right';
@@ -431,12 +435,15 @@ const SPELL_QUEST_COPY: Partial<Record<SpellType, Pick<SpellQuestDefinition, 'ti
     incompleteLine: 'The orb is still cloudy. Polish it again when the marker is ready.',
   },
 };
-export const SPELL_QUEST_DEFINITIONS: SpellQuestDefinition[] = ALL_SPELLS
-  .filter((spell) => !QUEST_RESERVED_SPELLS.has(spell))
-  .map((spell) => {
+
+function buildSpellQuestDefinitions(): SpellQuestDefinition[] {
+  const definitions: SpellQuestDefinition[] = [];
+  for (let index = 0; index < ALL_SPELLS.length; index += 1) {
+    const spell = ALL_SPELLS[index];
+    if (QUEST_RESERVED_SPELLS.has(spell)) continue;
     const copy = SPELL_QUEST_COPY[spell];
     const displayName = SPELL_DISPLAY_NAMES[spell];
-    return {
+    definitions.push({
       id: `spellquest:${spell}`,
       spell,
       title: copy?.title ?? `${displayName} Trial`,
@@ -444,8 +451,12 @@ export const SPELL_QUEST_DEFINITIONS: SpellQuestDefinition[] = ALL_SPELLS
       readyLine: copy?.readyLine ?? `${displayName} is unlocked.`,
       incompleteLine: copy?.incompleteLine ?? `This ${displayName} quest is not finished yet. Try again after the town marks it complete.`,
       requiredFlag: `spellquest:${spell}:ready`,
-    };
-  });
+    });
+  }
+  return definitions;
+}
+
+export const SPELL_QUEST_DEFINITIONS: SpellQuestDefinition[] = buildSpellQuestDefinitions();
 export const HOTBAR_SIZE = 10;
 export const RUNE_POWER_MAX = 60;
 export const ARMOR_MAX = 50;
@@ -558,14 +569,14 @@ export const LOBBY_MAP_PRESETS: LobbyMapPreset[] = ['classic-village', 'treehous
 export const MANA_SPAWN_RATE_SETTINGS: ManaSpawnRateSetting[] = ['low', 'normal', 'high'];
 export const ENEMY_DIFFICULTY_SETTINGS: EnemyDifficultySetting[] = ['normal', 'hard', 'nightmare'];
 export const DEFAULT_LOBBY_RULES: LobbyRules = {
-  maxPlayers: 8,
+  maxPlayers: MULTIPLAYER_DEFAULT_CUSTOM_LOBBY_MAX_PLAYERS,
   friendlyFire: false,
   manaSpawnRate: 'normal',
   enemyDifficulty: 'normal',
   mapPreset: 'classic-village',
 };
 export const DEFAULT_SURVIVAL_RULES: SurvivalRules = {
-  maxPlayers: 4,
+  maxPlayers: MULTIPLAYER_DEFAULT_SURVIVAL_MAX_PLAYERS,
   friendlyFire: false,
   manaSpawnRate: 'normal',
   enemyDifficulty: 'normal',
@@ -651,6 +662,11 @@ export interface Projectile {
   hand?: HandType;
   grabId?: string;
   grabPhase?: 'cast' | 'release';
+}
+
+export interface PortalState {
+  id: string;
+  pos: { x: number; y: number; z: number };
 }
 
 interface GameStore {
@@ -829,8 +845,8 @@ interface GameStore {
   addProjectile: (p: Projectile) => void;
   removeProjectile: (id: string) => void;
   // Portals
-  portals: { id: string; pos: { x: number; y: number; z: number } }[];
-  addPortal: (portal: { id: string; pos: { x: number; y: number; z: number } }) => void;
+  portals: PortalState[];
+  addPortal: (portal: PortalState) => void;
   removePortal: (id: string) => void;
 }
 
@@ -1039,22 +1055,40 @@ function sanitizeCharacterCustomization(value: unknown): CharacterCustomization 
 
 function sanitizeQuestUnlockedSpellList(value: unknown): SpellType[] {
   const storedSpells = Array.isArray(value) ? value : [];
-  const unlocked = storedSpells.filter((spell): spell is SpellType => (
-    typeof spell === 'string' && ALL_SPELLS.includes(spell as SpellType)
-  ));
-  return Array.from(new Set<SpellType>(['blink', ...unlocked]));
+  const unlocked: SpellType[] = ['blink'];
+  for (let index = 0; index < storedSpells.length; index += 1) {
+    const spell = storedSpells[index];
+    if (typeof spell !== 'string' || !ALL_SPELLS.includes(spell as SpellType)) continue;
+    if (!unlocked.includes(spell as SpellType)) unlocked.push(spell as SpellType);
+  }
+  return unlocked;
+}
+
+function addUniqueQuestUnlockedSpell(spells: SpellType[], spell: SpellType): SpellType[] {
+  if (spells.includes(spell)) return spells;
+  return [...spells, spell];
+}
+
+function dedupeQuestUnlockedSpells(spells: SpellType[]): SpellType[] {
+  const next: SpellType[] = [];
+  for (let index = 0; index < spells.length; index += 1) {
+    const spell = spells[index];
+    if (!next.includes(spell)) next.push(spell);
+  }
+  return next;
 }
 
 function sanitizeQuestFlagRecord(raw: unknown): Record<string, QuestFlagValue> {
   if (!isRecord(raw)) return {};
 
   const flags: Record<string, QuestFlagValue> = {};
-  Object.entries(raw).forEach(([key, value]) => {
-    if (!key.trim()) return;
+  for (const key in raw) {
+    const value = raw[key];
+    if (!key.trim()) continue;
     if (typeof value === 'boolean' || typeof value === 'string') {
       flags[key.trim().slice(0, 80)] = typeof value === 'string' ? value.slice(0, 180) : value;
     }
-  });
+  }
   return flags;
 }
 
@@ -1066,21 +1100,22 @@ function sanitizeInventoryRecord(raw: unknown): InventoryRecord {
   if (!isRecord(raw)) return {};
 
   const inventory: InventoryRecord = {};
-  Object.entries(raw).forEach(([fallbackId, value]) => {
-    if (!isRecord(value)) return;
+  for (const fallbackId in raw) {
+    const value = raw[fallbackId];
+    if (!isRecord(value)) continue;
     const itemId = isInventoryItemId(value.id) ? value.id : isInventoryItemId(fallbackId) ? fallbackId : null;
-    if (!itemId) return;
+    if (!itemId) continue;
 
     const definition = INVENTORY_ITEM_DEFINITIONS[itemId];
     const quantity = sanitizeInteger(value.quantity, 0, 0, definition.maxStack);
-    if (quantity <= 0) return;
+    if (quantity <= 0) continue;
 
     inventory[itemId] = {
       id: itemId,
       quantity,
       acquiredAt: sanitizeInteger(value.acquiredAt, Date.now(), 0, Date.now()),
     };
-  });
+  }
 
   return inventory;
 }
@@ -1128,17 +1163,20 @@ function removeInventoryQuantity(inventory: InventoryRecord, itemId: InventoryIt
 }
 
 function getSpellQuestDefinition(spellOrQuestId: SpellType | string): SpellQuestDefinition | null {
-  return SPELL_QUEST_DEFINITIONS.find((quest) => (
-    quest.spell === spellOrQuestId || quest.id === spellOrQuestId
-  )) ?? null;
+  for (let index = 0; index < SPELL_QUEST_DEFINITIONS.length; index += 1) {
+    const quest = SPELL_QUEST_DEFINITIONS[index];
+    if (quest.spell === spellOrQuestId || quest.id === spellOrQuestId) return quest;
+  }
+  return null;
 }
 
 function sanitizeSpellQuestAssignments(raw: unknown): Record<string, QuestNpcAssignment> {
   if (!isRecord(raw)) return {};
 
   const assignments: Record<string, QuestNpcAssignment> = {};
-  Object.entries(raw).forEach(([fallbackNpcId, value]) => {
-    if (!isRecord(value)) return;
+  for (const fallbackNpcId in raw) {
+    const value = raw[fallbackNpcId];
+    if (!isRecord(value)) continue;
     const npcId = typeof value.npcId === 'string' && value.npcId.trim()
       ? value.npcId.trim().slice(0, 96)
       : fallbackNpcId.trim().slice(0, 96);
@@ -1152,7 +1190,7 @@ function sanitizeSpellQuestAssignments(raw: unknown): Record<string, QuestNpcAss
       ? value.spell as SpellType
       : null;
     const definition = spell ? getSpellQuestDefinition(spell) : null;
-    if (!npcId || !spell || !definition) return;
+    if (!npcId || !spell || !definition) continue;
 
     const assignedAt = sanitizeInteger(value.assignedAt, Date.now(), 0, Date.now());
     const completedAt = sanitizeInteger(value.completedAt, 0, 0, Date.now());
@@ -1167,7 +1205,7 @@ function sanitizeSpellQuestAssignments(raw: unknown): Record<string, QuestNpcAss
       assignedAt,
       ...(status === 'completed' && completedAt > 0 ? { completedAt } : {}),
     };
-  });
+  }
 
   return assignments;
 }
@@ -1200,9 +1238,19 @@ function findAcceptedDarrelQuestAssignment(
   assignments: Record<string, QuestNpcAssignment>,
   questFlags: Record<string, QuestFlagValue>,
 ) {
-  return Object.values(assignments).find((assignment) => (
-    isAcceptedDarrelQuestAssignment(assignment, questFlags)
-  ));
+  for (const npcId in assignments) {
+    const assignment = assignments[npcId];
+    if (isAcceptedDarrelQuestAssignment(assignment, questFlags)) return assignment;
+  }
+  return undefined;
+}
+
+function hasActiveDarrelQuestAssignment(assignments: Record<string, QuestNpcAssignment>) {
+  for (const npcId in assignments) {
+    const assignment = assignments[npcId];
+    if (assignment.spell === DARREL_QUEST_REWARD_SPELL && assignment.status !== 'completed') return true;
+  }
+  return false;
 }
 
 function makeSpellQuestAssignment(npc: QuestNpcDescriptor, quest: SpellQuestDefinition): QuestNpcAssignment {
@@ -1302,8 +1350,12 @@ function getDarrelNavigationTarget(
     };
   }
 
-  const missingIngredients = (['leaves', 'berries', 'roots'] as DarrelIngredient[])
-    .filter((ingredient) => !hasDarrelIngredient(questFlags, ingredient));
+  const darrelIngredients: DarrelIngredient[] = ['leaves', 'berries', 'roots'];
+  const missingIngredients: DarrelIngredient[] = [];
+  for (let index = 0; index < darrelIngredients.length; index += 1) {
+    const ingredient = darrelIngredients[index];
+    if (!hasDarrelIngredient(questFlags, ingredient)) missingIngredients.push(ingredient);
+  }
   if (missingIngredients.length > 0) {
     return {
       ...base,
@@ -1347,31 +1399,40 @@ export function getActiveQuestNavigationTargets({
   questUnlockedSpells: SpellType[];
   questNpcPrograms: Record<string, QuestNpcProgram>;
 }): QuestNavigationTarget[] {
-  return Object.values(spellQuestAssignments)
-    .filter((assignment) => assignment.status !== 'completed' && !questUnlockedSpells.includes(assignment.spell))
-    .sort((a, b) => a.assignedAt - b.assignedAt)
-    .map((assignment) => {
-      const quest = getSpellQuestDefinition(assignment.questId) ?? getSpellQuestDefinition(assignment.spell);
-      if (!quest) return null;
+  const activeAssignments: QuestNpcAssignment[] = [];
+  for (const npcId in spellQuestAssignments) {
+    const assignment = spellQuestAssignments[npcId];
+    if (assignment.status !== 'completed' && !questUnlockedSpells.includes(assignment.spell)) {
+      activeAssignments.push(assignment);
+    }
+  }
+  activeAssignments.sort((a, b) => a.assignedAt - b.assignedAt);
 
-      if (isAcceptedDarrelQuestAssignment(assignment, questFlags)) {
-        return getDarrelNavigationTarget(assignment, quest, questFlags, questNpcPrograms);
-      }
+  const targets: QuestNavigationTarget[] = [];
+  for (let index = 0; index < activeAssignments.length; index += 1) {
+    const assignment = activeAssignments[index];
+    const quest = getSpellQuestDefinition(assignment.questId) ?? getSpellQuestDefinition(assignment.spell);
+    if (!quest) continue;
 
-      const position = getQuestNpcNavigationPosition(assignment, questNpcPrograms);
-      if (!position) return null;
-      const ready = isSpellQuestReady(quest, questFlags);
-      return {
-        id: `${assignment.npcId}:${quest.id}:${ready ? 'turn-in' : 'quest-giver'}`,
-        questId: quest.id,
-        npcId: assignment.npcId,
-        label: ready ? `Turn in ${SPELL_DISPLAY_NAMES[assignment.spell]}` : quest.title,
-        detail: ready ? `Return to ${assignment.displayName}.` : quest.objective,
-        tone: ready ? 'turn-in' : 'npc',
-        ...position,
-      } satisfies QuestNavigationTarget;
-    })
-    .filter((target): target is QuestNavigationTarget => target !== null);
+    if (isAcceptedDarrelQuestAssignment(assignment, questFlags)) {
+      targets.push(getDarrelNavigationTarget(assignment, quest, questFlags, questNpcPrograms));
+      continue;
+    }
+
+    const position = getQuestNpcNavigationPosition(assignment, questNpcPrograms);
+    if (!position) continue;
+    const ready = isSpellQuestReady(quest, questFlags);
+    targets.push({
+      id: `${assignment.npcId}:${quest.id}:${ready ? 'turn-in' : 'quest-giver'}`,
+      questId: quest.id,
+      npcId: assignment.npcId,
+      label: ready ? `Turn in ${SPELL_DISPLAY_NAMES[assignment.spell]}` : quest.title,
+      detail: ready ? `Return to ${assignment.displayName}.` : quest.objective,
+      tone: ready ? 'turn-in' : 'npc',
+      ...position,
+    });
+  }
+  return targets;
 }
 
 function releaseQuestDialogControls() {
@@ -1446,30 +1507,46 @@ function completeAssignmentsForSpell(
 ) {
   let changed = false;
   const next: Record<string, QuestNpcAssignment> = {};
-  Object.entries(assignments).forEach(([npcId, assignment]) => {
+  for (const npcId in assignments) {
+    const assignment = assignments[npcId];
     if (assignment.spell === spell && assignment.status !== 'completed') {
       changed = true;
       next[npcId] = { ...assignment, status: 'completed', completedAt };
     } else {
       next[npcId] = assignment;
     }
-  });
+  }
   return changed ? next : assignments;
+}
+
+function hasUnlockedQuestSpell(questUnlockedSpells: SpellType[], spell: SpellType) {
+  for (let index = 0; index < questUnlockedSpells.length; index += 1) {
+    if (questUnlockedSpells[index] === spell) return true;
+  }
+  return false;
+}
+
+function hasActiveQuestAssignmentForSpell(assignments: Record<string, QuestNpcAssignment>, spell: SpellType) {
+  for (const npcId in assignments) {
+    const assignment = assignments[npcId];
+    if (assignment.status !== 'completed' && assignment.spell === spell) return true;
+  }
+  return false;
 }
 
 function pickAvailableSpellQuest(
   questUnlockedSpells: SpellType[],
   assignments: Record<string, QuestNpcAssignment>
 ): SpellQuestDefinition | null {
-  const activeAssignedSpells = new Set(
-    Object.values(assignments)
-      .filter((assignment) => assignment.status !== 'completed')
-      .map((assignment) => assignment.spell)
-  );
-  const unassignedLocked = SPELL_QUEST_DEFINITIONS.filter((quest) => (
-    !questUnlockedSpells.includes(quest.spell) && !activeAssignedSpells.has(quest.spell)
-  ));
-  const locked = SPELL_QUEST_DEFINITIONS.filter((quest) => !questUnlockedSpells.includes(quest.spell));
+  const unassignedLocked: SpellQuestDefinition[] = [];
+  const locked: SpellQuestDefinition[] = [];
+  for (let index = 0; index < SPELL_QUEST_DEFINITIONS.length; index += 1) {
+    const quest = SPELL_QUEST_DEFINITIONS[index];
+    if (hasUnlockedQuestSpell(questUnlockedSpells, quest.spell)) continue;
+    locked.push(quest);
+    if (!hasActiveQuestAssignmentForSpell(assignments, quest.spell)) unassignedLocked.push(quest);
+  }
+
   const pool = unassignedLocked.length > 0 ? unassignedLocked : locked;
   return pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
 }
@@ -1529,14 +1606,21 @@ function sanitizeQuestNpcProgram(value: QuestNpcProgram | Record<string, unknown
     : undefined;
   const greeting = typeof value.greeting === 'string' ? value.greeting.slice(0, 900) : '';
   const rawPoints = Array.isArray(value.scriptPoints) ? value.scriptPoints : [];
-  const scriptPoints = rawPoints.length > 0
-    ? rawPoints.map(sanitizeQuestScriptPoint).slice(0, 24)
-    : [{
+  let scriptPoints: QuestScriptPoint[];
+  if (rawPoints.length > 0) {
+    const pointCount = Math.min(24, rawPoints.length);
+    scriptPoints = new Array<QuestScriptPoint>(pointCount);
+    for (let index = 0; index < pointCount; index += 1) {
+      scriptPoints[index] = sanitizeQuestScriptPoint(rawPoints[index], index);
+    }
+  } else {
+    scriptPoints = [{
       id: makeQuestScriptPointId(),
       title: 'Greeting',
       dialog: '',
       eventScript: '',
     }];
+  }
 
   return {
     npcId,
@@ -1562,18 +1646,21 @@ function getInitialQuestNpcPrograms(): Record<string, QuestNpcProgram> {
   const raw = getStoredJson(QUEST_NPC_PROGRAMS_STORAGE_KEY);
   const programs: Record<string, QuestNpcProgram> = {};
   if (isRecord(raw)) {
-    Object.values(raw).forEach((value) => {
+    for (const key in raw) {
+      const value = raw[key];
       const program = sanitizeQuestNpcProgram(value as Record<string, unknown>);
       if (program) programs[program.npcId] = program;
-    });
+    }
   }
 
-  const existingDarrel = Object.values(programs).find((program) => isDarrelQuestNpc(program));
-  Object.values(programs).forEach((program) => {
+  let existingDarrel: QuestNpcProgram | undefined;
+  for (const npcId in programs) {
+    const program = programs[npcId];
+    if (!existingDarrel && isDarrelQuestNpc(program)) existingDarrel = program;
     if (program.npcId !== DARREL_QUEST_NPC_ID && isDarrelQuestNpc(program)) {
       delete programs[program.npcId];
     }
-  });
+  }
 
   const homeDarrel = programs[DARREL_QUEST_NPC_ID];
   const darrelSource = existingDarrel ?? homeDarrel;
@@ -1713,7 +1800,11 @@ function parseQuestEventLine(line: string) {
 
 function getSpellFromQuestValue(value: string): SpellType | null {
   const normalized = normalizeQuestLookupValue(value);
-  return ALL_SPELLS.find((spell) => spell.toLowerCase() === normalized) ?? null;
+  for (let index = 0; index < ALL_SPELLS.length; index += 1) {
+    const spell = ALL_SPELLS[index];
+    if (spell.toLowerCase() === normalized) return spell;
+  }
+  return null;
 }
 
 function getQuestTeleportDestination(value: string) {
@@ -1764,6 +1855,123 @@ function parseQuestFlagAssignment(value: string) {
     key: key.trim(),
     value: rest.join(' ').trim() || 'true',
   };
+}
+
+function hasRecentLobbyMessage(messages: LobbyMessage[], text: string, tone: LobbyMessageTone, now: number) {
+  for (let index = 0; index < messages.length; index += 1) {
+    const message = messages[index];
+    if (message.text === text && message.tone === tone && now - message.createdAt < 4500) return true;
+  }
+  return false;
+}
+
+function appendLobbyMessageBounded(messages: LobbyMessage[], message: LobbyMessage) {
+  const maxMessages = 4;
+  const sourceStart = Math.max(0, messages.length - (maxMessages - 1));
+  const nextLength = messages.length - sourceStart + 1;
+  const nextMessages = new Array<LobbyMessage>(nextLength);
+  let writeIndex = 0;
+  for (let index = sourceStart; index < messages.length; index += 1) {
+    nextMessages[writeIndex] = messages[index];
+    writeIndex += 1;
+  }
+  nextMessages[writeIndex] = message;
+  return nextMessages;
+}
+
+function removeLobbyMessageById(messages: LobbyMessage[], id: string) {
+  let removeIndex = -1;
+  for (let index = 0; index < messages.length; index += 1) {
+    if (messages[index].id === id) {
+      removeIndex = index;
+      break;
+    }
+  }
+  if (removeIndex === -1) return messages;
+
+  const nextMessages = new Array<LobbyMessage>(messages.length - 1);
+  let writeIndex = 0;
+  for (let index = 0; index < messages.length; index += 1) {
+    if (index === removeIndex) continue;
+    nextMessages[writeIndex] = messages[index];
+    writeIndex += 1;
+  }
+  return nextMessages;
+}
+
+function getQuestScriptPoint(program: QuestNpcProgram | undefined, scriptPointId: string) {
+  if (!program) return null;
+  for (let index = 0; index < program.scriptPoints.length; index += 1) {
+    const point = program.scriptPoints[index];
+    if (point.id === scriptPointId) return point;
+  }
+  return null;
+}
+
+function upsertProjectile(projectiles: Projectile[], projectile: Projectile) {
+  for (let index = 0; index < projectiles.length; index += 1) {
+    if (projectiles[index].id !== projectile.id) continue;
+    const nextProjectiles = projectiles.slice();
+    nextProjectiles[index] = projectile;
+    return nextProjectiles;
+  }
+
+  const nextProjectiles = new Array<Projectile>(projectiles.length + 1);
+  for (let index = 0; index < projectiles.length; index += 1) {
+    nextProjectiles[index] = projectiles[index];
+  }
+  nextProjectiles[projectiles.length] = projectile;
+  return nextProjectiles;
+}
+
+function removeProjectileById(projectiles: Projectile[], id: string) {
+  let removeIndex = -1;
+  for (let index = 0; index < projectiles.length; index += 1) {
+    if (projectiles[index].id === id) {
+      removeIndex = index;
+      break;
+    }
+  }
+  if (removeIndex === -1) return projectiles;
+
+  const nextProjectiles = new Array<Projectile>(projectiles.length - 1);
+  let writeIndex = 0;
+  for (let index = 0; index < projectiles.length; index += 1) {
+    if (index === removeIndex) continue;
+    nextProjectiles[writeIndex] = projectiles[index];
+    writeIndex += 1;
+  }
+  return nextProjectiles;
+}
+
+function appendPortalBounded(portals: PortalState[], portal: PortalState) {
+  if (portals.length >= 2) return portals;
+  const nextPortals = new Array<PortalState>(portals.length + 1);
+  for (let index = 0; index < portals.length; index += 1) {
+    nextPortals[index] = portals[index];
+  }
+  nextPortals[portals.length] = portal;
+  return nextPortals;
+}
+
+function removePortalById(portals: PortalState[], id: string) {
+  let removeIndex = -1;
+  for (let index = 0; index < portals.length; index += 1) {
+    if (portals[index].id === id) {
+      removeIndex = index;
+      break;
+    }
+  }
+  if (removeIndex === -1) return portals;
+
+  const nextPortals = new Array<PortalState>(portals.length - 1);
+  let writeIndex = 0;
+  for (let index = 0; index < portals.length; index += 1) {
+    if (index === removeIndex) continue;
+    nextPortals[writeIndex] = portals[index];
+    writeIndex += 1;
+  }
+  return nextPortals;
 }
 
 const initialSurvivalSave = getInitialSurvivalSave();
@@ -1972,8 +2180,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setThrusterFuel: (f) => set({ thrusterFuel: f }),
   leftRunePower: 0,
   rightRunePower: 0,
-  setLeftRunePower: (f) => set({ leftRunePower: Math.max(0, Math.min(RUNE_POWER_MAX, f)) }),
-  setRightRunePower: (f) => set({ rightRunePower: Math.max(0, Math.min(RUNE_POWER_MAX, f)) }),
+  setLeftRunePower: (f) => set((state) => {
+    const leftRunePower = Math.max(0, Math.min(RUNE_POWER_MAX, f));
+    return leftRunePower === state.leftRunePower ? state : { leftRunePower };
+  }),
+  setRightRunePower: (f) => set((state) => {
+    const rightRunePower = Math.max(0, Math.min(RUNE_POWER_MAX, f));
+    return rightRunePower === state.rightRunePower ? state : { rightRunePower };
+  }),
   currentSpell: 'fireball',
   leftCurrentSpell: 'fireball',
   rightCurrentSpell: 'iceshard',
@@ -2243,7 +2457,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const quest = getSpellQuestDefinition(DARREL_QUEST_REWARD_SPELL);
     const hasDarrelQuest = isQuestFlagTruthy(state.questFlags[DARREL_QUEST_ACCEPTED_FLAG]) ||
-      Object.values(state.spellQuestAssignments).some((assignment) => assignment.spell === DARREL_QUEST_REWARD_SPELL && assignment.status !== 'completed');
+      hasActiveDarrelQuestAssignment(state.spellQuestAssignments);
     if (!quest || !hasDarrelQuest) {
       const message = 'Darrel has not offered the garden draught job yet.';
       state.addLobbyMessage(message, 'system');
@@ -2284,16 +2498,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     const quest = getSpellQuestDefinition(DARREL_QUEST_REWARD_SPELL);
     const hasDarrelQuest = isQuestFlagTruthy(state.questFlags[DARREL_QUEST_ACCEPTED_FLAG]) ||
-      Object.values(state.spellQuestAssignments).some((assignment) => assignment.spell === DARREL_QUEST_REWARD_SPELL && assignment.status !== 'completed');
+      hasActiveDarrelQuestAssignment(state.spellQuestAssignments);
     if (!quest || !hasDarrelQuest) {
       const message = 'Darrel has not offered the garden draught job yet.';
       state.addLobbyMessage(message, 'system');
       return [message];
     }
 
-    const missingIngredients = (['leaves', 'berries', 'roots'] as DarrelIngredient[]).filter((ingredient) => (
-      getInventoryQuantity(state.inventory, DARREL_INVENTORY_ITEM_IDS[ingredient]) < 1
-    ));
+    const darrelIngredients: DarrelIngredient[] = ['leaves', 'berries', 'roots'];
+    const missingIngredients: DarrelIngredient[] = [];
+    for (let index = 0; index < darrelIngredients.length; index += 1) {
+      const ingredient = darrelIngredients[index];
+      if (getInventoryQuantity(state.inventory, DARREL_INVENTORY_ITEM_IDS[ingredient]) < 1) {
+        missingIngredients.push(ingredient);
+      }
+    }
     if (missingIngredients.length > 0) {
       const message = `Missing ${missingIngredients.join(', ')} for the garden draught.`;
       state.addLobbyMessage(message, 'system');
@@ -2301,10 +2520,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     let inventory = state.inventory;
-    (['leaves', 'berries', 'roots'] as DarrelIngredient[]).forEach((ingredient) => {
+    for (let index = 0; index < darrelIngredients.length; index += 1) {
+      const ingredient = darrelIngredients[index];
       const nextInventory = removeInventoryQuantity(inventory, DARREL_INVENTORY_ITEM_IDS[ingredient], 1);
       if (nextInventory) inventory = nextInventory;
-    });
+    }
     inventory = addInventoryQuantity(inventory, DARREL_INVENTORY_ITEM_IDS.draught, 1);
     const questFlags = {
       ...state.questFlags,
@@ -2343,9 +2563,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       [DARREL_POTION_FLAG]: 'drunk' as QuestFlagValue,
       [`quest:${quest.id}`]: 'started' as QuestFlagValue,
     };
-    const matchingAssignment = Object.values(state.spellQuestAssignments).find((assignment) => (
-      isAcceptedDarrelQuestAssignment(assignment, questFlags)
-    ));
+    const matchingAssignment = findAcceptedDarrelQuestAssignment(state.spellQuestAssignments, questFlags);
     const message = 'The garden draught pulls you toward the sacred garden.';
 
     set({ inventory, questFlags, isInventoryOpen: false });
@@ -2461,19 +2679,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   lobbyMessages: [],
   addLobbyMessage: (text, tone = 'system') => set((state) => {
     const now = Date.now();
-    const recentlyShown = state.lobbyMessages.some((message) =>
-      message.text === text &&
-      message.tone === tone &&
-      now - message.createdAt < 4500
-    );
-    if (recentlyShown) return state;
+    if (hasRecentLobbyMessage(state.lobbyMessages, text, tone, now)) return state;
     return {
-      lobbyMessages: [...state.lobbyMessages, makeLobbyMessage(text, tone)].slice(-4),
+      lobbyMessages: appendLobbyMessageBounded(state.lobbyMessages, makeLobbyMessage(text, tone)),
     };
   }),
-  removeLobbyMessage: (id) => set((state) => ({
-    lobbyMessages: state.lobbyMessages.filter((message) => message.id !== id),
-  })),
+  removeLobbyMessage: (id) => set((state) => {
+    const lobbyMessages = removeLobbyMessageById(state.lobbyMessages, id);
+    if (lobbyMessages === state.lobbyMessages) return state;
+    return { lobbyMessages };
+  }),
 
   aspectRatio: getInitialAspectRatio(),
   setAspectRatio: (ratio) => {
@@ -2583,7 +2798,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         status: 'completed',
         completedAt: Date.now(),
       };
-      const questUnlockedSpells = Array.from(new Set([...state.questUnlockedSpells, DARREL_QUEST_REWARD_SPELL]));
+      const questUnlockedSpells = addUniqueQuestUnlockedSpell(state.questUnlockedSpells, DARREL_QUEST_REWARD_SPELL);
       const questFlags = {
         ...state.questFlags,
         [DARREL_DRAGON_WOKEN_FLAG]: true,
@@ -2786,7 +3001,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       spellQuestAssignments[npc.npcId] = assignment;
       messages.push(`${npc.displayName}: ${SPELL_DISPLAY_NAMES[assignment.spell]} is already yours.`);
     } else if (isSpellQuestReady(quest, questFlags)) {
-      questUnlockedSpells = Array.from(new Set([...questUnlockedSpells, assignment.spell]));
+      questUnlockedSpells = addUniqueQuestUnlockedSpell(questUnlockedSpells, assignment.spell);
       questFlags[quest.requiredFlag] = true;
       questFlags[`quest:${quest.id}`] = 'completed';
       assignment = {
@@ -2815,7 +3030,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().saveSurvivalProgress({ questUnlockedSpells, questFlags, spellQuestAssignments });
     }
     if (shouldAnnounce) {
-      messages.forEach((message) => get().addLobbyMessage(message, 'system'));
+      for (let index = 0; index < messages.length; index += 1) {
+        get().addLobbyMessage(messages[index], 'system');
+      }
     }
     return messages;
   },
@@ -2901,7 +3118,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       status: 'completed' as SpellQuestStatus,
       completedAt: Date.now(),
     };
-    const questUnlockedSpells = Array.from(new Set([...state.questUnlockedSpells, assignment.spell]));
+    const questUnlockedSpells = addUniqueQuestUnlockedSpell(state.questUnlockedSpells, assignment.spell);
     const questFlags = {
       ...state.questFlags,
       [quest.requiredFlag]: true,
@@ -2933,9 +3150,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const quest = getSpellQuestDefinition(DARREL_QUEST_REWARD_SPELL);
     if (!quest) return [];
 
-    const matchingAssignment = Object.values(state.spellQuestAssignments).find((assignment) => (
-      isAcceptedDarrelQuestAssignment(assignment, state.questFlags)
-    ));
+    const matchingAssignment = findAcceptedDarrelQuestAssignment(state.spellQuestAssignments, state.questFlags);
     const targetNpcId = npcId || matchingAssignment?.npcId;
     if (!targetNpcId) return [];
 
@@ -2967,7 +3182,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       status: 'completed' as SpellQuestStatus,
       completedAt: Date.now(),
     };
-    const questUnlockedSpells = Array.from(new Set([...state.questUnlockedSpells, DARREL_QUEST_REWARD_SPELL]));
+    const questUnlockedSpells = addUniqueQuestUnlockedSpell(state.questUnlockedSpells, DARREL_QUEST_REWARD_SPELL);
     const questFlags = {
       ...state.questFlags,
       [quest.requiredFlag]: true,
@@ -2994,13 +3209,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
   runQuestScriptPoint: (npcId, scriptPointId) => {
     const state = get();
     const program = state.questNpcPrograms[npcId];
-    const scriptPoint = program?.scriptPoints.find((point) => point.id === scriptPointId);
+    const scriptPoint = getQuestScriptPoint(program, scriptPointId);
     if (!program || !scriptPoint) return ['Quest scriptpoint not found'];
 
-    const parsedEvents = scriptPoint.eventScript
-      .split(/\r?\n/)
-      .map(parseQuestEventLine)
-      .filter((event): event is { command: string; value: string } => event !== null);
+    const rawEventLines = scriptPoint.eventScript.split(/\r?\n/);
+    const parsedEvents: { command: string; value: string }[] = [];
+    for (let index = 0; index < rawEventLines.length; index += 1) {
+      const event = parseQuestEventLine(rawEventLines[index]);
+      if (event) parsedEvents.push(event);
+    }
 
     if (parsedEvents.length === 0) {
       const message = `${program.displayName}: no events on ${scriptPoint.title}`;
@@ -3014,12 +3231,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     let spellQuestAssignments = { ...state.spellQuestAssignments };
     let inventory = state.inventory;
 
-    parsedEvents.forEach(({ command, value }) => {
+    for (let eventIndex = 0; eventIndex < parsedEvents.length; eventIndex += 1) {
+      const { command, value } = parsedEvents[eventIndex];
       if (command === 'unlockspell' || command === 'spellunlock') {
         const spell = getSpellFromQuestValue(value);
         if (!spell) {
           messages.push(`Unknown spell: ${value || 'blank'}`);
-          return;
+          continue;
         }
         if (!questUnlockedSpells.includes(spell)) {
           questUnlockedSpells = [...questUnlockedSpells, spell];
@@ -3031,20 +3249,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
         if (spell === DARREL_QUEST_REWARD_SPELL) {
           inventory = addInventoryQuantity(inventory, DARREL_INVENTORY_ITEM_IDS.crystals, 1);
         }
-        return;
+        continue;
       }
 
       if (command === 'unlockrandomlockedspell' || command === 'randomlockedspell' || command === 'gambleunlock' || command === 'gamblespell') {
-        const lockedSpells = ALL_SPELLS.filter((spell) => !questUnlockedSpells.includes(spell));
+        const lockedSpells: SpellType[] = [];
+        for (let index = 0; index < ALL_SPELLS.length; index += 1) {
+          const spell = ALL_SPELLS[index];
+          if (!questUnlockedSpells.includes(spell)) lockedSpells.push(spell);
+        }
         if (lockedSpells.length === 0) {
           messages.push('No locked spells remain');
-          return;
+          continue;
         }
         const spell = lockedSpells[Math.floor(Math.random() * lockedSpells.length)];
         questUnlockedSpells = [...questUnlockedSpells, spell];
         spellQuestAssignments = completeAssignmentsForSpell(spellQuestAssignments, spell);
         messages.push(`Gamble unlocked ${spell}`);
-        return;
+        continue;
       }
 
       if (command === 'setspellquestready' || command === 'spellquestready' || command === 'readyassignedspellquest') {
@@ -3052,17 +3274,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const assignment = spellQuestAssignments[targetNpcId];
         if (!assignment) {
           messages.push(`No spell quest assigned to ${targetNpcId}`);
-          return;
+          continue;
         }
         const quest = getSpellQuestDefinition(assignment.spell);
         if (!quest) {
           messages.push(`Missing quest definition for ${assignment.spell}`);
-          return;
+          continue;
         }
         questFlags[quest.requiredFlag] = true;
         questFlags[`quest:${quest.id}`] = 'ready';
         messages.push(`${SPELL_DISPLAY_NAMES[assignment.spell]} quest ready`);
-        return;
+        continue;
       }
 
       if (command === 'completeassignedspellquest' || command === 'completespellquest') {
@@ -3070,16 +3292,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const assignment = spellQuestAssignments[targetNpcId];
         if (!assignment) {
           messages.push(`No spell quest assigned to ${targetNpcId}`);
-          return;
+          continue;
         }
         const quest = getSpellQuestDefinition(assignment.spell);
         if (!quest) {
           messages.push(`Missing quest definition for ${assignment.spell}`);
-          return;
+          continue;
         }
         questFlags[quest.requiredFlag] = true;
         questFlags[`quest:${quest.id}`] = 'completed';
-        questUnlockedSpells = Array.from(new Set([...questUnlockedSpells, assignment.spell]));
+        questUnlockedSpells = addUniqueQuestUnlockedSpell(questUnlockedSpells, assignment.spell);
         spellQuestAssignments[targetNpcId] = {
           ...assignment,
           status: 'completed',
@@ -3089,14 +3311,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
           inventory = addInventoryQuantity(inventory, DARREL_INVENTORY_ITEM_IDS.crystals, 1);
         }
         messages.push(`${assignment.displayName}: ${quest.readyLine}`);
-        return;
+        continue;
       }
 
       if (command === 'teleportquestrealm' || command === 'teleportquestworld' || command === 'teleportdarrelquest' || command === 'darrelquest') {
         const destination = getQuestTeleportDestination(value);
         if (!destination) {
           messages.push(`Unknown quest realm: ${value || 'blank'}`);
-          return;
+          continue;
         }
         if (typeof window !== 'undefined') {
           if (destination.id === 'darrel-grove') {
@@ -3127,49 +3349,49 @@ export const useGameStore = create<GameStore>((set, get) => ({
         } else {
           messages.push(`${destination.label} teleport is only available in-game`);
         }
-        return;
+        continue;
       }
 
       if (command === 'startquest') {
         if (!value) {
           messages.push('startQuest needs a quest id');
-          return;
+          continue;
         }
         questFlags[`quest:${value}`] = 'started';
         messages.push(`Started quest ${value}`);
-        return;
+        continue;
       }
 
       if (command === 'completequest') {
         if (!value) {
           messages.push('completeQuest needs a quest id');
-          return;
+          continue;
         }
         questFlags[`quest:${value}`] = 'completed';
         messages.push(`Completed quest ${value}`);
-        return;
+        continue;
       }
 
       if (command === 'setflag') {
         const assignment = parseQuestFlagAssignment(value);
         if (!assignment.key) {
           messages.push('setFlag needs key=value');
-          return;
+          continue;
         }
         questFlags[assignment.key] = assignment.value === 'true' ? true : assignment.value === 'false' ? false : assignment.value;
         messages.push(`Set ${assignment.key}`);
-        return;
+        continue;
       }
 
       if (command === 'message' || command === 'say') {
         if (value) messages.push(value);
-        return;
+        continue;
       }
 
       messages.push(`Unknown event: ${command}`);
-    });
+    }
 
-    questUnlockedSpells = Array.from(new Set(questUnlockedSpells));
+    questUnlockedSpells = dedupeQuestUnlockedSpells(questUnlockedSpells);
     set({ questUnlockedSpells, questFlags, spellQuestAssignments, inventory });
     setStoredJson(QUEST_UNLOCKED_SPELLS_STORAGE_KEY, questUnlockedSpells);
     setStoredJson(QUEST_FLAGS_STORAGE_KEY, questFlags);
@@ -3179,14 +3401,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (get().survivalSave) {
       get().saveSurvivalProgress({ questUnlockedSpells, questFlags, spellQuestAssignments, inventory });
     }
-    messages.forEach((message) => get().addLobbyMessage(message, 'system'));
+    for (let index = 0; index < messages.length; index += 1) {
+      get().addLobbyMessage(messages[index], 'system');
+    }
     return messages;
   },
 
   players: {},
   setPlayers: (players) => {
     const pl = { ...get().players };
-    players.forEach(p => pl[p.id] = p);
+    for (let index = 0; index < players.length; index += 1) {
+      const player = players[index];
+      pl[player.id] = player;
+    }
     set({ players: pl });
   },
   addPlayer: (p) => set((state) => ({ players: { ...state.players, [p.id]: p } })),
@@ -3219,21 +3446,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   projectiles: [],
   addProjectile: (p) => set((state) => {
-    const existingIndex = state.projectiles.findIndex(projectile => projectile.id === p.id);
-    if (existingIndex === -1) {
-      return { projectiles: [...state.projectiles, p] };
-    }
-
-    return {
-      projectiles: state.projectiles.map((projectile, index) => index === existingIndex ? p : projectile),
-    };
+    const projectiles = upsertProjectile(state.projectiles, p);
+    return { projectiles };
   }),
-  removeProjectile: (id) => set((state) => ({ projectiles: state.projectiles.filter(p => p.id !== id) })),
+  removeProjectile: (id) => set((state) => {
+    const projectiles = removeProjectileById(state.projectiles, id);
+    if (projectiles === state.projectiles) return state;
+    return { projectiles };
+  }),
 
   portals: [],
   addPortal: (portal) => set((state) => {
-    if (state.portals.length >= 2) return state; // Do not spawn more than 2
-    return { portals: [...state.portals, portal] };
+    const portals = appendPortalBounded(state.portals, portal);
+    if (portals === state.portals) return state;
+    return { portals };
   }),
-  removePortal: (id) => set((state) => ({ portals: state.portals.filter(p => p.id !== id) })),
+  removePortal: (id) => set((state) => {
+    const portals = removePortalById(state.portals, id);
+    if (portals === state.portals) return state;
+    return { portals };
+  }),
 }));

@@ -1,24 +1,20 @@
-const SPRITE_MANIFEST = import.meta.glob('/public/**/*.{png,gif}', {
-  query: '?url',
-  import: 'default'
-}) as Record<string, () => Promise<string>>;
+import spriteManifest from "./manifest.json";
 
+const SPRITE_MANIFEST = spriteManifest as Record<string, boolean>;
 const SPRITE_PATHS = Object.keys(SPRITE_MANIFEST);
 const SPRITE_PATH_SET = new Set(SPRITE_PATHS);
 
 export function getSpriteUrl(path: string): string | null {
-  // First, try an exact match (assuming path starts with /sprites/...)
   const normalizedPath = path.startsWith('/public/') ? path.slice('/public'.length) : path;
-  const exactKey = '/public' + normalizedPath;
-  if (SPRITE_PATH_SET.has(exactKey)) {
+  if (SPRITE_PATH_SET.has(normalizedPath)) {
     return normalizedPath;
   }
 
-  // Fallback: Find by exact filename match
-  const filename = path.split('/').pop() || path;
+  const lastSlashIndex = path.lastIndexOf('/');
+  const filename = lastSlashIndex >= 0 ? path.slice(lastSlashIndex + 1) : path;
   for (const key of SPRITE_PATHS) {
     if (key.endsWith('/' + filename) || key === filename) {
-      return key.slice('/public'.length);
+      return key;
     }
   }
 

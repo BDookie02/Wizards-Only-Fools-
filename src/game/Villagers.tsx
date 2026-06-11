@@ -3,9 +3,12 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { CharacterCustomization, createDefaultQuestNpcProgram, type QuestFlagValue, type QuestNpcAssignment, type QuestNpcDescriptor, type QuestNpcEditorTarget, type QuestNpcProgram, type QuestNpcRole, useGameStore } from "../store/gameStore";
-import { getHutList, type HutInfo } from "./Huts";
+import { getHutList, type HutInfo } from "./systems/world/villages/baseVillageHutLayout";
 import { AvatarBillboard, NPC_AVATAR_GROUND_LIFT, NPC_AVATAR_SCALE } from "./PixelAvatar";
-import { isMobilePerformanceMode } from "./performanceMode";
+import { isMobilePerformanceMode } from "./systems/input/performanceMode";
+import { absoluteAngleDeltaRadians } from "./systems/math/angleMath";
+import { getPublishedLocalPlayerPosition } from "./systems/player/playerEventBridge";
+import { getEpochMsFromRenderClock } from "./systems/rendering/renderClockEpoch";
 
 interface VillagerInfo {
   id: string;
@@ -53,6 +56,9 @@ const SWAMP_HAIR_COLORS = ["#23170e", "#3b2618", "#4b341f", "#182414"];
 const EYE_LOCK_RADIUS = 18;
 const EYE_LOCK_RADIUS_SQ = EYE_LOCK_RADIUS * EYE_LOCK_RADIUS;
 const VILLAGER_SPATIAL_CELL_SIZE = 16;
+const VILLAGER_INSIDE_CHECK_INTERVAL_MS = 80;
+const VILLAGER_INSIDE_CHECK_MOVE_EPSILON_SQ = 0.04;
+const VILLAGER_RUNTIME_TICK_INTERVAL_MS = 50;
 const DEV_NPC_INTERACTION_RANGE = 9.5;
 const DEV_NPC_CLOSE_RANGE = 3.75;
 const DEV_NPC_AIM_RADIUS = 1.75;
@@ -428,7 +434,15 @@ function isPlayerInsideHut(playerPos: THREE.Vector3, villager: VillagerInfo) {
 }
 
 function angleDistance(a: number, b: number) {
-  return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+  return absoluteAngleDeltaRadians(a, b);
+}
+
+function getReactionCount(reactions: Record<string, ReactionState>) {
+  let count = 0;
+  for (const id in reactions) {
+    if (Object.prototype.hasOwnProperty.call(reactions, id)) count += 1;
+  }
+  return count;
 }
 
 function getNearestPlayerFacingYaw(villager: VillagerInfo) {
@@ -445,13 +459,14 @@ function getNearestPlayerFacingYaw(villager: VillagerInfo) {
     bestYaw = Math.atan2(dx, -dz);
   };
 
-  const localPlayerPos = (window as any).localPlayerPos;
+  const localPlayerPos = getPublishedLocalPlayerPosition();
   if (localPlayerPos) {
     considerPosition(localPlayerPos.x, localPlayerPos.y, localPlayerPos.z);
   }
 
   const remotePlayers = useGameStore.getState().players;
-  for (const player of Object.values(remotePlayers)) {
+  for (const playerId in remotePlayers) {
+    const player = remotePlayers[playerId];
     if (player.health <= 0) continue;
     considerPosition(player.pos[0], player.pos[1], player.pos[2]);
   }
@@ -545,7 +560,7 @@ const VillagerNpc = memo(function VillagerNpc({
 }) {
   const [lookYaw, setLookYaw] = useState(villager.baseYaw);
   const lookYawRef = useRef(villager.baseYaw);
-  const lastLookUpdateRef = useRef(0);
+  const lastLookUpdateRef = useRef(Number.NEGATIVE_INFINITY);
   const lookUpdateInterval = useMemo(() => (isMobilePerformanceMode() ? 220 : 140) + Math.random() * 90, []);
   const phase = reaction && clockMs < reaction.startledUntil ? "startled" : isPlayerInside || (reaction && clockMs < reaction.angryUntil) ? "angry" : "idle";
   const jumpProgress = reaction ? THREE.MathUtils.clamp((clockMs - reaction.startedAt) / 650, 0, 1) : 1;
@@ -561,8 +576,8 @@ const VillagerNpc = memo(function VillagerNpc({
     return baseCharacter;
   }, [baseCharacter, phase]);
 
-  useFrame(() => {
-    const now = performance.now();
+  useFrame((state) => {
+    const now = state.clock.elapsedTime * 1000;
     if (now - lastLookUpdateRef.current < lookUpdateInterval) return;
     lastLookUpdateRef.current = now;
 
@@ -615,13 +630,15 @@ export function Villagers({
   const defaultHuts = useMemo(() => getHutList(), []);
   const activeHuts = huts ?? defaultHuts;
   const savedDarrelId = useMemo(() => {
-    const assignedDarrel = Object.values(spellQuestAssignments).find((assignment) => (
-      isDarrelQuestAssignment(assignment, questFlags)
-    ));
-    if (assignedDarrel?.npcId) return assignedDarrel.npcId;
+    for (const assignmentId in spellQuestAssignments) {
+      const assignment = spellQuestAssignments[assignmentId];
+      if (isDarrelQuestAssignment(assignment, questFlags) && assignment.npcId) return assignment.npcId;
+    }
 
-    const savedDarrel = Object.values(questNpcPrograms).find((program) => isDarrelName(program.displayName) || isDarrelName(program.npcId));
-    if (savedDarrel?.npcId) return savedDarrel.npcId;
+    for (const npcId in questNpcPrograms) {
+      const program = questNpcPrograms[npcId];
+      if (isDarrelName(program.displayName) || isDarrelName(program.npcId)) return program.npcId;
+    }
 
     return null;
   }, [questFlags, questNpcPrograms, spellQuestAssignments]);
@@ -630,16 +647,27 @@ export function Villagers({
   const darrelHutId = savedDarrelId ?? claimedDarrelHutId;
   const anchoredQuestNpcIds = useMemo(() => {
     const ids = new Set<string>();
-    Object.values(questNpcPrograms).forEach((program) => {
+    for (const npcId in questNpcPrograms) {
+      const program = questNpcPrograms[npcId];
       if (hasQuestNpcAnchor(program)) ids.add(program.npcId);
-    });
+    }
     return ids;
   }, [questNpcPrograms]);
-  const generatedVillagers = useMemo(() => activeHuts.map((hut, index) => makeVillager(hut, index)), [activeHuts]);
-  const villagers = useMemo(
-    () => generatedVillagers.filter((villager) => !anchoredQuestNpcIds.has(villager.id)),
-    [anchoredQuestNpcIds, generatedVillagers],
-  );
+  const generatedVillagers = useMemo(() => {
+    const nextVillagers = new Array<VillagerInfo>(activeHuts.length);
+    for (let index = 0; index < activeHuts.length; index += 1) {
+      nextVillagers[index] = makeVillager(activeHuts[index], index);
+    }
+    return nextVillagers;
+  }, [activeHuts]);
+  const villagers = useMemo(() => {
+    const visibleVillagers: VillagerInfo[] = [];
+    for (let index = 0; index < generatedVillagers.length; index += 1) {
+      const villager = generatedVillagers[index];
+      if (!anchoredQuestNpcIds.has(villager.id)) visibleVillagers.push(villager);
+    }
+    return visibleVillagers;
+  }, [anchoredQuestNpcIds, generatedVillagers]);
   const villagerCells = useMemo(() => {
     const cells = new Map<string, VillagerInfo[]>();
     for (const villager of villagers) {
@@ -655,15 +683,22 @@ export function Villagers({
   }, [villagers]);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
   const [insideHutId, setInsideHutId] = useState<string | null>(null);
-  const [clockMs, setClockMs] = useState(() => performance.now());
+  const [clockMs, setClockMs] = useState(0);
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
   const visibleIdsRef = useRef(visibleIds);
+  const visibleIdsScratchRef = useRef(new Set<string>());
   const insideHutIdRef = useRef<string | null>(null);
   const reactionsRef = useRef(reactions);
+  const reactionCountRef = useRef(0);
   const lastTriggeredRef = useRef<Record<string, number>>({});
   const lastQuestInteractionRef = useRef<Record<string, number>>({});
   const lastVisibilityUpdateRef = useRef(0);
+  const lastInsideCheckAtRef = useRef(Number.NEGATIVE_INFINITY);
+  const lastInsideCheckPositionRef = useRef(new THREE.Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY));
   const lastReactionTickRef = useRef(0);
+  const lastVillagerRuntimeTickAtRef = useRef(Number.NEGATIVE_INFINITY);
+  const villagerRuntimeEpochOffsetRef = useRef<number | null>(null);
+  const latestFrameClockMsRef = useRef(0);
   const cameraPositionRef = useRef(new THREE.Vector3());
   const renderDistance = mobilePerformanceMode ? 58 : 90;
 
@@ -673,6 +708,7 @@ export function Villagers({
 
   useEffect(() => {
     reactionsRef.current = reactions;
+    reactionCountRef.current = getReactionCount(reactions);
   }, [reactions]);
 
   useEffect(() => {
@@ -688,10 +724,11 @@ export function Villagers({
 
   useEffect(() => {
     const store = useGameStore.getState();
-    generatedVillagers.forEach((villager) => {
+    for (let index = 0; index < generatedVillagers.length; index += 1) {
+      const villager = generatedVillagers[index];
       const existingProgram = questNpcPrograms[villager.id];
       const assignment = spellQuestAssignments[villager.id];
-      if ((!existingProgram && !assignment) || hasQuestNpcAnchor(existingProgram)) return;
+      if ((!existingProgram && !assignment) || hasQuestNpcAnchor(existingProgram)) continue;
 
       const villagerIndex = activeHuts.indexOf(villager.hut);
       const defaultName = getQuestVillagerDisplayName(
@@ -705,7 +742,7 @@ export function Villagers({
       );
       const target = makeQuestNpcEditorTarget(name, villager, defaultName);
       store.upsertQuestNpcProgram(anchorQuestNpcProgram(existingProgram, target));
-    });
+    }
   }, [activeHuts, darrelHutId, generatedVillagers, name, questFlags, questNpcPrograms, spellQuestAssignments]);
 
   const claimDarrelVillager = useCallback((villager: VillagerInfo, announce = true) => {
@@ -727,12 +764,13 @@ export function Villagers({
   }, [name]);
 
   useEffect(() => {
+    if (!isQuestDevModeEnabled) return undefined;
+
     const openTargetedNpcEditor = (event: MouseEvent) => {
       if (event.button !== 2 || isEditableDomTarget(event.target)) return;
 
       const store = useGameStore.getState();
       if (
-        !store.isQuestDevModeEnabled ||
         store.questNpcEditorTarget ||
         store.questDialogSession ||
         store.isInventoryOpen ||
@@ -774,7 +812,6 @@ export function Villagers({
     };
 
     const suppressTargetedNpcContextMenu = (event: MouseEvent) => {
-      if (!useGameStore.getState().isQuestDevModeEnabled) return;
       if (getTargetedVillager(camera, villagerCells)) {
         event.preventDefault();
       }
@@ -786,7 +823,7 @@ export function Villagers({
       window.removeEventListener("mousedown", openTargetedNpcEditor, true);
       window.removeEventListener("contextmenu", suppressTargetedNpcContextMenu, true);
     };
-  }, [activeHuts, camera, darrelHutId, name, villagerCells]);
+  }, [activeHuts, camera, darrelHutId, isQuestDevModeEnabled, name, villagerCells]);
 
   useEffect(() => {
     const interactWithTargetedVillager = (event: Event) => {
@@ -816,7 +853,8 @@ export function Villagers({
         detail.handled = true;
       }
 
-      const now = performance.now();
+      const now = Date.now();
+      latestFrameClockMsRef.current = now;
       if (now - (lastQuestInteractionRef.current[villager.id] ?? 0) < 700) return;
       lastQuestInteractionRef.current[villager.id] = now;
 
@@ -861,9 +899,15 @@ export function Villagers({
   useEffect(() => {
     const claimDarrelHere = () => {
       const targetedVillager = getTargetedVillager(camera, villagerCells);
-      const insideVillager = insideHutIdRef.current
-        ? villagers.find((villager) => villager.id === insideHutIdRef.current) ?? null
-        : null;
+      let insideVillager: VillagerInfo | null = null;
+      if (insideHutIdRef.current) {
+        for (let index = 0; index < villagers.length; index += 1) {
+          const villager = villagers[index];
+          if (villager.id !== insideHutIdRef.current) continue;
+          insideVillager = villager;
+          break;
+        }
+      }
       const villager = targetedVillager ?? insideVillager;
       const store = useGameStore.getState();
 
@@ -879,51 +923,63 @@ export function Villagers({
     return () => window.removeEventListener("quest-claim-darrel-here", claimDarrelHere);
   }, [camera, claimDarrelVillager, villagerCells, villagers]);
 
-  useFrame((state) => {
-    const now = performance.now();
-    state.camera.getWorldPosition(cameraPositionRef.current);
+  useFrame(({ clock }) => {
+    const now = getEpochMsFromRenderClock(clock.elapsedTime, villagerRuntimeEpochOffsetRef);
+    if (now - lastVillagerRuntimeTickAtRef.current < VILLAGER_RUNTIME_TICK_INTERVAL_MS) return;
+    lastVillagerRuntimeTickAtRef.current = now;
+    latestFrameClockMsRef.current = now;
+    camera.getWorldPosition(cameraPositionRef.current);
     const playerPos = cameraPositionRef.current;
 
-    let enteredVillager: VillagerInfo | null = null;
-    let enteredDistanceSq = Infinity;
-    visitNearbyVillagers(villagerCells, playerPos.x, playerPos.z, 2, (villager) => {
-      if (!isPlayerInsideHut(playerPos, villager)) return;
-      const dx = playerPos.x - villager.hut.x;
-      const dz = playerPos.z - villager.hut.z;
-      const distanceSq = dx * dx + dz * dz;
-      if (distanceSq < enteredDistanceSq) {
-        enteredDistanceSq = distanceSq;
-        enteredVillager = villager;
+    const lastInsideCheckPosition = lastInsideCheckPositionRef.current;
+    const shouldCheckInside =
+      now - lastInsideCheckAtRef.current >= VILLAGER_INSIDE_CHECK_INTERVAL_MS ||
+      playerPos.distanceToSquared(lastInsideCheckPosition) >= VILLAGER_INSIDE_CHECK_MOVE_EPSILON_SQ;
+    if (shouldCheckInside) {
+      lastInsideCheckAtRef.current = now;
+      lastInsideCheckPosition.copy(playerPos);
+
+      let enteredVillager: VillagerInfo | null = null;
+      let enteredDistanceSq = Infinity;
+      visitNearbyVillagers(villagerCells, playerPos.x, playerPos.z, 2, (villager) => {
+        if (!isPlayerInsideHut(playerPos, villager)) return;
+        const dx = playerPos.x - villager.hut.x;
+        const dz = playerPos.z - villager.hut.z;
+        const distanceSq = dx * dx + dz * dz;
+        if (distanceSq < enteredDistanceSq) {
+          enteredDistanceSq = distanceSq;
+          enteredVillager = villager;
+        }
+      });
+
+      const nextInsideId = enteredVillager?.id ?? null;
+      if (
+        enteredVillager &&
+        !savedDarrelId &&
+        !claimedDarrelHutIdRef.current
+      ) {
+        claimDarrelVillager(enteredVillager, false);
       }
-    });
 
-    const nextInsideId = enteredVillager?.id ?? null;
-    if (
-      enteredVillager &&
-      !savedDarrelId &&
-      !claimedDarrelHutIdRef.current
-    ) {
-      claimDarrelVillager(enteredVillager, false);
-    }
+      if (nextInsideId !== insideHutIdRef.current) {
+        insideHutIdRef.current = nextInsideId;
+        setInsideHutId(nextInsideId);
 
-    if (nextInsideId !== insideHutIdRef.current) {
-      insideHutIdRef.current = nextInsideId;
-      setInsideHutId(nextInsideId);
+        if (enteredVillager && now - (lastTriggeredRef.current[enteredVillager.id] ?? 0) > 900) {
+          lastTriggeredRef.current[enteredVillager.id] = now;
+          setClockMs(now);
+          setReactions((current) => ({
+            ...current,
+            [enteredVillager.id]: {
+              startedAt: now,
+              startledUntil: now + 680,
+              angryUntil: now + 3200,
+            },
+          }));
 
-      if (enteredVillager && now - (lastTriggeredRef.current[enteredVillager.id] ?? 0) > 900) {
-        lastTriggeredRef.current[enteredVillager.id] = now;
-        setClockMs(now);
-        setReactions((current) => ({
-          ...current,
-          [enteredVillager.id]: {
-            startedAt: now,
-            startledUntil: now + 680,
-            angryUntil: now + 3200,
-          },
-        }));
-
-        const distance = Math.sqrt(enteredDistanceSq);
-        playVillagerYelp(1 - distance / 9);
+          const distance = Math.sqrt(enteredDistanceSq);
+          playVillagerYelp(1 - distance / 9);
+        }
       }
     }
 
@@ -931,7 +987,8 @@ export function Villagers({
       lastVisibilityUpdateRef.current = now;
       const renderDistanceSq = renderDistance * renderDistance;
       const visibilityRadiusCells = Math.ceil(renderDistance / VILLAGER_SPATIAL_CELL_SIZE) + 1;
-      const nextVisible = new Set<string>();
+      const nextVisible = visibleIdsScratchRef.current;
+      nextVisible.clear();
 
       visitNearbyVillagers(villagerCells, playerPos.x, playerPos.z, visibilityRadiusCells, (villager) => {
         const dx = playerPos.x - villager.x;
@@ -942,17 +999,18 @@ export function Villagers({
       });
 
       if (!sameSet(nextVisible, visibleIdsRef.current)) {
-        setVisibleIds(nextVisible);
+        setVisibleIds(new Set(nextVisible));
       }
     }
 
-    if (Object.keys(reactionsRef.current).length > 0 && now - lastReactionTickRef.current > 80) {
+    if (reactionCountRef.current > 0 && now - lastReactionTickRef.current > 80) {
       lastReactionTickRef.current = now;
       setClockMs(now);
       setReactions((current) => {
         let changed = false;
         const next: Record<string, ReactionState> = {};
-        for (const [id, reaction] of Object.entries(current)) {
+        for (const id in current) {
+          const reaction = current[id];
           if (reaction.angryUntil > now || insideHutIdRef.current === id) {
             next[id] = reaction;
           } else {
@@ -1004,12 +1062,16 @@ export function PersistentQuestNpcs() {
   const questNpcPrograms = useGameStore((state) => state.questNpcPrograms);
   const spellQuestAssignments = useGameStore((state) => state.spellQuestAssignments);
   const questFlags = useGameStore((state) => state.questFlags);
-  const questNpcs = useMemo(
-    () => Object.values(questNpcPrograms)
-      .filter(hasQuestNpcAnchor)
-      .map((program, index) => makePersistentQuestNpcVillager(program, index)),
-    [questNpcPrograms],
-  );
+  const questNpcs = useMemo(() => {
+    const nextQuestNpcs: VillagerInfo[] = [];
+    for (const npcId in questNpcPrograms) {
+      const program = questNpcPrograms[npcId];
+      if (hasQuestNpcAnchor(program)) {
+        nextQuestNpcs.push(makePersistentQuestNpcVillager(program, nextQuestNpcs.length));
+      }
+    }
+    return nextQuestNpcs;
+  }, [questNpcPrograms]);
   const questNpcCells = useMemo(() => {
     const cells = new Map<string, VillagerInfo[]>();
     for (const villager of questNpcs) {
@@ -1023,23 +1085,21 @@ export function PersistentQuestNpcs() {
     }
     return cells;
   }, [questNpcs]);
-  const [clockMs, setClockMs] = useState(() => performance.now());
+  const [clockMs, setClockMs] = useState(0);
   const [reactions, setReactions] = useState<Record<string, ReactionState>>({});
-  const reactionsRef = useRef(reactions);
   const lastQuestInteractionRef = useRef<Record<string, number>>({});
   const lastReactionTickRef = useRef(0);
+  const questNpcReactionEpochOffsetRef = useRef<number | null>(null);
+  const hasReactions = useMemo(() => getReactionCount(reactions) > 0, [reactions]);
 
   useEffect(() => {
-    reactionsRef.current = reactions;
-  }, [reactions]);
+    if (!isQuestDevModeEnabled) return undefined;
 
-  useEffect(() => {
     const openPersistentNpcEditor = (event: MouseEvent) => {
       if (event.button !== 2 || isEditableDomTarget(event.target)) return;
 
       const store = useGameStore.getState();
       if (
-        !store.isQuestDevModeEnabled ||
         store.questNpcEditorTarget ||
         store.questDialogSession ||
         store.isInventoryOpen ||
@@ -1080,7 +1140,6 @@ export function PersistentQuestNpcs() {
     };
 
     const suppressPersistentNpcContextMenu = (event: MouseEvent) => {
-      if (!useGameStore.getState().isQuestDevModeEnabled) return;
       if (getTargetedVillager(camera, questNpcCells)) {
         event.preventDefault();
       }
@@ -1092,7 +1151,7 @@ export function PersistentQuestNpcs() {
       window.removeEventListener("mousedown", openPersistentNpcEditor, true);
       window.removeEventListener("contextmenu", suppressPersistentNpcContextMenu, true);
     };
-  }, [camera, questNpcCells]);
+  }, [camera, isQuestDevModeEnabled, questNpcCells]);
 
   useEffect(() => {
     const interactWithPersistentNpc = (event: Event) => {
@@ -1125,7 +1184,7 @@ export function PersistentQuestNpcs() {
         detail.handled = true;
       }
 
-      const now = performance.now();
+      const now = Date.now();
       if (now - (lastQuestInteractionRef.current[villager.id] ?? 0) < 700) return;
       lastQuestInteractionRef.current[villager.id] = now;
 
@@ -1152,25 +1211,29 @@ export function PersistentQuestNpcs() {
     return () => window.removeEventListener("quest-villager-interact", interactWithPersistentNpc);
   }, [camera, questNpcCells]);
 
-  useFrame(() => {
-    const now = performance.now();
-
-    if (Object.keys(reactionsRef.current).length > 0 && now - lastReactionTickRef.current > 80) {
-      lastReactionTickRef.current = now;
-      setClockMs(now);
-      setReactions((current) => {
-        let changed = false;
-        const next: Record<string, ReactionState> = {};
-        for (const [id, reaction] of Object.entries(current)) {
-          if (reaction.angryUntil > now) {
-            next[id] = reaction;
-          } else {
-            changed = true;
-          }
-        }
-        return changed ? next : current;
-      });
+  useFrame(({ clock }) => {
+    if (!hasReactions) {
+      lastReactionTickRef.current = 0;
+      return;
     }
+
+    const now = getEpochMsFromRenderClock(clock.elapsedTime, questNpcReactionEpochOffsetRef);
+    if (now - lastReactionTickRef.current <= 80) return;
+    lastReactionTickRef.current = now;
+    setClockMs(now);
+    setReactions((current) => {
+      let changed = false;
+      const next: Record<string, ReactionState> = {};
+      for (const id in current) {
+        const reaction = current[id];
+        if (reaction.angryUntil > now) {
+          next[id] = reaction;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
   });
 
   return (
