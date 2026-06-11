@@ -9,6 +9,8 @@ const CHARACTER_SIGNATURE_IDS = new WeakMap<object, number>();
 const MAX_DUPLICATE_POSE_SKIPS = 14;
 let nextCharacterSignatureId = 1;
 let lastPlayerNetworkPoseSignature = "";
+let lastPlayerNetworkCharacterSignature = "";
+let lastPlayerNetworkCharacterPlayerId = "";
 let duplicatePlayerNetworkPoseSkips = 0;
 
 export type PlayerNetworkAnimation =
@@ -124,10 +126,15 @@ function getCharacterSignature(characterCustomization: unknown) {
   return String(signatureId);
 }
 
-function buildPlayerNetworkPoseSignature(options: PlayerNetworkPoseSyncOptions, aimDir: { x: number; y: number; z: number }) {
-  const { anim, camera, characterCustomization, isVoiceSpeaking, pos, survivalLevel, yaw } = options;
+function buildPlayerNetworkPoseSignature(
+  options: PlayerNetworkPoseSyncOptions,
+  aimDir: { x: number; y: number; z: number },
+  localPlayerId: string,
+  characterSignature: string,
+) {
+  const { anim, camera, isVoiceSpeaking, pos, survivalLevel, yaw } = options;
   return [
-    getLocalNetworkPlayerId(),
+    localPlayerId,
     pos.x,
     pos.y,
     pos.z,
@@ -140,7 +147,7 @@ function buildPlayerNetworkPoseSignature(options: PlayerNetworkPoseSyncOptions, 
     anim,
     survivalLevel,
     isVoiceSpeaking ? 1 : 0,
-    getCharacterSignature(characterCustomization),
+    characterSignature,
   ].join("|");
 }
 
@@ -216,20 +223,41 @@ export function emitPlayerNetworkPoseSync(options: PlayerNetworkPoseSyncOptions)
     yaw,
   } = options;
   const aimDir = providedAimDir ?? camera.getWorldDirection(playerNetworkPoseAimScratch);
-  const signature = buildPlayerNetworkPoseSignature(options, aimDir);
+  const localPlayerId = getLocalNetworkPlayerId();
+  const characterSignature = getCharacterSignature(characterCustomization);
+  const signature = buildPlayerNetworkPoseSignature(options, aimDir, localPlayerId, characterSignature);
   if (shouldSkipDuplicatePlayerNetworkPose(signature)) return false;
+  const shouldSendCharacter =
+    characterSignature !== lastPlayerNetworkCharacterSignature ||
+    localPlayerId !== lastPlayerNetworkCharacterPlayerId;
 
-  const emitted = emitGameNetworkEvent("updateMe", {
+  const payload: {
+    pos: [number, number, number];
+    rot: [number, number, number];
+    aimDir: [number, number, number];
+    anim: PlayerNetworkAnimation;
+    survivalLevel: number;
+    isSpeaking: boolean;
+    character?: unknown;
+  } = {
     pos: [pos.x, pos.y, pos.z],
     rot: [camera.rotation.x, yaw, camera.rotation.z],
     aimDir: [aimDir.x, aimDir.y, aimDir.z],
     anim,
-    character: characterCustomization,
     survivalLevel,
     isSpeaking: isVoiceSpeaking,
-  });
+  };
+  if (shouldSendCharacter) {
+    payload.character = characterCustomization;
+  }
+
+  const emitted = emitGameNetworkEvent("updateMe", payload);
   if (emitted) {
     lastPlayerNetworkPoseSignature = signature;
+    if (shouldSendCharacter) {
+      lastPlayerNetworkCharacterSignature = characterSignature;
+      lastPlayerNetworkCharacterPlayerId = localPlayerId;
+    }
   }
   return emitted;
 }
