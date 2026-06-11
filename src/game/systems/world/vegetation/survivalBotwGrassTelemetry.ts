@@ -1,4 +1,4 @@
-import { isQaTelemetryRouteEnabledFromSearch } from "../../../tools/qa/qaRouteTelemetry";
+import { shouldPublishSurvivalWorldTelemetryFromSearch } from "../../../tools/qa/survivalQaTelemetryRoutes";
 
 let cachedTelemetrySearch = "";
 let cachedTelemetryEnabled = false;
@@ -15,7 +15,7 @@ export function shouldPublishSurvivalBotwGrassRuntimeMetricsFromSearch(search: s
   if (search === cachedTelemetrySearch) return cachedTelemetryEnabled;
 
   cachedTelemetrySearch = search;
-  cachedTelemetryEnabled = isQaTelemetryRouteEnabledFromSearch(search, ["perf", "grass", "survival", "canvas", "touch", "mountain"]);
+  cachedTelemetryEnabled = shouldPublishSurvivalWorldTelemetryFromSearch(search);
 
   return cachedTelemetryEnabled;
 }

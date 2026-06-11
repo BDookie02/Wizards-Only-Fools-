@@ -5,7 +5,7 @@ import { SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
 import type { HutInfo } from "../villages/baseVillageHutLayout";
 import { Villagers } from "../../../Villagers";
 import { useSurvivalFeatureCount } from "../../../tools/qa/survivalFeatureCounters";
-import { isCurrentQaTelemetryRouteEnabled } from "../../../tools/qa/qaRouteTelemetry";
+import { shouldPublishCurrentSurvivalDesertLandmarkTelemetry } from "../../../tools/qa/survivalQaTelemetryRoutes";
 import { getDesertAdobeWallTexture } from "../terrain/survivalTerrainTextures";
 import { survivalHash01 } from "./survivalMath";
 import type { SurvivalChunkInfo } from "./survivalWorldConfig";
@@ -41,7 +41,7 @@ const PYRAMID_INTERIOR_SIDE_OFFSETS = [-1, 1] as const;
 const PYRAMID_INTERIOR_GLYPH_OFFSETS = [-1, 0, 1] as const;
 
 function shouldPublishDesertLandmarkTelemetry() {
-  return isCurrentQaTelemetryRouteEnabled(["perf", "canvas", "grass", "survival"]);
+  return shouldPublishCurrentSurvivalDesertLandmarkTelemetry();
 }
 
 function publishDesertLandmarkSamples() {

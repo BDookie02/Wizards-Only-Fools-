@@ -7,7 +7,7 @@ import { absoluteAngleDeltaRadians } from "../../math/angleMath";
 import { getCachedIndexRange } from "../../rendering/indexRange";
 import type { HutInfo } from "./baseVillageHutLayout";
 import { Villagers } from "../../../Villagers";
-import { isCurrentQaTelemetryRouteEnabled } from "../../../tools/qa/qaRouteTelemetry";
+import { shouldPublishCurrentMountainSlopeGrassTelemetry } from "../../../tools/qa/survivalQaTelemetryRoutes";
 import { getMountainVillageTerrainDetailTexture } from "../terrain/survivalTerrainTextures";
 import { shouldBuildSurvivalChunkColliders } from "../survival/survivalChunks";
 import { clamp01, lerpNumber, smoothstep01, smoothstepRange, survivalHash01 } from "../survival/survivalMath";
@@ -84,7 +84,7 @@ import {
 import { shouldHideMountainWaterfallForCamera } from "./mountainVillageWaterfallRuntime";
 
 function shouldPublishMountainSlopeGrassTelemetry() {
-  return isCurrentQaTelemetryRouteEnabled(["perf", "canvas", "grass", "mountain", "survival"]);
+  return shouldPublishCurrentMountainSlopeGrassTelemetry();
 }
 
 type SurvivalTerrainHeightForChunk = (chunk: SurvivalChunkInfo, localX: number, localZ: number) => number;

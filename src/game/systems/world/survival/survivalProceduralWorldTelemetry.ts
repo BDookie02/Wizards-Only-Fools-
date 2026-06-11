@@ -1,4 +1,4 @@
-import { isCurrentQaTelemetryRouteEnabled } from "../../../tools/qa/qaRouteTelemetry";
+import { shouldPublishCurrentSurvivalWorldTelemetry } from "../../../tools/qa/survivalQaTelemetryRoutes";
 import type { SurvivalChunkInfo, SurvivalVillageKind } from "./survivalWorldConfig";
 import { shouldRenderSurvivalMountainVillageShellChunk } from "../villages/survivalVillageVisibility";
 import { isSurvivalBotwGrassWarmupBlockingChunkPrewarm as isSurvivalBotwGrassBuildBlockingChunkPrewarm } from "../vegetation/survivalBotwGrassTelemetry";
@@ -14,7 +14,7 @@ export type SurvivalProceduralWorldStreamTelemetry = {
 let latestSurvivalProceduralPendingChunkCount = 0;
 
 function shouldPublishSurvivalProceduralWorldTelemetry() {
-  return isCurrentQaTelemetryRouteEnabled(["perf", "canvas", "grass", "touch", "mountain", "survival"]);
+  return shouldPublishCurrentSurvivalWorldTelemetry();
 }
 
 export function getSurvivalProceduralPendingChunkCount() {

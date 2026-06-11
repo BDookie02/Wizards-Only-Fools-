@@ -81,7 +81,7 @@ import {
   type SurvivalTutorialGrassCellBatch,
 } from "./survivalTutorialGrassStreaming";
 import { SURVIVAL_FLOWER_COLORS } from "./survivalFoliagePalettes";
-import { isCurrentQaTelemetryRouteEnabled } from "../../../tools/qa/qaRouteTelemetry";
+import { shouldPublishCurrentSurvivalWorldTelemetry } from "../../../tools/qa/survivalQaTelemetryRoutes";
 import {
   applySurvivalLocalGrassShader,
   type SurvivalLocalGrassFadeUniforms,
@@ -247,7 +247,7 @@ function getSurvivalGrassDebugRejectionSummary(worldX: number, worldZ: number) {
 }
 
 function shouldPublishSurvivalLocalGrassTelemetry() {
-  return isCurrentQaTelemetryRouteEnabled(["grass", "perf", "canvas", "touch", "mountain", "survival"]);
+  return shouldPublishCurrentSurvivalWorldTelemetry();
 }
 
 function getSurvivalLocalGrassViewerPosition(camera: THREE.Camera) {

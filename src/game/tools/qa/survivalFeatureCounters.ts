@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { isCurrentQaTelemetryRouteEnabled } from "./qaRouteTelemetry";
+import { shouldPublishCurrentSurvivalFeatureCounters } from "./survivalQaTelemetryRoutes";
 
 type NumericSurvivalFeatureCounter =
   | "ambientBirds"
@@ -59,7 +59,7 @@ const numericCounts = new Map<NumericSurvivalFeatureCounter, Map<string, number>
 const insectCounts = new Map<string, InsectFeatureCount>();
 
 function shouldPublishSurvivalFeatureCounters() {
-  return isCurrentQaTelemetryRouteEnabled(["perf", "hud", "aspect", "canvas", "touch", "mountain", "grass", "survival"]);
+  return shouldPublishCurrentSurvivalFeatureCounters();
 }
 
 function getNumericCounts(metric: NumericSurvivalFeatureCounter) {
