@@ -55,7 +55,7 @@ Done:
 - Extracted survival mana flower/well source generation into `src/game/systems/world/survival/survivalManaSources.ts`.
 - Moved browser/player position reads and local grass initial-center QA fallback into `src/game/systems/world/survival/survivalPosition.ts`.
 - Added a shared QA survival chunk-coordinate parser and squared stale-origin checks in `survivalPosition.ts`, removing repeated `split().map()` parsing and `Math.hypot` calls from survival QA centering.
-- Moved survival player spawn override resolution, QA survival URL spawn parsing, temporary village spawn routing, random survival spawn selection, and base-village QA spawn clearance into `src/game/systems/world/survival/survivalPlayerSpawn.ts`.
+- Moved survival player spawn override resolution, cached survival spawn-route snapshot parsing, QA survival URL spawn parsing, temporary village spawn routing, random survival spawn selection, and base-village QA spawn clearance into `src/game/systems/world/survival/survivalPlayerSpawn.ts`.
 - Tightened QA quest-spawn routing so descriptive `qaReload` / `qaPerfRun` labels containing `darrel`, `lily`, or `coil` no longer override an explicit `qaSurvivalChunk`; explicit quest forcing now uses `qaQuestSpawn=`.
 - Kept the authored base village chunk `0:0` in the survival chunk stream as a stable placeholder while the base village owns the rendered terrain/collider, preventing base-center physics teardown errors without double-rendering base terrain.
 - Added a shared authored-village QA safe local-Z default so desert, swamp, and city test spawns stay inside their requested chunk instead of crossing the center-based chunk boundary.
@@ -472,7 +472,7 @@ Done:
 - Moved staged decoration load profiles, idle/background scheduling, and grass stream scale helpers into `survivalLoadStage.ts`.
 - Moved survival QA spawn URL, current player position, and chunk-coordinate helpers into `survivalPosition.ts`.
 - Moved survival procedural world's initial center-chunk route selection into `survivalPosition.ts`, leaving chunk streaming/rendering to consume a typed initial chunk coordinate instead of parsing QA URLs itself.
-- Moved survival player spawn override resolution, QA URL route parsing, authored-village temporary spawn routing, random survival spawn selection, and base-village QA safe-height clamping into `survivalPlayerSpawn.ts`.
+- Moved survival player spawn override resolution, cached QA route snapshot parsing, authored-village temporary spawn routing, random survival spawn selection, and base-village QA safe-height clamping into `survivalPlayerSpawn.ts`.
 - Moved survival terrain, grassland, mountain village, desert sand, and adobe wall cached texture generation into `survivalTerrainTextures.ts`.
 - Moved deterministic canvas texture noise into `textureNoise.ts` for reuse by Darrel, Lily Coil, and survival grass texture generators.
 - Moved base-village hut canvas texture generation into deterministic village visual factories so hut materials are stable across reloads and the hut renderer no longer performs ad hoc random painting inline.
@@ -603,7 +603,7 @@ Done:
 - Moved area, smoke, and healing spell effects out of `Projectiles.tsx`, dropping the renderer to about 849 lines and keeping long-lived effect loops inside focused spell modules.
 - Moved the remaining direct spell renderers out of `Projectiles.tsx`, dropping it to about 60 lines so the component now only routes active projectiles to owning spell modules.
 - Moved global movement key state, mouse gameplay fallback helpers, meditation/slot key helpers, controller release readiness, and touch-button typing into `playerInputState.ts`, reducing `PlayerController.tsx` input ownership.
-- Moved survival player spawn override resolution, QA URL spawn parsing, temporary village spawn routing, random survival spawn selection, and base-village QA safe-height clamping into `survivalPlayerSpawn.ts`, reducing `PlayerController.tsx` spawn ownership.
+- Moved survival player spawn override resolution, cached QA route snapshot parsing, temporary village spawn routing, random survival spawn selection, and base-village QA safe-height clamping into `survivalPlayerSpawn.ts`, reducing `PlayerController.tsx` spawn ownership.
 - Kept the authored base chunk in the survival stream as a placeholder while `SurvivalChunk` returns null for `0:0` when the base village owns terrain/collision, fixing the base-center Rapier cleanup crash.
 - Moved HUD command-console command parsing/dispatch into `hudCommandConsole.ts`, isolating dev commands, navigation recording commands, Darrel spawn commands, and time-of-day commands from the HUD renderer.
 - Moved the always-visible gameplay mana/status/hotbar overlay into `GameplayHudOverlay.tsx` without lazy-loading it, keeping core HUD responsive while isolating aspect-ratio/status layout work.
@@ -836,6 +836,9 @@ Next:
 
 ## Latest Verification
 
+- Focused survival spawn-route cleanup: `survivalPlayerSpawn.ts` now reads the URL into one cached spawn-route snapshot per current search string, then passes that typed snapshot through mountain, graveyard, QA chunk, quest, and default survival spawn resolution instead of repeatedly parsing `window.location.search`.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the survival spawn-route QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the survival spawn-route cleanup. Sprite verification passed; current warning remains chunk size only. `survivalProceduralWorldRendering` is about 18.24 kB / 6.00 kB gzip.
 - Focused survival initial-center cleanup: `survivalProceduralWorldRendering.tsx` now delegates its initial chunk selection to `getInitialSurvivalCenterChunkCoords()` in `survivalPosition.ts`, preserving spell-dummy, `qaSurvivalChunk`, Lily Coil quest, and remembered-player startup behavior while removing renderer-owned URL parsing.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the survival center visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the survival initial-center split. Sprite verification passed; current warning remains chunk size only. `survivalProceduralWorldRendering` is about 18.13 kB / 5.97 kB gzip.

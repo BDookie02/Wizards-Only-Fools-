@@ -8,7 +8,7 @@ import {
 } from "../../../../store/gameStore";
 import { readManualFastTravelSpawn } from "../../../tools/manualFastTravelSpawn";
 import { getBaseVillageTerrainHeight } from "../terrain/BaseVillageTerrain";
-import { QA_AUTHORED_VILLAGE_SAFE_LOCAL_Z } from "./survivalPosition";
+import { QA_AUTHORED_VILLAGE_SAFE_LOCAL_Z, parseSurvivalChunkCoordsParam } from "./survivalPosition";
 
 export type QaSurvivalSpawn = {
   key: string;
@@ -18,6 +18,31 @@ export type QaSurvivalSpawn = {
 };
 
 type SurvivalSpawnOptions = {
+  y?: number;
+  localX?: number;
+  localZ?: number;
+  yaw?: number;
+  pitch?: number;
+};
+
+type QaSurvivalChunkRoute = {
+  cx: number;
+  cz: number;
+  key: string;
+};
+
+type SurvivalSpawnRouteSnapshot = {
+  runKey: string;
+  qaSpellDummies: boolean;
+  qaSurvivalChunk: QaSurvivalChunkRoute | null;
+  qaSurvivalWalk: boolean;
+  qaQuestSpawn: string;
+  spawnMountain: boolean;
+  spawnGraveyard: boolean;
+  disableMountainSpawn: boolean;
+  disableSwampSpawn: boolean;
+  disableGraveyardSpawn: boolean;
+  disableDefaultQuestSpawn: boolean;
   y?: number;
   localX?: number;
   localZ?: number;
@@ -73,6 +98,8 @@ export const DEFAULT_FALL_RECOVERY_SPAWN_POSITION: [number, number, number] = [0
 
 let randomSurvivalSpawn: QaSurvivalSpawn | null = null;
 let randomSurvivalSpawnMode: string | null = null;
+let cachedSurvivalSpawnRouteSearch: string | null = null;
+let cachedSurvivalSpawnRouteSnapshot: SurvivalSpawnRouteSnapshot | null = null;
 
 function getSurvivalChunkSpawn(
   cx: number,
@@ -108,13 +135,57 @@ function getNumericSearchParam(params: URLSearchParams, key: string) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function getQaSurvivalUrlSpawnOptions(params: URLSearchParams, cx?: number, cz?: number) {
+function parseQaSurvivalChunkRoute(chunkParam: string | null): QaSurvivalChunkRoute | null {
+  if (!chunkParam) return null;
+  let decodedChunkParam = chunkParam;
+  try {
+    decodedChunkParam = decodeURIComponent(chunkParam);
+  } catch {
+    decodedChunkParam = chunkParam;
+  }
+
+  const parsed = parseSurvivalChunkCoordsParam(decodedChunkParam);
+  return parsed ? { ...parsed, key: decodedChunkParam } : null;
+}
+
+function getSurvivalSpawnRouteSnapshotFromSearch(search: string): SurvivalSpawnRouteSnapshot {
+  if (search === cachedSurvivalSpawnRouteSearch && cachedSurvivalSpawnRouteSnapshot) {
+    return cachedSurvivalSpawnRouteSnapshot;
+  }
+
+  const params = new URLSearchParams(search);
+  const snapshot: SurvivalSpawnRouteSnapshot = {
+    runKey: params.get("qaPerfRun") || params.get("qaReload") || "",
+    qaSpellDummies: params.get("qaSpellDummies") === "1",
+    qaSurvivalChunk: parseQaSurvivalChunkRoute(params.get("qaSurvivalChunk")),
+    qaSurvivalWalk: params.get("qaSurvivalWalk") === "1",
+    qaQuestSpawn: (params.get("qaQuestSpawn") || "").toLowerCase(),
+    spawnMountain: params.get("spawnMountain") === "1",
+    spawnGraveyard: params.get("spawnGraveyard") === "1",
+    disableMountainSpawn: params.get("disableMountainSpawn") === "1",
+    disableSwampSpawn: params.get("disableSwampSpawn") === "1",
+    disableGraveyardSpawn: params.get("disableGraveyardSpawn") === "1",
+    disableDefaultQuestSpawn: params.get("disableDefaultQuestSpawn") === "1",
+    y: getNumericSearchParam(params, "qaSurvivalY"),
+    localX: getNumericSearchParam(params, "qaSurvivalLocalX"),
+    localZ: getNumericSearchParam(params, "qaSurvivalLocalZ"),
+    yaw: getNumericSearchParam(params, "qaSurvivalYaw"),
+    pitch: getNumericSearchParam(params, "qaSurvivalPitch"),
+  };
+
+  cachedSurvivalSpawnRouteSearch = search;
+  cachedSurvivalSpawnRouteSnapshot = snapshot;
+  return snapshot;
+}
+
+function getCurrentSurvivalSpawnRouteSnapshot(): SurvivalSpawnRouteSnapshot | null {
+  if (typeof window === "undefined") return null;
+  return getSurvivalSpawnRouteSnapshotFromSearch(window.location.search);
+}
+
+function getQaSurvivalUrlSpawnOptions(route: SurvivalSpawnRouteSnapshot, cx?: number, cz?: number) {
   const options: SurvivalSpawnOptions = {};
-  const y = getNumericSearchParam(params, "qaSurvivalY");
-  const localX = getNumericSearchParam(params, "qaSurvivalLocalX");
-  const localZ = getNumericSearchParam(params, "qaSurvivalLocalZ");
-  const yaw = getNumericSearchParam(params, "qaSurvivalYaw");
-  const pitch = getNumericSearchParam(params, "qaSurvivalPitch");
+  const { y, localX, localZ, yaw, pitch } = route;
   const shouldRescueBadLongHaulEndpoint =
     cx === QA_SURVIVAL_BAD_LONG_HAUL_CHUNK.cx &&
     cz === QA_SURVIVAL_BAD_LONG_HAUL_CHUNK.cz &&
@@ -141,10 +212,10 @@ function getQaSurvivalChunkSpawnOptions(cx: number, cz: number) {
   return QA_SURVIVAL_CHUNK_SPAWN_OPTIONS[`${cx},${cz}`] ?? {};
 }
 
-function getQaSurvivalSpawnOptions(params: URLSearchParams, cx: number, cz: number) {
+function getQaSurvivalSpawnOptions(route: SurvivalSpawnRouteSnapshot, cx: number, cz: number) {
   const options = {
     ...getQaSurvivalChunkSpawnOptions(cx, cz),
-    ...getQaSurvivalUrlSpawnOptions(params, cx, cz),
+    ...getQaSurvivalUrlSpawnOptions(route, cx, cz),
   };
 
   if (cx === 0 && cz === 0) {
@@ -191,23 +262,6 @@ function isReservedSurvivalSpawnChunk(cx: number, cz: number) {
 
 function formatSurvivalSpawnKeyPart(x: number, y: number, z: number, yaw = 0) {
   return `${Number(x).toFixed(2)}:${Number(y).toFixed(2)}:${Number(z).toFixed(2)}:${Number(yaw).toFixed(2)}`;
-}
-
-function parseQaSurvivalChunkParam(chunkParam: string): { cx: number; cz: number; key: string } | null {
-  let decodedChunkParam = chunkParam;
-  try {
-    decodedChunkParam = decodeURIComponent(chunkParam);
-  } catch {
-    decodedChunkParam = chunkParam;
-  }
-
-  const commaIndex = decodedChunkParam.indexOf(",");
-  if (commaIndex < 0) return null;
-  const cx = Number(decodedChunkParam.slice(0, commaIndex).trim());
-  const cz = Number(decodedChunkParam.slice(commaIndex + 1).trim());
-  return Number.isFinite(cx) && Number.isFinite(cz)
-    ? { cx, cz, key: decodedChunkParam }
-    : null;
 }
 
 function getRandomSurvivalSpawnChunk() {
@@ -258,24 +312,20 @@ function getManualFastTravelSpawn(): QaSurvivalSpawn | null {
   };
 }
 
-function getQaSurvivalSpawnFromUrl(): QaSurvivalSpawn | null {
-  if (import.meta.env.DEV && typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    const runKey = params.get("qaPerfRun") || params.get("qaReload") || "";
-    if (params.get("qaSpellDummies") === "1") {
+function getQaSurvivalSpawnFromRoute(route: SurvivalSpawnRouteSnapshot | null): QaSurvivalSpawn | null {
+  if (import.meta.env.DEV && route) {
+    const { runKey } = route;
+    if (route.qaSpellDummies) {
       return getQaSpellDummyRangeSpawn(runKey);
     }
 
-    const chunkParam = params.get("qaSurvivalChunk");
-    if (chunkParam) {
-      const parsedChunk = parseQaSurvivalChunkParam(chunkParam);
-      if (parsedChunk) {
-        const { cx, cz, key: decodedChunkParam } = parsedChunk;
+    if (route.qaSurvivalChunk) {
+      const { cx, cz, key: decodedChunkParam } = route.qaSurvivalChunk;
         const isDarrelQuestChunk = cx === DARREL_QUEST_CHUNK.cx && cz === DARREL_QUEST_CHUNK.cz;
-        const questSpawn = (params.get("qaQuestSpawn") || "").toLowerCase();
+        const questSpawn = route.qaQuestSpawn;
         const isDarrelQuestRun = questSpawn === "darrel" || questSpawn === "darrel-grove";
         if (isDarrelQuestChunk || isDarrelQuestRun) {
-          if (params.get("qaSurvivalWalk") === "1") {
+          if (route.qaSurvivalWalk) {
             return getSurvivalChunkSpawn(cx, cz, `qa:darrel-open-walk-spawn:${decodedChunkParam}:${runKey}`, {
               y: 38,
               localX: QA_DARREL_GROVE_CLEARING_LOCAL_X,
@@ -302,30 +352,26 @@ function getQaSurvivalSpawnFromUrl(): QaSurvivalSpawn | null {
             yaw: coilSpawn.yaw,
           };
         }
-        if (params.get("qaSpellDummies") === "1") {
+        if (route.qaSpellDummies) {
           return getQaSpellDummyRangeSpawn(runKey, decodedChunkParam);
         }
         return getSurvivalChunkSpawn(cx, cz, `qa:${decodedChunkParam}:${runKey}`, {
-          ...getQaSurvivalSpawnOptions(params, cx, cz),
+          ...getQaSurvivalSpawnOptions(route, cx, cz),
         });
-      }
     }
   }
 
   return null;
 }
 
-function getTemporaryMountainVillageSpawn(): QaSurvivalSpawn | null {
-  if (typeof window === "undefined") return null;
-
-  const params = new URLSearchParams(window.location.search);
+function getTemporaryMountainVillageSpawn(route: SurvivalSpawnRouteSnapshot | null): QaSurvivalSpawn | null {
+  if (!route) return null;
   if (
-    params.get("disableMountainSpawn") === "1"
-    || params.get("disableSwampSpawn") === "1"
+    route.disableMountainSpawn
+    || route.disableSwampSpawn
   ) return null;
 
-  const shouldSpawnAtMountainVillage = params.get("spawnMountain") === "1";
-  if (!shouldSpawnAtMountainVillage) return null;
+  if (!route.spawnMountain) return null;
 
   const [cx, cz] = TEMP_MOUNTAIN_VILLAGE_SPAWN_CHUNK;
   return getSurvivalChunkSpawn(cx, cz, "temp-mountain-village", {
@@ -336,14 +382,10 @@ function getTemporaryMountainVillageSpawn(): QaSurvivalSpawn | null {
   });
 }
 
-function getTemporaryGraveyardVillageSpawn(): QaSurvivalSpawn | null {
-  if (typeof window === "undefined") return null;
+function getTemporaryGraveyardVillageSpawn(route: SurvivalSpawnRouteSnapshot | null): QaSurvivalSpawn | null {
+  if (!route || route.disableGraveyardSpawn) return null;
 
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("disableGraveyardSpawn") === "1") return null;
-
-  const shouldSpawnAtGraveyardVillage = params.get("spawnGraveyard") === "1";
-  if (!shouldSpawnAtGraveyardVillage) return null;
+  if (!route.spawnGraveyard) return null;
 
   const [cx, cz] = TEMP_GRAVEYARD_VILLAGE_SPAWN_CHUNK;
   return getSurvivalChunkSpawn(cx, cz, "temp-graveyard-village", {
@@ -352,13 +394,10 @@ function getTemporaryGraveyardVillageSpawn(): QaSurvivalSpawn | null {
   });
 }
 
-function getTemporaryDefaultSurvivalSpawn(): QaSurvivalSpawn | null {
+function getTemporaryDefaultSurvivalSpawn(route: SurvivalSpawnRouteSnapshot | null): QaSurvivalSpawn | null {
   const gameMode = useGameStore.getState().gameMode;
   if (!isSurvivalGameMode(gameMode)) return null;
-  if (typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("disableDefaultQuestSpawn") === "1") return null;
-  }
+  if (route?.disableDefaultQuestSpawn) return null;
 
   const spawn = getLilyCoilQuestSpawn();
   const spawnKey = formatSurvivalSpawnKeyPart(spawn.x, spawn.y, spawn.z, spawn.yaw ?? 0);
@@ -370,11 +409,12 @@ function getTemporaryDefaultSurvivalSpawn(): QaSurvivalSpawn | null {
 }
 
 export function getPlayerSpawnOverride(): QaSurvivalSpawn | null {
+  const route = getCurrentSurvivalSpawnRouteSnapshot();
   return getManualFastTravelSpawn()
-    ?? getTemporaryMountainVillageSpawn()
-    ?? getTemporaryGraveyardVillageSpawn()
-    ?? getQaSurvivalSpawnFromUrl()
-    ?? getTemporaryDefaultSurvivalSpawn()
+    ?? getTemporaryMountainVillageSpawn(route)
+    ?? getTemporaryGraveyardVillageSpawn(route)
+    ?? getQaSurvivalSpawnFromRoute(route)
+    ?? getTemporaryDefaultSurvivalSpawn(route)
     ?? getRandomSurvivalWorldSpawn();
 }
 
