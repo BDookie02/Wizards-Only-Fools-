@@ -111,7 +111,9 @@ import { closeHudCommandConsole, openHudCommandConsole } from "./ui/hud/hudComma
 import {
   dispatchHudGameplayModalOpened,
   exitPointerLockIfActive,
+  getHudPointerLockNowMs,
   getHudPointerLockRequester,
+  getHudPointerLockResumeGraceUntil,
   getHudPointerLockTarget,
   isHudMouseLookFallbackActive,
   isPointerLockActive,
@@ -851,7 +853,7 @@ export function HUD() {
         finishMouseGameplayResume();
       } else {
         if (shouldTreatPointerLockLossAsResumeGrace({
-          nowMs: performance.now(),
+          nowMs: getHudPointerLockNowMs(),
           pauseRequested: pauseMenuRequestedRef.current,
           resumeGraceUntilMs: pointerLockResumeGraceUntilRef.current,
         })) {
@@ -1287,7 +1289,7 @@ export function HUD() {
     pointerLockRequestIdRef.current = requestId;
     pauseMenuExplicitlyRequestedRef.current = false;
     pauseMenuRequestedRef.current = false;
-    pointerLockResumeGraceUntilRef.current = performance.now() + 1800;
+    pointerLockResumeGraceUntilRef.current = getHudPointerLockResumeGraceUntil();
 
     const handlePointerLockGranted = () => {
       if (pointerLockRequestIdRef.current !== requestId) return;
@@ -1315,7 +1317,6 @@ export function HUD() {
     try {
       setCanLock(false);
       setIsLocked(false);
-      pointerLockResumeGraceUntilRef.current = performance.now() + 1800;
       setPauseOverlayOpen(false);
       setPauseMenuOpen(false);
       setIsReturningToGame(true);
@@ -1575,7 +1576,7 @@ export function HUD() {
       return;
     }
 
-    pointerLockResumeGraceUntilRef.current = performance.now() + 1800;
+    pointerLockResumeGraceUntilRef.current = getHudPointerLockResumeGraceUntil();
     setIsLocked(false);
     setPauseMenuOpen(false);
     setIsReturningToGame(true);
@@ -1676,7 +1677,7 @@ export function HUD() {
     if (canLock) {
       pauseMenuExplicitlyRequestedRef.current = false;
       pauseMenuRequestedRef.current = false;
-      pointerLockResumeGraceUntilRef.current = performance.now() + 1800;
+      pointerLockResumeGraceUntilRef.current = getHudPointerLockResumeGraceUntil();
       setIsLocked(false);
       setPauseOverlayOpen(false);
       setPauseMenuOpen(false);

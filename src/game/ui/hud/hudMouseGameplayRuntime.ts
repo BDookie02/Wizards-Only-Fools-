@@ -1,4 +1,5 @@
 export const HUD_MOUSE_GAMEPLAY_ACTIVE_CLASS = "wizards-mouse-gameplay-active";
+export const HUD_POINTER_LOCK_RESUME_GRACE_MS = 1800;
 
 export function setHudMouseGameplayActive(active: boolean) {
   if (typeof document === "undefined") return;
@@ -35,6 +36,14 @@ export function exitPointerLockIfActive() {
 export function dispatchHudGameplayModalOpened() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event("command-console-opened"));
+}
+
+export function getHudPointerLockNowMs() {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
+export function getHudPointerLockResumeGraceUntil(nowMs = getHudPointerLockNowMs()) {
+  return nowMs + HUD_POINTER_LOCK_RESUME_GRACE_MS;
 }
 
 export function shouldTreatPointerLockLossAsResumeGrace(options: {
