@@ -414,8 +414,8 @@ function ManaPickupPulse({
   onDone: () => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
-  const ringRefs = useRef<THREE.Mesh[]>([]);
-  const materialRefs = useRef<THREE.MeshBasicMaterial[]>([]);
+  const ringRefs = useLazyRef<THREE.Mesh[]>(() => []);
+  const materialRefs = useLazyRef<THREE.MeshBasicMaterial[]>(() => []);
   const startedClockAtRef = useRef<number | null>(null);
   const finishedRef = useRef(false);
   const lastMobileVisualUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
