@@ -90,6 +90,8 @@ const LazySurvivalScatterProps = lazy(loadSurvivalScatterProps);
 const LazySurvivalWaterFeatures = lazy(loadSurvivalWaterFeatures);
 const LazySurvivalWorldWillows = lazy(loadSurvivalWorldWillows);
 
+const survivalVillageKindPreloadScratch = new Set<SurvivalVillageKind>();
+const survivalLookaheadPrewarmByKeyScratch = new Map<string, SurvivalChunkInfo>();
 const survivalVillageRendererPreloads = new Map<SurvivalVillageKind, Promise<unknown>>();
 
 function preloadSurvivalVillageRenderer(kind: SurvivalVillageKind) {
@@ -125,6 +127,18 @@ function prewarmSurvivalChunkGeometry(chunk: SurvivalChunkInfo) {
   }
   if (chunk.hasRiver) {
     makeSurvivalRiverSurfaceGeometry(chunk, getSurvivalTerrainHeightForChunk);
+  }
+}
+
+function appendSurvivalLookaheadPrewarmChunks(
+  targetCx: number,
+  targetCz: number,
+  prewarmByKey: Map<string, SurvivalChunkInfo>,
+) {
+  const targetChunks = makeSurvivalChunks(targetCx, targetCz, true, SURVIVAL_RENDER_RADIUS);
+  for (const chunk of targetChunks) {
+    const key = `${chunk.key}:${chunk.lod}`;
+    if (!prewarmByKey.has(key)) prewarmByKey.set(key, chunk);
   }
 }
 
@@ -362,7 +376,8 @@ export function SurvivalProceduralWorld({
   useEffect(() => {
     if (typeof window === "undefined" || chunks.length === 0) return undefined;
 
-    const villageKinds = new Set<SurvivalVillageKind>();
+    const villageKinds = survivalVillageKindPreloadScratch;
+    villageKinds.clear();
     for (const chunk of chunks) {
       if (isLilyCoilQuestChunk(chunk.cx, chunk.cz)) {
         villageKinds.add("lily-coil");
@@ -373,13 +388,17 @@ export function SurvivalProceduralWorld({
         villageKinds.add(chunk.villageKind);
       }
     }
-    if (villageKinds.size === 0) return undefined;
+    if (villageKinds.size === 0) {
+      villageKinds.clear();
+      return undefined;
+    }
 
     let cancelled = false;
     const orderedKinds: SurvivalVillageKind[] = [];
     for (const kind of villageKinds) {
       orderedKinds.push(kind);
     }
+    villageKinds.clear();
     const task = scheduleSurvivalBackgroundTask(() => {
       if (cancelled) return;
       for (const kind of orderedKinds) {
@@ -401,18 +420,17 @@ export function SurvivalProceduralWorld({
     let task: SurvivalScheduledBackgroundTask | null = null;
     let timer: number | null = null;
     let index = 0;
-    const chunksToPrewarm = chunks.slice();
 
     const runPrewarmSlice = () => {
       task = null;
       if (cancelled) return;
 
-      if (index < chunksToPrewarm.length) {
-        prewarmSurvivalChunkGeometry(chunksToPrewarm[index]);
+      if (index < chunks.length) {
+        prewarmSurvivalChunkGeometry(chunks[index]);
         index += 1;
       }
 
-      if (index < chunksToPrewarm.length) {
+      if (index < chunks.length) {
         timer = window.setTimeout(() => {
           timer = null;
           task = scheduleSurvivalBackgroundTask(runPrewarmSlice, 900);
@@ -434,25 +452,22 @@ export function SurvivalProceduralWorld({
 
     const stepCx = travelLookaheadStep.cx;
     const stepCz = travelLookaheadStep.cz;
-    const targets: Array<{ cx: number; cz: number }> = [];
-    if (stepCx || stepCz) targets.push({ cx: centerChunk.cx + stepCx, cz: centerChunk.cz + stepCz });
-    if (stepCx) targets.push({ cx: centerChunk.cx + stepCx, cz: centerChunk.cz });
-    if (stepCz) targets.push({ cx: centerChunk.cx, cz: centerChunk.cz + stepCz });
-    if (targets.length === 0) return undefined;
+    if (!stepCx && !stepCz) return undefined;
 
-    const prewarmByKey = new Map<string, SurvivalChunkInfo>();
-    for (const target of targets) {
-      const targetChunks = makeSurvivalChunks(target.cx, target.cz, true, SURVIVAL_RENDER_RADIUS);
-      for (const chunk of targetChunks) {
-        const key = `${chunk.key}:${chunk.lod}`;
-        if (!prewarmByKey.has(key)) prewarmByKey.set(key, chunk);
-      }
+    const prewarmByKey = survivalLookaheadPrewarmByKeyScratch;
+    prewarmByKey.clear();
+
+    if (stepCx && stepCz) {
+      appendSurvivalLookaheadPrewarmChunks(centerChunk.cx + stepCx, centerChunk.cz + stepCz, prewarmByKey);
     }
+    if (stepCx) appendSurvivalLookaheadPrewarmChunks(centerChunk.cx + stepCx, centerChunk.cz, prewarmByKey);
+    if (stepCz) appendSurvivalLookaheadPrewarmChunks(centerChunk.cx, centerChunk.cz + stepCz, prewarmByKey);
 
     const prewarmChunks: SurvivalChunkInfo[] = [];
     for (const chunk of prewarmByKey.values()) {
       prewarmChunks.push(chunk);
     }
+    prewarmByKey.clear();
     let cancelled = false;
     let task: SurvivalScheduledBackgroundTask | null = null;
     let timer: number | null = null;
