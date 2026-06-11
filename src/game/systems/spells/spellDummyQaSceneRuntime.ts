@@ -128,6 +128,14 @@ export function reserveDirectFallbackSpellDummyHit(
   return true;
 }
 
+function copySpellDummyPrefix(dummies: SpellTestDummy[], endIndex: number) {
+  const next = new Array<SpellTestDummy>(endIndex);
+  for (let index = 0; index < endIndex; index += 1) {
+    next[index] = dummies[index];
+  }
+  return next;
+}
+
 export function applySpellDummyHit(dummies: SpellTestDummy[], hit: ParsedSpellDummyHit) {
   let next: SpellTestDummy[] | null = null;
   for (let index = 0; index < dummies.length; index++) {
@@ -145,7 +153,7 @@ export function applySpellDummyHit(dummies: SpellTestDummy[], hit: ParsedSpellDu
       lastHitAt: hit.at,
       downUntil: nextHealth <= 0 ? hit.at + SPELL_DUMMY_RESPAWN_MS : undefined,
     };
-    if (!next) next = dummies.slice(0, index);
+    if (!next) next = copySpellDummyPrefix(dummies, index);
     next.push(updated);
   }
   return next ?? dummies;
@@ -170,7 +178,7 @@ export function respawnExpiredSpellDummies(dummies: SpellTestDummy[], nowMs: num
       continue;
     }
 
-    if (!next) next = dummies.slice(0, index);
+    if (!next) next = copySpellDummyPrefix(dummies, index);
     next.push({ ...dummy, health: SPELL_DUMMY_MAX_HEALTH, downUntil: undefined });
   }
   return next ?? dummies;
