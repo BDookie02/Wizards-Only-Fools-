@@ -39,15 +39,21 @@ function updateQuestScriptPointDraft(
   pointId: string,
   updates: Partial<QuestScriptPoint>,
 ) {
-  const scriptPoints = program.scriptPoints.slice();
-  for (let index = 0; index < scriptPoints.length; index += 1) {
-    const point = scriptPoints[index];
-    if (point.id === pointId) {
-      scriptPoints[index] = { ...point, ...updates };
-      return { ...program, scriptPoints };
+  let pointIndex = -1;
+  for (let index = 0; index < program.scriptPoints.length; index += 1) {
+    if (program.scriptPoints[index].id === pointId) {
+      pointIndex = index;
+      break;
     }
   }
-  return program;
+  if (pointIndex < 0) return program;
+
+  const scriptPoints = new Array<QuestScriptPoint>(program.scriptPoints.length);
+  for (let index = 0; index < program.scriptPoints.length; index += 1) {
+    scriptPoints[index] = program.scriptPoints[index];
+  }
+  scriptPoints[pointIndex] = { ...program.scriptPoints[pointIndex], ...updates };
+  return { ...program, scriptPoints };
 }
 
 export function QuestNpcEditor() {
