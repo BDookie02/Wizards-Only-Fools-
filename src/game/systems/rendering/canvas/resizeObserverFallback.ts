@@ -1,20 +1,16 @@
-import { isCurrentQaTelemetryRouteEnabled } from "../../../tools/qa/qaRouteTelemetry";
+import { shouldPublishCanvasResizeObserverTelemetry } from "./canvasQaTelemetryRoute";
 
 type ResizeObserverFallbackTarget = Element;
 
 let resizeObserverDeliveryCount = 0;
 let resizeObserverSkippedDeliveryCount = 0;
 
-function shouldPublishResizeObserverTelemetry() {
-  return isCurrentQaTelemetryRouteEnabled(["perf", "hud", "aspect", "canvas", "touch", "spellDummies", "mountain", "survival"]);
-}
-
 function makeBoxSize(rect: DOMRectReadOnly): ResizeObserverSize[] {
   return [{ inlineSize: rect.width, blockSize: rect.height }];
 }
 
 function writeResizeObserverQaRect(prefix: string, rect: DOMRectReadOnly) {
-  if (!shouldPublishResizeObserverTelemetry()) return;
+  if (!shouldPublishCanvasResizeObserverTelemetry()) return;
   document.documentElement.dataset[prefix] = [
     Math.round(rect.width),
     Math.round(rect.height),
@@ -48,7 +44,7 @@ export class ImmediateResizeObserver implements ResizeObserver {
   observe(target: ResizeObserverFallbackTarget) {
     this.targets.add(target);
     writeResizeObserverQaRect("wofResizeObserverLastObservedRect", target.getBoundingClientRect());
-    if (shouldPublishResizeObserverTelemetry()) {
+    if (shouldPublishCanvasResizeObserverTelemetry()) {
       document.documentElement.dataset.wofResizeObserverObservedTargets = String(this.targets.size);
     }
     if (!this.pollTimeout && typeof window !== "undefined") {
@@ -111,14 +107,14 @@ export class ImmediateResizeObserver implements ResizeObserver {
     }
 
     if (entries.length === 0) {
-      if (shouldPublishResizeObserverTelemetry()) {
+      if (shouldPublishCanvasResizeObserverTelemetry()) {
         resizeObserverSkippedDeliveryCount += 1;
         document.documentElement.dataset.wofResizeObserverSkippedDeliveries = String(resizeObserverSkippedDeliveryCount);
       }
       return;
     }
 
-    if (shouldPublishResizeObserverTelemetry()) {
+    if (shouldPublishCanvasResizeObserverTelemetry()) {
       resizeObserverDeliveryCount += 1;
       document.documentElement.dataset.wofResizeObserverDeliveries = String(resizeObserverDeliveryCount);
       const firstEntry = entries[0];
@@ -147,14 +143,14 @@ type ResizeObserverFallbackOptions = {
 export function installResizeObserverFallback({ force = false }: ResizeObserverFallbackOptions = {}) {
   if (typeof window === "undefined") return;
   if (!force && typeof window.ResizeObserver !== "undefined") {
-    if (shouldPublishResizeObserverTelemetry()) {
+    if (shouldPublishCanvasResizeObserverTelemetry()) {
       document.documentElement.dataset.wofResizeObserverStatus = "native";
     }
     return;
   }
 
   window.ResizeObserver = ImmediateResizeObserver;
-  if (shouldPublishResizeObserverTelemetry()) {
+  if (shouldPublishCanvasResizeObserverTelemetry()) {
     document.documentElement.dataset.wofResizeObserverFallback = "1";
     document.documentElement.dataset.wofResizeObserverStatus = force ? "forced-fallback" : "fallback";
   }

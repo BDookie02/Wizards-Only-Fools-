@@ -1,9 +1,5 @@
 import * as THREE from "three";
-import { isCurrentQaTelemetryRouteEnabled } from "../../../tools/qa/qaRouteTelemetry";
-
-function shouldPublishRendererCreatedTelemetry() {
-  return isCurrentQaTelemetryRouteEnabled(["perf", "canvas", "hud", "aspect", "touch", "mountain", "survival"]);
-}
+import { shouldPublishCanvasLayoutTelemetry } from "./canvasQaTelemetryRoute";
 
 export function configureGameRenderer(gl: THREE.WebGLRenderer) {
   gl.outputColorSpace = THREE.SRGBColorSpace;
@@ -17,7 +13,7 @@ export function configureGameRenderer(gl: THREE.WebGLRenderer) {
   gl.domElement.style.setProperty("color-scheme", "only light");
   gl.domElement.style.setProperty("width", "100%");
   gl.domElement.style.setProperty("height", "100%");
-  if (shouldPublishRendererCreatedTelemetry()) {
+  if (shouldPublishCanvasLayoutTelemetry()) {
     document.documentElement.dataset.wofCanvasRendererCreated = "1";
   }
 }

@@ -7,19 +7,15 @@ import {
   getGameCanvasResizeSnapshot,
   type GameCanvasResizeSnapshot,
 } from "./canvasResizeRuntime";
+import { shouldPublishCanvasLayoutTelemetry } from "./canvasQaTelemetryRoute";
 import { applyGameCanvasElementSizing } from "./gameCanvasElementSizing";
-import { isCurrentQaTelemetryRouteEnabled } from "../../../tools/qa/qaRouteTelemetry";
-
-function shouldPublishCanvasResizeNudgeTelemetry() {
-  return isCurrentQaTelemetryRouteEnabled(["perf", "hud", "aspect", "canvas", "touch"]);
-}
 
 export function CanvasResizeNudge() {
   const aspectRatio = useGameStore(s => s.aspectRatio);
   const { camera, gl, invalidate, setSize } = useThree();
 
   useEffect(() => {
-    const publishTelemetry = shouldPublishCanvasResizeNudgeTelemetry();
+    const publishTelemetry = shouldPublishCanvasLayoutTelemetry();
     let raf = 0;
     let timeout = 0;
     let resizeApplyCount = 0;

@@ -1,4 +1,4 @@
-import { isCurrentQaTelemetryRouteEnabled } from "../../../tools/qa/qaRouteTelemetry";
+import { shouldPublishCanvasLayoutTelemetry } from "./canvasQaTelemetryRoute";
 
 export type GameCanvasSize = {
   width: number;
@@ -6,7 +6,7 @@ export type GameCanvasSize = {
 };
 
 function publishGameCanvasSizingQa(canvas: HTMLCanvasElement, size?: GameCanvasSize) {
-  if (!isCurrentQaTelemetryRouteEnabled(["perf", "hud", "aspect", "canvas", "touch", "mountain", "survival"])) return;
+  if (!shouldPublishCanvasLayoutTelemetry()) return;
 
   const rect = canvas.getBoundingClientRect();
   document.documentElement.dataset.wofGameCanvasCssSize = [

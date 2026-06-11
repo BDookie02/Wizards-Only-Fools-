@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   shouldMountCanvasRuntimeProbeFromSearch,
   shouldMountCurrentCanvasRuntimeProbe,
-} from "./canvasRuntimeProbeRoute";
+} from "./canvasQaTelemetryRoute";
 
 export function shouldPublishCanvasRuntimeFrameTelemetryFromSearch(search: string) {
   return shouldMountCanvasRuntimeProbeFromSearch(search);

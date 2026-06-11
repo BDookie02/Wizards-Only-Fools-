@@ -3,7 +3,7 @@ import { Suspense, useMemo, useEffect } from "react";
 import { SURVIVAL_BLOCK_SIZE, useGameStore } from "../store/gameStore";
 import { CanvasResizeNudge } from "./systems/rendering/canvas/CanvasResizeNudge";
 import { configureGameRenderer } from "./systems/rendering/canvas/configureGameRenderer";
-import { shouldMountCurrentCanvasRuntimeProbe } from "./systems/rendering/canvas/canvasRuntimeProbeRoute";
+import { shouldMountCurrentCanvasRuntimeProbe } from "./systems/rendering/canvas/canvasQaTelemetryRoute";
 import { applyGameCanvasElementSizing } from "./systems/rendering/canvas/gameCanvasElementSizing";
 import { ImmediateResizeObserver } from "./systems/rendering/canvas/resizeObserverFallback";
 import { getHorizonHillsTexture } from "./systems/rendering/sky/horizonHillsTexture";
