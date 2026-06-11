@@ -21,6 +21,12 @@ import { isMapUiBlockedByModal } from "./ui/hud/mapVisibilityRuntime";
 
 type LiveMiniMapPlayerPositionRef = MutableRefObject<{ x: number; z: number; angle: number; offsetX: number; offsetZ: number }>;
 
+function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
+  const ref = useRef<T | null>(null);
+  if (ref.current === null) ref.current = factory();
+  return ref as MutableRefObject<T>;
+}
+
 function syncLiveMiniMapPlayerFromPublishedState(playerPos: LiveMiniMapPlayerPositionRef["current"]) {
   const publishedPosition = getPublishedLocalPlayerPosition();
   if (publishedPosition) {
@@ -84,18 +90,18 @@ export function LiveMiniMap() {
     ? Math.max(3, Math.min(minViewportSide * 0.018, 8))
     : Math.max(8, Math.min(minViewportSide * 0.02, 16));
 
-  const playerPos = useRef({ x: 0, z: 0, angle: 0, offsetX: 0, offsetZ: 0 });
-  const oldClearColorRef = useRef(new THREE.Color());
-  const viewportRef = useRef(new THREE.Vector4());
-  const scissorRef = useRef(new THREE.Vector4());
-  const hiddenForMapRef = useRef<THREE.Object3D[]>([]);
-  const hiddenObjectCacheRef = useRef(createLiveMiniMapHiddenObjectCache());
+  const playerPos = useLazyRef(() => ({ x: 0, z: 0, angle: 0, offsetX: 0, offsetZ: 0 }));
+  const oldClearColorRef = useLazyRef(() => new THREE.Color());
+  const viewportRef = useLazyRef(() => new THREE.Vector4());
+  const scissorRef = useLazyRef(() => new THREE.Vector4());
+  const hiddenForMapRef = useLazyRef<THREE.Object3D[]>(() => []);
+  const hiddenObjectCacheRef = useLazyRef(() => createLiveMiniMapHiddenObjectCache());
   const delayRenderUntilRef = useRef(0);
   const pendingToggleDelayMsRef = useRef(0);
   const hasRenderedMapRef = useRef(false);
   const previousExpandedRef = useRef(isExpanded);
-  const lastRenderedPlayerRef = useRef({ x: Number.POSITIVE_INFINITY, z: Number.POSITIVE_INFINITY, expanded: false });
-  const mapCenterRef = useRef({ x: 0, z: 0 });
+  const lastRenderedPlayerRef = useLazyRef(() => ({ x: Number.POSITIVE_INFINITY, z: Number.POSITIVE_INFINITY, expanded: false }));
+  const mapCenterRef = useLazyRef(() => ({ x: 0, z: 0 }));
   const shouldTrackLiveMiniMapPlayer = !mapUiBlockedByModal && !(isExpanded && expandedMapPage === "world");
 
   useEffect(() => {
