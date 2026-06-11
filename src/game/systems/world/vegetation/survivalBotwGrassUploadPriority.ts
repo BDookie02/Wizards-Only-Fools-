@@ -16,6 +16,11 @@ const survivalBotwGrassUploadScoreBuckets: SurvivalBotwGrassBladeInstance[][] = 
 for (let index = 0; index < SURVIVAL_BOTW_GRASS_UPLOAD_SCORE_BUCKET_COUNT; index += 1) {
   survivalBotwGrassUploadScoreBuckets.push([]);
 }
+const survivalBotwGrassUploadViewerNearScratch: SurvivalBotwGrassBladeInstance[] = [];
+const survivalBotwGrassUploadLeadNearScratch: SurvivalBotwGrassBladeInstance[] = [];
+const survivalBotwGrassUploadViewerMidScratch: SurvivalBotwGrassBladeInstance[] = [];
+const survivalBotwGrassUploadLeadMidScratch: SurvivalBotwGrassBladeInstance[] = [];
+const survivalBotwGrassUploadFarScratch: SurvivalBotwGrassBladeInstance[] = [];
 
 function getSurvivalBotwGrassUploadScore(
   instance: SurvivalBotwGrassBladeInstance,
@@ -34,6 +39,14 @@ function clearSurvivalBotwGrassUploadScoreBuckets() {
   for (let index = 0; index < survivalBotwGrassUploadScoreBuckets.length; index += 1) {
     survivalBotwGrassUploadScoreBuckets[index].length = 0;
   }
+}
+
+function clearSurvivalBotwGrassUploadPriorityScratch() {
+  survivalBotwGrassUploadViewerNearScratch.length = 0;
+  survivalBotwGrassUploadLeadNearScratch.length = 0;
+  survivalBotwGrassUploadViewerMidScratch.length = 0;
+  survivalBotwGrassUploadLeadMidScratch.length = 0;
+  survivalBotwGrassUploadFarScratch.length = 0;
 }
 
 function appendSurvivalBotwGrassUploadBucketByScore(
@@ -79,11 +92,12 @@ export function getSurvivalBotwGrassUploadPrioritizedInstances(
 
   const nearRadiusSq = SURVIVAL_BOTW_GRASS_UPLOAD_NEAR_PRIORITY_RADIUS * SURVIVAL_BOTW_GRASS_UPLOAD_NEAR_PRIORITY_RADIUS;
   const midRadiusSq = SURVIVAL_BOTW_GRASS_UPLOAD_MID_PRIORITY_RADIUS * SURVIVAL_BOTW_GRASS_UPLOAD_MID_PRIORITY_RADIUS;
-  const viewerNear: SurvivalBotwGrassBladeInstance[] = [];
-  const leadNear: SurvivalBotwGrassBladeInstance[] = [];
-  const viewerMid: SurvivalBotwGrassBladeInstance[] = [];
-  const leadMid: SurvivalBotwGrassBladeInstance[] = [];
-  const far: SurvivalBotwGrassBladeInstance[] = [];
+  const viewerNear = survivalBotwGrassUploadViewerNearScratch;
+  const leadNear = survivalBotwGrassUploadLeadNearScratch;
+  const viewerMid = survivalBotwGrassUploadViewerMidScratch;
+  const leadMid = survivalBotwGrassUploadLeadMidScratch;
+  const far = survivalBotwGrassUploadFarScratch;
+  clearSurvivalBotwGrassUploadPriorityScratch();
 
   for (const instance of instances) {
     const viewerDx = instance.x - priority.viewerX;
@@ -111,5 +125,6 @@ export function getSurvivalBotwGrassUploadPrioritizedInstances(
   appendSurvivalBotwGrassUploadBucketByScore(viewerMid, midRadiusSq, priority, ordered);
   appendSurvivalBotwGrassUploadBucketByScore(leadMid, midRadiusSq, priority, ordered);
   for (const instance of far) ordered.push(instance);
+  clearSurvivalBotwGrassUploadPriorityScratch();
   return ordered;
 }
