@@ -20,6 +20,15 @@ export const SVG_PALM_X = (PALM_X / 859) * 256;
 export const SVG_PALM_Y = (PALM_Y / 495) * 144;
 
 const handsFrameCache: Record<string, HTMLCanvasElement> = {};
+let handPixelFilterScratchCanvas: HTMLCanvasElement | null = null;
+
+function getHandPixelFilterScratchCanvas(width: number, height: number) {
+  const canvas = handPixelFilterScratchCanvas ?? document.createElement("canvas");
+  handPixelFilterScratchCanvas = canvas;
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
 
 function applyHandPixelFilter(canvas: HTMLCanvasElement) {
   const width = canvas.width;
@@ -32,9 +41,7 @@ function applyHandPixelFilter(canvas: HTMLCanvasElement) {
 
   const pixelWidth = Math.max(1, Math.round(width * scale));
   const pixelHeight = Math.max(1, Math.round(height * scale));
-  const tiny = document.createElement("canvas");
-  tiny.width = pixelWidth;
-  tiny.height = pixelHeight;
+  const tiny = getHandPixelFilterScratchCanvas(pixelWidth, pixelHeight);
   const tinyCtx = tiny.getContext("2d");
   const ctx = canvas.getContext("2d");
   if (!tinyCtx || !ctx) return;
