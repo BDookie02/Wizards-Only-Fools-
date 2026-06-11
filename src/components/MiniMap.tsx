@@ -25,6 +25,9 @@ import {
 import { getExpandedMapControllerPollResult, type MapDirection } from "../game/ui/hud/mapControllerRuntime";
 import { canOpenCompactMap, isMapUiBlockedByModal } from "../game/ui/hud/mapVisibilityRuntime";
 import { useMiniMapPlayerTracking } from "../game/ui/hud/useMiniMapPlayerTracking";
+import { useLazyRef } from "../game/systems/react/useLazyRef";
+
+const EMPTY_MAP_CONTROL_IDS: MapControlId[] = [];
 
 export function MiniMap() {
   useEffect(() => {
@@ -62,10 +65,10 @@ export function MiniMap() {
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   
   const lastMapToggleRef = useRef(0);
-  const mapControlRefs = useRef(new Map<MapControlId, HTMLButtonElement>());
+  const mapControlRefs = useLazyRef(() => new Map<MapControlId, HTMLButtonElement>());
   const villageControlsRef = useRef<HTMLDivElement>(null);
   const controllerFocusIdRef = useRef<MapControlId>("page-live");
-  const visibleMapControlIdsRef = useRef<MapControlId[]>(["page-live", "page-world", "close"]);
+  const visibleMapControlIdsRef = useLazyRef<MapControlId[]>(() => ["page-live", "page-world", "close"]);
 
   const [fullMapUnavailable, setFullMapUnavailable] = useState(false);
   const [controllerFocusId, setControllerFocusId] = useState<MapControlId>("page-live");
@@ -128,8 +131,14 @@ export function MiniMap() {
     requestMapToggle(e.timeStamp);
   };
 
-  const fullMapPlayerMarker = getFullMapMarkerPosition(playerPosition);
-  const fullMapWaypointMarker = mapWaypoint ? getFullMapMarkerPosition(mapWaypoint) : null;
+  const fullMapPlayerMarker = useMemo(
+    () => isExpanded && expandedMapPage === "world" ? getFullMapMarkerPosition(playerPosition) : null,
+    [expandedMapPage, isExpanded, playerPosition],
+  );
+  const fullMapWaypointMarker = useMemo(
+    () => isExpanded && expandedMapPage === "world" && mapWaypoint ? getFullMapMarkerPosition(mapWaypoint) : null,
+    [expandedMapPage, isExpanded, mapWaypoint],
+  );
   const questNavigationTargets = useMemo(() => getActiveQuestNavigationTargets({
     spellQuestAssignments,
     questFlags,
@@ -138,9 +147,16 @@ export function MiniMap() {
   }), [questFlags, questNpcPrograms, questUnlockedSpells, spellQuestAssignments]);
   const primaryQuestTarget = questNavigationTargets[0] ?? null;
   const compactWaypointMarker = getWaypointNavigationMarker(mapWaypoint, playerPosition, 38);
-  const currentBlockBounds = getSurvivalBlockBounds(playerPosition);
-  const expandedPlayerMarker = getBlockMapMarkerPosition(playerPosition, currentBlockBounds, 0);
-  const expandedWaypointMarker = mapWaypoint ? getBlockMapMarkerPosition(mapWaypoint, currentBlockBounds, 4) : null;
+  const expandedBlockBounds = useMemo(
+    () => isExpanded && expandedMapPage === "live" ? getSurvivalBlockBounds(playerPosition) : null,
+    [expandedMapPage, isExpanded, playerPosition],
+  );
+  const expandedPlayerMarker = expandedBlockBounds
+    ? getBlockMapMarkerPosition(playerPosition, expandedBlockBounds, 0)
+    : null;
+  const expandedWaypointMarker = expandedBlockBounds && mapWaypoint
+    ? getBlockMapMarkerPosition(mapWaypoint, expandedBlockBounds, 4)
+    : null;
   const waypointDistance = mapWaypoint ? getRoundedPlanarDistance(mapWaypoint, playerPosition) : null;
   const questDistance = primaryQuestTarget ? getRoundedPlanarDistance(primaryQuestTarget, playerPosition) : null;
   const compactStatusText = waypointDistance === null
@@ -159,10 +175,13 @@ export function MiniMap() {
       : `QUEST ${questDistance}m`
     : `WP ${waypointDistance}m`;
   const visibleMapControlIds = useMemo(
-    () => getVisibleMapControlIds(expandedMapPage, Boolean(mapWaypoint)),
-    [expandedMapPage, mapWaypoint],
+    () => isExpanded ? getVisibleMapControlIds(expandedMapPage, Boolean(mapWaypoint)) : EMPTY_MAP_CONTROL_IDS,
+    [expandedMapPage, isExpanded, mapWaypoint],
   );
-  const expandedMapFrameStyle = getExpandedMapFrameStyle(expandedMapPage);
+  const expandedMapFrameStyle = useMemo(
+    () => isExpanded ? getExpandedMapFrameStyle(expandedMapPage) : undefined,
+    [expandedMapPage, isExpanded],
+  );
   const controllerFocusClass = (id: MapControlId) => (
     isExpanded && controllerFocusId === id
       ? " ring-2 ring-amber-300 ring-offset-2 ring-offset-black"
@@ -484,8 +503,8 @@ export function MiniMap() {
                  <div
                    className="absolute z-20 h-7 w-7 filter drop-shadow-[0_2px_5px_black]"
                    style={{
-                     left: `${fullMapPlayerMarker.left}%`,
-                     top: `${fullMapPlayerMarker.top}%`,
+                     left: `${fullMapPlayerMarker?.left ?? 50}%`,
+                     top: `${fullMapPlayerMarker?.top ?? 50}%`,
                      transformOrigin: '50% 50%',
                      transform: `translate(-50%, -50%) rotate(${playerPosition.angle}rad)`,
                    }}
@@ -532,8 +551,8 @@ export function MiniMap() {
                    id="minimap-expanded-player-icon"
                    ref={expandedPlayerIconRef}
                    style={{
-                      left: `${expandedPlayerMarker.left}%`,
-                      top: `${expandedPlayerMarker.top}%`,
+                      left: `${expandedPlayerMarker?.left ?? 50}%`,
+                      top: `${expandedPlayerMarker?.top ?? 50}%`,
                       transformOrigin: '50% 50%',
                       transform: `translate(-50%, -50%)`
                    }}
