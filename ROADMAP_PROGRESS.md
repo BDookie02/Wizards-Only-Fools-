@@ -37,6 +37,7 @@ Done:
 - Extended the shared QA route helper to own cached route parameter reads for spell-dummy, grass-inspection, and survival-walk routes, removing more direct browser-search parsing from gameplay/world QA callers.
 - Extracted survival chunk types, render/collision radii, terrain segment tuning, biome blend tuning, and stream-delay timing into `src/game/systems/world/survival/survivalWorldConfig.ts`.
 - Extracted survival sky/day-night rendering into `src/game/systems/rendering/sky/SurvivalSkyCycle.tsx`.
+- Added cached `qaSurvivalTime` / `qaTimeOfDay` route parsing in `survivalSkyCycleMath.ts`, keeping terrain tint and sky callers on the same rendering-owned time override helper.
 - Extracted quest navigation beacons into `src/game/systems/quests/QuestNavigationBeacons.tsx`.
 - Extracted staged survival decoration loading, background scheduling, and QA/chunk-position helpers into `src/game/systems/world/survival/`.
 - Extracted survival/desert/mountain terrain detail texture generation into `src/game/systems/world/terrain/survivalTerrainTextures.ts`.
@@ -839,6 +840,9 @@ Next:
 
 ## Latest Verification
 
+- Focused survival sky time-route cleanup: `survivalSkyCycleMath.ts` now caches `qaSurvivalTime` / `qaTimeOfDay` override parsing by current search string through `getQaSurvivalTimeOverrideSecondsFromSearch()`, while the existing `getQaSurvivalTimeOverrideSeconds()` API remains the current-route wrapper for sky and terrain callers.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the survival sky time-route QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the survival sky time-route cleanup. Sprite verification passed; current warning remains chunk size only. `GameWorld` is about 26.05 kB / 9.25 kB gzip.
 - Focused input route-cache cleanup: `browserDisplayMode.ts` now exposes `shouldUseRemoteMouseLookFallbackFromSearch()` and caches the current `remoteInput` / `rustdesk` / `qaHideMenu` route result for unchanged search strings. HUD pointer-lock and relock behavior still calls `shouldUseRemoteMouseLookFallback()` through the same input-owned boundary.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the input route-cache QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the input route-cache cleanup. Sprite verification passed; current warning remains chunk size only. `HUD` is about 80.56 kB / 24.11 kB gzip.

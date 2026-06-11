@@ -1,5 +1,8 @@
 import { DAY_NIGHT_CYCLE_SECONDS } from "../../../../store/gameStore";
 
+let cachedQaSurvivalTimeSearch: string | null = null;
+let cachedQaSurvivalTimeOverrideSeconds: number | null = null;
+
 export function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
@@ -20,18 +23,35 @@ export function getSurvivalDayNightCycle(elapsedSeconds: number) {
   return { phase, sunAngle, sunHeight, dayAmount, nightAmount, duskAmount };
 }
 
-export function getQaSurvivalTimeOverrideSeconds() {
-  if (typeof window === "undefined") return null;
-  const params = new URLSearchParams(window.location.search);
+export function getQaSurvivalTimeOverrideSecondsFromSearch(search: string) {
+  if (search === cachedQaSurvivalTimeSearch) return cachedQaSurvivalTimeOverrideSeconds;
+  const params = new URLSearchParams(search);
   const raw = params.get("qaSurvivalTime") || params.get("qaTimeOfDay");
-  if (!raw) return null;
+  if (!raw) {
+    cachedQaSurvivalTimeSearch = search;
+    cachedQaSurvivalTimeOverrideSeconds = null;
+    return null;
+  }
 
   const value = raw.trim().toLowerCase();
-  if (value === "day" || value === "noon") return DAY_NIGHT_CYCLE_SECONDS * 0.07;
-  if (value === "night" || value === "midnight") return DAY_NIGHT_CYCLE_SECONDS * 0.57;
+  let overrideSeconds: number | null = null;
+  if (value === "day" || value === "noon") {
+    overrideSeconds = DAY_NIGHT_CYCLE_SECONDS * 0.07;
+  } else if (value === "night" || value === "midnight") {
+    overrideSeconds = DAY_NIGHT_CYCLE_SECONDS * 0.57;
+  } else {
+    const numericValue = Number(value);
+    overrideSeconds = Number.isFinite(numericValue) ? Math.max(0, numericValue) : null;
+  }
 
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? Math.max(0, numericValue) : null;
+  cachedQaSurvivalTimeSearch = search;
+  cachedQaSurvivalTimeOverrideSeconds = overrideSeconds;
+  return overrideSeconds;
+}
+
+export function getQaSurvivalTimeOverrideSeconds() {
+  if (typeof window === "undefined") return null;
+  return getQaSurvivalTimeOverrideSecondsFromSearch(window.location.search);
 }
 
 export function getEffectiveSurvivalCycleElapsedSeconds(
