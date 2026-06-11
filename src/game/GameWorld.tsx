@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { Suspense, useMemo, useEffect, useState } from "react";
+import { Suspense, useMemo, useEffect } from "react";
 import { SURVIVAL_BLOCK_SIZE, useGameStore } from "../store/gameStore";
 import { CanvasRuntimeProbe } from "./systems/rendering/canvas/CanvasRuntimeProbe";
 import { CanvasResizeNudge } from "./systems/rendering/canvas/CanvasResizeNudge";
@@ -21,7 +21,7 @@ import { LazyBaseVillageScene, LazyClassicSkyEnvironment, LazyDevSpellTestDummie
 import { useBaseVillageRenderState } from "./systems/world/villages/baseVillageVisibility";
 import { publishGameWorldModeTelemetry } from "./systems/world/gameWorldTelemetry";
 import { isMobilePerformanceMode } from "./systems/input/performanceMode";
-import { isCurrentQaTelemetryRouteEnabled } from "./tools/qa/qaRouteTelemetry";
+import { useSpellDummyQaMountGate } from "./tools/qa/useSpellDummyQaMountGate";
 
 export function GameWorld() {
   const gameMode = useGameStore(s => s.gameMode);
@@ -51,14 +51,7 @@ export function GameWorld() {
   } = useBaseVillageRenderState(isSurvivalMode);
 
   const hillsTexture = useMemo(() => getHorizonHillsTexture(), []);
-  const spellDummyQaRequested = useMemo(() => isCurrentQaTelemetryRouteEnabled(["spellDummies"]), []);
-  const [mountSpellDummyQa, setMountSpellDummyQa] = useState(false);
-
-  useEffect(() => {
-    if (!spellDummyQaRequested) return;
-    const timeout = window.setTimeout(() => setMountSpellDummyQa(true), 650);
-    return () => window.clearTimeout(timeout);
-  }, [spellDummyQaRequested]);
+  const { mountSpellDummyQaNow, shouldMountSpellDummyQa } = useSpellDummyQaMountGate();
 
   return (
     <Canvas 
@@ -71,13 +64,13 @@ export function GameWorld() {
       onCreated={({ gl }) => {
         applyGameCanvasElementSizing(gl.domElement);
         configureGameRenderer(gl);
-        if (spellDummyQaRequested) setMountSpellDummyQa(true);
+        mountSpellDummyQaNow();
       }}
       style={canvasStyle}
     >
       <CanvasRuntimeProbe />
       <CanvasResizeNudge />
-      {mountSpellDummyQa && (
+      {shouldMountSpellDummyQa && (
         <Suspense fallback={null}>
           <LazyDevSpellTestDummies />
         </Suspense>
