@@ -11,10 +11,7 @@ import {
 } from "../../../store/gameStore";
 import { formatKeyboardCode, isValidHexColor, normalizeHexInput } from "./hudSettingsUtils";
 import {
-  characterBackIndex,
-  keybindBackIndex,
-  videoBackIndex,
-  voiceBackIndex,
+  getSettingsBackIndexForPane,
   type SettingsPane,
 } from "./hudSettingsPanelConfig";
 
@@ -31,10 +28,7 @@ export function isSettingsIndexFocused(pauseMenuIndex: number, index: number) {
 }
 
 export function getSettingsBackIndex(settingsPane: SettingsPane) {
-  if (settingsPane === "video") return videoBackIndex;
-  if (settingsPane === "keybinds") return keybindBackIndex;
-  if (settingsPane === "voice") return voiceBackIndex;
-  return characterBackIndex;
+  return getSettingsBackIndexForPane(settingsPane);
 }
 
 const settingsMenuStyles: Record<SettingsPane, CSSProperties> = {

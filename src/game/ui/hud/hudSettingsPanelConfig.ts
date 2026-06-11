@@ -33,11 +33,25 @@ export const characterMouthStartIndex = characterStyleStartIndex + characterStyl
 export const characterBackIndex = characterMouthStartIndex + characterMouthRows.length;
 export const settingsCharacterActionCount = characterBackIndex + 1;
 
+export type SettingsPaneMetadata = {
+  tabIndex: number;
+  backIndex: number;
+  actionCount: number;
+};
+
+export const settingsPaneMetadata: Record<SettingsPane, SettingsPaneMetadata> = {
+  video: { tabIndex: 0, backIndex: videoBackIndex, actionCount: settingsVideoActionCount },
+  keybinds: { tabIndex: 1, backIndex: keybindBackIndex, actionCount: settingsKeybindActionCount },
+  voice: { tabIndex: 2, backIndex: voiceBackIndex, actionCount: settingsVoiceActionCount },
+  character: { tabIndex: 3, backIndex: characterBackIndex, actionCount: settingsCharacterActionCount },
+};
+
 export function getSettingsActionCount(settingsPane: SettingsPane) {
-  if (settingsPane === "video") return settingsVideoActionCount;
-  if (settingsPane === "keybinds") return settingsKeybindActionCount;
-  if (settingsPane === "voice") return settingsVoiceActionCount;
-  return settingsCharacterActionCount;
+  return settingsPaneMetadata[settingsPane].actionCount;
+}
+
+export function getSettingsBackIndexForPane(settingsPane: SettingsPane) {
+  return settingsPaneMetadata[settingsPane].backIndex;
 }
 
 export function getSettingsPaneForTabIndex(index: number): SettingsPane | null {
