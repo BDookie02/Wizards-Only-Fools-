@@ -88,6 +88,10 @@ function sortSurvivalTutorialGrassBatchCellsIfNeeded(cells: SurvivalTutorialGras
   return cells;
 }
 
+const survivalTutorialGrassReconcileTargetMap = new Map<string, SurvivalTutorialGrassCell>();
+const survivalTutorialGrassReconcileSeenKeys = new Set<string>();
+const survivalTutorialGrassBatchMap = new Map<string, SurvivalTutorialGrassCellBatch>();
+
 export function getSurvivalTutorialGrassCellCoord(value: number) {
   return Math.floor(value / SURVIVAL_TUTORIAL_GRASS_CELL_SIZE);
 }
@@ -165,12 +169,15 @@ export function reconcileSurvivalTutorialGrassVisibleCells(
   targetCells: SurvivalTutorialGrassCell[],
   addCount: number,
 ) {
-  const targetMap = new Map<string, SurvivalTutorialGrassCell>();
+  const targetMap = survivalTutorialGrassReconcileTargetMap;
+  const seenKeys = survivalTutorialGrassReconcileSeenKeys;
+  targetMap.clear();
+  seenKeys.clear();
+
   for (const cell of targetCells) {
     targetMap.set(cell.key, cell);
   }
   const nextCells: SurvivalTutorialGrassCell[] = [];
-  const seenKeys = new Set<string>();
   let remainingWork = Math.max(0, addCount);
 
   for (const cell of previousCells) {
@@ -222,7 +229,10 @@ export function reconcileSurvivalTutorialGrassVisibleCells(
     }
   }
 
-  return unchanged ? previousCells : orderedNextCells;
+  const result = unchanged ? previousCells : orderedNextCells;
+  targetMap.clear();
+  seenKeys.clear();
+  return result;
 }
 
 export function getSurvivalTutorialGrassCellBatchSignature(cells: SurvivalTutorialGrassCell[]) {
@@ -236,7 +246,8 @@ export function getSurvivalTutorialGrassCellBatchSignature(cells: SurvivalTutori
 }
 
 export function makeSurvivalTutorialGrassCellBatches(cells: SurvivalTutorialGrassCell[]) {
-  const batches = new Map<string, SurvivalTutorialGrassCellBatch>();
+  const batches = survivalTutorialGrassBatchMap;
+  batches.clear();
 
   for (const cell of cells) {
     const batchX = Math.floor(cell.cellX / SURVIVAL_TUTORIAL_GRASS_BATCH_CELL_SPAN);
@@ -259,5 +270,7 @@ export function makeSurvivalTutorialGrassCellBatches(cells: SurvivalTutorialGras
     sortedBatches.push(batch);
   }
 
-  return sortSurvivalTutorialGrassCellBatchesByDistanceIfNeeded(sortedBatches);
+  const result = sortSurvivalTutorialGrassCellBatchesByDistanceIfNeeded(sortedBatches);
+  batches.clear();
+  return result;
 }

@@ -61,6 +61,9 @@ function sortSurvivalLocalGrassCellsByDistanceIfNeeded(cells: SurvivalLocalGrass
   return cells;
 }
 
+const survivalLocalGrassReconcileTargetMap = new Map<string, SurvivalLocalGrassCell>();
+const survivalLocalGrassReconcileSeenKeys = new Set<string>();
+
 export function getSurvivalLocalGrassCellCoord(value: number) {
   return Math.floor(value / SURVIVAL_LOCAL_GRASS_CELL_SIZE);
 }
@@ -145,12 +148,15 @@ export function reconcileSurvivalLocalGrassVisibleCells(
   targetCells: SurvivalLocalGrassCell[],
   addCount: number,
 ) {
-  const targetMap = new Map<string, SurvivalLocalGrassCell>();
+  const targetMap = survivalLocalGrassReconcileTargetMap;
+  const seenKeys = survivalLocalGrassReconcileSeenKeys;
+  targetMap.clear();
+  seenKeys.clear();
+
   for (const cell of targetCells) {
     targetMap.set(cell.key, cell);
   }
   const nextCells: SurvivalLocalGrassCell[] = [];
-  const seenKeys = new Set<string>();
 
   for (const cell of previousCells) {
     const nextCell = targetMap.get(cell.key);
@@ -179,7 +185,10 @@ export function reconcileSurvivalLocalGrassVisibleCells(
     }
   }
 
-  return unchanged ? previousCells : orderedNextCells;
+  const result = unchanged ? previousCells : orderedNextCells;
+  targetMap.clear();
+  seenKeys.clear();
+  return result;
 }
 
 export function useSurvivalLocalGrassCellLoadStage(cell: SurvivalLocalGrassCell) {
