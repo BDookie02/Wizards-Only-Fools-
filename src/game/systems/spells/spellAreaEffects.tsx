@@ -60,6 +60,98 @@ type MeteorConfig = {
   particles: MeteorExplosionParticle[];
 };
 
+function makeTornadoBandConfigs(): TornadoBandConfig[] {
+  const bands: TornadoBandConfig[] = [];
+  for (let bandIndex = 0; bandIndex < TORNADO_BAND_COUNT; bandIndex += 1) {
+    const t = bandIndex / (TORNADO_BAND_COUNT - 1);
+    const radius = THREE.MathUtils.lerp(0.6, 4.9, t);
+    const y = THREE.MathUtils.lerp(0.32, 7.75, t);
+    const height = THREE.MathUtils.lerp(0.28, 0.48, t);
+    const thickness = THREE.MathUtils.lerp(0.18, 0.34, t);
+    const pieces = 4 + Math.round(t * 4);
+    const boxes: TornadoBoxInstance[] = [];
+    for (let pieceIndex = 0; pieceIndex < pieces; pieceIndex += 1) {
+      const angle = (pieceIndex / pieces) * Math.PI * 2 + bandIndex * 0.72;
+      boxes.push({
+        x: Math.cos(angle) * radius,
+        y: 0,
+        z: Math.sin(angle) * radius,
+        w: THREE.MathUtils.lerp(1.3, 2.8, t) * (pieceIndex % 3 === 0 ? 1.15 : 1),
+        h: height,
+        d: thickness,
+        rotationY: Math.PI / 2 - angle,
+        color: pieceIndex % 4 === 0 ? "#f8fafc" : pieceIndex % 3 === 0 ? "#6b7280" : pieceIndex % 2 === 0 ? "#d1d5db" : "#9ca3af",
+      });
+    }
+    bands.push({ boxes, y });
+  }
+  return bands;
+}
+
+function makeTornadoGroundDustBoxes(): TornadoBoxInstance[] {
+  const boxes: TornadoBoxInstance[] = [];
+  for (let index = 0; index < TORNADO_GROUND_DUST_COUNT; index += 1) {
+    const angle = (index / TORNADO_GROUND_DUST_COUNT) * Math.PI * 2;
+    const radius = 2.45 + (index % 5) * 0.68;
+    boxes.push({
+      x: Math.cos(angle) * radius,
+      y: 0.05,
+      z: Math.sin(angle) * radius,
+      w: 0.36 + (index % 4) * 0.14,
+      h: 0.12,
+      d: 0.22,
+      color: index % 4 === 0 ? "#d1d5db" : index % 4 === 1 ? "#9ca3af" : index % 4 === 2 ? "#6b7280" : "#a16207",
+      rotationY: angle,
+    });
+  }
+  return boxes;
+}
+
+function makeTornadoLoosePixelBoxes(): TornadoBoxInstance[] {
+  const boxes: TornadoBoxInstance[] = [];
+  for (let index = 0; index < TORNADO_LOOSE_PIXEL_COUNT; index += 1) {
+    const t = index / (TORNADO_LOOSE_PIXEL_COUNT - 1);
+    const angle = t * Math.PI * 9.5;
+    const radius = THREE.MathUtils.lerp(1.0, 5.4, t);
+    const size = THREE.MathUtils.lerp(0.22, 0.42, 1 - t);
+    boxes.push({
+      x: Math.cos(angle) * radius,
+      y: THREE.MathUtils.lerp(0.6, 7.6, t),
+      z: Math.sin(angle) * radius,
+      w: size,
+      h: size,
+      d: size,
+      color: index % 3 === 0 ? "#f8fafc" : index % 3 === 1 ? "#9ca3af" : "#4b5563",
+    });
+  }
+  return boxes;
+}
+
+function makeTornadoOrbitingParticleBoxes(): TornadoBoxInstance[] {
+  const boxes: TornadoBoxInstance[] = [];
+  for (let index = 0; index < TORNADO_ORBIT_PIXEL_COUNT; index += 1) {
+    const t = index / (TORNADO_ORBIT_PIXEL_COUNT - 1);
+    const angle = t * Math.PI * 15.5;
+    const radius = THREE.MathUtils.lerp(1.35, 7.85, t) + ((index % 5) - 2) * 0.18;
+    boxes.push({
+      x: Math.cos(angle) * radius,
+      y: THREE.MathUtils.lerp(0.28, 8.2, t),
+      z: Math.sin(angle) * radius,
+      w: THREE.MathUtils.lerp(0.22, 0.7, 1 - Math.abs(t - 0.42)),
+      h: THREE.MathUtils.lerp(0.14, 0.32, 1 - t),
+      d: THREE.MathUtils.lerp(0.12, 0.22, t),
+      color: index % 5 === 0 ? "#f8fafc" : index % 5 === 1 ? "#d1d5db" : index % 5 === 2 ? "#9ca3af" : index % 5 === 3 ? "#4b5563" : "#a16207",
+      rotationY: Math.PI / 2 - angle,
+    });
+  }
+  return boxes;
+}
+
+const TORNADO_BAND_CONFIGS = makeTornadoBandConfigs();
+const TORNADO_GROUND_DUST_BOXES = makeTornadoGroundDustBoxes();
+const TORNADO_LOOSE_PIXEL_BOXES = makeTornadoLoosePixelBoxes();
+const TORNADO_ORBITING_PARTICLE_BOXES = makeTornadoOrbitingParticleBoxes();
+
 export function TornadoSpell({ projectile }: { projectile: Projectile }) {
   useProjectileLifetime(projectile.id, TORNADO_DURATION);
   const rootRef = useRef<THREE.Group>(null);
@@ -72,89 +164,6 @@ export function TornadoSpell({ projectile }: { projectile: Projectile }) {
     [projectile.pos.x, projectile.pos.y, projectile.pos.z]
   );
   const canPullLocalPlayer = isRemoteProjectileCreator(projectile);
-  const tornadoBands = useMemo(() => {
-    const bands: TornadoBandConfig[] = [];
-    for (let bandIndex = 0; bandIndex < TORNADO_BAND_COUNT; bandIndex += 1) {
-      const t = bandIndex / (TORNADO_BAND_COUNT - 1);
-      const radius = THREE.MathUtils.lerp(0.6, 4.9, t);
-      const y = THREE.MathUtils.lerp(0.32, 7.75, t);
-      const height = THREE.MathUtils.lerp(0.28, 0.48, t);
-      const thickness = THREE.MathUtils.lerp(0.18, 0.34, t);
-      const pieces = 4 + Math.round(t * 4);
-      const boxes: TornadoBoxInstance[] = [];
-      for (let pieceIndex = 0; pieceIndex < pieces; pieceIndex += 1) {
-        const angle = (pieceIndex / pieces) * Math.PI * 2 + bandIndex * 0.72;
-        boxes.push({
-          x: Math.cos(angle) * radius,
-          y: 0,
-          z: Math.sin(angle) * radius,
-          w: THREE.MathUtils.lerp(1.3, 2.8, t) * (pieceIndex % 3 === 0 ? 1.15 : 1),
-          h: height,
-          d: thickness,
-          rotationY: Math.PI / 2 - angle,
-          color: pieceIndex % 4 === 0 ? "#f8fafc" : pieceIndex % 3 === 0 ? "#6b7280" : pieceIndex % 2 === 0 ? "#d1d5db" : "#9ca3af",
-        });
-      }
-      bands.push({ boxes, y });
-    }
-    return bands;
-  }, []);
-  const groundDustBoxes = useMemo(() => {
-    const boxes: TornadoBoxInstance[] = [];
-    for (let index = 0; index < TORNADO_GROUND_DUST_COUNT; index += 1) {
-      const angle = (index / TORNADO_GROUND_DUST_COUNT) * Math.PI * 2;
-      const radius = 2.45 + (index % 5) * 0.68;
-      boxes.push({
-        x: Math.cos(angle) * radius,
-        y: 0.05,
-        z: Math.sin(angle) * radius,
-        w: 0.36 + (index % 4) * 0.14,
-        h: 0.12,
-        d: 0.22,
-        color: index % 4 === 0 ? "#d1d5db" : index % 4 === 1 ? "#9ca3af" : index % 4 === 2 ? "#6b7280" : "#a16207",
-        rotationY: angle,
-      });
-    }
-    return boxes;
-  }, []);
-  const loosePixelBoxes = useMemo(() => {
-    const boxes: TornadoBoxInstance[] = [];
-    for (let index = 0; index < TORNADO_LOOSE_PIXEL_COUNT; index += 1) {
-      const t = index / (TORNADO_LOOSE_PIXEL_COUNT - 1);
-      const angle = t * Math.PI * 9.5;
-      const radius = THREE.MathUtils.lerp(1.0, 5.4, t);
-      const size = THREE.MathUtils.lerp(0.22, 0.42, 1 - t);
-      boxes.push({
-        x: Math.cos(angle) * radius,
-        y: THREE.MathUtils.lerp(0.6, 7.6, t),
-        z: Math.sin(angle) * radius,
-        w: size,
-        h: size,
-        d: size,
-        color: index % 3 === 0 ? "#f8fafc" : index % 3 === 1 ? "#9ca3af" : "#4b5563",
-      });
-    }
-    return boxes;
-  }, []);
-  const orbitingParticleBoxes = useMemo(() => {
-    const boxes: TornadoBoxInstance[] = [];
-    for (let index = 0; index < TORNADO_ORBIT_PIXEL_COUNT; index += 1) {
-      const t = index / (TORNADO_ORBIT_PIXEL_COUNT - 1);
-      const angle = t * Math.PI * 15.5;
-      const radius = THREE.MathUtils.lerp(1.35, 7.85, t) + ((index % 5) - 2) * 0.18;
-      boxes.push({
-        x: Math.cos(angle) * radius,
-        y: THREE.MathUtils.lerp(0.28, 8.2, t),
-        z: Math.sin(angle) * radius,
-        w: THREE.MathUtils.lerp(0.22, 0.7, 1 - Math.abs(t - 0.42)),
-        h: THREE.MathUtils.lerp(0.14, 0.32, 1 - t),
-        d: THREE.MathUtils.lerp(0.12, 0.22, t),
-        color: index % 5 === 0 ? "#f8fafc" : index % 5 === 1 ? "#d1d5db" : index % 5 === 2 ? "#9ca3af" : index % 5 === 3 ? "#4b5563" : "#a16207",
-        rotationY: Math.PI / 2 - angle,
-      });
-    }
-    return boxes;
-  }, []);
 
   useEffect(() => {
     publishSpellDummyAreaHit(projectile, center, TORNADO_RADIUS, getSpellDummyDamage("tornado"));
@@ -225,9 +234,9 @@ export function TornadoSpell({ projectile }: { projectile: Projectile }) {
           toneMapped={false}
         />
       </mesh>
-      <TornadoInstancedBoxes boxes={groundDustBoxes} opacity={0.46} />
+      <TornadoInstancedBoxes boxes={TORNADO_GROUND_DUST_BOXES} opacity={0.46} />
       <group ref={swirlRef}>
-        {tornadoBands.map((band, bandIndex) => (
+        {TORNADO_BAND_CONFIGS.map((band, bandIndex) => (
           <group
             key={bandIndex}
             ref={(group) => { bandRefs.current[bandIndex] = group; }}
@@ -239,8 +248,8 @@ export function TornadoSpell({ projectile }: { projectile: Projectile }) {
             />
           </group>
         ))}
-        <TornadoInstancedBoxes boxes={loosePixelBoxes} opacity={0.7} />
-        <TornadoInstancedBoxes boxes={orbitingParticleBoxes} opacity={0.58} />
+        <TornadoInstancedBoxes boxes={TORNADO_LOOSE_PIXEL_BOXES} opacity={0.7} />
+        <TornadoInstancedBoxes boxes={TORNADO_ORBITING_PARTICLE_BOXES} opacity={0.58} />
       </group>
     </group>
   );
