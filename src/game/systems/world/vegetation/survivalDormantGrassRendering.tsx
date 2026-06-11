@@ -114,6 +114,17 @@ const SURVIVAL_GRASS_SYSTEM_ENABLED = true;
 export const SURVIVAL_LEGACY_GRASS_SYSTEM_ENABLED = false;
 const MOBILE_SURVIVAL_GRASS_WIND_UPDATE_INTERVAL_SECONDS = 1 / 24;
 const MOBILE_SURVIVAL_GRASS_FIELD_UPDATE_INTERVAL_SECONDS = 1 / 30;
+const SURVIVAL_LOCAL_GRASS_CARPET_MEADOW_BASE_COLOR = new THREE.Color("#65c73d");
+const SURVIVAL_LOCAL_GRASS_CARPET_MEADOW_TIP_COLOR = new THREE.Color("#a9e65b");
+const SURVIVAL_LOCAL_GRASS_CARPET_MEADOW_SHADE_COLOR = new THREE.Color("#55b738");
+const SURVIVAL_LOCAL_GRASS_MEADOW_DRY_COLOR = new THREE.Color("#a9a35a");
+const SURVIVAL_LOCAL_GRASS_MEADOW_SWAMP_COLOR = new THREE.Color("#789344");
+const SURVIVAL_LOCAL_GRASS_MEADOW_JUNGLE_COLOR = new THREE.Color("#69b14f");
+const SURVIVAL_LOCAL_GRASS_MEADOW_BRIGHT_COLOR = new THREE.Color("#92d84b");
+const SURVIVAL_LOCAL_GRASS_MEADOW_DEFAULT_COLOR = new THREE.Color("#6fb63d");
+const SURVIVAL_LOCAL_GRASS_GROUND_PATCH_MEADOW_BASE_COLOR = new THREE.Color("#3f9c2e");
+const SURVIVAL_TUTORIAL_GRASS_MEADOW_BASE_COLOR = new THREE.Color("#5ab93a");
+const SURVIVAL_TUTORIAL_GRASS_MEADOW_TIP_COLOR = new THREE.Color("#b9ec5a");
 
 type SurvivalLocalGrassPlacement = {
   terrainY: number;
@@ -888,6 +899,8 @@ function makeSurvivalLocalGrassCarpetGeometry(cell: SurvivalLocalGrassCell) {
   const uvs: number[] = [];
   const indices: number[] = [];
   const vertexMap = new Map<string, number>();
+  const meadowColor = new THREE.Color();
+  const meadowShade = new THREE.Color();
 
   const addVertex = (gridX: number, gridZ: number) => {
     const key = `${gridX}:${gridZ}`;
@@ -910,9 +923,9 @@ function makeSurvivalLocalGrassCarpetGeometry(cell: SurvivalLocalGrassCell) {
       Math.sin((worldX + worldZ) * 0.073)
     ) / 3;
     const meadowCluster = smoothstepRange(-0.42, 0.76, meadowFiber);
-    const meadowColor = new THREE.Color("#65c73d").lerp(new THREE.Color("#a9e65b"), meadowCluster);
+    meadowColor.copy(SURVIVAL_LOCAL_GRASS_CARPET_MEADOW_BASE_COLOR).lerp(SURVIVAL_LOCAL_GRASS_CARPET_MEADOW_TIP_COLOR, meadowCluster);
     if (meadowMask > 0.04) {
-      const meadowShade = new THREE.Color("#55b738").lerp(meadowColor, 0.64 + meadowMask * 0.24);
+      meadowShade.copy(SURVIVAL_LOCAL_GRASS_CARPET_MEADOW_SHADE_COLOR).lerp(meadowColor, 0.64 + meadowMask * 0.24);
       terrainColor.lerp(meadowShade, 0.62 + meadowMask * 0.28);
     } else {
       terrainColor.lerp(meadowColor, meadowMask * 0.97);
@@ -1171,12 +1184,14 @@ function SurvivalLocalGrassCellTile({
     const meadowMask = getSurvivalRestoredMeadowMask(sampleWorldX, sampleWorldZ);
     const dryTerrain = sampleBiome === "desert" && terrainColor.g < terrainColor.r * 1.06;
     const meadowGreen = dryTerrain
-      ? new THREE.Color("#a9a35a")
+      ? SURVIVAL_LOCAL_GRASS_MEADOW_DRY_COLOR
       : sampleBiome === "swamp"
-        ? new THREE.Color("#789344")
+        ? SURVIVAL_LOCAL_GRASS_MEADOW_SWAMP_COLOR
         : sampleBiome === "jungle"
-          ? new THREE.Color("#69b14f")
-          : new THREE.Color(meadowMask > 0.28 ? "#92d84b" : "#6fb63d");
+          ? SURVIVAL_LOCAL_GRASS_MEADOW_JUNGLE_COLOR
+          : meadowMask > 0.28
+            ? SURVIVAL_LOCAL_GRASS_MEADOW_BRIGHT_COLOR
+            : SURVIVAL_LOCAL_GRASS_MEADOW_DEFAULT_COLOR;
     const liftColor = sampleBiome === "desert"
       ? SURVIVAL_LOCAL_GRASS_DESERT_LIFT_COLOR
       : sampleBiome === "swamp"
@@ -1209,6 +1224,7 @@ function SurvivalLocalGrassCellTile({
     const gridSize = Math.max(2, Math.ceil(Math.sqrt(targetCount * 1.45)));
     const attempts = gridSize * gridSize;
     const sampleOffset = Math.floor(survivalHash01(cell.cellX, cell.cellZ, 18050) * attempts);
+    const meadowPatchTone = new THREE.Color();
 
     for (let index = 0; index < attempts && generated.length < targetCount; index += 1) {
       const sampleIndex = (sampleOffset + index * 8191) % attempts;
@@ -1242,7 +1258,8 @@ function SurvivalLocalGrassCellTile({
         .lerp(coverLift, placement.biome === "desert" ? 0.04 : 0.08)
         .lerp(terrainColor, slopeTerrainBlend);
       if (meadowMask > 0.04 && placement.biome !== "desert" && placement.biome !== "swamp") {
-        const meadowPatchTone = new THREE.Color("#3f9c2e")
+        meadowPatchTone
+          .copy(SURVIVAL_LOCAL_GRASS_GROUND_PATCH_MEADOW_BASE_COLOR)
           .lerp(SURVIVAL_LOCAL_GRASS_MEADOW_LIFT_COLOR, 0.36 + variant * 0.46);
         meadowPatchTone.multiplyScalar(0.92 + variant * 0.2);
         color.copy(color.lerp(meadowPatchTone, meadowMask));
@@ -2803,6 +2820,7 @@ function makeSurvivalTutorialGrassTuftInstances(cell: SurvivalTutorialGrassCell)
   const gridSize = Math.max(2, Math.ceil(Math.sqrt(targetCount * 1.55)));
   const attempts = gridSize * gridSize;
   const sampleOffset = Math.floor(survivalHash01(cell.cellX, cell.cellZ, 36200) * attempts);
+  const meadowTone = new THREE.Color();
 
   for (let index = 0; index < attempts && generated.length < targetCount; index += 1) {
     const sampleIndex = (sampleOffset + index * 1543) % attempts;
@@ -2821,7 +2839,7 @@ function makeSurvivalTutorialGrassTuftInstances(cell: SurvivalTutorialGrassCell)
     const variant = survivalHash01(cell.cellX, cell.cellZ, 36320 + index);
     const color = getSurvivalGrassBladeColor(placement.biome, worldX, worldZ, placement.terrainY, variant);
     if (placement.biome !== "desert" && placement.biome !== "swamp") {
-      const meadowTone = new THREE.Color("#5ab93a").lerp(new THREE.Color("#b9ec5a"), survivalHash01(cell.cellX, cell.cellZ, 36360 + index));
+      meadowTone.copy(SURVIVAL_TUTORIAL_GRASS_MEADOW_BASE_COLOR).lerp(SURVIVAL_TUTORIAL_GRASS_MEADOW_TIP_COLOR, survivalHash01(cell.cellX, cell.cellZ, 36360 + index));
       color.lerp(meadowTone, 0.24 + meadowMask * 0.54);
     }
     color.multiplyScalar(placement.biome === "desert" ? 0.95 : lerpNumber(1.05, 1.18, meadowMask));
@@ -3378,6 +3396,7 @@ function SurvivalTutorialGrassCellTile({
     const gridSize = Math.max(2, Math.ceil(Math.sqrt(targetCount * 1.55)));
     const attempts = gridSize * gridSize;
     const sampleOffset = Math.floor(survivalHash01(cell.cellX, cell.cellZ, 36200) * attempts);
+    const meadowTone = new THREE.Color();
 
     for (let index = 0; index < attempts && generated.length < targetCount; index += 1) {
       const sampleIndex = (sampleOffset + index * 1543) % attempts;
@@ -3402,7 +3421,7 @@ function SurvivalTutorialGrassCellTile({
       const variant = survivalHash01(cell.cellX, cell.cellZ, 36320 + index);
       const color = getSurvivalGrassBladeColor(placement.biome, worldX, worldZ, placement.terrainY, variant);
       if (placement.biome !== "desert" && placement.biome !== "swamp") {
-        const meadowTone = new THREE.Color("#5ab93a").lerp(new THREE.Color("#b9ec5a"), survivalHash01(cell.cellX, cell.cellZ, 36360 + index));
+        meadowTone.copy(SURVIVAL_TUTORIAL_GRASS_MEADOW_BASE_COLOR).lerp(SURVIVAL_TUTORIAL_GRASS_MEADOW_TIP_COLOR, survivalHash01(cell.cellX, cell.cellZ, 36360 + index));
         color.lerp(meadowTone, 0.24 + meadowMask * 0.54);
       }
       color.multiplyScalar(placement.biome === "desert" ? 0.95 : lerpNumber(1.05, 1.18, meadowMask));
