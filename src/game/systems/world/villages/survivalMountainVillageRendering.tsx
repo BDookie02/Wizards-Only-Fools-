@@ -3231,6 +3231,9 @@ function MountainVillageColliders({
   const topExitLadder = layout.interiorLadders[layout.interiorLadders.length - 1];
   const topExitBridge = topExitLadder ? getMountainMineshaftExitBridgeFrame(topExitLadder) : null;
   const bottomY = layout.baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET;
+  const catwalkMidRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
+  const catwalkRadialHalfWidth = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS - MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS) / 2;
+  const catwalkArcHalfLength = ((Math.PI * 2 * catwalkMidRadius) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * 0.56;
 
   return (
     <>
@@ -3294,24 +3297,22 @@ function MountainVillageColliders({
             ))}
           </RigidBody>
           <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
-            {layout.interiorHuts.flatMap((hut) => {
-              const midRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
-              const radialHalfWidth = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS - MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS) / 2;
-              const arcHalfLength = ((Math.PI * 2 * midRadius) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * 0.56;
+            {layout.interiorHuts.map((hut) => (
+              <Fragment key={`${hut.key}-catwalk-colliders`}>
+                {getCachedIndexRange(MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS).map((segmentIndex) => {
+                  const angle = ((segmentIndex + 0.5) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
 
-              return getCachedIndexRange(MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS).map((segmentIndex) => {
-                const angle = ((segmentIndex + 0.5) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
-
-                return (
-                  <CuboidCollider
-                    key={`${hut.key}-catwalk-collider-${segmentIndex}`}
-                    args={[arcHalfLength, 0.32, radialHalfWidth]}
-                    position={[Math.sin(angle) * midRadius, hut.y, Math.cos(angle) * midRadius]}
-                    rotation={[0, angle, 0]}
-                  />
-                );
-              });
-            })}
+                  return (
+                    <CuboidCollider
+                      key={`${hut.key}-catwalk-collider-${segmentIndex}`}
+                      args={[catwalkArcHalfLength, 0.32, catwalkRadialHalfWidth]}
+                      position={[Math.sin(angle) * catwalkMidRadius, hut.y, Math.cos(angle) * catwalkMidRadius]}
+                      rotation={[0, angle, 0]}
+                    />
+                  );
+                })}
+              </Fragment>
+            ))}
           </RigidBody>
           <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
             {layout.interiorHuts.map((hut, index) => {
