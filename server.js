@@ -168,23 +168,25 @@ async function startServer() {
         const channel = (value) => Math.round((value + m) * 255).toString(16).padStart(2, "0");
         return `#${channel(r1)}${channel(g1)}${channel(b1)}`;
     };
-    const getRoomPlayerColor = (room) => {
-        const usedColors = new Set();
+    const isRoomPlayerColorUsed = (room, color) => {
         for (const player of room.values()) {
-            if (player.playerColor) {
-                usedColors.add(player.playerColor);
+            if (player.playerColor === color) {
+                return true;
             }
         }
+        return false;
+    };
+    const getRoomPlayerColor = (room) => {
         for (let index = 0; index < PLAYER_COLOR_PALETTE.length; index += 1) {
             const paletteColor = PLAYER_COLOR_PALETTE[index];
-            if (!usedColors.has(paletteColor)) {
+            if (!isRoomPlayerColorUsed(room, paletteColor)) {
                 return paletteColor;
             }
         }
         let hue = room.size * 47;
         for (let attempts = 0; attempts < 64; attempts += 1) {
             const color = hslToHex(hue % 360, 82, 52);
-            if (!usedColors.has(color)) {
+            if (!isRoomPlayerColorUsed(room, color)) {
                 return color;
             }
             hue += 47;
