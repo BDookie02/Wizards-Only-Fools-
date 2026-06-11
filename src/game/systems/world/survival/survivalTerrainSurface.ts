@@ -44,6 +44,9 @@ const survivalRenderedRestoredLiftColor = new THREE.Color("#5fa836");
 const survivalRenderedRestoredShadowColor = new THREE.Color("#3f7d28");
 const survivalRenderedRestoredGroundScratch = new THREE.Color();
 const survivalRawTerrainHeightBiomeWeights = new Array<number>(survivalBiomes.length).fill(0);
+type SurvivalHeightMaskSample = { mask: number; height: number };
+const survivalGraveyardExteriorApronScratch: SurvivalHeightMaskSample = { mask: 0, height: 0 };
+const survivalGraveyardGateApproachScratch: SurvivalHeightMaskSample = { mask: 0, height: 0 };
 
 export function getSurvivalSmoothedTerrainColorInto(
   worldX: number,
@@ -137,9 +140,13 @@ export function getSurvivalRawTerrainHeightAtWorld(worldX: number, worldZ: numbe
   return height;
 }
 
-function getGraveyardExteriorApronAtWorld(worldX: number, worldZ: number) {
-  let mask = 0;
-  let height = 0;
+function writeGraveyardExteriorApronAtWorld(
+  worldX: number,
+  worldZ: number,
+  target: SurvivalHeightMaskSample,
+) {
+  target.mask = 0;
+  target.height = 0;
   const apronDistance = 220;
 
   for (let index = 0; index < SPECIAL_SURVIVAL_VILLAGE_CHUNKS.length; index += 1) {
@@ -159,23 +166,27 @@ function getGraveyardExteriorApronAtWorld(worldX: number, worldZ: number) {
     if (outsideDistance < -4 || outsideDistance > apronDistance) continue;
 
     const apronMask = 1 - smoothstepRange(0, apronDistance, Math.max(0, outsideDistance));
-    if (apronMask <= mask) continue;
+    if (apronMask <= target.mask) continue;
 
     const baseHeight = getSurvivalRawTerrainHeightAtWorld(centerX, centerZ);
     const edgeScale = radius > GRAVEYARD_PAD_FLAT_RADIUS ? GRAVEYARD_PAD_FLAT_RADIUS / radius : 1;
     const edgeLocalX = localX * edgeScale;
     const edgeLocalZ = localZ * edgeScale;
 
-    mask = apronMask;
-    height = getGraveyardLocalSurfaceHeight(edgeLocalX, edgeLocalZ, village.cx, village.cz, baseHeight);
+    target.mask = apronMask;
+    target.height = getGraveyardLocalSurfaceHeight(edgeLocalX, edgeLocalZ, village.cx, village.cz, baseHeight);
   }
 
-  return { mask, height };
+  return target;
 }
 
-function getGraveyardGateApproachAtWorld(worldX: number, worldZ: number) {
-  let mask = 0;
-  let height = 0;
+function writeGraveyardGateApproachAtWorld(
+  worldX: number,
+  worldZ: number,
+  target: SurvivalHeightMaskSample,
+) {
+  target.mask = 0;
+  target.height = 0;
 
   for (let index = 0; index < SPECIAL_SURVIVAL_VILLAGE_CHUNKS.length; index += 1) {
     const village = SPECIAL_SURVIVAL_VILLAGE_CHUNKS[index];
@@ -186,13 +197,13 @@ function getGraveyardGateApproachAtWorld(worldX: number, worldZ: number) {
     const localX = worldX - centerX;
     const localZ = worldZ - centerZ;
     const gateMask = getGraveyardGateClearingMask(localX, localZ);
-    if (gateMask <= mask) continue;
+    if (gateMask <= target.mask) continue;
 
-    mask = gateMask;
-    height = getSurvivalRawTerrainHeightAtWorld(centerX, centerZ) - 0.46;
+    target.mask = gateMask;
+    target.height = getSurvivalRawTerrainHeightAtWorld(centerX, centerZ) - 0.46;
   }
 
-  return { mask, height };
+  return target;
 }
 
 export function getSurvivalTerrainHeightForChunk(chunk: SurvivalChunkInfo, localX: number, localZ: number) {
@@ -229,12 +240,12 @@ export function getSurvivalTerrainHeightForChunk(chunk: SurvivalChunkInfo, local
     height = lerpNumber(height, BASE_VILLAGE_EXIT_HEIGHT, baseTransitionMask);
   }
 
-  const graveyardGateApproach = getGraveyardGateApproachAtWorld(worldX, worldZ);
+  const graveyardGateApproach = writeGraveyardGateApproachAtWorld(worldX, worldZ, survivalGraveyardGateApproachScratch);
   if (graveyardGateApproach.mask > 0) {
     height = lerpNumber(height, graveyardGateApproach.height, graveyardGateApproach.mask * 0.99);
   }
 
-  const graveyardApron = getGraveyardExteriorApronAtWorld(worldX, worldZ);
+  const graveyardApron = writeGraveyardExteriorApronAtWorld(worldX, worldZ, survivalGraveyardExteriorApronScratch);
   if (graveyardApron.mask > 0) {
     height = lerpNumber(height, graveyardApron.height, graveyardApron.mask);
   }
