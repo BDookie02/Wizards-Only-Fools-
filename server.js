@@ -119,6 +119,7 @@ async function startServer() {
         eyeStyle: "calm",
         mouthStyle: "neutral",
     };
+    const CHARACTER_CUSTOMIZATION_SIGNATURE_KEYS = Object.keys(DEFAULT_CHARACTER_CUSTOMIZATION);
     const PLAYER_COLOR_PALETTE = [
         "#7c3aed",
         "#2563eb",
@@ -228,6 +229,38 @@ async function startServer() {
         const dy = (Number(to[1]) || 0) - (Number(from[1]) || 0);
         const dz = (Number(to[2]) || 0) - (Number(from[2]) || 0);
         return dx * dx + dy * dy + dz * dz;
+    };
+    const getVector3ArraySignature = (value) => {
+        if (!Array.isArray(value)) {
+            return "";
+        }
+        return `${value[0] ?? ""},${value[1] ?? ""},${value[2] ?? ""}`;
+    };
+    const getCharacterCustomizationSignature = (character) => {
+        if (!character || typeof character !== "object") {
+            return "";
+        }
+        let signature = "";
+        for (let index = 0; index < CHARACTER_CUSTOMIZATION_SIGNATURE_KEYS.length; index += 1) {
+            const key = CHARACTER_CUSTOMIZATION_SIGNATURE_KEYS[index];
+            signature = `${signature}|${character[key] ?? ""}`;
+        }
+        return signature;
+    };
+    const getServerPlayerMoveSignature = (player, update) => {
+        const pos = update.pos ?? player.pos;
+        const rot = update.rot ?? player.rot;
+        const aimDir = update.aimDir ?? player.aimDir;
+        const character = update.character ?? player.character;
+        return [
+            getVector3ArraySignature(pos),
+            getVector3ArraySignature(rot),
+            getVector3ArraySignature(aimDir),
+            update.anim ?? player.anim ?? "",
+            update.survivalLevel ?? player.survivalLevel ?? "",
+            update.isSpeaking ?? player.isSpeaking ?? false,
+            getCharacterCustomizationSignature(character),
+        ].join("|");
     };
     const clearRoomCleanup = (roomCode) => {
         const timer = emptyRoomCleanupTimers.get(roomCode);
@@ -342,6 +375,7 @@ async function startServer() {
         let currentRoom = "";
         let lastPlayerMoveBroadcastAt = 0;
         let lastPlayerMoveBroadcastPos = [0, 2, 0];
+        let lastPlayerMoveBroadcastSignature = "";
         const eventRateState = new Map();
         const allowServerEvent = (eventName) => {
             const budget = getServerEventBudget(eventName);
@@ -427,6 +461,7 @@ async function startServer() {
             room.set(socket.id, newPlayer);
             lastPlayerMoveBroadcastAt = 0;
             lastPlayerMoveBroadcastPos = newPlayer.pos;
+            lastPlayerMoveBroadcastSignature = "";
             // Send the current room state
             const players = [];
             for (const player of room.values()) {
@@ -458,8 +493,13 @@ async function startServer() {
                     safeData.survivalLevel = sanitizeSurvivalLevel(safeData.survivalLevel);
                 }
                 const now = Date.now();
+                const currentCharacterSignature = getCharacterCustomizationSignature(p.character);
+                const nextCharacterSignature = safeData.character
+                    ? getCharacterCustomizationSignature(safeData.character)
+                    : currentCharacterSignature;
+                const moveSignature = getServerPlayerMoveSignature(p, safeData);
                 const importantUpdate =
-                    Boolean(safeData.character) ||
+                    (safeData.character !== undefined && nextCharacterSignature !== currentCharacterSignature) ||
                     (safeData.anim !== undefined && safeData.anim !== p.anim) ||
                     (safeData.survivalLevel !== undefined && safeData.survivalLevel !== p.survivalLevel) ||
                     (safeData.isSpeaking !== undefined && safeData.isSpeaking !== p.isSpeaking);
@@ -467,15 +507,17 @@ async function startServer() {
                     ? getPositionDeltaSq(lastPlayerMoveBroadcastPos, safeData.pos) >= PLAYER_MOVE_FORCE_BROADCAST_DELTA_SQ
                     : false;
                 const shouldBroadcastMove =
-                    importantUpdate ||
-                    forcedPoseDelta ||
-                    now - lastPlayerMoveBroadcastAt >= PLAYER_MOVE_BROADCAST_INTERVAL_MS;
+                    moveSignature !== lastPlayerMoveBroadcastSignature &&
+                    (importantUpdate ||
+                        forcedPoseDelta ||
+                        now - lastPlayerMoveBroadcastAt >= PLAYER_MOVE_BROADCAST_INTERVAL_MS);
                 Object.assign(p, safeData);
                 if (safeData.pos) {
                     markServerPlayerPose(p, now);
                 }
                 if (shouldBroadcastMove) {
                     lastPlayerMoveBroadcastAt = now;
+                    lastPlayerMoveBroadcastSignature = moveSignature;
                     if (safeData.pos) {
                         lastPlayerMoveBroadcastPos = safeData.pos;
                     }
