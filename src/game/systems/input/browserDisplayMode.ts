@@ -1,3 +1,6 @@
+let cachedRemoteMouseLookSearch: string | null = null;
+let cachedRemoteMouseLookFallback = false;
+
 export function canRequestPointerLockHere() {
   try {
     if (window.self === window.top) return true;
@@ -10,12 +13,20 @@ export function canRequestPointerLockHere() {
   }
 }
 
-export function shouldUseRemoteMouseLookFallback() {
-  if (typeof window === "undefined") return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.get("remoteInput") === "1" ||
+export function shouldUseRemoteMouseLookFallbackFromSearch(search: string) {
+  if (search === cachedRemoteMouseLookSearch) return cachedRemoteMouseLookFallback;
+  const params = new URLSearchParams(search);
+  cachedRemoteMouseLookSearch = search;
+  cachedRemoteMouseLookFallback =
+    params.get("remoteInput") === "1" ||
     params.get("rustdesk") === "1" ||
     params.get("qaHideMenu") === "1";
+  return cachedRemoteMouseLookFallback;
+}
+
+export function shouldUseRemoteMouseLookFallback() {
+  if (typeof window === "undefined") return false;
+  return shouldUseRemoteMouseLookFallbackFromSearch(window.location.search);
 }
 
 export function getFullscreenElement() {

@@ -122,6 +122,7 @@ Done:
 - Moved static keyboard keybind guide rows into `src/game/systems/input/keyboardKeybindGuide.ts`.
 - Moved the shared editable-target keyboard guard into `src/game/systems/input/editableTargets.ts` and pointed HUD, player movement, inventory, quest editing, and voice push-to-talk at it.
 - Moved browser display-mode, pointer-lock availability, pointer-lock error classification, and mouse-look fallback flag helpers into `src/game/systems/input/browserDisplayMode.ts`.
+- Added cached remote mouse-look fallback route parsing to `browserDisplayMode.ts`, keeping `remoteInput`, `rustdesk`, and `qaHideMenu` checks inside the input system without reparsing the current URL on repeated HUD calls.
 - Moved mobile/touch/performance QA device classification into `src/game/systems/input/performanceMode.ts`.
 - Moved mobile layout defaults, touch-layout class synchronization, and app viewport CSS variable writing into `src/game/systems/input/mobileLayoutRuntime.ts`.
 - Moved shared pixel-sprite texture configuration into `src/game/systems/rendering/textures/pixelSpriteTexture.ts`.
@@ -838,6 +839,9 @@ Next:
 
 ## Latest Verification
 
+- Focused input route-cache cleanup: `browserDisplayMode.ts` now exposes `shouldUseRemoteMouseLookFallbackFromSearch()` and caches the current `remoteInput` / `rustdesk` / `qaHideMenu` route result for unchanged search strings. HUD pointer-lock and relock behavior still calls `shouldUseRemoteMouseLookFallback()` through the same input-owned boundary.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the input route-cache QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the input route-cache cleanup. Sprite verification passed; current warning remains chunk size only. `HUD` is about 80.56 kB / 24.11 kB gzip.
 - Focused water-ripple route-gate cleanup: `WaterRipples.tsx` now uses `isCurrentWaterRippleQaEnabled()` from `waterRippleRuntime.ts`, and `waterRippleRuntime.ts` caches the `qaWaterRipple` search parse for unchanged route strings. The renderer no longer reads `window.location.search` directly for the QA trigger path.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the water-ripple QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the water-ripple route-gate cleanup. Sprite verification passed; current warning remains chunk size only. `BaseVillageScene` is about 39.25 kB / 10.68 kB gzip.
