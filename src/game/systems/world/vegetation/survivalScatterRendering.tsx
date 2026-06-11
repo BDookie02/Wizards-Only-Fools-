@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo } from "react";
-import type { Vector3 } from "three";
+import * as THREE from "three";
 import { SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
 import { useSurvivalFeatureCount } from "../../../tools/qa/survivalFeatureCounters";
@@ -36,7 +36,7 @@ const LazySurvivalWildflowers = lazy(() => import("./survivalWildflowerRendering
 export type SurvivalScatterSurfaceQuality = {
   y: number;
   heightRange: number;
-  normal: Vector3;
+  normal: THREE.Vector3;
 };
 
 export type SurvivalScatterSurfaceResolver = (
@@ -45,6 +45,7 @@ export type SurvivalScatterSurfaceResolver = (
   localZ: number,
   footprintRadius: number,
   sampleDistance: number,
+  target?: SurvivalScatterSurfaceQuality,
 ) => SurvivalScatterSurfaceQuality;
 
 export type SurvivalScatterTerrainHeightResolver = (
@@ -90,6 +91,11 @@ export function SurvivalScatterProps({
   const showFernClusters = showBushes && !localGrassOwnsMeadowDetail;
   const showBushClusters = showBushes && !localGrassOwnsMeadowDetail;
   const showBirds = showAmbientLife && !grassInspectionView && chunk.distance === 0 && !chunk.hasVillage;
+  const surfaceQualityScratch = useMemo<SurvivalScatterSurfaceQuality>(() => ({
+    y: 0,
+    heightRange: 0,
+    normal: new THREE.Vector3(),
+  }), []);
   const props = useMemo(() => {
     if (!showDetailTrees) return [];
     if (chunk.lod === "far") return [];
@@ -115,7 +121,7 @@ export function SurvivalScatterProps({
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 8.8, 5.2);
+      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 8.8, 5.2, surfaceQualityScratch);
       if (
         surfaceQuality.normal.y < SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y ||
         surfaceQuality.heightRange > SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE
@@ -153,7 +159,7 @@ export function SurvivalScatterProps({
     }
 
     return generated;
-  }, [chunk, getSurfaceQuality, getWaterLevelAtWorld, showDetailTrees]) satisfies SurvivalDetailScatterProp[];
+  }, [chunk, getSurfaceQuality, getWaterLevelAtWorld, showDetailTrees, surfaceQualityScratch]) satisfies SurvivalDetailScatterProp[];
 
   useSurvivalFeatureCount("detailScatterProps", `survival-detail-scatter-${chunk.key}`, props.length);
 

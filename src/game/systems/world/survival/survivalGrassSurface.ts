@@ -199,6 +199,20 @@ export type SurvivalUnifiedTerrainSurfaceSampleTargets = {
   grassNormal?: THREE.Vector3;
 };
 
+export type SurvivalDecorationSurfaceQuality = {
+  y: number;
+  normal: THREE.Vector3;
+  heightRange: number;
+};
+
+function makeSurvivalDecorationSurfaceQualityTarget(): SurvivalDecorationSurfaceQuality {
+  return {
+    y: 0,
+    normal: new THREE.Vector3(),
+    heightRange: 0,
+  };
+}
+
 export function getSurvivalUnifiedTerrainSurfaceSampleForChunk(
   chunk: SurvivalChunkInfo,
   localX: number,
@@ -279,7 +293,9 @@ export function getSurvivalDecorationSurfaceQuality(
   localZ: number,
   footprintRadius: number,
   sampleDistance = 4.2,
+  target?: SurvivalDecorationSurfaceQuality,
 ) {
+  const result = target ?? makeSurvivalDecorationSurfaceQualityTarget();
   const worldX = chunk.x + localX;
   const worldZ = chunk.z + localZ;
   const terrainSegments = getSurvivalTerrainRenderSegments(chunk);
@@ -288,17 +304,16 @@ export function getSurvivalDecorationSurfaceQuality(
     chunk,
     localX,
     localZ,
-    new THREE.Vector3(),
+    result.normal,
     sampleDistance,
     terrainSegments,
   );
   const footprintStats = getSurvivalBotwGrassFootprintStats(worldX, worldZ, footprintRadius);
 
-  return {
-    y: Math.min(terrainY, footprintStats.baseY),
-    normal: terrainNormal,
-    heightRange: footprintStats.heightRange,
-  };
+  result.y = Math.min(terrainY, footprintStats.baseY);
+  result.normal = terrainNormal;
+  result.heightRange = footprintStats.heightRange;
+  return result;
 }
 
 function isSurvivalVillageGrassBlocked(chunk: SurvivalChunkInfo, localX: number, localZ: number) {

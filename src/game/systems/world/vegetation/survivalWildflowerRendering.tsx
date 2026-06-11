@@ -36,6 +36,7 @@ export type SurvivalWildflowerSurfaceResolver = (
   localZ: number,
   footprintRadius: number,
   sampleDistance: number,
+  target?: SurvivalWildflowerSurfaceQuality,
 ) => SurvivalWildflowerSurfaceQuality;
 
 type SurvivalWildflower = {
@@ -108,6 +109,11 @@ function ActiveSurvivalWildflowers({
   const patchNormal = useMemo(() => new THREE.Vector3(0, 1, 0), []);
   const flowerColor = useMemo(() => new THREE.Color(), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
+  const surfaceQualityScratch = useMemo<SurvivalWildflowerSurfaceQuality>(() => ({
+    y: 0,
+    heightRange: 0,
+    normal: new THREE.Vector3(),
+  }), []);
   const flowers = useMemo<SurvivalWildflower[]>(() => {
     const targetCount = getSurvivalFlowerCount(chunk, mobilePerformanceMode);
     if (targetCount <= 0) return [];
@@ -129,7 +135,7 @@ function ActiveSurvivalWildflowers({
       if (Math.max(Math.abs(localX), Math.abs(localZ)) > SURVIVAL_BLOCK_SIZE * 0.48) continue;
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 1.25, 2.8);
+      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 1.25, 2.8, surfaceQualityScratch);
       if (surfaceQuality.normal.y < 0.82 || surfaceQuality.heightRange > 1.6) continue;
       const terrainY = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
@@ -159,7 +165,7 @@ function ActiveSurvivalWildflowers({
     }
 
     return generated;
-  }, [chunk, getSurfaceQuality, mobilePerformanceMode]);
+  }, [chunk, getSurfaceQuality, mobilePerformanceMode, surfaceQualityScratch]);
 
   useEffect(() => {
     const stemMesh = stemRef.current;

@@ -43,6 +43,7 @@ type SurvivalTreeDressingResolvers = {
     localZ: number,
     footprintRadius: number,
     sampleStride: number,
+    target?: SurvivalTreeDressingSurfaceQuality,
   ) => SurvivalTreeDressingSurfaceQuality;
   getWaterLevelAtWorld: (worldX: number, worldZ: number) => number;
 };
@@ -102,6 +103,11 @@ export function SurvivalFastGroves({
   const canopyColors = SURVIVAL_TREE_CANOPY_COLORS[chunk.biome];
   const trunkColor = SURVIVAL_TREE_TRUNK_COLORS[chunk.biome];
   const barkTexture = useMemo(() => getSurvivalSolidTreeTexture(), []);
+  const surfaceQualityScratch = useMemo<SurvivalTreeDressingSurfaceQuality>(() => ({
+    y: 0,
+    normal: new THREE.Vector3(),
+    heightRange: 0,
+  }), []);
   const trees = useMemo<SurvivalFastGroveTree[]>(() => {
     if (chunk.lod === "far") return [];
 
@@ -127,7 +133,7 @@ export function SurvivalFastGroves({
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 8.5, 5.2);
+      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 8.5, 5.2, surfaceQualityScratch);
       if (
         surfaceQuality.normal.y < SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y ||
         surfaceQuality.heightRange > SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE
@@ -173,7 +179,7 @@ export function SurvivalFastGroves({
     }
 
     return generated;
-  }, [canopyColors.length, chunk, getSurfaceQuality, getWaterLevelAtWorld, mobilePerformanceMode]);
+  }, [canopyColors.length, chunk, getSurfaceQuality, getWaterLevelAtWorld, mobilePerformanceMode, surfaceQualityScratch]);
 
   useSurvivalFeatureCount("fastGroveTrees", `survival-fast-groves-${chunk.key}`, trees.length);
 
@@ -405,6 +411,11 @@ export function SurvivalRoofForests({
     : chunk.biome === "jungle"
       ? "#1f6d2c"
       : "#2f7a36";
+  const surfaceQualityScratch = useMemo<SurvivalTreeDressingSurfaceQuality>(() => ({
+    y: 0,
+    normal: new THREE.Vector3(),
+    heightRange: 0,
+  }), []);
 
   const trees = useMemo<SurvivalRoofForestTree[]>(() => {
     if (chunk.lod === "far" || !supportsRoofForest(chunk.biome)) return [];
@@ -439,7 +450,7 @@ export function SurvivalRoofForests({
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 9.5, 5.8);
+      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 9.5, 5.8, surfaceQualityScratch);
       if (
         surfaceQuality.normal.y < SURVIVAL_BOTW_DECORATION_MIN_NORMAL_Y ||
         surfaceQuality.heightRange > SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE
@@ -496,7 +507,7 @@ export function SurvivalRoofForests({
     }
 
     return generated;
-  }, [canopyColors.length, chunk, getSurfaceQuality, getWaterLevelAtWorld, mobilePerformanceMode]);
+  }, [canopyColors.length, chunk, getSurfaceQuality, getWaterLevelAtWorld, mobilePerformanceMode, surfaceQualityScratch]);
 
   useSurvivalFeatureCount("roofForestTrees", `survival-roof-forest-${chunk.key}`, trees.length);
 

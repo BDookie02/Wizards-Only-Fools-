@@ -23,7 +23,7 @@ import {
 export type SurvivalSolidTreeSurfaceQuality = {
   y: number;
   heightRange: number;
-  normal: { y: number };
+  normal: THREE.Vector3;
 };
 
 export type SurvivalSolidTreeSurfaceResolver = (
@@ -32,6 +32,7 @@ export type SurvivalSolidTreeSurfaceResolver = (
   localZ: number,
   footprintRadius: number,
   sampleDistance: number,
+  target?: SurvivalSolidTreeSurfaceQuality,
 ) => SurvivalSolidTreeSurfaceQuality;
 
 type SurvivalSolidGroveTree = {
@@ -66,6 +67,11 @@ export function SurvivalSolidTreeGroves({
   }, [chunk.biome]);
   const texture = useMemo(() => getSurvivalSolidTreeTexture(), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
+  const surfaceQualityScratch = useMemo<SurvivalSolidTreeSurfaceQuality>(() => ({
+    y: 0,
+    heightRange: 0,
+    normal: new THREE.Vector3(),
+  }), []);
   const trees = useMemo<SurvivalSolidGroveTree[]>(() => {
     if (chunk.lod === "far") return [];
     const isMidDistanceLod = chunk.lod === "mid";
@@ -97,7 +103,7 @@ export function SurvivalSolidTreeGroves({
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, footprintRadius, sampleDistance);
+      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, footprintRadius, sampleDistance, surfaceQualityScratch);
       if (
         surfaceQuality.normal.y < minNormalY ||
         surfaceQuality.heightRange > maxHeightRange
@@ -143,7 +149,7 @@ export function SurvivalSolidTreeGroves({
     }
 
     return generated;
-  }, [chunk, dense, getSurfaceQuality, mobilePerformanceMode]);
+  }, [chunk, dense, getSurfaceQuality, mobilePerformanceMode, surfaceQualityScratch]);
 
   useSurvivalFeatureCount("solidTrees", chunk.key, trees.length);
 

@@ -20,7 +20,7 @@ import {
 export type SurvivalUnderbrushSurfaceQuality = {
   y: number;
   heightRange: number;
-  normal: { y: number };
+  normal: THREE.Vector3;
 };
 
 export type SurvivalUnderbrushSurfaceResolver = (
@@ -29,6 +29,7 @@ export type SurvivalUnderbrushSurfaceResolver = (
   localZ: number,
   footprintRadius: number,
   sampleDistance: number,
+  target?: SurvivalUnderbrushSurfaceQuality,
 ) => SurvivalUnderbrushSurfaceQuality;
 
 type SurvivalBushBlob = {
@@ -80,6 +81,11 @@ export function SurvivalBushClusters({
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const palette = SURVIVAL_BUSH_COLORS[chunk.biome];
+  const surfaceQualityScratch = useMemo<SurvivalUnderbrushSurfaceQuality>(() => ({
+    y: 0,
+    heightRange: 0,
+    normal: new THREE.Vector3(),
+  }), []);
   const blobs = useMemo<SurvivalBushBlob[]>(() => {
     if (chunk.lod === "far") return [];
 
@@ -105,7 +111,7 @@ export function SurvivalBushClusters({
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 6.6, 4.8);
+      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 6.6, 4.8, surfaceQualityScratch);
       if (
         surfaceQuality.normal.y < 0.68 ||
         surfaceQuality.heightRange > SURVIVAL_BOTW_DECORATION_MAX_FOOTPRINT_RANGE
@@ -151,7 +157,7 @@ export function SurvivalBushClusters({
     }
 
     return generated;
-  }, [chunk, getSurfaceQuality, mobilePerformanceMode, palette.length]);
+  }, [chunk, getSurfaceQuality, mobilePerformanceMode, palette.length, surfaceQualityScratch]);
 
   useSurvivalFeatureCount("bushBlobs", chunk.key, blobs.length);
 
@@ -228,6 +234,11 @@ export function SurvivalFernClusters({
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const palette = SURVIVAL_FERN_COLORS[chunk.biome];
+  const surfaceQualityScratch = useMemo<SurvivalUnderbrushSurfaceQuality>(() => ({
+    y: 0,
+    heightRange: 0,
+    normal: new THREE.Vector3(),
+  }), []);
   const fronds = useMemo<SurvivalFernFrond[]>(() => {
     if (chunk.lod === "far") return [];
     if (chunk.biome === "desert") return [];
@@ -256,7 +267,7 @@ export function SurvivalFernClusters({
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
       if (getSurvivalTownRouteMask(worldX, worldZ) > 0.12) continue;
-      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 2.6, 3.4);
+      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 2.6, 3.4, surfaceQualityScratch);
       if (surfaceQuality.normal.y < 0.78 || surfaceQuality.heightRange > 2.4) continue;
       const y = surfaceQuality.y;
       const waterY = getSurvivalWaterLevelAtWorld(worldX, worldZ);
@@ -281,7 +292,7 @@ export function SurvivalFernClusters({
     }
 
     return generated;
-  }, [chunk, getSurfaceQuality, mobilePerformanceMode, palette.length]);
+  }, [chunk, getSurfaceQuality, mobilePerformanceMode, palette.length, surfaceQualityScratch]);
 
   useSurvivalFeatureCount("fernFronds", chunk.key, fronds.length);
 

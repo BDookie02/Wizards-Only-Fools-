@@ -11,7 +11,7 @@ import { supportsRoofForest } from "../vegetation/survivalTreeVisuals";
 export type SurvivalHobbitHutSurfaceQuality = {
   y: number;
   heightRange: number;
-  normal: { y: number };
+  normal: THREE.Vector3;
 };
 
 export type SurvivalHobbitHutSurfaceResolver = (
@@ -20,6 +20,7 @@ export type SurvivalHobbitHutSurfaceResolver = (
   localZ: number,
   footprintRadius: number,
   sampleDistance: number,
+  target?: SurvivalHobbitHutSurfaceQuality,
 ) => SurvivalHobbitHutSurfaceQuality;
 
 export type SurvivalHobbitHutTerrainHeightResolver = (
@@ -161,6 +162,11 @@ export function SurvivalHobbitHuts({
   terrainHeightForChunk: SurvivalHobbitHutTerrainHeightResolver;
   getWaterLevelAtWorld: SurvivalHobbitHutWaterLevelResolver;
 }) {
+  const surfaceQualityScratch = useMemo<SurvivalHobbitHutSurfaceQuality>(() => ({
+    y: 0,
+    heightRange: 0,
+    normal: new THREE.Vector3(),
+  }), []);
   const huts = useMemo<SurvivalHobbitHut[]>(() => {
     if (chunk.lod !== "near" || !supportsRoofForest(chunk.biome) || chunk.hasVillage) return [];
     const spawnRoll = survivalHash01(chunk.cx, chunk.cz, 7310);
@@ -179,7 +185,7 @@ export function SurvivalHobbitHuts({
 
       const worldX = chunk.x + localX;
       const worldZ = chunk.z + localZ;
-      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 13.5, 7.2);
+      const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 13.5, 7.2, surfaceQualityScratch);
       if (surfaceQuality.normal.y < 0.82 || surfaceQuality.heightRange > 5.8) continue;
       const y = surfaceQuality.y;
       const waterY = getWaterLevelAtWorld(worldX, worldZ);
@@ -203,7 +209,7 @@ export function SurvivalHobbitHuts({
     }
 
     return generated;
-  }, [chunk, getSurfaceQuality, terrainHeightForChunk, getWaterLevelAtWorld]);
+  }, [chunk, getSurfaceQuality, terrainHeightForChunk, getWaterLevelAtWorld, surfaceQualityScratch]);
 
   useSurvivalFeatureCount("hobbitHuts", `survival-hobbit-huts-${chunk.key}`, huts.length);
 

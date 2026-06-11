@@ -1,3 +1,4 @@
+import * as THREE from "three";
 import { SURVIVAL_BLOCK_SIZE } from "../../../../store/gameStore";
 import {
   BASE_VILLAGE_HALF_SIZE,
@@ -19,7 +20,7 @@ export type SurvivalRockOutcrop = {
 export type SurvivalRockSurfaceQuality = {
   y: number;
   heightRange: number;
-  normal: { y: number };
+  normal: THREE.Vector3;
 };
 
 export type SurvivalRockOutcropResolvers = {
@@ -29,6 +30,7 @@ export type SurvivalRockOutcropResolvers = {
     localZ: number,
     footprintRadius: number,
     sampleDistance: number,
+    target?: SurvivalRockSurfaceQuality,
   ) => SurvivalRockSurfaceQuality;
   getWaterLevelAtWorld: (worldX: number, worldZ: number) => number;
 };
@@ -51,6 +53,11 @@ export function makeSurvivalRockOutcrops(
     : ["#777a62", "#8a866e", "#5e6652"];
   const generated: SurvivalRockOutcrop[] = [];
   const attempts = targetCount * 4;
+  const surfaceQualityScratch: SurvivalRockSurfaceQuality = {
+    y: 0,
+    heightRange: 0,
+    normal: new THREE.Vector3(),
+  };
 
   for (let index = 0; index < attempts && generated.length < targetCount; index += 1) {
     const localX = (survivalHash01(chunk.cx, chunk.cz, 910 + index) - 0.5) * SURVIVAL_BLOCK_SIZE * 0.86;
@@ -59,7 +66,7 @@ export function makeSurvivalRockOutcrops(
 
     const worldX = chunk.x + localX;
     const worldZ = chunk.z + localZ;
-    const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 5.6, 4.8);
+    const surfaceQuality = getSurfaceQuality(chunk, localX, localZ, 5.6, 4.8, surfaceQualityScratch);
     if (surfaceQuality.normal.y < 0.62 || surfaceQuality.heightRange > 7.8) continue;
     const y = surfaceQuality.y;
     const waterY = getWaterLevelAtWorld(worldX, worldZ);
