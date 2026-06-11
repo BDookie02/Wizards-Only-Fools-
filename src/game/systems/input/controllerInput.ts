@@ -40,10 +40,13 @@ export const GAMEPAD_TRIGGER_THRESHOLD = 0.45;
 export const GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS = 120;
 
 const NO_GAMEPAD_SCAN_CACHE_MS = GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS;
+const PRIMARY_GAMEPAD_SCAN_CACHE_MS = 8;
 
 let preferredGamepadIndex: number | null = null;
 let cachedGamepadSignature = "";
 let cachedPrimaryGamepadIndex: number | null = null;
+let cachedPrimaryGamepadResult: Gamepad | null = null;
+let cachedPrimaryGamepadScanAtMs = Number.NEGATIVE_INFINITY;
 let lastNoGamepadScanAtMs = Number.NEGATIVE_INFINITY;
 let gamepadCacheResetListenersInstalled = false;
 
@@ -54,8 +57,16 @@ function getGamepadScanNowMs() {
 function clearGamepadSelectionCache() {
   preferredGamepadIndex = null;
   cachedPrimaryGamepadIndex = null;
+  cachedPrimaryGamepadResult = null;
+  cachedPrimaryGamepadScanAtMs = Number.NEGATIVE_INFINITY;
   cachedGamepadSignature = "";
   lastNoGamepadScanAtMs = Number.NEGATIVE_INFINITY;
+}
+
+function cachePrimaryGamepadScan(gamepad: Gamepad | null, nowMs: number) {
+  cachedPrimaryGamepadResult = gamepad;
+  cachedPrimaryGamepadScanAtMs = nowMs;
+  return gamepad;
 }
 
 function ensureGamepadCacheResetListeners() {
@@ -131,8 +142,12 @@ export function getPrimaryGamepad() {
 
   ensureGamepadCacheResetListeners();
   const now = getGamepadScanNowMs();
+  if (now - cachedPrimaryGamepadScanAtMs < PRIMARY_GAMEPAD_SCAN_CACHE_MS) {
+    return cachedPrimaryGamepadResult;
+  }
+
   if (now - lastNoGamepadScanAtMs < NO_GAMEPAD_SCAN_CACHE_MS) {
-    return null;
+    return cachePrimaryGamepadScan(null, now);
   }
 
   const gamepads = navigator.getGamepads();
@@ -140,7 +155,7 @@ export function getPrimaryGamepad() {
   if (snapshot.connectedCount === 0) {
     clearGamepadSelectionCache();
     lastNoGamepadScanAtMs = now;
-    return null;
+    return cachePrimaryGamepadScan(null, now);
   }
 
   lastNoGamepadScanAtMs = Number.NEGATIVE_INFINITY;
@@ -149,7 +164,7 @@ export function getPrimaryGamepad() {
     preferredGamepadIndex = snapshot.connectedGamepad.index;
     cachedPrimaryGamepadIndex = snapshot.connectedGamepad.index;
     cachedGamepadSignature = snapshot.signature;
-    return snapshot.connectedGamepad;
+    return cachePrimaryGamepadScan(snapshot.connectedGamepad, now);
   }
 
   if (
@@ -158,7 +173,7 @@ export function getPrimaryGamepad() {
     cachedGamepadSignature === snapshot.signature
   ) {
     const cachedGamepad = getConnectedGamepadByIndex(gamepads, cachedPrimaryGamepadIndex);
-    if (cachedGamepad) return cachedGamepad;
+    if (cachedGamepad) return cachePrimaryGamepadScan(cachedGamepad, now);
   }
 
   let fallbackGamepad: Gamepad | null = null;
@@ -195,7 +210,7 @@ export function getPrimaryGamepad() {
 
   cachedPrimaryGamepadIndex = selectedGamepad?.index ?? null;
   cachedGamepadSignature = snapshot.hasUsefulTimestamp ? snapshot.signature : "";
-  return selectedGamepad;
+  return cachePrimaryGamepadScan(selectedGamepad, now);
 }
 
 export function applyGamepadDeadzone(value: number, deadzone = GAMEPAD_STICK_DEADZONE) {
