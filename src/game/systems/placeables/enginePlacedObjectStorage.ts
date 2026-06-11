@@ -69,6 +69,18 @@ function copyFirstStoredSlotSummaries(summaries: EnginePlacedObjectSlotSummary[]
   return savedSummaries;
 }
 
+function insertStoredSlotSummaryBySavedAt(
+  summaries: EnginePlacedObjectSlotSummary[],
+  summary: EnginePlacedObjectSlotSummary
+) {
+  let insertIndex = summaries.length;
+  while (insertIndex > 0 && summary.savedAt > summaries[insertIndex - 1].savedAt) {
+    summaries[insertIndex] = summaries[insertIndex - 1];
+    insertIndex -= 1;
+  }
+  summaries[insertIndex] = summary;
+}
+
 function sanitizeStoredEngineObjects(parsed: unknown): EnginePlacedObjectRecord[] {
   if (!Array.isArray(parsed)) return [];
   const objects: EnginePlacedObjectRecord[] = [];
@@ -159,10 +171,9 @@ export function loadStoredEngineObjectSlotSummaries(storage: EnginePlacementStor
       const summary = sanitizeSlotSummary(parsed[index]);
       if (!summary || seen.has(summary.slotId)) continue;
       seen.add(summary.slotId);
-      summaries.push(summary);
+      insertStoredSlotSummaryBySavedAt(summaries, summary);
     }
     seen.clear();
-    summaries.sort((a, b) => b.savedAt - a.savedAt);
     if (summaries.length > MAX_ENGINE_PLACED_OBJECT_SLOTS) {
       summaries.length = MAX_ENGINE_PLACED_OBJECT_SLOTS;
     }
