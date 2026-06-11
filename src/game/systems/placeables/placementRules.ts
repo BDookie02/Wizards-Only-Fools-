@@ -100,23 +100,36 @@ export function validateEnginePlacementSurface(
   }
 
   const sampleRadius = Math.max(2.5, placeable.footprintRadius * 0.72);
-  const samples = [
-    centerY,
-    getGroundY(x + sampleRadius, z),
-    getGroundY(x - sampleRadius, z),
-    getGroundY(x, z + sampleRadius),
-    getGroundY(x, z - sampleRadius),
-  ];
+  let minY = centerY;
+  let maxY = centerY;
+  let validSampleCount = 1;
 
-  let minY = Number.POSITIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  let validSampleCount = 0;
-  for (let index = 0; index < samples.length; index += 1) {
-    const sample = samples[index];
-    if (!Number.isFinite(sample)) continue;
+  const eastY = getGroundY(x + sampleRadius, z);
+  if (Number.isFinite(eastY)) {
     validSampleCount += 1;
-    if (sample < minY) minY = sample;
-    if (sample > maxY) maxY = sample;
+    if (eastY < minY) minY = eastY;
+    if (eastY > maxY) maxY = eastY;
+  }
+
+  const westY = getGroundY(x - sampleRadius, z);
+  if (Number.isFinite(westY)) {
+    validSampleCount += 1;
+    if (westY < minY) minY = westY;
+    if (westY > maxY) maxY = westY;
+  }
+
+  const southY = getGroundY(x, z + sampleRadius);
+  if (Number.isFinite(southY)) {
+    validSampleCount += 1;
+    if (southY < minY) minY = southY;
+    if (southY > maxY) maxY = southY;
+  }
+
+  const northY = getGroundY(x, z - sampleRadius);
+  if (Number.isFinite(northY)) {
+    validSampleCount += 1;
+    if (northY < minY) minY = northY;
+    if (northY > maxY) maxY = northY;
   }
 
   if (validSampleCount < 5) {
