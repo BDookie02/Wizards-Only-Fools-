@@ -103,12 +103,19 @@ import {
   splitSurvivalFlowersByBloomType,
   type SurvivalFlowerBloomType,
 } from "./survivalFlowerGrouping";
+import { getDormantSurvivalGrassResolvers } from "./survivalDormantGrassResolvers";
 import {
   ensureSurvivalInstancedMeshColors,
   finalizeSurvivalInstancedMesh,
   finalizeSurvivalInstancedMeshColors,
 } from "./survivalInstancing";
 import { HIDE_FROM_MINIMAP } from "./SurvivalFoliagePrimitives";
+
+export {
+  configureDormantSurvivalGrassResolvers,
+  type DormantSurvivalGrassResolvers,
+  type SurvivalLocalGrassPlacement,
+} from "./survivalDormantGrassResolvers";
 
 function copyInitialVisibleGrassCells<T>(cells: readonly T[], maxCount: number) {
   const count = Math.min(cells.length, maxCount);
@@ -138,43 +145,6 @@ const SURVIVAL_LOCAL_GRASS_MEADOW_DEFAULT_COLOR = new THREE.Color("#6fb63d");
 const SURVIVAL_LOCAL_GRASS_GROUND_PATCH_MEADOW_BASE_COLOR = new THREE.Color("#3f9c2e");
 const SURVIVAL_TUTORIAL_GRASS_MEADOW_BASE_COLOR = new THREE.Color("#5ab93a");
 const SURVIVAL_TUTORIAL_GRASS_MEADOW_TIP_COLOR = new THREE.Color("#b9ec5a");
-
-type SurvivalLocalGrassPlacement = {
-  terrainY: number;
-  biome: SurvivalBiome;
-  normal: THREE.Vector3;
-};
-
-type DormantSurvivalGrassResolvers = {
-  getChunkInfoAtWorld: (worldX: number, worldZ: number) => SurvivalChunkInfo;
-  getTerrainHeightForChunk: (chunk: SurvivalChunkInfo, localX: number, localZ: number) => number;
-  getGrassSurfaceHeightForChunk: (chunk: SurvivalChunkInfo, localX: number, localZ: number) => number;
-  getGrassSurfaceNormalForChunk: (chunk: SurvivalChunkInfo, localX: number, localZ: number, sampleDistance?: number) => THREE.Vector3;
-  getGrassSurfaceHeightAtWorld: (worldX: number, worldZ: number) => number;
-  getChunkGrassSurfaceBiome: (chunk: SurvivalChunkInfo) => SurvivalBiome;
-  getGrassSurfaceBiome: (baseBiome: SurvivalBiome, worldX: number, worldZ: number, height: number) => SurvivalBiome;
-  getSmoothedTerrainColor: (worldX: number, worldZ: number, height: number) => THREE.Color;
-  getGrassBladeColor: (biome: SurvivalBiome, worldX: number, worldZ: number, height: number, variant: number) => THREE.Color;
-  getIntegratedGrassBladeColor: (biome: SurvivalBiome, worldX: number, worldZ: number, height: number, variant: number, terrainMix: number) => THREE.Color;
-  isGrassAllowedAtChunkPoint: (chunk: SurvivalChunkInfo, localX: number, localZ: number) => boolean;
-  isGrassSubmergedAtWorldPoint: (chunk: SurvivalChunkInfo, worldX: number, worldZ: number, terrainY: number, shorelinePadding?: number, footprintRadius?: number) => boolean;
-  getBotwGrassFootprintStats: (worldX: number, worldZ: number, radius: number) => { baseY: number; heightRange: number };
-  getLocalGrassPlacement: (worldX: number, worldZ: number, submergeMargin: number, footprintRadius?: number, minNormalY?: number) => SurvivalLocalGrassPlacement | null;
-  getGrassDebugRejectionSummary: (worldX: number, worldZ: number) => string;
-};
-
-let dormantSurvivalGrassResolvers: DormantSurvivalGrassResolvers | null = null;
-
-export function configureDormantSurvivalGrassResolvers(resolvers: DormantSurvivalGrassResolvers) {
-  dormantSurvivalGrassResolvers = resolvers;
-}
-
-function getDormantSurvivalGrassResolvers() {
-  if (!dormantSurvivalGrassResolvers) {
-    throw new Error("Dormant survival grass resolvers have not been configured.");
-  }
-  return dormantSurvivalGrassResolvers;
-}
 
 function getDormantGrassVectorLength2D(x: number, z: number) {
   return Math.sqrt(x * x + z * z);
