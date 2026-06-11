@@ -170,6 +170,7 @@ export function VoiceChat() {
   const voiceAutoStartTestActive = voiceRouteFlags.autoStartTestActive;
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Record<string, PeerRecord>>({});
+  const liveVoicePeerIdsRef = useRef(new Set<string>());
   const voiceSourceLabelRef = useRef("Mic");
   const pttHeldRef = useRef(false);
   const controllerPttHeldRef = useRef(false);
@@ -613,7 +614,8 @@ export function VoiceChat() {
   useEffect(() => {
     if (!voiceChatEnabled || !localStreamRef.current) return;
 
-    const liveIds = new Set<string>();
+    const liveIds = liveVoicePeerIdsRef.current;
+    liveIds.clear();
     let peerCount = 0;
 
     visitNetworkPlayerIdsKey(playerIds, (peerId) => {
@@ -638,6 +640,7 @@ export function VoiceChat() {
         closePeer(peerId);
       }
     }
+    liveIds.clear();
   }, [playerIds, streamVersion, voiceChatEnabled]);
 
   useEffect(() => {
