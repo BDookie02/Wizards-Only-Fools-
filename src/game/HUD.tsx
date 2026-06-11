@@ -52,6 +52,7 @@ import { CONTROLLER_INVENTORY_HOLD_MS, MAGIC_UNARM_HOLD_MS, getPlatformDefaultLo
 import { getNumberSlotFromCode } from "./systems/input/playerInputState";
 import type { DevFastTravelLocation } from "./tools/devFastTravel";
 import { releaseMobileGameplayInputs } from "./ui/hud/mobileTouchEvents";
+import { readCurrentHudQaRouteFlags } from "./ui/hud/hudQaRouteFlags";
 import { isQuestNpcEditorTarget } from "./ui/hud/questNpcEditorGuard";
 import { dispatchEnginePlaceableSignal, subscribeEnginePlaceableEvent } from "./systems/placeables/enginePlaceableEvents";
 import { cycleOption, formatCharacterOption, wrapIndex } from "./ui/hud/hudSettingsUtils";
@@ -429,37 +430,17 @@ export function HUD() {
   const touchGameplayActive = isTouchDevice && isTouchControlsActive;
   const controllerGameplayActive = isControllerGameplayActive;
   const hasRunePowerToDecay = leftRunePower > 0 || rightRunePower > 0;
-  const qaParams = useMemo(() => (
-    typeof window !== "undefined" && import.meta.env.DEV
-      ? new URLSearchParams(window.location.search)
-      : null
-  ), []);
-  const qaHudState = qaParams?.get("qaHudState")?.trim().toLowerCase() ?? "";
-  const shouldMountHudStateQaRuntimeProbe = Boolean(qaHudState);
-  const qaMagicSpell = qaParams?.get("qaMagicSpell")?.trim().toLowerCase() ?? "";
-  const qaMapPage = qaParams?.get("qaMapPage")?.trim().toLowerCase() ?? "";
-  const qaSettingsPane = qaParams?.get("qaSettingsPane")?.trim().toLowerCase() ?? "";
-  const shouldMountHudLayoutQaMetricsProbe = Boolean(
-    qaParams?.get("qaHudLayout") === "1" ||
-    qaParams?.get("qaAspectMatrix") === "1"
-  );
-  const isMenuOverlaySuppressedForQa = Boolean(
-    qaParams?.get("qaHideMenu") === "1" ||
-    qaParams?.get("qaSurvivalWalk") === "1" ||
-    qaParams?.get("qaPerfStats") === "1" ||
-    qaParams?.get("qaSurvival") === "1" ||
-    qaParams?.has("qaSurvivalChunk"),
-  );
-  const shouldHideGameplayViewObstructionsForQa = Boolean(
-    qaParams?.get("qaHideMenu") === "1" ||
-    qaParams?.get("qaHideHands") === "1" ||
-    qaParams?.get("qaCleanView") === "1" ||
-    qaParams?.get("qaGrassView") === "1",
-  );
-  const shouldHideGameplayHudForQa = Boolean(
-    qaParams?.get("qaCleanView") === "1" ||
-    qaParams?.get("qaGrassView") === "1",
-  );
+  const {
+    qaHudState,
+    shouldMountHudStateQaRuntimeProbe,
+    qaMagicSpell,
+    qaMapPage,
+    qaSettingsPane,
+    shouldMountHudLayoutQaMetricsProbe,
+    isMenuOverlaySuppressedForQa,
+    shouldHideGameplayViewObstructionsForQa,
+    shouldHideGameplayHudForQa,
+  } = useMemo(() => readCurrentHudQaRouteFlags(), []);
   const hasPointerLock = isPointerLockActive();
   const hasMouseLookFallback = isHudMouseLookFallbackActive();
   const mouseGameplayActive = !pauseMenuRequestedRef.current && (hasPointerLock || hasMouseLookFallback);

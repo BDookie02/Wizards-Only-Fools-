@@ -458,6 +458,7 @@ Done:
 - Added a forced `qaHudState=questdialog` route, layout QA target, and aspect-matrix state for quest dialogs, then isolated quest dialog/editor modal surfaces from gameplay HUD, touch controls, and magic-hand expectations so mobile/touch-layout modal checks do not inherit clipped arm layers.
 - Split the normal quest dialog panel into `QuestDialogPanel.tsx` and lazy-load it separately from the dev quest NPC editor chunk, so ordinary gameplay dialog UI does not have to load editor tooling.
 - Lazy-loaded the command console UI through `hudLazyModules.ts`, keeping the closed console markup and autofocus portal out of the always-loaded HUD shell while preserving the command parser/runtime split.
+- Added `hudQaRouteFlags.ts` so forced HUD state, magic-hand, map, settings, layout/aspect, clean-view, and menu-suppression QA flags are parsed through one cached HUD-owned route snapshot instead of inside `HUD.tsx`.
 - Lazy-loaded the lobby notification feed through `hudLazyModules.ts` and gated it behind `lobbyMessages.length > 0`, so empty gameplay HUD routes do not fetch or mount chat feed markup.
 - Moved engine placeable selection payload construction and edit/delete event dispatch into `hudEnginePlaceableRuntime.ts`, reducing HUD coupling to the engine-menu event bus.
 - Moved optional HUD lazy imports into `hudLazyModules.ts`, reducing top-level HUD registry churn and keeping closed optional panels centralized.
@@ -842,6 +843,9 @@ Next:
 
 ## Latest Verification
 
+- Focused HUD QA route split: `HUD.tsx` now reads forced HUD state, magic spell, map page, settings pane, layout/aspect probe, clean-view, and menu-suppression flags from `hudQaRouteFlags.ts`; the main HUD no longer constructs `URLSearchParams` from `window.location.search` directly.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the HUD QA route split, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the HUD QA route split. Sprite verification passed; current warning remains chunk size only. `HUD` is about 80.10 kB / 23.99 kB gzip.
 - Focused tutorial grass debug route cleanup: `SurvivalTutorialGrassField` now gates debug sampling through `isSurvivalGrassInspectionView()` from `survivalGrassDebug.ts`, removing the last direct `qaGrassView` browser-search check from `survivalDormantGrassRendering.tsx`.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the tutorial grass QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the tutorial grass debug route cleanup. Sprite verification passed; current warning remains chunk size only. `survivalBotwGrassRendering` is about 30.70 kB / 11.36 kB gzip.
