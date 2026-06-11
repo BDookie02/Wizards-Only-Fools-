@@ -86,17 +86,10 @@ const SpellThumbnail = memo(function SpellThumbnail({
     if (!ctx) return;
 
     const outputSize = 64;
-    const sampleSize = 36;
-    const sampleCanvas = document.createElement("canvas");
-    const sampleCtx = sampleCanvas.getContext("2d", { willReadFrequently: true });
-    if (!sampleCtx) return;
 
     canvas.width = outputSize;
     canvas.height = outputSize;
-    sampleCanvas.width = sampleSize;
-    sampleCanvas.height = sampleSize;
     ctx.imageSmoothingEnabled = false;
-    sampleCtx.imageSmoothingEnabled = false;
 
     const drawPixelBlocks = (blocks: SpellThumbnailBlock[]) => {
       for (let index = 0; index < blocks.length; index += 1) {
@@ -688,6 +681,15 @@ const SpellThumbnail = memo(function SpellThumbnail({
     if (spell === "magicglassorb") {
       return scheduleDraw(drawGlassOrbThumbnail);
     }
+
+    const sampleSize = 36;
+    const sampleCanvas = document.createElement("canvas");
+    const sampleCtx = sampleCanvas.getContext("2d", { willReadFrequently: true });
+    if (!sampleCtx) return;
+
+    sampleCanvas.width = sampleSize;
+    sampleCanvas.height = sampleSize;
+    sampleCtx.imageSmoothingEnabled = false;
 
     const draw = () => {
       const img = imgRef.current;
