@@ -2717,31 +2717,16 @@ function MountainMineshaftCatwalkRing({
   const centerGuardRailSegmentLength = ((Math.PI * 2 * centerGuardRailRadius) / centerGuardPostCount) * 0.78;
   const lightPoleRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS + 0.95;
   const balconyGapHalfAngle = Math.min(0.52, Math.max(0.34, (hut.platformWidth * 0.38) / centerGuardRailRadius));
-  const guardRailGaps = new Array<{ angle: number; halfAngle: number }>(1 + (ladder ? 1 : 0) + (nextLadder ? 1 : 0));
-  let guardRailGapCount = 0;
-  guardRailGaps[guardRailGapCount] = { angle: hut.angle, halfAngle: balconyGapHalfAngle };
-  guardRailGapCount += 1;
-  if (ladder) {
-    guardRailGaps[guardRailGapCount] = {
-      angle: ladder.angle,
-      halfAngle: Math.min(0.5, Math.max(0.34, (ladder.width * 1.35) / centerGuardRailRadius)),
-    };
-    guardRailGapCount += 1;
-  }
-  if (nextLadder) {
-    guardRailGaps[guardRailGapCount] = {
-      angle: nextLadder.angle,
-      halfAngle: Math.min(0.5, Math.max(0.34, (nextLadder.width * 1.35) / centerGuardRailRadius)),
-    };
-  }
+  const ladderGapHalfAngle = ladder
+    ? Math.min(0.5, Math.max(0.34, (ladder.width * 1.35) / centerGuardRailRadius))
+    : 0;
+  const nextLadderGapHalfAngle = nextLadder
+    ? Math.min(0.5, Math.max(0.34, (nextLadder.width * 1.35) / centerGuardRailRadius))
+    : 0;
   const isGuardRailOpening = (angle: number) => {
-    for (let index = 0; index < guardRailGaps.length; index += 1) {
-      const gap = guardRailGaps[index];
-      if (absoluteAngleDeltaRadians(gap.angle, angle) < gap.halfAngle) {
-        return true;
-      }
-    }
-    return false;
+    if (absoluteAngleDeltaRadians(hut.angle, angle) < balconyGapHalfAngle) return true;
+    if (ladder && absoluteAngleDeltaRadians(ladder.angle, angle) < ladderGapHalfAngle) return true;
+    return Boolean(nextLadder && absoluteAngleDeltaRadians(nextLadder.angle, angle) < nextLadderGapHalfAngle);
   };
 
   return (
