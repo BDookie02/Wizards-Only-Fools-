@@ -5,8 +5,7 @@ import {
   spellThumbnails,
   type SpellCatalogEntry,
 } from "../../systems/spells/spellCatalog";
-
-export const hotkeyLabels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+export { hotkeyLabels } from "./hudHotkeyLabels";
 
 export type SpellFamilyFilter = SpellCatalogEntry["family"] | "all";
 

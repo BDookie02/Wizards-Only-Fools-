@@ -10,6 +10,7 @@ import {
 import { spellColors, spellNames } from "../../systems/spells/spellCatalog";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { hotkeyLabels } from "./hudHotkeyLabels";
 import { useHudBuffClock } from "./useHudBuffClock";
 
 type GameplayHudOverlayProps = {
@@ -34,8 +35,6 @@ type GameplayHudOverlayProps = {
   acidUntil: number;
   magicGlassOrbUntil: number;
 };
-
-const hotkeyLabels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
