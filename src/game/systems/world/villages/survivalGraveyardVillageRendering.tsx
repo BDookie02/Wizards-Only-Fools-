@@ -93,6 +93,8 @@ const GRAVEYARD_FENCE_SEGMENT_COUNT = 48;
 const GRAVEYARD_FENCE_GATE_HALF_WIDTH = 34;
 const GRAVEYARD_TOMB_INNER_RADIUS = GRAVEYARD_FENCE_RADIUS - 34;
 const GRAVEYARD_TOMB_INNER_RADIUS_SQ = GRAVEYARD_TOMB_INNER_RADIUS * GRAVEYARD_TOMB_INNER_RADIUS;
+const GRAVEYARD_SIDE_SIGNS = [-1, 1] as const;
+const GRAVEYARD_FENCE_POST_OFFSETS = [-0.48, 0.48] as const;
 const CHAPEL_CENTER_HALF_WIDTH = 54;
 const CHAPEL_CENTER_HALF_DEPTH = 82;
 const CHAPEL_SIDE_WING_HALF_WIDTH = 34;
@@ -164,6 +166,19 @@ const CHAPEL_EXIT_RAMP_DEFINITIONS = [
   { key: "east", position: [0, 0, 0] as [number, number, number], rotation: Math.PI / 2, distance: CHAPEL_OUTER_HALF_WIDTH, width: 50, top: CHAPEL_STAIR_RAMP_WING_TOP, outset: -1 },
   { key: "west", position: [0, 0, 0] as [number, number, number], rotation: -Math.PI / 2, distance: CHAPEL_OUTER_HALF_WIDTH, width: 50, top: CHAPEL_STAIR_RAMP_WING_TOP, outset: -1 },
 ];
+type ChapelExitShadowDefinition = {
+  key: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  size: [number, number, number];
+};
+const CHAPEL_EXIT_SHADOW_DEFINITIONS: ChapelExitShadowDefinition[] = [
+  { key: "south", position: [0, 12.4, CHAPEL_CENTER_HALF_DEPTH + 0.85], rotation: [0, 0, 0], size: [CHAPEL_EXIT_HALF_WIDTH * 2 - 3, 24, 0.32] },
+  { key: "north-west", position: [-CHAPEL_REAR_EXIT_CENTER_X, 12.4, -(CHAPEL_CENTER_HALF_DEPTH + 0.85)], rotation: [0, Math.PI, 0], size: [CHAPEL_REAR_EXIT_HALF_WIDTH * 2, 21, 0.32] },
+  { key: "north-east", position: [CHAPEL_REAR_EXIT_CENTER_X, 12.4, -(CHAPEL_CENTER_HALF_DEPTH + 0.85)], rotation: [0, Math.PI, 0], size: [CHAPEL_REAR_EXIT_HALF_WIDTH * 2, 21, 0.32] },
+  { key: "east", position: [CHAPEL_OUTER_HALF_WIDTH + 0.85, 12.4, 0], rotation: [0, Math.PI / 2, 0], size: [CHAPEL_SIDE_EXIT_HALF_WIDTH * 2 - 2, 20, 0.32] },
+  { key: "west", position: [-(CHAPEL_OUTER_HALF_WIDTH + 0.85), 12.4, 0], rotation: [0, -Math.PI / 2, 0], size: [CHAPEL_SIDE_EXIT_HALF_WIDTH * 2 - 2, 20, 0.32] },
+];
 const GRAVEYARD_TOMB_TEXTURE_CHIP_RECTS: Array<[number, number, number, number]> = [
   [10, 14, 24, 8],
   [214, 14, 32, 10],
@@ -184,6 +199,17 @@ const CHAPEL_INTERIOR_CANDLE_SPOTS: Array<[number, number, number]> = [
 ];
 const CHAPEL_ALTAR_GRAIN_X = [-7.2, 0, 7.2] as const;
 const CHAPEL_PULPIT_GRAIN_X = [-2.4, 0, 2.4] as const;
+const CHAPEL_GOTHIC_WINDOW_MULLION_X = [-3.15, 0, 3.15] as const;
+const CHAPEL_GOTHIC_WINDOW_SIDE_RIB_X = [-4.8, 4.8] as const;
+const CHAPEL_GOTHIC_WINDOW_OUTER_PIER_X = [-6.15, 6.15] as const;
+const CHAPEL_GOTHIC_WINDOW_LANCET_X = [-2.6, 2.6] as const;
+const CHAPEL_GOTHIC_WINDOW_GLASS_STRIP_X = [-4.2, -1.4, 1.4, 4.2] as const;
+const CHAPEL_DOOR_PANEL_PLANK_OFFSETS = [-0.24, 0.24] as const;
+const CHAPEL_DOOR_STRAP_HEIGHT_OFFSETS = [-0.34, 0.34] as const;
+const CHAPEL_SIDE_WING_WINDOW_Z = [-34, 34] as const;
+const CHAPEL_NAVE_WINDOW_Z = [-68, 68] as const;
+const CHAPEL_WING_BUTTRESS_Z = [-46, -18, 18, 46] as const;
+const CHAPEL_CENTRAL_BUTTRESS_Z = [-72, 72] as const;
 
 function makeChapelRampColliderGeometry(baseHeight: number) {
   const exitCount = CHAPEL_EXIT_RAMP_DEFINITIONS.length;
@@ -948,7 +974,7 @@ function GraveyardSpikedFence({ segments, showDetails }: { segments: GraveyardFe
             <boxGeometry args={[segment.length, 0.42, 0.36]} />
             <meshBasicMaterial color="#111111" />
           </mesh>
-          {[-0.48, 0.48].map((offset) => (
+          {GRAVEYARD_FENCE_POST_OFFSETS.map((offset) => (
             <mesh key={`post-${offset}`} position={[offset * segment.length, 5.05, 0]} castShadow={false}>
               <boxGeometry args={[1.18, 10.1, 1.18]} />
               <meshBasicMaterial color="#080808" />
@@ -1123,7 +1149,7 @@ function GraveyardTombstone({ tomb, showInscription }: { tomb: GraveyardTomb; sh
 
       {styleIndex === 3 && (
         <>
-          {[-1, 1].map((side) => (
+          {GRAVEYARD_SIDE_SIGNS.map((side) => (
             <Fragment key={`double-marker-${side}`}>
               <mesh position={[side * width * 0.27, height * 0.46 + 1.05, 0]} castShadow={false} receiveShadow>
                 <boxGeometry args={[width * 0.42, height * 0.92, depth]} />
@@ -1325,19 +1351,19 @@ function ChapelGiantGothicWindow({
         <shapeGeometry args={[innerShape]} />
         <meshBasicMaterial color={glowColor} transparent opacity={0.48} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
-      {[-3.15, 0, 3.15].map((x) => (
+      {CHAPEL_GOTHIC_WINDOW_MULLION_X.map((x) => (
         <mesh key={`chapel-gothic-window-mullion-${x}`} position={[x, -1.95, 0.2]} castShadow={false} renderOrder={5}>
           <boxGeometry args={[0.42, 17.4, 0.22]} />
           <meshBasicMaterial color="#efe5c7" />
         </mesh>
       ))}
-      {[-4.8, 4.8].map((x) => (
+      {CHAPEL_GOTHIC_WINDOW_SIDE_RIB_X.map((x) => (
         <mesh key={`chapel-gothic-window-side-rib-${x}`} position={[x, -1.1, 0.18]} castShadow={false} renderOrder={5}>
           <boxGeometry args={[0.36, 19.2, 0.22]} />
           <meshBasicMaterial color="#b8ad99" />
         </mesh>
       ))}
-      {[-6.15, 6.15].map((x) => (
+      {CHAPEL_GOTHIC_WINDOW_OUTER_PIER_X.map((x) => (
         <mesh key={`chapel-gothic-window-outer-pier-${x}`} position={[x, -1.4, 0.16]} castShadow={false} renderOrder={5}>
           <boxGeometry args={[0.62, 21.8, 0.28]} />
           <meshBasicMaterial color="#8f897f" />
@@ -1351,7 +1377,7 @@ function ChapelGiantGothicWindow({
         <boxGeometry args={[10.2, 0.46, 0.22]} />
         <meshBasicMaterial color="#b8ad99" />
       </mesh>
-      {[-2.6, 2.6].map((x) => (
+      {CHAPEL_GOTHIC_WINDOW_LANCET_X.map((x) => (
         <Fragment key={`chapel-gothic-window-lancet-${x}`}>
           <mesh position={[x, 5.25, 0.28]} rotation={[0, 0, x > 0 ? -0.44 : 0.44]} castShadow={false} renderOrder={6}>
             <boxGeometry args={[0.36, 8.2, 0.2]} />
@@ -1371,7 +1397,7 @@ function ChapelGiantGothicWindow({
         <circleGeometry args={[0.72, 10]} />
         <meshBasicMaterial color="#070810" transparent opacity={0.82} side={THREE.DoubleSide} />
       </mesh>
-      {[-4.2, -1.4, 1.4, 4.2].map((x, index) => (
+      {CHAPEL_GOTHIC_WINDOW_GLASS_STRIP_X.map((x, index) => (
         <mesh key={`chapel-gothic-window-glass-strip-${index}`} position={[x, -4.85, 0.34]} castShadow={false} renderOrder={6}>
           <boxGeometry args={[1.15, 6.8, 0.12]} />
           <meshBasicMaterial color={index % 2 === 0 ? "#38bdf8" : "#a78bfa"} transparent opacity={0.76} />
@@ -2274,7 +2300,7 @@ function ChapelWatchTower({
         <coneGeometry args={[CHAPEL_WATCH_TOWER_RADIUS + 1.2, 12.8, 4]} />
         <meshBasicMaterial color="#0d0a0f" />
       </mesh>
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <Fragment key={`chapel-watch-tower-arrow-slit-${side}`}>
           <mesh position={[side * 5.2, 4.8, CHAPEL_WATCH_TOWER_RADIUS + 0.08]} castShadow={false}>
             <boxGeometry args={[1.2, 9.8, 0.22]} />
@@ -2313,7 +2339,7 @@ function ChapelGargoyle({
         <boxGeometry args={[0.9, 0.55, 1]} />
         <meshBasicMaterial color="#232129" />
       </mesh>
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <Fragment key={`chapel-gargoyle-side-${side}`}>
           <mesh position={[side * 1.38, 1.05, -0.24]} rotation={[0.18, 0, side * 0.72]} castShadow={false}>
             <boxGeometry args={[0.42, 2.5, 2.6]} />
@@ -2356,7 +2382,7 @@ function ChapelDoorKnocker({ x = 0 }: { x?: number }) {
         <sphereGeometry args={[0.62, 10, 6]} />
         <meshBasicMaterial color="#6b421e" />
       </mesh>
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <Fragment key={`chapel-lion-knocker-ear-${side}`}>
           <mesh position={[side * 0.52, 1.88, 0.08]} rotation={[0, 0, side * 0.46]} castShadow={false}>
             <coneGeometry args={[0.24, 0.7, 4]} />
@@ -2397,7 +2423,7 @@ function ChapelDoubleDoor({
 
   return (
     <group name="chapel-open-double-door" position={position} rotation={[0, yaw, 0]}>
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <group
           key={`chapel-door-panel-${side}`}
           position={[side * (width * 0.5 - 0.7), 1.2 + panelHeight * 0.5, 0.65]}
@@ -2407,13 +2433,13 @@ function ChapelDoubleDoor({
             <boxGeometry args={[panelWidth, panelHeight, 1.05]} />
             <meshBasicMaterial color="#5b351f" />
           </mesh>
-          {[-0.24, 0.24].map((offset) => (
+          {CHAPEL_DOOR_PANEL_PLANK_OFFSETS.map((offset) => (
             <mesh key={`chapel-door-plank-${offset}`} position={[side * (-hingeInset * 0.45 + offset * panelWidth), 0, 0.58]} castShadow={false}>
               <boxGeometry args={[0.28, panelHeight - 1.8, 0.18]} />
               <meshBasicMaterial color="#7a4928" transparent opacity={0.76} />
             </mesh>
           ))}
-          {[-0.34, 0.34].map((yOffset) => (
+          {CHAPEL_DOOR_STRAP_HEIGHT_OFFSETS.map((yOffset) => (
             <mesh key={`chapel-door-strap-${yOffset}`} position={[side * -hingeInset * 0.45, yOffset * panelHeight, 0.7]} castShadow={false}>
               <boxGeometry args={[panelWidth - 1.5, 0.52, 0.24]} />
               <meshBasicMaterial color="#1c1410" />
@@ -2508,7 +2534,7 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         <boxGeometry args={[CHAPEL_CENTER_HALF_WIDTH * 2 + 10, 0.96, CHAPEL_CENTER_HALF_DEPTH * 2 + 8]} />
         <meshBasicMaterial color="#17141a" />
       </mesh>
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <mesh key={`chapel-wing-foundation-${side}`} position={[side * CHAPEL_SIDE_WING_CENTER_X, 0.44, 0]} castShadow={false} receiveShadow>
           <boxGeometry args={[CHAPEL_SIDE_WING_HALF_WIDTH * 2 + 10, 0.88, CHAPEL_SIDE_WING_HALF_DEPTH * 2 + 8]} />
           <meshBasicMaterial color="#161319" />
@@ -2526,7 +2552,7 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         <coneGeometry args={[82, 23, 4]} />
         <meshBasicMaterial color={roof} side={THREE.DoubleSide} />
       </mesh>
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <mesh key={`chapel-wing-roof-${side}`} position={[side * CHAPEL_SIDE_WING_CENTER_X, 31.8, 0]} rotation={[0, Math.PI / 4, 0]} castShadow={false}>
           <coneGeometry args={[49, 16, 4]} />
           <meshBasicMaterial color="#141016" side={THREE.DoubleSide} />
@@ -2540,7 +2566,7 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
           darkStoneMap={chapelDarkStoneTexture}
         />
       ))}
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <Fragment key={`chapel-tower-side-${side}`}>
           <mesh position={[side * 17.3, 33.2, CHAPEL_CENTER_HALF_DEPTH - 20]} castShadow={false} receiveShadow>
             <boxGeometry args={[2.6, 66.4, 42]} />
@@ -2556,7 +2582,7 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         <boxGeometry args={[22, 40, 2.6]} />
         <meshBasicMaterial map={chapelDarkStoneTexture} />
       </mesh>
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <mesh key={`chapel-tower-rear-pier-${side}`} position={[side * 13.7, 33.2, CHAPEL_CENTER_HALF_DEPTH - 40.5]} castShadow={false} receiveShadow>
           <boxGeometry args={[5.4, 66.4, 2.4]} />
           <meshBasicMaterial map={chapelDarkStoneTexture} />
@@ -2578,13 +2604,7 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         <boxGeometry args={[13.5, 2.4, 2.4]} />
         <meshBasicMaterial color="#050505" />
       </mesh>
-      {[
-        { key: "south", position: [0, 12.4, CHAPEL_CENTER_HALF_DEPTH + 0.85] as [number, number, number], rotation: [0, 0, 0] as [number, number, number], size: [CHAPEL_EXIT_HALF_WIDTH * 2 - 3, 24, 0.32] as [number, number, number] },
-        { key: "north-west", position: [-CHAPEL_REAR_EXIT_CENTER_X, 12.4, -(CHAPEL_CENTER_HALF_DEPTH + 0.85)] as [number, number, number], rotation: [0, Math.PI, 0] as [number, number, number], size: [CHAPEL_REAR_EXIT_HALF_WIDTH * 2, 21, 0.32] as [number, number, number] },
-        { key: "north-east", position: [CHAPEL_REAR_EXIT_CENTER_X, 12.4, -(CHAPEL_CENTER_HALF_DEPTH + 0.85)] as [number, number, number], rotation: [0, Math.PI, 0] as [number, number, number], size: [CHAPEL_REAR_EXIT_HALF_WIDTH * 2, 21, 0.32] as [number, number, number] },
-        { key: "east", position: [CHAPEL_OUTER_HALF_WIDTH + 0.85, 12.4, 0] as [number, number, number], rotation: [0, Math.PI / 2, 0] as [number, number, number], size: [CHAPEL_SIDE_EXIT_HALF_WIDTH * 2 - 2, 20, 0.32] as [number, number, number] },
-        { key: "west", position: [-(CHAPEL_OUTER_HALF_WIDTH + 0.85), 12.4, 0] as [number, number, number], rotation: [0, -Math.PI / 2, 0] as [number, number, number], size: [CHAPEL_SIDE_EXIT_HALF_WIDTH * 2 - 2, 20, 0.32] as [number, number, number] },
-      ].map((door) => (
+      {CHAPEL_EXIT_SHADOW_DEFINITIONS.map((door) => (
         <mesh key={`chapel-exit-shadow-${door.key}`} position={door.position} rotation={door.rotation} castShadow={false} renderOrder={2}>
           <boxGeometry args={door.size} />
           <meshBasicMaterial color="#050403" transparent opacity={0.16} depthWrite={false} />
@@ -2626,7 +2646,7 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         </group>
       ))}
       <ChapelGiantGothicWindow position={[0, 42.2, CHAPEL_CENTER_HALF_DEPTH + 1.55]} scale={1.2} variant={0} />
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <ChapelGiantGothicWindow
           key={`chapel-front-giant-window-${side}`}
           position={[side * 35.5, 23.4, CHAPEL_CENTER_HALF_DEPTH + 1.5]}
@@ -2651,9 +2671,9 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
         <meshBasicMaterial color="#fde68a" />
       </mesh>
       <ChapelGiantGothicWindow position={[0, 25.8, -(CHAPEL_CENTER_HALF_DEPTH + 1.5)]} rotation={[0, Math.PI, 0]} scale={1.05} variant={2} />
-      {[-1, 1].map((side) => (
+      {CHAPEL_SIDE_SIGNS.map((side) => (
         <Fragment key={`chapel-side-${side}`}>
-          {[-34, 34].map((z, index) => (
+          {CHAPEL_SIDE_WING_WINDOW_Z.map((z, index) => (
             <ChapelGiantGothicWindow
               key={`chapel-wing-giant-window-${side}-${index}`}
               position={[side * (CHAPEL_OUTER_HALF_WIDTH + 1.55), 24.2, z]}
@@ -2662,7 +2682,7 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
               variant={index + (side > 0 ? 1 : 0)}
             />
           ))}
-          {[-68, 68].map((z, index) => (
+          {CHAPEL_NAVE_WINDOW_Z.map((z, index) => (
             <ChapelGiantGothicWindow
               key={`chapel-nave-giant-window-${side}-${index}`}
               position={[side * (CHAPEL_CENTER_HALF_WIDTH + 1.48), 24.6, z]}
@@ -2671,13 +2691,13 @@ function GraveyardCatholicChapel({ baseHeight, showDetails }: { baseHeight: numb
               variant={index + 2}
             />
           ))}
-          {[-46, -18, 18, 46].map((z) => (
+          {CHAPEL_WING_BUTTRESS_Z.map((z) => (
             <mesh key={`chapel-wing-buttress-${side}-${z}`} position={[side * (CHAPEL_OUTER_HALF_WIDTH + 4), 12.8, z]} castShadow={false}>
               <boxGeometry args={[4.2, 25.6, 6.2]} />
               <meshBasicMaterial map={chapelDarkStoneTexture} />
             </mesh>
           ))}
-          {[-72, 72].map((z) => (
+          {CHAPEL_CENTRAL_BUTTRESS_Z.map((z) => (
             <mesh key={`chapel-central-buttress-${side}-${z}`} position={[side * (CHAPEL_CENTER_HALF_WIDTH + 4), 12.8, z]} castShadow={false}>
               <boxGeometry args={[4.2, 25.6, 6.2]} />
               <meshBasicMaterial map={chapelDarkStoneTexture} />
