@@ -258,6 +258,21 @@ type MountainVillageLayout = {
   waterfall: MountainVillageWaterfall;
 };
 
+const EMPTY_MOUNTAIN_SLOPE_GRASS_TUFTS: MountainSlopeGrassTuft[] = [];
+const EMPTY_MOUNTAIN_MINESHAFT_HUTS: MountainMineshaftHut[] = [];
+const EMPTY_MOUNTAIN_MINESHAFT_LADDERS: MountainMineshaftLadder[] = [];
+const EMPTY_MOUNTAIN_HUT_INFOS: HutInfo[] = [];
+const MOUNTAIN_CLIFF_STONE_COLORS = ["#3f474a", "#545d60", "#6f7a7d", "#838f94", "#2f3638"] as const;
+const MOUNTAIN_CLIFF_SNOW_COLORS = ["#d9eef7", "#eef9ff", "#bcdce9"] as const;
+const MOUNTAIN_MINESHAFT_HUT_LEVEL_FRACTIONS_NEAR = [0.18, 0.48, 0.8] as const;
+const MOUNTAIN_MINESHAFT_HUT_LEVEL_FRACTIONS_MID = [0.24, 0.68] as const;
+const MOUNTAIN_MINESHAFT_HUT_BODY_COLORS = ["#514331", "#5d4b35", "#423b32", "#664f35"] as const;
+const MOUNTAIN_MINESHAFT_HUT_ROOF_COLORS = ["#6f5131", "#805d39", "#5c4028", "#8a6a42"] as const;
+const MOUNTAIN_MINESHAFT_HUT_ACCENT_COLORS = ["#86d9ff", "#f1cf82", "#c7eaff", "#d7b46c"] as const;
+const MOUNTAIN_CABIN_BODY_COLORS = ["#584633", "#64513d", "#4f4538", "#6b573f"] as const;
+const MOUNTAIN_CABIN_ROOF_COLORS = ["#dceefa", "#cfe4f3", "#edf7ff", "#b9d3e8"] as const;
+const MOUNTAIN_CABIN_ACCENT_COLORS = ["#82d8ff", "#f5d28a", "#bce7ff", "#d6f4ff"] as const;
+
 type MountainVillageLayoutOptions = {
   includeMineshaftLayout?: boolean;
   includeVillagerHutInfos?: boolean;
@@ -469,7 +484,7 @@ function MountainSlopeGrass({
           terrainColorAtWorld,
         ),
       )
-      : [],
+      : EMPTY_MOUNTAIN_SLOPE_GRASS_TUFTS,
     [active, baseHeight, chunk, terrainColorAtWorld, terrainColorScratch, terrainHeightForChunk],
   );
 
@@ -531,8 +546,6 @@ function MountainSlopeGrass({
 
 function makeMountainVillageCliffPatches(chunk: SurvivalChunkInfo, baseHeight: number, terrainHeightForChunk: SurvivalTerrainHeightForChunk): MountainVillageCliffPatch[] {
   const count = chunk.lod === "near" ? 48 : 20;
-  const stoneColors = ["#3f474a", "#545d60", "#6f7a7d", "#838f94", "#2f3638"];
-  const snowColors = ["#d9eef7", "#eef9ff", "#bcdce9"];
   const patches = new Array<MountainVillageCliffPatch>(count);
 
   for (let index = 0; index < count; index += 1) {
@@ -548,7 +561,7 @@ function makeMountainVillageCliffPatches(chunk: SurvivalChunkInfo, baseHeight: n
     const y = getMountainVillageHeight(chunk, localX, localZ, terrainHeightForChunk, baseHeight);
     const lift = y - baseHeight;
     const snowMix = smoothstepRange(MOUNTAIN_VILLAGE_HEIGHT * 0.6, MOUNTAIN_VILLAGE_HEIGHT * 0.92, lift);
-    const colorSet = snowMix > 0.56 && index % 3 !== 1 ? snowColors : stoneColors;
+    const colorSet = snowMix > 0.56 && index % 3 !== 1 ? MOUNTAIN_CLIFF_SNOW_COLORS : MOUNTAIN_CLIFF_STONE_COLORS;
     const width = lerpNumber(9, 23, survivalHash01(chunk.cx, chunk.cz, 5260 + index)) * (snowMix > 0.62 ? 0.78 : 1);
     const depth = lerpNumber(2.2, 6.4, survivalHash01(chunk.cx, chunk.cz, 5290 + index));
 
@@ -885,11 +898,8 @@ function makeMountainMineshaftHuts(chunk: SurvivalChunkInfo, baseHeight: number,
   const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET;
   const availableHeight = Math.max(96, summitY - bottomY - 30);
   const levelFractions = chunk.lod === "near"
-    ? [0.18, 0.48, 0.8]
-    : [0.24, 0.68];
-  const bodyColors = ["#514331", "#5d4b35", "#423b32", "#664f35"];
-  const roofColors = ["#6f5131", "#805d39", "#5c4028", "#8a6a42"];
-  const accentColors = ["#86d9ff", "#f1cf82", "#c7eaff", "#d7b46c"];
+    ? MOUNTAIN_MINESHAFT_HUT_LEVEL_FRACTIONS_NEAR
+    : MOUNTAIN_MINESHAFT_HUT_LEVEL_FRACTIONS_MID;
   const angleBase = 0.72 + survivalHash01(chunk.cx, chunk.cz, 5200) * 0.38;
   const huts = new Array<MountainMineshaftHut>(levelFractions.length);
 
@@ -912,9 +922,9 @@ function makeMountainMineshaftHuts(chunk: SurvivalChunkInfo, baseHeight: number,
       height,
       platformWidth: width + 5.8,
       platformDepth: depth * 0.72 + 7.8,
-      bodyColor: bodyColors[index % bodyColors.length],
-      roofColor: roofColors[index % roofColors.length],
-      accentColor: accentColors[index % accentColors.length],
+      bodyColor: MOUNTAIN_MINESHAFT_HUT_BODY_COLORS[index % MOUNTAIN_MINESHAFT_HUT_BODY_COLORS.length],
+      roofColor: MOUNTAIN_MINESHAFT_HUT_ROOF_COLORS[index % MOUNTAIN_MINESHAFT_HUT_ROOF_COLORS.length],
+      accentColor: MOUNTAIN_MINESHAFT_HUT_ACCENT_COLORS[index % MOUNTAIN_MINESHAFT_HUT_ACCENT_COLORS.length],
     };
   }
 
@@ -1033,11 +1043,8 @@ function makeMountainVillageLayout(
   const trailSegments = makeMountainVillageTrailSegments(chunk, baseHeight, trailPoints, terrainHeightForChunk);
   const cliffPatches = makeMountainVillageCliffPatches(chunk, baseHeight, terrainHeightForChunk);
   const cabinCount = chunk.lod === "near" ? 8 : 5;
-  const bodyColors = ["#584633", "#64513d", "#4f4538", "#6b573f"];
-  const roofColors = ["#dceefa", "#cfe4f3", "#edf7ff", "#b9d3e8"];
-  const accentColors = ["#82d8ff", "#f5d28a", "#bce7ff", "#d6f4ff"];
   const cabins = new Array<MountainVillageCabin>(cabinCount);
-  const roofColorOffset = Math.floor(survivalHash01(chunk.cx, chunk.cz, 4610) * roofColors.length);
+  const roofColorOffset = Math.floor(survivalHash01(chunk.cx, chunk.cz, 4610) * MOUNTAIN_CABIN_ROOF_COLORS.length);
 
   for (let index = 0; index < cabinCount; index += 1) {
     const angle = (Math.PI * 2 * index) / cabinCount + 0.28 + survivalHash01(chunk.cx, chunk.cz, 4480) * 0.2;
@@ -1054,21 +1061,21 @@ function makeMountainVillageLayout(
       width,
       depth,
       height,
-      bodyColor: bodyColors[index % bodyColors.length],
-      roofColor: roofColors[(index + roofColorOffset) % roofColors.length],
-      accentColor: accentColors[index % accentColors.length],
+      bodyColor: MOUNTAIN_CABIN_BODY_COLORS[index % MOUNTAIN_CABIN_BODY_COLORS.length],
+      roofColor: MOUNTAIN_CABIN_ROOF_COLORS[(index + roofColorOffset) % MOUNTAIN_CABIN_ROOF_COLORS.length],
+      accentColor: MOUNTAIN_CABIN_ACCENT_COLORS[index % MOUNTAIN_CABIN_ACCENT_COLORS.length],
     };
   }
   const includeMineshaftLayout = options.includeMineshaftLayout ?? true;
   const interiorHuts = includeMineshaftLayout
     ? makeMountainMineshaftHuts(chunk, baseHeight, summitY)
-    : [];
+    : EMPTY_MOUNTAIN_MINESHAFT_HUTS;
   const interiorLadders = includeMineshaftLayout
     ? makeMountainMineshaftLadders(chunk, baseHeight, interiorHuts, summitY)
-    : [];
+    : EMPTY_MOUNTAIN_MINESHAFT_LADDERS;
   const hutInfos = (options.includeVillagerHutInfos ?? true)
     ? makeMountainVillageHutInfos(chunk, summitY, cabins, interiorHuts)
-    : [];
+    : EMPTY_MOUNTAIN_HUT_INFOS;
   const waterfallAngle = -Math.PI * 0.28 + survivalHash01(chunk.cx, chunk.cz, 4700) * 0.52;
   const topRadius = 112;
   const bottomRadius = MOUNTAIN_VILLAGE_TRAIL_START_RADIUS + 8;
