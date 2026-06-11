@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { Projectile, useGameStore } from "../../../store/gameStore";
@@ -35,6 +35,12 @@ function makeGrabPathPoints(): THREE.Vector3[] {
 const GRAB_ARM_INDICES = getCachedIndexRange(GRAB_ARM_SEGMENTS);
 const GRAB_FINGER_INDICES = getCachedIndexRange(GRAB_FINGER_OFFSETS.length);
 
+function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
+  const ref = useRef<T | null>(null);
+  if (ref.current === null) ref.current = factory();
+  return ref as MutableRefObject<T>;
+}
+
 export function GrabSpell({ projectile }: { projectile: Projectile }) {
   const isRelease = projectile.grabPhase === "release";
   if (isRelease) return <GrabReleaseEffect projectile={projectile} />;
@@ -63,29 +69,29 @@ function GrabReleaseEffect({ projectile }: { projectile: Projectile }) {
 function ActiveGrabSpell({ projectile }: { projectile: Projectile }) {
   const removeProjectile = useGameStore(s => s.removeProjectile);
   const isMyProjectile = isLocalProjectileCreator(projectile);
-  const startPos = useRef(new THREE.Vector3(projectile.pos.x, projectile.pos.y, projectile.pos.z));
-  const dirRef = useRef(new THREE.Vector3(projectile.dir.x, projectile.dir.y, projectile.dir.z).normalize());
+  const startPos = useLazyRef(() => new THREE.Vector3(projectile.pos.x, projectile.pos.y, projectile.pos.z));
+  const dirRef = useLazyRef(() => new THREE.Vector3(projectile.dir.x, projectile.dir.y, projectile.dir.z).normalize());
   const lengthRef = useRef(0);
   const hitLocalPlayerRef = useRef(false);
-  const armSegmentRefs = useRef<Array<THREE.Mesh | null>>([]);
-  const coreSegmentRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const armSegmentRefs = useLazyRef<Array<THREE.Mesh | null>>(() => []);
+  const coreSegmentRefs = useLazyRef<Array<THREE.Mesh | null>>(() => []);
   const palmRef = useRef<THREE.Mesh>(null);
-  const fingerRefs = useRef<Array<THREE.Mesh | null>>([]);
-  const targetPointScratch = useRef(new THREE.Vector3());
-  const toPointScratch = useRef(new THREE.Vector3());
-  const closestPointScratch = useRef(new THREE.Vector3());
-  const cameraDirScratch = useRef(new THREE.Vector3());
-  const lateralScratch = useRef(new THREE.Vector3());
-  const casterStartScratch = useRef(new THREE.Vector3());
-  const casterAimScratch = useRef(new THREE.Vector3());
-  const playerPointScratch = useRef(new THREE.Vector3());
-  const lineScratch = useRef(new THREE.Vector3());
-  const sideScratch = useRef(new THREE.Vector3());
-  const upScratch = useRef(new THREE.Vector3());
+  const fingerRefs = useLazyRef<Array<THREE.Mesh | null>>(() => []);
+  const targetPointScratch = useLazyRef(() => new THREE.Vector3());
+  const toPointScratch = useLazyRef(() => new THREE.Vector3());
+  const closestPointScratch = useLazyRef(() => new THREE.Vector3());
+  const cameraDirScratch = useLazyRef(() => new THREE.Vector3());
+  const lateralScratch = useLazyRef(() => new THREE.Vector3());
+  const casterStartScratch = useLazyRef(() => new THREE.Vector3());
+  const casterAimScratch = useLazyRef(() => new THREE.Vector3());
+  const playerPointScratch = useLazyRef(() => new THREE.Vector3());
+  const lineScratch = useLazyRef(() => new THREE.Vector3());
+  const sideScratch = useLazyRef(() => new THREE.Vector3());
+  const upScratch = useLazyRef(() => new THREE.Vector3());
   const pathPoints = useMemo(makeGrabPathPoints, []);
-  const cylinderScratch = useRef(createCylinderBetweenScratch());
-  const fingerBaseScratch = useRef(new THREE.Vector3());
-  const fingerTipScratch = useRef(new THREE.Vector3());
+  const cylinderScratch = useLazyRef(() => createCylinderBetweenScratch());
+  const fingerBaseScratch = useLazyRef(() => new THREE.Vector3());
+  const fingerTipScratch = useLazyRef(() => new THREE.Vector3());
 
   const getAimedTargetDistance = () => {
     let nearestDistance = GRAB_MAX_REACH;
