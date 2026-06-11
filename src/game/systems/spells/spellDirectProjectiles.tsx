@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { BallCollider, CuboidCollider, RapierRigidBody, RigidBody } from "@react-three/rapier";
 import { Billboard, Html } from "@react-three/drei";
@@ -101,6 +101,12 @@ const OPAQUE_TEXTURE_FRAGMENT_SHADER = `
     gl_FragColor = vec4(texColor.rgb, 1.0);
   }
 `;
+
+function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
+  const ref = useRef<T | null>(null);
+  if (ref.current === null) ref.current = factory();
+  return ref as MutableRefObject<T>;
+}
 
 function getKunaiRotationTuple(dir: { x: number; y: number; z: number }): [number, number, number] {
   kunaiDirectionScratch.set(dir.x, dir.y, dir.z).normalize();
@@ -512,8 +518,8 @@ export function StatusBolt({ projectile }: { projectile: Projectile }) {
 }
 
 export function PhaseBeam({ projectile }: { projectile: Projectile }) {
-  const startPos = useRef(new THREE.Vector3(projectile.pos.x, projectile.pos.y, projectile.pos.z));
-  const dir = useRef(new THREE.Vector3(projectile.dir.x, projectile.dir.y, projectile.dir.z).normalize());
+  const startPos = useLazyRef(() => new THREE.Vector3(projectile.pos.x, projectile.pos.y, projectile.pos.z));
+  const dir = useLazyRef(() => new THREE.Vector3(projectile.dir.x, projectile.dir.y, projectile.dir.z).normalize());
   
   const outerRef = useRef<THREE.Mesh>(null);
   const coreRef = useRef<THREE.Mesh>(null);
@@ -521,14 +527,14 @@ export function PhaseBeam({ projectile }: { projectile: Projectile }) {
   const coreMatRef = useRef<THREE.MeshBasicMaterial>(null);
   const isMyProjectile = isLocalProjectileCreator(projectile);
   const spawnClockAt = useRef<number | null>(null);
-  const playerPosScratch = useRef(new THREE.Vector3());
-  const lineVecScratch = useRef(new THREE.Vector3());
-  const pointVecScratch = useRef(new THREE.Vector3());
-  const projectionScratch = useRef(new THREE.Vector3());
-  const cameraDirScratch = useRef(new THREE.Vector3());
-  const cameraLeftScratch = useRef(new THREE.Vector3());
-  const beamMidPointScratch = useRef(new THREE.Vector3());
-  const beamQuatScratch = useRef(new THREE.Quaternion());
+  const playerPosScratch = useLazyRef(() => new THREE.Vector3());
+  const lineVecScratch = useLazyRef(() => new THREE.Vector3());
+  const pointVecScratch = useLazyRef(() => new THREE.Vector3());
+  const projectionScratch = useLazyRef(() => new THREE.Vector3());
+  const cameraDirScratch = useLazyRef(() => new THREE.Vector3());
+  const cameraLeftScratch = useLazyRef(() => new THREE.Vector3());
+  const beamMidPointScratch = useLazyRef(() => new THREE.Vector3());
+  const beamQuatScratch = useLazyRef(() => new THREE.Quaternion());
   const beamLength = 150;
   const flashDuration = 350; // ms
   const flashDurationSeconds = flashDuration / 1000;
@@ -731,14 +737,14 @@ export function Kunai({ projectile }: { projectile: Projectile }) {
   const startPos = useMemo(() => new THREE.Vector3(projectile.pos.x, projectile.pos.y, projectile.pos.z), [projectile.pos]);
   const speed = 120; // Very fast!
 
-  const visualPos = useRef<THREE.Vector3>(new THREE.Vector3());
+  const visualPos = useLazyRef(() => new THREE.Vector3());
   const hasInitializedVisual = useRef(false);
-  const updatedStartScratch = useRef(new THREE.Vector3());
-  const handOffsetScratch = useRef(new THREE.Vector3());
-  const worldTargetScratch = useRef(new THREE.Vector3());
-  const ringOffsetScratch = useRef(new THREE.Vector3());
-  const ringPosScratch = useRef(new THREE.Vector3());
-  const pullDirScratch = useRef(new THREE.Vector3());
+  const updatedStartScratch = useLazyRef(() => new THREE.Vector3());
+  const handOffsetScratch = useLazyRef(() => new THREE.Vector3());
+  const worldTargetScratch = useLazyRef(() => new THREE.Vector3());
+  const ringOffsetScratch = useLazyRef(() => new THREE.Vector3());
+  const ringPosScratch = useLazyRef(() => new THREE.Vector3());
+  const pullDirScratch = useLazyRef(() => new THREE.Vector3());
 
   useFrame((state) => {
     if (body.current) {
