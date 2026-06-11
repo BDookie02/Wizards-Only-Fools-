@@ -824,6 +824,9 @@ Next:
 
 ## Latest Verification
 
+- Focused command-console readability check: `CommandConsole.tsx` now uses a HUD-runtime command suggestion catalog, touch-friendly command chips, safer app-viewport width constraints, and larger readable input text so PC and mobile command entry share one isolated HUD surface.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the command-console visual QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the command-console readability pass. Current warning remains chunk size only; `CommandConsole` is about 2.94 kB / 1.45 kB gzip and `HUD` is about 81.14 kB / 24.18 kB gzip.
 - Focused timer cleanup check: `magicHandThreeSpellEffects.tsx`, `SpellMenu.tsx`, `resizeObserverFallback.ts`, `hudLayoutQaMetrics.ts`, `spellDummyQaScene.tsx`, and `survivalDormantGrassRendering.tsx` no longer contain fixed intervals; the scoped source grep found zero `setInterval` / `clearInterval` matches in the game paths.
 - Browser check: after the timer cleanup, the PC gameplay HUD route mounted `solo-survival`, reported `37/37` survival chunks with 0 pending chunks, 3 visible canvases, 0 PC touch controls, no visible error text, and only the known Three/dependency warnings in the browser log.
 - Browser check: the forced spell-menu route showed 27 visible canvases including thumbnail canvases, `wofHudQaFailCount=0`, `37/37` chunks, 0 pending chunks, 0 PC touch controls, and no visible error text.
