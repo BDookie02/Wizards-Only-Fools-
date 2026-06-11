@@ -2,6 +2,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { DAY_NIGHT_CYCLE_SECONDS, SURVIVAL_BLOCK_SIZE, useGameStore } from "../../../../store/gameStore";
+import { useLazyRef } from "../../react/useLazyRef";
 import { getEpochMsFromRenderClock } from "../renderClockEpoch";
 import {
   clamp01,
@@ -420,8 +421,8 @@ export function SurvivalSkyCycle({ mobilePerformanceMode }: { mobilePerformanceM
   const cloudTexture = useMemo(() => getSurvivalCloudTexture(), []);
   const starTexture = useMemo(() => getSurvivalStarTexture(), []);
   const sunRef = useRef<THREE.Sprite>(null);
-  const moonRefs = useRef<THREE.Sprite[]>([]);
-  const cloudRefs = useRef<THREE.Sprite[]>([]);
+  const moonRefs = useLazyRef<THREE.Sprite[]>(() => []);
+  const cloudRefs = useLazyRef<THREE.Sprite[]>(() => []);
   const cloudGroupRef = useRef<THREE.Group>(null);
   const starFieldRef = useRef<THREE.Mesh>(null);
   const starMaterialRef = useRef<THREE.MeshBasicMaterial>(null);

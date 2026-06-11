@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { getSpriteUrl } from "../../SpriteManifest";
+import { useLazyRef } from "../../systems/react/useLazyRef";
 import { MAGIC_HANDS_MOBILE_PERFORMANCE_MODE, PALM_X, PALM_Y } from "./MagicHandSpriteCanvas";
 import { useMagicHandEquipScale } from "./useMagicHandEquipScale";
 import { useLoopedFrameTimer } from "./useLoopedFrameTimer";
@@ -90,7 +91,7 @@ export function LightningSpellCanvas({ isActive, isCharging }: LightningSpellEff
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
-  const boltsRef = useRef<LightningBolt[]>([]);
+  const boltsRef = useLazyRef(createLightningBoltBuffer);
   const lastBoltUpdate = useRef<number>(0);
   const equipScale = useMagicHandEquipScale(isActive);
   const idleFrame = useLoopedFrameTimer({
@@ -99,10 +100,6 @@ export function LightningSpellCanvas({ isActive, isCharging }: LightningSpellEff
     intervalMs: 100,
     firstFrame: 1,
   });
-  if (boltsRef.current.length === 0) {
-    boltsRef.current = createLightningBoltBuffer();
-  }
-
   const rawImageSrc = `/sprites/lightning/palpitate_${idleFrame}.png`;
   const imageSrc = getSpriteUrl(rawImageSrc) || rawImageSrc;
 
