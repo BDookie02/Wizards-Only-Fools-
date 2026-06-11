@@ -35,6 +35,15 @@ function hasAnyRemoteStatusExpiry(expiries: RemoteStatusExpiries) {
   );
 }
 
+export function hasActiveRemoteStatusExpiry(expiries: RemoteStatusExpiries, nowMs: number) {
+  return (
+    expiries.slowUntil > nowMs ||
+    expiries.sleepUntil > nowMs ||
+    expiries.poisonUntil > nowMs ||
+    expiries.acidUntil > nowMs
+  );
+}
+
 export function useRemoteStatusClock(expiries: RemoteStatusExpiries, paddingMs = 24) {
   const hasTimedStatus = hasAnyRemoteStatusExpiry(expiries);
   const [clock, setClock] = useState(() => (hasTimedStatus ? Date.now() : 0));
@@ -47,6 +56,11 @@ export function useRemoteStatusClock(expiries: RemoteStatusExpiries, paddingMs =
     }
 
     const now = Date.now();
+    if (!hasActiveRemoteStatusExpiry(expiries, now)) {
+      if (clock === 0 || Math.abs(clock - now) > 100) setClock(now);
+      return undefined;
+    }
+
     if (clock === 0 || Math.abs(clock - now) > 100) {
       setClock(now);
       return undefined;
