@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { socket } from "./socket";
 import {
   DEFAULT_VOICE_OUTPUT_VOLUME,
@@ -59,6 +59,12 @@ const SOUNDBOARD_BLIP_NOTES: readonly { frequency: number; offset: number; durat
   { frequency: 523.25, offset: 0.18, duration: 0.18 },
   { frequency: 659.25, offset: 0.39, duration: 0.2 },
 ];
+
+function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
+  const ref = useRef<T | null>(null);
+  if (ref.current === null) ref.current = factory();
+  return ref as MutableRefObject<T>;
+}
 
 function stopMediaStreamTracks(stream: MediaStream | null | undefined) {
   if (!stream) return;
@@ -170,7 +176,7 @@ export function VoiceChat() {
   const voiceAutoStartTestActive = voiceRouteFlags.autoStartTestActive;
   const localStreamRef = useRef<MediaStream | null>(null);
   const peersRef = useRef<Record<string, PeerRecord>>({});
-  const liveVoicePeerIdsRef = useRef(new Set<string>());
+  const liveVoicePeerIdsRef = useLazyRef(() => new Set<string>());
   const voiceSourceLabelRef = useRef("Mic");
   const pttHeldRef = useRef(false);
   const controllerPttHeldRef = useRef(false);

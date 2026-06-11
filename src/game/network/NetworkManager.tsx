@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import type { ReactNode } from "react";
+import type { MutableRefObject, ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { sanitizePlayerName, useGameStore, PlayerState, SpellType, StatusEffectType } from "../../store/gameStore";
@@ -36,6 +36,12 @@ bindGameNetworkTransport({
 
 const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const MOBILE_SLEEP_ZZZ_UPDATE_INTERVAL_SECONDS = 1 / 16;
+
+function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
+  const ref = useRef<T | null>(null);
+  if (ref.current === null) ref.current = factory();
+  return ref as MutableRefObject<T>;
+}
 
 function getPlayerDisplayName(player?: Pick<PlayerState, "id" | "playerName"> | null) {
   return sanitizePlayerName(player?.playerName || "") || `Wizard ${player?.id?.slice(0, 4).toUpperCase() || "????"}`;
@@ -318,7 +324,7 @@ function AliveRemotePlayer({
   });
   const group = useRef<THREE.Group>(null);
   const rigidBody = useRef<any>(null);
-  const targetPosition = useRef(new THREE.Vector3());
+  const targetPosition = useLazyRef(() => new THREE.Vector3());
   const playerSnapshotRef = useRef<PlayerState | undefined>(playerSnapshot);
   const hasInitializedTransform = useRef(false);
   const playerRadius = 0.5;
