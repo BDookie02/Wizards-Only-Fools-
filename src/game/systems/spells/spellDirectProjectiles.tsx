@@ -52,6 +52,55 @@ const kunaiDirectionScratch = new THREE.Vector3();
 const kunaiQuaternionScratch = new THREE.Quaternion();
 const kunaiEulerScratch = new THREE.Euler();
 const MOBILE_STATUS_BOLT_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 30;
+const PROJECTILE_BILLBOARD_VERTEX_SHADER = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+const FIREBALL_FRAGMENT_SHADER = `
+  uniform sampler2D map;
+  varying vec2 vUv;
+  void main() {
+    vec4 texColor = texture2D(map, vUv);
+
+    float dist = distance(vUv, vec2(0.5, 0.5));
+    float alpha = smoothstep(0.45, 0.2, dist);
+
+    float val = max(texColor.r, max(texColor.g, texColor.b));
+    if (val < 0.1 || alpha <= 0.01) {
+      discard;
+    }
+
+    float brightnessAlpha = smoothstep(0.1, 0.4, val);
+
+    gl_FragColor = vec4(texColor.rgb, alpha * brightnessAlpha);
+  }
+`;
+const TRANSPARENT_TEXTURE_FRAGMENT_SHADER = `
+  uniform sampler2D map;
+  varying vec2 vUv;
+  void main() {
+    vec4 texColor = texture2D(map, vUv);
+
+    float val = max(texColor.r, max(texColor.g, texColor.b));
+    if (val < 0.1) {
+      discard;
+    }
+
+    gl_FragColor = texColor;
+  }
+`;
+const OPAQUE_TEXTURE_FRAGMENT_SHADER = `
+  uniform sampler2D map;
+  varying vec2 vUv;
+  void main() {
+    vec4 texColor = texture2D(map, vUv);
+    if (texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
+    gl_FragColor = vec4(texColor.rgb, 1.0);
+  }
+`;
 
 function getKunaiRotationTuple(dir: { x: number; y: number; z: number }): [number, number, number] {
   kunaiDirectionScratch.set(dir.x, dir.y, dir.z).normalize();
@@ -74,6 +123,12 @@ function useSynchronousTextures(urls: string[]) {
   }, [urls]);
 
   return useMemo(() => getCachedSpellProjectileTextures(urls), [urls, textureVersion]);
+}
+
+function useProjectileTextureUniform(texture: THREE.Texture | null | undefined) {
+  return useMemo(() => ({
+    map: { value: texture ?? null },
+  }), [texture]);
 }
 
 function useAnimatedProjectileTexture(
@@ -116,6 +171,7 @@ export function Fireball({ projectile }: { projectile: Projectile }) {
 
   const textures = useSynchronousTextures(FIREBALL_TEXTURES);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const textureUniforms = useProjectileTextureUniform(textures[0]);
   useAnimatedProjectileTexture(materialRef, textures, 10);
 
   const handleCollision = (e: any) => {
@@ -158,36 +214,9 @@ export function Fireball({ projectile }: { projectile: Projectile }) {
             depthWrite={false}
             side={THREE.DoubleSide}
             blending={THREE.AdditiveBlending}
-            uniforms={useMemo(() => ({
-              map: { value: textures[0] }
-            }), [textures])}
-            vertexShader={`
-              varying vec2 vUv;
-              void main() {
-                vUv = uv;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-              }
-            `}
-            fragmentShader={`
-              uniform sampler2D map;
-              varying vec2 vUv;
-              void main() {
-                vec4 texColor = texture2D(map, vUv);
-                
-                float dist = distance(vUv, vec2(0.5, 0.5));
-                float alpha = smoothstep(0.45, 0.2, dist);
-                
-                float val = max(texColor.r, max(texColor.g, texColor.b));
-                if (val < 0.1 || alpha <= 0.01) {
-                  discard;
-                }
-                
-                // Dim down the dark background even more based on brightness
-                float brightnessAlpha = smoothstep(0.1, 0.4, val);
-                
-                gl_FragColor = vec4(texColor.rgb, alpha * brightnessAlpha);
-              }
-            `}
+            uniforms={textureUniforms}
+            vertexShader={PROJECTILE_BILLBOARD_VERTEX_SHADER}
+            fragmentShader={FIREBALL_FRAGMENT_SHADER}
           />
         </mesh>
       </Billboard>
@@ -205,6 +234,7 @@ function IceShard({ projectile }: { projectile: Projectile }) {
 
   const textures = useSynchronousTextures(ICESHARD_TEXTURES);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const textureUniforms = useProjectileTextureUniform(textures[0]);
   useAnimatedProjectileTexture(materialRef, textures, 15);
 
   const handleCollision = (e: any) => {
@@ -247,30 +277,9 @@ function IceShard({ projectile }: { projectile: Projectile }) {
             depthWrite={false}
             side={THREE.DoubleSide}
             blending={THREE.AdditiveBlending}
-            uniforms={useMemo(() => ({
-              map: { value: textures[0] }
-            }), [textures])}
-            vertexShader={`
-              varying vec2 vUv;
-              void main() {
-                vUv = uv;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-              }
-            `}
-            fragmentShader={`
-              uniform sampler2D map;
-              varying vec2 vUv;
-              void main() {
-                vec4 texColor = texture2D(map, vUv);
-                
-                float val = max(texColor.r, max(texColor.g, texColor.b));
-                if (val < 0.1) {
-                  discard;
-                }
-                
-                gl_FragColor = texColor;
-              }
-            `}
+            uniforms={textureUniforms}
+            vertexShader={PROJECTILE_BILLBOARD_VERTEX_SHADER}
+            fragmentShader={TRANSPARENT_TEXTURE_FRAGMENT_SHADER}
           />
         </mesh>
       </Billboard>
@@ -616,6 +625,7 @@ export function RingsOfPower({ projectile }: { projectile: Projectile }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const textures = useSynchronousTextures(RINGSOFPOWER_TEXTURES);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const textureUniforms = useProjectileTextureUniform(textures[0]);
   useAnimatedProjectileTexture(materialRef, textures, 10);
 
   useEffect(() => {
@@ -658,18 +668,9 @@ export function RingsOfPower({ projectile }: { projectile: Projectile }) {
           <planeGeometry args={[4, 4]} />
           <shaderMaterial 
             ref={materialRef} transparent={true} depthWrite={false} side={THREE.DoubleSide}
-            uniforms={useMemo(() => ({ map: { value: textures[0] } }), [textures])}
-            vertexShader={`
-              varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-            `}
-            fragmentShader={`
-              uniform sampler2D map; varying vec2 vUv;
-              void main() {
-                vec4 texColor = texture2D(map, vUv);
-                if (texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
-                gl_FragColor = vec4(texColor.rgb, 1.0);
-              }
-            `}
+            uniforms={textureUniforms}
+            vertexShader={PROJECTILE_BILLBOARD_VERTEX_SHADER}
+            fragmentShader={OPAQUE_TEXTURE_FRAGMENT_SHADER}
           />
         </mesh>
       </Billboard>
@@ -876,6 +877,7 @@ export function Lightning({ projectile }: { projectile: Projectile }) {
   useProjectileLifetime(projectile.id, 2000);
   const textures = useSynchronousTextures(PALPITATE_TEXTURES);
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const textureUniforms = useProjectileTextureUniform(textures[0]);
   useAnimatedProjectileTexture(materialRef, textures, 12.5);
 
   useEffect(() => {
@@ -900,18 +902,9 @@ export function Lightning({ projectile }: { projectile: Projectile }) {
           <planeGeometry args={[15, 15]} />
           <shaderMaterial 
             ref={materialRef} transparent={true} depthWrite={false} side={THREE.DoubleSide}
-            uniforms={useMemo(() => ({ map: { value: textures[0] || null } }), [textures])}
-            vertexShader={`
-              varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
-            `}
-            fragmentShader={`
-              uniform sampler2D map; varying vec2 vUv;
-              void main() {
-                vec4 texColor = texture2D(map, vUv);
-                if (texColor.r < 0.1 && texColor.g < 0.1 && texColor.b < 0.1) discard;
-                gl_FragColor = vec4(texColor.rgb, 1.0);
-              }
-            `}
+            uniforms={textureUniforms}
+            vertexShader={PROJECTILE_BILLBOARD_VERTEX_SHADER}
+            fragmentShader={OPAQUE_TEXTURE_FRAGMENT_SHADER}
           />
         </mesh>
       </Billboard>
