@@ -1,67 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { shouldMountCurrentQaPerfStatsProbe } from "./appQaTelemetryRoutes";
-
-type WofPerfStats = {
-  averageMs: number;
-  frames: number;
-  maxMs: number;
-  p95Ms: number;
-  recentMaxMs: number;
-  stutter50Count: number;
-  stutter100Count: number;
-  startedAtMs: number;
-  updatedAtMs: number;
-};
-
-declare global {
-  interface Window {
-    __wofPerfStats?: WofPerfStats;
-  }
-}
-
-const PERF_SAMPLE_CAPACITY = 720;
-const PERF_RECENT_SAMPLE_COUNT = 120;
-
-export function selectQaPerfSampleByRank(
-  samples: number[],
-  count: number,
-  targetIndex: number,
-) {
-  const sampleCount = Math.max(0, Math.min(count, samples.length));
-  if (sampleCount === 0) return 0;
-
-  const target = Math.max(0, Math.min(sampleCount - 1, targetIndex));
-  let left = 0;
-  let right = sampleCount - 1;
-
-  while (left < right) {
-    const pivot = samples[(left + right) >> 1];
-    let low = left;
-    let high = right;
-
-    while (low <= high) {
-      while (samples[low] < pivot) low += 1;
-      while (samples[high] > pivot) high -= 1;
-      if (low <= high) {
-        const nextLow = samples[low];
-        samples[low] = samples[high];
-        samples[high] = nextLow;
-        low += 1;
-        high -= 1;
-      }
-    }
-
-    if (target <= high) {
-      right = high;
-    } else if (target >= low) {
-      left = low;
-    } else {
-      return samples[target] ?? 0;
-    }
-  }
-
-  return samples[left] ?? 0;
-}
+import {
+  QA_PERF_RECENT_SAMPLE_COUNT,
+  QA_PERF_SAMPLE_CAPACITY,
+  clearQaPerfStatsDataset,
+  publishQaPerfStatsDataset,
+  selectQaPerfSampleByRank,
+} from "./qaPerfStatsRuntime";
 
 function isQaPerfStatsProbeEnabled() {
   return shouldMountCurrentQaPerfStatsProbe();
@@ -87,8 +32,8 @@ function QaPerfStatsSampler() {
 
     const samples = samplesRef.current;
     samples[sampleWriteIndexRef.current] = sampleMs;
-    sampleWriteIndexRef.current = (sampleWriteIndexRef.current + 1) % PERF_SAMPLE_CAPACITY;
-    sampleCountRef.current = Math.min(PERF_SAMPLE_CAPACITY, sampleCountRef.current + 1);
+    sampleWriteIndexRef.current = (sampleWriteIndexRef.current + 1) % QA_PERF_SAMPLE_CAPACITY;
+    sampleCountRef.current = Math.min(QA_PERF_SAMPLE_CAPACITY, sampleCountRef.current + 1);
     if (elapsedSeconds - lastPublishRef.current < 1) return;
     lastPublishRef.current = elapsedSeconds;
 
@@ -112,10 +57,10 @@ function QaPerfStatsSampler() {
       sampleCount,
       Math.min(sampleCount - 1, Math.floor(sampleCount * 0.95)),
     );
-    const recentCount = Math.min(PERF_RECENT_SAMPLE_COUNT, sampleCount);
+    const recentCount = Math.min(QA_PERF_RECENT_SAMPLE_COUNT, sampleCount);
     let recentMax = 0;
     for (let offset = 0; offset < recentCount; offset += 1) {
-      const index = (sampleWriteIndexRef.current - 1 - offset + PERF_SAMPLE_CAPACITY) % PERF_SAMPLE_CAPACITY;
+      const index = (sampleWriteIndexRef.current - 1 - offset + QA_PERF_SAMPLE_CAPACITY) % QA_PERF_SAMPLE_CAPACITY;
       recentMax = Math.max(recentMax, samples[index] ?? 0);
     }
     const stats = {
@@ -129,14 +74,7 @@ function QaPerfStatsSampler() {
       startedAtMs: startedAtRef.current,
       updatedAtMs: Date.now(),
     };
-    window.__wofPerfStats = stats;
-    document.documentElement.dataset.wofPerfAverageMs = String(stats.averageMs);
-    document.documentElement.dataset.wofPerfP95Ms = String(stats.p95Ms);
-    document.documentElement.dataset.wofPerfMaxMs = String(stats.maxMs);
-    document.documentElement.dataset.wofPerfRecentMaxMs = String(stats.recentMaxMs);
-    document.documentElement.dataset.wofPerfStutter50 = String(stats.stutter50Count);
-    document.documentElement.dataset.wofPerfStutter100 = String(stats.stutter100Count);
-    document.documentElement.dataset.wofPerfFrames = String(stats.frames);
+    publishQaPerfStatsDataset(stats);
   }, []);
 
   useEffect(() => {
@@ -149,14 +87,7 @@ function QaPerfStatsSampler() {
       sampleWriteIndexRef.current = 0;
       sampleCountRef.current = 0;
       lastPublishRef.current = 0;
-      window.__wofPerfStats = undefined;
-      delete document.documentElement.dataset.wofPerfAverageMs;
-      delete document.documentElement.dataset.wofPerfP95Ms;
-      delete document.documentElement.dataset.wofPerfMaxMs;
-      delete document.documentElement.dataset.wofPerfRecentMaxMs;
-      delete document.documentElement.dataset.wofPerfStutter50;
-      delete document.documentElement.dataset.wofPerfStutter100;
-      delete document.documentElement.dataset.wofPerfFrames;
+      clearQaPerfStatsDataset();
     };
 
     window.addEventListener("wof-reset-perf-stats", resetStats);
