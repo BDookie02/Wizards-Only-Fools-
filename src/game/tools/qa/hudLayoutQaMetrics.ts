@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { readAppViewportSize } from "../../systems/input/mobileLayoutRuntime";
-import { isAspectRatioQaMatrixEnabled } from "./aspectRatioQaMatrix";
+import { isCurrentQaTelemetryRouteEnabled } from "./qaRouteTelemetry";
 
 export type HudLayoutQaOptions = {
   gameplayHudVisible: boolean;
@@ -68,8 +68,7 @@ const HUD_LAYOUT_TARGETS: readonly HudLayoutTarget[] = [
 
 function isHudLayoutQaEnabled() {
   if (typeof window === "undefined" || typeof document === "undefined" || !import.meta.env.DEV) return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.get("qaHudLayout") === "1" || isAspectRatioQaMatrixEnabled();
+  return isCurrentQaTelemetryRouteEnabled(["hud", "aspect"]);
 }
 
 function clearHudLayoutQaDataset() {

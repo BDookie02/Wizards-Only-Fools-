@@ -1,3 +1,9 @@
+import {
+  getCurrentQaRouteParam,
+  getQaRouteParamFromSearch,
+  isCurrentQaTelemetryRouteEnabled,
+} from "./qaRouteTelemetry";
+
 export type AspectRatioQaProfile = {
   id: string;
   label: string;
@@ -254,9 +260,7 @@ export function buildAspectRatioHudQaRoutes(options: {
 }
 
 export function isAspectRatioQaMatrixEnabled() {
-  if (typeof window === "undefined") return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.get("qaAspectMatrix") === "1";
+  return isCurrentQaTelemetryRouteEnabled(["aspect"]);
 }
 
 export function getClosestAspectRatioQaProfile(width: number, height: number) {
@@ -277,9 +281,10 @@ export function getClosestAspectRatioQaProfile(width: number, height: number) {
   return closestProfile;
 }
 
-export function getRequestedAspectRatioQaProfile(search = typeof window !== "undefined" ? window.location.search : "") {
-  const params = new URLSearchParams(search);
-  const requestedProfile = params.get("qaAspectProfile")?.trim().toLowerCase();
+export function getRequestedAspectRatioQaProfile(search?: string) {
+  const requestedProfile = (typeof search === "string"
+    ? getQaRouteParamFromSearch(search, "qaAspectProfile")
+    : getCurrentQaRouteParam("qaAspectProfile"))?.trim().toLowerCase();
   if (!requestedProfile) return null;
   for (let index = 0; index < ASPECT_RATIO_QA_PROFILES.length; index += 1) {
     const profile = ASPECT_RATIO_QA_PROFILES[index];

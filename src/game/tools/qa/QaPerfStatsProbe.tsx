@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { isCurrentQaTelemetryRouteEnabled } from "./qaRouteTelemetry";
 
 type WofPerfStats = {
   averageMs: number;
@@ -22,9 +23,7 @@ const PERF_SAMPLE_CAPACITY = 720;
 const PERF_RECENT_SAMPLE_COUNT = 120;
 
 function isQaPerfStatsProbeEnabled() {
-    if (typeof window === "undefined") return false;
-    const params = new URLSearchParams(window.location.search);
-    return params.get("qaPerfStats") === "1";
+  return isCurrentQaTelemetryRouteEnabled(["perf"]);
 }
 
 export function QaPerfStatsProbe() {
