@@ -28,6 +28,7 @@ import {
   keybindControlStartIndex,
   keybindSensitivityStartIndex,
   settingsTabCount,
+  settingsPaneMetadata,
   videoAspectStartIndex,
   voiceEnabledIndex,
   voiceInputModeIndex,
@@ -69,6 +70,16 @@ const focusedMenuClass = "ring-2 ring-yellow-200 ring-offset-2 ring-offset-black
 const settingsCardClass = "settings-card border text-left transition-all";
 const settingsTitleRowClass = "settings-card-title flex items-center justify-between gap-3 tracking-widest";
 const settingsHintClass = "settings-card-hint leading-4 tracking-widest";
+const settingsTabButtons: readonly {
+  pane: SettingsPane;
+  label: string;
+  activeClassName: string;
+}[] = [
+  { pane: "video", label: "Video", activeClassName: "border-yellow-400 bg-yellow-400/10 text-yellow-300" },
+  { pane: "keybinds", label: "Keybinds", activeClassName: "border-cyan-300 bg-cyan-300/10 text-cyan-100" },
+  { pane: "voice", label: "Voice", activeClassName: "border-emerald-300 bg-emerald-300/10 text-emerald-100" },
+  { pane: "character", label: "Character", activeClassName: "border-pink-300 bg-pink-300/10 text-pink-100" },
+];
 
 type SettingsPanelProps = {
   settingsPane: SettingsPane;
@@ -269,10 +280,21 @@ export function SettingsPanel({
       </h2>
 
       <div className="settings-tab-grid grid w-full grid-cols-4 gap-2">
-        <TabButton index={0} label="Video" active={settingsPane === "video"} activeClassName="border-yellow-400 bg-yellow-400/10 text-yellow-300" isFocused={settingsFocus(0)} onFocus={() => setPauseMenuIndex(0)} onSelect={() => selectPane("video", 0)} />
-        <TabButton index={1} label="Keybinds" active={settingsPane === "keybinds"} activeClassName="border-cyan-300 bg-cyan-300/10 text-cyan-100" isFocused={settingsFocus(1)} onFocus={() => setPauseMenuIndex(1)} onSelect={() => selectPane("keybinds", 1)} />
-        <TabButton index={2} label="Voice" active={settingsPane === "voice"} activeClassName="border-emerald-300 bg-emerald-300/10 text-emerald-100" isFocused={settingsFocus(2)} onFocus={() => setPauseMenuIndex(2)} onSelect={() => selectPane("voice", 2)} />
-        <TabButton index={3} label="Character" active={settingsPane === "character"} activeClassName="border-pink-300 bg-pink-300/10 text-pink-100" isFocused={settingsFocus(3)} onFocus={() => setPauseMenuIndex(3)} onSelect={() => selectPane("character", 3)} />
+        {settingsTabButtons.map(({ pane, label, activeClassName }) => {
+          const tabIndex = settingsPaneMetadata[pane].tabIndex;
+          return (
+            <TabButton
+              key={pane}
+              index={tabIndex}
+              label={label}
+              active={settingsPane === pane}
+              activeClassName={activeClassName}
+              isFocused={settingsFocus(tabIndex)}
+              onFocus={() => setPauseMenuIndex(tabIndex)}
+              onSelect={() => selectPane(pane, tabIndex)}
+            />
+          );
+        })}
       </div>
 
       {settingsPane === "video" ? (

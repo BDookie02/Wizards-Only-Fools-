@@ -1861,23 +1861,9 @@ export function HUD() {
 
   const runPauseMenuAction = (index = pauseMenuIndex) => {
     if (showVideoMenu) {
-      if (index === 0) {
-        setSettingsPane("video");
-        return;
-      }
-
-      if (index === 1) {
-        setSettingsPane("keybinds");
-        return;
-      }
-
-      if (index === 2) {
-        setSettingsPane("voice");
-        return;
-      }
-
-      if (index === 3) {
-        setSettingsPane("character");
+      const selectedSettingsPane = getSettingsPaneForTabIndex(index);
+      if (selectedSettingsPane) {
+        setSettingsPane(selectedSettingsPane);
         return;
       }
 
