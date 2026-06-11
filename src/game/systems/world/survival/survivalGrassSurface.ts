@@ -293,12 +293,21 @@ export function getSurvivalDecorationSurfaceQuality(
 ) {
   const worldX = chunk.x + localX;
   const worldZ = chunk.z + localZ;
-  const surface = getSurvivalUnifiedTerrainSurfaceSampleForChunk(chunk, localX, localZ, sampleDistance);
+  const terrainSegments = getSurvivalTerrainRenderSegments(chunk);
+  const terrainY = getSurvivalRenderedTerrainHeightForChunk(chunk, localX, localZ, terrainSegments);
+  const terrainNormal = getSurvivalRenderedTerrainNormalForChunkInto(
+    chunk,
+    localX,
+    localZ,
+    new THREE.Vector3(),
+    sampleDistance,
+    terrainSegments,
+  );
   const footprintStats = getSurvivalBotwGrassFootprintStats(worldX, worldZ, footprintRadius);
 
   return {
-    y: Math.min(surface.terrainY, footprintStats.baseY),
-    normal: surface.terrainNormal,
+    y: Math.min(terrainY, footprintStats.baseY),
+    normal: terrainNormal,
     heightRange: footprintStats.heightRange,
   };
 }
