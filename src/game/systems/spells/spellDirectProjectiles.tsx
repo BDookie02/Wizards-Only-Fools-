@@ -729,7 +729,7 @@ export function Kunai({ projectile }: { projectile: Projectile }) {
   const isMyProjectile = isLocalProjectileCreator(projectile);
 
   const [collided, setCollided] = useState(false);
-  const startPos = useMemo(() => new THREE.Vector3(projectile.pos.x, projectile.pos.y, projectile.pos.z), [projectile.pos]);
+  const startPos = useLazyRef(() => new THREE.Vector3(projectile.pos.x, projectile.pos.y, projectile.pos.z));
   const speed = 120; // Very fast!
 
   const visualPos = useLazyRef(() => new THREE.Vector3());
@@ -744,7 +744,7 @@ export function Kunai({ projectile }: { projectile: Projectile }) {
   useFrame((state) => {
     if (body.current) {
       const currentPos = body.current.translation();
-      const updatedStart = updatedStartScratch.current.copy(startPos);
+      const updatedStart = updatedStartScratch.current.copy(startPos.current);
       
       if (isMyProjectile) {
           const hand = getProjectileHand(projectile);
