@@ -126,7 +126,10 @@ export function Runes() {
 
     const newActive = pickActiveRuneIds(hutPositions, previousActiveRunesRef.current);
     setActiveRunes(newActive);
-    previousActiveRunesRef.current = new Set(newActive);
+    previousActiveRunesRef.current.clear();
+    for (let index = 0; index < newActive.length; index += 1) {
+      previousActiveRunesRef.current.add(newActive[index]);
+    }
     lastBaseRuneCycleAtRef.current = nowMs;
   }, [baseRuneSourcesVisible, hutPositions]);
 
