@@ -65,6 +65,7 @@ Done:
 - Extracted reusable survival foliage primitives, plant edge shader helpers, and shared minimap-hide metadata into `src/game/systems/world/vegetation/SurvivalFoliagePrimitives.tsx`.
 - Extracted local grass stream cell tuning, mount timing, visible-cell reconciliation, and cell load staging into `src/game/systems/world/vegetation/survivalLocalGrassStreaming.ts`.
 - Extracted tutorial grass stream cell tuning, mount timing, cell/batch generation, and visible-cell reconciliation into `src/game/systems/world/vegetation/survivalTutorialGrassStreaming.ts`.
+- Routed tutorial grass debug sampling through `survivalGrassDebug.ts`, so `SurvivalTutorialGrassField` no longer string-searches the browser URL for `qaGrassView`.
 - Added guarded distance sorting for local/tutorial grass visible-cell reconciliation and tutorial grass batches, so already ordered grass stream passes avoid redundant sort work while shifted centers still re-order correctly.
 - Extracted BOTW-style survival grass tuning, build/upload/recenter constants, hillside thresholds, and grass/flower instance types into `src/game/systems/world/vegetation/survivalBotwGrassConfig.ts`.
 - Extracted survival biome foliage palettes and BOTW hillside grass tint/keep rules into `src/game/systems/world/vegetation/survivalFoliagePalettes.ts`.
@@ -841,6 +842,9 @@ Next:
 
 ## Latest Verification
 
+- Focused tutorial grass debug route cleanup: `SurvivalTutorialGrassField` now gates debug sampling through `isSurvivalGrassInspectionView()` from `survivalGrassDebug.ts`, removing the last direct `qaGrassView` browser-search check from `survivalDormantGrassRendering.tsx`.
+- Built-in browser check: attempted the Codex built-in browser connection twice for the tutorial grass QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
+- `npx tsc --noEmit --pretty false` and `npm run build`: passed after the tutorial grass debug route cleanup. Sprite verification passed; current warning remains chunk size only. `survivalBotwGrassRendering` is about 30.70 kB / 11.36 kB gzip.
 - Focused BOTW grass telemetry route cleanup: `survivalBotwGrassTelemetry.ts` now owns `shouldPublishCurrentSurvivalBotwGrassRuntimeMetrics()`, and `survivalBotwGrassRendering.tsx` consumes that helper instead of reading `window.location.search` directly for active grass telemetry. The cached `fromSearch` classifier remains the single route parser for this telemetry path.
 - Built-in browser check: attempted the Codex built-in browser connection twice for the BOTW grass telemetry QA path, but it failed before page inspection with the local Windows sandbox startup issue (`windows sandbox failed: spawn setup refresh`); per instruction, no Chrome fallback was used.
 - `npx tsc --noEmit --pretty false` and `npm run build`: passed after the BOTW grass telemetry route cleanup. Sprite verification passed; current warning remains chunk size only. `survivalBotwGrassRendering` is about 30.70 kB / 11.36 kB gzip.

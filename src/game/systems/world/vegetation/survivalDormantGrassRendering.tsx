@@ -2,6 +2,7 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { SURVIVAL_BLOCK_SIZE, useGameStore, type SurvivalBiome } from "../../../../store/gameStore";
+import { isSurvivalGrassInspectionView } from "../../../tools/qa/survivalGrassDebug";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
 import {
   getEffectiveSurvivalCycleElapsedSeconds,
@@ -3847,6 +3848,7 @@ function ActiveSurvivalTutorialGrassField() {
   }), [initialCenter.x, initialCenter.z]);
   const windUniform = useMemo(() => ({ value: 0 }), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
+  const grassDebugViewEnabled = useMemo(() => isSurvivalGrassInspectionView(), []);
   const lastMobileFieldUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
   const debugSampleSecondRef = useRef(-1);
 
@@ -3892,7 +3894,7 @@ function ActiveSurvivalTutorialGrassField() {
       altitude,
     );
 
-    if (typeof document !== "undefined" && typeof window !== "undefined" && window.location.search.includes("qaGrassView=1")) {
+    if (grassDebugViewEnabled && typeof document !== "undefined") {
       const debugSecond = Math.floor(elapsed);
       if (debugSampleSecondRef.current !== debugSecond) {
         debugSampleSecondRef.current = debugSecond;
