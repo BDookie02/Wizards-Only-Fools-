@@ -2028,6 +2028,27 @@ function removePortalById(portals: PortalState[], id: string) {
   return nextPortals;
 }
 
+function arePlayerVector3ValuesEqual(current: readonly [number, number, number] | undefined, next: unknown) {
+  return Array.isArray(next) &&
+    current !== undefined &&
+    Object.is(current[0], next[0]) &&
+    Object.is(current[1], next[1]) &&
+    Object.is(current[2], next[2]);
+}
+
+function isPlayerUpdateUnchanged(player: PlayerState, data: Partial<PlayerState>) {
+  for (const key in data) {
+    const updateKey = key as keyof PlayerState;
+    const nextValue = data[updateKey];
+    if (updateKey === 'pos' || updateKey === 'rot' || updateKey === 'aimDir') {
+      if (!arePlayerVector3ValuesEqual(player[updateKey], nextValue)) return false;
+      continue;
+    }
+    if (!Object.is(player[updateKey], nextValue)) return false;
+  }
+  return true;
+}
+
 const initialSurvivalSave = getInitialSurvivalSave();
 const initialLocalPlayerName = initialSurvivalSave?.playerName ?? getInitialPlayerName();
 const initialCharacterCustomization = initialSurvivalSave?.characterCustomization ?? { ...DEFAULT_CHARACTER_CUSTOMIZATION };
@@ -3472,13 +3493,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   addPlayer: (p) => set((state) => ({ players: { ...state.players, [p.id]: p } })),
   removePlayer: (id) => set((state) => {
+    if (!state.players[id]) return state;
     const p = { ...state.players };
     delete p[id];
     return { players: p };
   }),
   updatePlayer: (id, data) => set((state) => {
-    if (!state.players[id]) return state;
-    return { players: { ...state.players, [id]: { ...state.players[id], ...data } } };
+    const player = state.players[id];
+    if (!player || isPlayerUpdateUnchanged(player, data)) return state;
+    return { players: { ...state.players, [id]: { ...player, ...data } } };
   }),
   respawn: () => set({
     health: 100,
