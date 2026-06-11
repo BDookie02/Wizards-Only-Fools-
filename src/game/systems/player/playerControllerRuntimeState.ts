@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
 import type { HandType } from "../../../store/gameStore";
 import type { TouchButtonName } from "../input/playerInputState";
@@ -26,8 +26,14 @@ export type GrabbedPlayerState = {
   until: number;
 };
 
+function useLazyRef<T>(factory: () => T): MutableRefObject<T> {
+  const ref = useRef<T | null>(null);
+  if (ref.current === null) ref.current = factory();
+  return ref as MutableRefObject<T>;
+}
+
 export function usePlayerControllerRuntimeState() {
-  const activeLadderZones = useRef(new Set<string>());
+  const activeLadderZones = useLazyRef(() => new Set<string>());
   const slideTimer = useRef(0);
   const lastSlideTime = useRef(0);
   const crouchHoldStartedAt = useRef<number | null>(null);
@@ -35,24 +41,24 @@ export function usePlayerControllerRuntimeState() {
   const lastBoostTime = useRef(0);
   const thrusterLocked = useRef(false);
   const lastNetworkSync = useRef(0);
-  const flamethrowerTimers = useRef<Record<HandType, number>>({ left: 0, right: 0 });
-  const activeCastingHands = useRef<Record<HandType, boolean>>({ left: false, right: false });
-  const activeGrabIds = useRef<Record<HandType, string | null>>({ left: null, right: null });
-  const grabTimeouts = useRef<Record<HandType, number | null>>({ left: null, right: null });
+  const flamethrowerTimers = useLazyRef<Record<HandType, number>>(() => ({ left: 0, right: 0 }));
+  const activeCastingHands = useLazyRef<Record<HandType, boolean>>(() => ({ left: false, right: false }));
+  const activeGrabIds = useLazyRef<Record<HandType, string | null>>(() => ({ left: null, right: null }));
+  const grabTimeouts = useLazyRef<Record<HandType, number | null>>(() => ({ left: null, right: null }));
   const grabbedState = useRef<GrabbedPlayerState | null>(null);
-  const pullVelocity = useRef(new THREE.Vector3());
+  const pullVelocity = useLazyRef(() => new THREE.Vector3());
   const pullFrames = useRef(0);
-  const screenShake = useRef<PlayerScreenShakeState>({ strength: 0, until: 0, duration: 1 });
-  const toxicDamageState = useRef<PlayerToxicDamageState>({ damageBuffer: 0, lastSyncAt: 0 });
-  const lilyCoilTubeState = useRef({
+  const screenShake = useLazyRef<PlayerScreenShakeState>(() => ({ strength: 0, until: 0, duration: 1 }));
+  const toxicDamageState = useLazyRef<PlayerToxicDamageState>(() => ({ damageBuffer: 0, lastSyncAt: 0 }));
+  const lilyCoilTubeState = useLazyRef(() => ({
     t: 0,
     surfaceAngle: Math.PI,
     jumpOffset: 0,
     jumpVelocity: 0,
     lastUp: new THREE.Vector3(0, 1, 0),
     active: false,
-  });
-  const controllerLookEuler = useRef(new THREE.Euler(0, 0, 0, "YXZ"));
+  }));
+  const controllerLookEuler = useLazyRef(() => new THREE.Euler(0, 0, 0, "YXZ"));
   const controllerGameplayArmed = useRef(false);
   const keyboardJumpWasPressed = useRef(false);
   const controllerJumpWasPressed = useRef(false);
@@ -70,9 +76,9 @@ export function usePlayerControllerRuntimeState() {
   }), []);
   const controllerGamepadLookInput = useMemo(createPlayerControllerGamepadLookInput, []);
   const controllerGamepadMovementInput = useMemo(createPlayerControllerGamepadMovementInput, []);
-  const touchMove = useRef({ x: 0, y: 0 });
-  const touchLookDelta = useRef({ x: 0, y: 0 });
-  const touchButtons = useRef<Record<TouchButtonName, boolean>>({ jump: false, slide: false, sprint: false });
+  const touchMove = useLazyRef(() => ({ x: 0, y: 0 }));
+  const touchLookDelta = useLazyRef(() => ({ x: 0, y: 0 }));
+  const touchButtons = useLazyRef<Record<TouchButtonName, boolean>>(() => ({ jump: false, slide: false, sprint: false }));
   const touchJumpWasPressed = useRef(false);
   const touchSprintWasPressed = useRef(false);
   const touchSprintLatched = useRef(false);
@@ -123,7 +129,7 @@ export function usePlayerControllerRuntimeState() {
   const lilyCoilNextFrame = useMemo(createLilyCoilTubeFrame, []);
   const lilyCoilLookFrame = useMemo(createLilyCoilTubeFrame, []);
   const navigationAimDirection = useMemo(() => new THREE.Vector3(), []);
-  const cameraTargetPosition = useRef(new THREE.Vector3());
+  const cameraTargetPosition = useLazyRef(() => new THREE.Vector3());
   const playerSolidColliderFilter = useMemo(createPlayerSolidColliderFilter, []);
   const playerQueryOptions = useMemo<PlayerRapierQueryOptions>(() => ({}), []);
 
