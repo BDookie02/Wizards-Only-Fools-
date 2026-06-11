@@ -83,16 +83,6 @@ const SURVIVAL_GRASS_WATER_FOOTPRINT_SAMPLE_DIRECTIONS: ReadonlyArray<readonly [
   [-0.7071, -0.7071],
 ];
 
-function getSurvivalGrassBladeColor(
-  biome: SurvivalBiome,
-  worldX: number,
-  worldZ: number,
-  height: number,
-  variant: number,
-) {
-  return getSurvivalGrassBladeColorInto(biome, worldX, worldZ, height, variant, new THREE.Color());
-}
-
 function getSurvivalGrassBladeColorInto(
   biome: SurvivalBiome,
   worldX: number,
@@ -526,7 +516,6 @@ configureSurvivalBotwGrassResolvers({
   getGrassSurfaceHeightAtWorld: getSurvivalGrassSurfaceHeightAtWorld,
   getSmoothedTerrainColor: getSurvivalSmoothedTerrainColor,
   getSmoothedTerrainColorInto: getSurvivalSmoothedTerrainColorInto,
-  getFastGrassBladeColor: getSurvivalGrassBladeColor,
   getFastGrassBladeColorInto: getSurvivalGrassBladeColorInto,
   isBaseVillageLocalGrassBlocked,
   getUnifiedTerrainSurfaceSampleAtWorld: getSurvivalUnifiedTerrainSurfaceSampleAtWorld,
