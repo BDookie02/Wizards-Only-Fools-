@@ -5,36 +5,49 @@ export type PlaceableColliderDescriptor =
   | { kind: "box"; args: [number, number, number]; position: [number, number, number] }
   | { kind: "cylinder"; args: [number, number]; position: [number, number, number] };
 
+const placeableModelColorCache = new WeakMap<PlaceableDefinition, [string, string, string]>();
+const placeableColliderCache = new WeakMap<PlaceableDefinition, PlaceableColliderDescriptor>();
+
 export function getPlaceableModelColors(placeable: PlaceableDefinition): [string, string, string] {
+  const cached = placeableModelColorCache.get(placeable);
+  if (cached) return cached;
+
+  let colors: [string, string, string];
   if (placeable.preview.kind === "swatch") {
     const [base, accent, highlight = "#f8fafc"] = placeable.preview.colors;
-    return [base, accent, highlight];
+    colors = [base, accent, highlight];
+  } else if (placeable.id === "magic-portal-marker") {
+    colors = ["#172033", "#38bdf8", "#c084fc"];
+  } else if (placeable.id === "spellbook-pedestal") {
+    colors = ["#2e1a47", "#facc15", "#93c5fd"];
+  } else {
+    colors = ["#38bdf8", "#c084fc", "#f8fafc"];
   }
 
-  if (placeable.id === "magic-portal-marker") return ["#172033", "#38bdf8", "#c084fc"];
-  if (placeable.id === "spellbook-pedestal") return ["#2e1a47", "#facc15", "#93c5fd"];
-  return ["#38bdf8", "#c084fc", "#f8fafc"];
+  placeableModelColorCache.set(placeable, colors);
+  return colors;
 }
 
 export function getPlaceableCollider(placeable: PlaceableDefinition): PlaceableColliderDescriptor {
+  const cached = placeableColliderCache.get(placeable);
+  if (cached) return cached;
+
+  let collider: PlaceableColliderDescriptor;
   if (placeable.id === "campfire-small") {
-    return { kind: "cylinder", args: [0.45, 1.8], position: [0, 0.35, 0] };
+    collider = { kind: "cylinder", args: [0.45, 1.8], position: [0, 0.35, 0] };
+  } else if (placeable.id === "training-spell-dummy") {
+    collider = { kind: "box", args: [1.08, 1.72, 1.08], position: [0, 0, 0] };
+  } else if (placeable.category === "nature") {
+    collider = { kind: "cylinder", args: [0.8, placeable.footprintRadius * 0.75], position: [0, 0.8, 0] };
+  } else if (placeable.category === "magic") {
+    collider = { kind: "cylinder", args: [1.2, placeable.footprintRadius * 0.62], position: [0, 0.65, 0] };
+  } else {
+    const { bodyWidth, bodyDepth, bodyHeight } = getPlaceableBuildingMetrics(placeable);
+    collider = { kind: "box", args: [bodyWidth / 2, bodyHeight / 2, bodyDepth / 2], position: [0, bodyHeight / 2, 0] };
   }
 
-  if (placeable.id === "training-spell-dummy") {
-    return { kind: "box", args: [1.08, 1.72, 1.08], position: [0, 0, 0] };
-  }
-
-  if (placeable.category === "nature") {
-    return { kind: "cylinder", args: [0.8, placeable.footprintRadius * 0.75], position: [0, 0.8, 0] };
-  }
-
-  if (placeable.category === "magic") {
-    return { kind: "cylinder", args: [1.2, placeable.footprintRadius * 0.62], position: [0, 0.65, 0] };
-  }
-
-  const { bodyWidth, bodyDepth, bodyHeight } = getPlaceableBuildingMetrics(placeable);
-  return { kind: "box", args: [bodyWidth / 2, bodyHeight / 2, bodyDepth / 2], position: [0, bodyHeight / 2, 0] };
+  placeableColliderCache.set(placeable, collider);
+  return collider;
 }
 
 export function getPlaceablePreviewCamera(placeable: PlaceableDefinition) {
