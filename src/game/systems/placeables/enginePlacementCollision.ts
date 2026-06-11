@@ -17,6 +17,8 @@ type FootprintBox = Extract<PlaceableFootprintBounds, { kind: "box" }> & {
   axisZ: { x: number; z: number };
 };
 
+type Axis2 = { x: number; z: number };
+
 function dot2(a: { x: number; z: number }, b: { x: number; z: number }) {
   return a.x * b.x + a.z * b.z;
 }
@@ -38,16 +40,19 @@ function boxProjectionRadius(box: FootprintBox, axis: { x: number; z: number }) 
   return box.halfX * Math.abs(dot2(box.axisX, axis)) + box.halfZ * Math.abs(dot2(box.axisZ, axis));
 }
 
+function boxesOverlapOnAxis(a: FootprintBox, b: FootprintBox, dx: number, dz: number, axis: Axis2) {
+  const distance = Math.abs(dx * axis.x + dz * axis.z);
+  const limit = boxProjectionRadius(a, axis) + boxProjectionRadius(b, axis);
+  return distance <= limit;
+}
+
 function boxesOverlap(a: FootprintBox, b: FootprintBox) {
-  const centerDelta = { x: b.x - a.x, z: b.z - a.z };
-  const axes = [a.axisX, a.axisZ, b.axisX, b.axisZ];
-  for (let index = 0; index < axes.length; index += 1) {
-    const axis = axes[index];
-    const distance = Math.abs(dot2(centerDelta, axis));
-    const limit = boxProjectionRadius(a, axis) + boxProjectionRadius(b, axis);
-    if (distance > limit) return false;
-  }
-  return true;
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  return boxesOverlapOnAxis(a, b, dx, dz, a.axisX)
+    && boxesOverlapOnAxis(a, b, dx, dz, a.axisZ)
+    && boxesOverlapOnAxis(a, b, dx, dz, b.axisX)
+    && boxesOverlapOnAxis(a, b, dx, dz, b.axisZ);
 }
 
 function circleOverlapsBox(circleX: number, circleZ: number, radius: number, box: FootprintBox) {
