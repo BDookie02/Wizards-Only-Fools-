@@ -87,6 +87,7 @@ const devNpcRayOrigin = new THREE.Vector3();
 const devNpcRayDirection = new THREE.Vector3();
 const devNpcTargetCenter = new THREE.Vector3();
 const devNpcTargetOffset = new THREE.Vector3();
+const EMPTY_ANCHORED_QUEST_NPC_IDS: ReadonlySet<string> = new Set<string>();
 
 function hashValue(seed: string, salt: number) {
   let hash = 2166136261 ^ salt;
@@ -645,13 +646,16 @@ export function Villagers({
   const [claimedDarrelHutId, setClaimedDarrelHutId] = useState<string | null>(null);
   const claimedDarrelHutIdRef = useRef<string | null>(null);
   const darrelHutId = savedDarrelId ?? claimedDarrelHutId;
-  const anchoredQuestNpcIds = useMemo(() => {
-    const ids = new Set<string>();
+  const anchoredQuestNpcIds = useMemo<ReadonlySet<string>>(() => {
+    let ids: Set<string> | null = null;
     for (const npcId in questNpcPrograms) {
       const program = questNpcPrograms[npcId];
-      if (hasQuestNpcAnchor(program)) ids.add(program.npcId);
+      if (hasQuestNpcAnchor(program)) {
+        ids ??= new Set<string>();
+        ids.add(program.npcId);
+      }
     }
-    return ids;
+    return ids ?? EMPTY_ANCHORED_QUEST_NPC_IDS;
   }, [questNpcPrograms]);
   const generatedVillagers = useMemo(() => {
     const nextVillagers = new Array<VillagerInfo>(activeHuts.length);
@@ -661,6 +665,8 @@ export function Villagers({
     return nextVillagers;
   }, [activeHuts]);
   const villagers = useMemo(() => {
+    if (anchoredQuestNpcIds.size === 0) return generatedVillagers;
+
     const visibleVillagers: VillagerInfo[] = [];
     for (let index = 0; index < generatedVillagers.length; index += 1) {
       const villager = generatedVillagers[index];
