@@ -12,7 +12,11 @@ function getPlayerPoseCoordinate(player, index) {
   return getFiniteCoordinate(player.pos[index]);
 }
 
-export function markServerPlayerPose(player, now = Date.now()) {
+export function getServerValidationNowMs() {
+  return Date.now();
+}
+
+export function markServerPlayerPose(player, now = getServerValidationNowMs()) {
   if (!player) return player;
   player.lastPoseAt = now;
   return player;
