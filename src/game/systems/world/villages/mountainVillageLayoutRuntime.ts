@@ -4,10 +4,15 @@ import {
   MOUNTAIN_VILLAGE_HEIGHT,
   MOUNTAIN_VILLAGE_PLATEAU_RADIUS,
   MOUNTAIN_VILLAGE_RADIUS,
+  MOUNTAIN_VILLAGE_TRAIL_END_RADIUS,
+  MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET,
   MOUNTAIN_VILLAGE_TRAIL_START_RADIUS,
+  MOUNTAIN_VILLAGE_TRAIL_TURNS,
   getMountainVillageHeight,
+  getMountainVillageTrailAngleOffset,
+  getMountainVillageTrailWidth,
 } from "./mountainVillageTerrain";
-import { lerpNumber, smoothstepRange, survivalHash01 } from "../survival/survivalMath";
+import { lerpNumber, smoothstep01, smoothstepRange, survivalHash01 } from "../survival/survivalMath";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
 
 type MountainVillageTerrainHeightForChunk = (chunk: SurvivalChunkInfo, localX: number, localZ: number) => number;
@@ -50,11 +55,140 @@ export type MountainVillageCliffPatch = {
   opacity: number;
 };
 
+export type MountainVillageTrailPoint = {
+  localX: number;
+  localZ: number;
+  y: number;
+  width: number;
+  t: number;
+};
+
+export type MountainVillageTrailSupport = {
+  key: string;
+  localX: number;
+  localZ: number;
+  topY: number;
+  height: number;
+  yaw: number;
+  side: -1 | 1;
+};
+
+export type MountainVillageTrailSegment = {
+  key: string;
+  localX: number;
+  localZ: number;
+  y: number;
+  yaw: number;
+  slope: number;
+  width: number;
+  length: number;
+  index: number;
+  supports: MountainVillageTrailSupport[];
+};
+
 const MOUNTAIN_CABIN_BODY_COLORS = ["#584633", "#64513d", "#4f4538", "#6b573f"] as const;
 const MOUNTAIN_CABIN_ROOF_COLORS = ["#dceefa", "#cfe4f3", "#edf7ff", "#b9d3e8"] as const;
 const MOUNTAIN_CABIN_ACCENT_COLORS = ["#82d8ff", "#f5d28a", "#bce7ff", "#d6f4ff"] as const;
 const MOUNTAIN_CLIFF_STONE_COLORS = ["#3f474a", "#545d60", "#6f7a7d", "#838f94", "#2f3638"] as const;
 const MOUNTAIN_CLIFF_SNOW_COLORS = ["#d9eef7", "#eef9ff", "#bcdce9"] as const;
+
+function getMountainVillageTrailPoint(
+  chunk: SurvivalChunkInfo,
+  baseHeight: number,
+  t: number,
+  terrainHeightForChunk: MountainVillageTerrainHeightForChunk,
+): MountainVillageTrailPoint {
+  const eased = Math.pow(smoothstep01(t), 0.86);
+  const radius = lerpNumber(MOUNTAIN_VILLAGE_TRAIL_START_RADIUS, MOUNTAIN_VILLAGE_TRAIL_END_RADIUS, eased);
+  const angleOffset = getMountainVillageTrailAngleOffset(chunk);
+  const angle = angleOffset + Math.pow(t, 1.16) * MOUNTAIN_VILLAGE_TRAIL_TURNS * Math.PI * 2;
+  const localX = Math.sin(angle) * radius;
+  const localZ = Math.cos(angle) * radius;
+  const stiltLift = smoothstepRange(0.02, 0.16, t) * (1 - smoothstepRange(0.84, 0.98, t));
+  const lift = lerpNumber(1.45, MOUNTAIN_VILLAGE_TRAIL_HEIGHT_OFFSET, stiltLift) + Math.sin(t * Math.PI) * 1.25;
+  const y = getMountainVillageHeight(chunk, localX, localZ, terrainHeightForChunk, baseHeight) + lift;
+
+  return { localX, localZ, y, width: getMountainVillageTrailWidth(t), t };
+}
+
+export function makeMountainVillageTrailPoints(
+  chunk: SurvivalChunkInfo,
+  baseHeight: number,
+  terrainHeightForChunk: MountainVillageTerrainHeightForChunk,
+): MountainVillageTrailPoint[] {
+  const pointCount = chunk.lod === "near" ? 24 : 16;
+  const points = new Array<MountainVillageTrailPoint>(pointCount + 1);
+
+  for (let index = 0; index <= pointCount; index += 1) {
+    points[index] = getMountainVillageTrailPoint(chunk, baseHeight, index / pointCount, terrainHeightForChunk);
+  }
+
+  return points;
+}
+
+export function makeMountainVillageTrailSegments(
+  chunk: SurvivalChunkInfo,
+  baseHeight: number,
+  points: MountainVillageTrailPoint[],
+  terrainHeightForChunk: MountainVillageTerrainHeightForChunk,
+): MountainVillageTrailSegment[] {
+  const segmentCount = points.length - 1;
+  const segments = new Array<MountainVillageTrailSegment>(segmentCount);
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const point = points[index];
+    const next = points[index + 1];
+    const dx = next.localX - point.localX;
+    const dz = next.localZ - point.localZ;
+    const dy = next.y - point.y;
+    const horizontalLength = Math.max(0.1, Math.sqrt(dx * dx + dz * dz));
+    const midpointLocalX = (point.localX + next.localX) / 2;
+    const midpointLocalZ = (point.localZ + next.localZ) / 2;
+    const midpointY = (point.y + next.y) / 2;
+    const progress = index / segmentCount;
+    const yaw = Math.atan2(dx, dz);
+    const width = getMountainVillageTrailWidth(progress);
+    const rightX = Math.cos(yaw);
+    const rightZ = -Math.sin(yaw);
+    const supportOffset = width / 2 - 1.12;
+    const supports: MountainVillageTrailSupport[] = [];
+
+    for (let supportIndex = 0; supportIndex < 2; supportIndex += 1) {
+      const side = supportIndex === 0 ? -1 : 1;
+      const localX = midpointLocalX + rightX * supportOffset * side;
+      const localZ = midpointLocalZ + rightZ * supportOffset * side;
+      const topY = midpointY - 1.18;
+      const groundY = getMountainVillageHeight(chunk, localX, localZ, terrainHeightForChunk, baseHeight) + 0.22;
+      const height = topY - groundY;
+      if (height < 4.6) continue;
+
+      supports.push({
+        key: `${chunk.key}-mountain-trail-support-${index}-${side}`,
+        localX,
+        localZ,
+        topY,
+        height,
+        yaw,
+        side,
+      });
+    }
+
+    segments[index] = {
+      key: `${chunk.key}-mountain-trail-${index}`,
+      localX: midpointLocalX,
+      localZ: midpointLocalZ,
+      y: midpointY,
+      yaw,
+      slope: Math.atan2(dy, horizontalLength),
+      width,
+      length: horizontalLength * 1.08,
+      index,
+      supports,
+    };
+  }
+
+  return segments;
+}
 
 export function makeMountainVillageCabins(chunk: SurvivalChunkInfo): MountainVillageCabin[] {
   const cabinCount = chunk.lod === "near" ? 8 : 5;
