@@ -379,6 +379,7 @@ function AliveRemotePlayer({
         health={health ?? 100}
         isSpeaking={isSpeaking}
         pose={isSleeping ? "floor" : "standing"}
+        blinkSeed={`remote-player:${id}`}
       />
       {armor > 0 && !isSleeping && (
         <mesh position={[0, 0, 0]}>

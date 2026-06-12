@@ -563,7 +563,10 @@ const VillagerNpc = memo(function VillagerNpc({
   const [lookYaw, setLookYaw] = useState(villager.baseYaw);
   const lookYawRef = useRef(villager.baseYaw);
   const lastLookUpdateRef = useRef(Number.NEGATIVE_INFINITY);
-  const lookUpdateInterval = useMemo(() => (isMobilePerformanceMode() ? 220 : 140) + Math.random() * 90, []);
+  const lookUpdateInterval = useMemo(
+    () => (isMobilePerformanceMode() ? 220 : 140) + hashValue(villager.id, 0x51a7) * 90,
+    [villager.id],
+  );
   const phase = reaction && clockMs < reaction.startledUntil ? "startled" : isPlayerInside || (reaction && clockMs < reaction.angryUntil) ? "angry" : "idle";
   const jumpProgress = reaction ? THREE.MathUtils.clamp((clockMs - reaction.startedAt) / 650, 0, 1) : 1;
   const jumpOffset = phase === "startled" ? Math.sin(jumpProgress * Math.PI) * 0.55 : 0;
@@ -602,7 +605,7 @@ const VillagerNpc = memo(function VillagerNpc({
           </div>
         </Html>
       )}
-      <AvatarBillboard character={character} animation={phase} yaw={lookYaw} health={100} />
+      <AvatarBillboard character={character} animation={phase} yaw={lookYaw} health={100} blinkSeed={`villager:${villager.id}`} />
       {isQuestDevModeEnabled && <QuestNpcDevMarker role={questRole} />}
     </group>
   );

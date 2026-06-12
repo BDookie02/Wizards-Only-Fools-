@@ -15,12 +15,47 @@ import {
 import { getNextAvatarFrameTick } from "./systems/rendering/avatar/avatarAnimationRuntime";
 import { isMobilePerformanceMode } from "./systems/input/performanceMode";
 import { useLazyRef } from "./systems/react/useLazyRef";
+import { createSeededRandom } from "./systems/random/seededRandom";
 
 const MOBILE_AVATAR_DIRECTION_UPDATE_MS = 160;
 const AVATAR_BLINK_DELAY_BASE_MS = 2400;
 const AVATAR_BLINK_DELAY_RANDOM_MS = 5200;
 const AVATAR_BLINK_DURATION_BASE_MS = 95;
 const AVATAR_BLINK_DURATION_RANDOM_MS = 70;
+
+function getAvatarBlinkDelayMs(random: () => number) {
+  return AVATAR_BLINK_DELAY_BASE_MS + random() * AVATAR_BLINK_DELAY_RANDOM_MS;
+}
+
+function getAvatarBlinkDurationMs(random: () => number) {
+  return AVATAR_BLINK_DURATION_BASE_MS + random() * AVATAR_BLINK_DURATION_RANDOM_MS;
+}
+
+function getAvatarBlinkSeed({
+  explicitSeed,
+  normalizedCharacter,
+  displayAnimation,
+  pose,
+  yaw,
+  fixedDirection,
+}: {
+  explicitSeed?: string;
+  normalizedCharacter: CharacterCustomization;
+  displayAnimation: string;
+  pose: "standing" | "floor";
+  yaw: number;
+  fixedDirection?: number;
+}) {
+  if (explicitSeed) return `avatar-blink:${explicitSeed}`;
+  return [
+    "avatar-blink",
+    displayAnimation,
+    pose,
+    Math.round(yaw * 1000),
+    typeof fixedDirection === "number" ? Math.round(fixedDirection * 1000) : "free",
+    JSON.stringify(normalizedCharacter),
+  ].join("|");
+}
 
 export {
   AVATAR_CANVAS_SIZE,
@@ -32,6 +67,7 @@ export {
 
 type AvatarBillboardRuntimeProps = {
   blinkEndAtRef: MutableRefObject<number | null>;
+  blinkRandom: () => number;
   blinkStartAtRef: MutableRefObject<number | null>;
   directionLocked: boolean;
   effectiveDirectionUpdateMs: number;
@@ -52,6 +88,7 @@ type AvatarBillboardRuntimeProps = {
 
 function AvatarBillboardRuntime({
   blinkEndAtRef,
+  blinkRandom,
   blinkStartAtRef,
   directionLocked,
   effectiveDirectionUpdateMs,
@@ -85,12 +122,12 @@ function AvatarBillboardRuntime({
       }
 
       if (blinkStartAtRef.current === null || !Number.isFinite(blinkStartAtRef.current)) {
-        blinkStartAtRef.current = now + AVATAR_BLINK_DELAY_BASE_MS + Math.random() * AVATAR_BLINK_DELAY_RANDOM_MS;
+        blinkStartAtRef.current = now + getAvatarBlinkDelayMs(blinkRandom);
       }
 
       if (!isBlinkingRef.current && now >= blinkStartAtRef.current) {
         isBlinkingRef.current = true;
-        blinkEndAtRef.current = now + AVATAR_BLINK_DURATION_BASE_MS + Math.random() * AVATAR_BLINK_DURATION_RANDOM_MS;
+        blinkEndAtRef.current = now + getAvatarBlinkDurationMs(blinkRandom);
         setIsBlinking(true);
       } else if (
         isBlinkingRef.current &&
@@ -99,7 +136,7 @@ function AvatarBillboardRuntime({
       ) {
         isBlinkingRef.current = false;
         blinkEndAtRef.current = null;
-        blinkStartAtRef.current = now + AVATAR_BLINK_DELAY_BASE_MS + Math.random() * AVATAR_BLINK_DELAY_RANDOM_MS;
+        blinkStartAtRef.current = now + getAvatarBlinkDelayMs(blinkRandom);
         setIsBlinking(false);
       }
     }
@@ -133,6 +170,7 @@ export function AvatarBillboard({
   staticFrame = false,
   directionUpdateMs = 90,
   fixedDirection,
+  blinkSeed,
 }: {
   character?: Partial<CharacterCustomization>;
   animation?: string;
@@ -143,6 +181,7 @@ export function AvatarBillboard({
   staticFrame?: boolean;
   directionUpdateMs?: number;
   fixedDirection?: number;
+  blinkSeed?: string;
 }) {
   const spriteRef = useRef<THREE.Sprite>(null);
   const [frame, setFrame] = useState(0);
@@ -166,6 +205,15 @@ export function AvatarBillboard({
     : directionUpdateMs;
   const directionLocked = typeof fixedDirection === "number";
   const normalizedCharacter = useMemo(() => normalizeCharacterCustomization(character), [character]);
+  const effectiveBlinkSeed = useMemo(() => getAvatarBlinkSeed({
+    explicitSeed: blinkSeed,
+    normalizedCharacter,
+    displayAnimation,
+    pose,
+    yaw,
+    fixedDirection,
+  }), [blinkSeed, displayAnimation, fixedDirection, normalizedCharacter, pose, yaw]);
+  const blinkRandom = useMemo(() => createSeededRandom(effectiveBlinkSeed), [effectiveBlinkSeed]);
 
   useEffect(() => {
     if (typeof fixedDirection !== "number") return;
@@ -189,7 +237,7 @@ export function AvatarBillboard({
     blinkEndAtRef.current = null;
     isBlinkingRef.current = false;
     setIsBlinking(false);
-  }, [staticFrame]);
+  }, [effectiveBlinkSeed, staticFrame]);
 
   const texture = useMemo(
     () => createAvatarTexture(normalizedCharacter, displayAnimation, pose === "floor" ? 0 : direction, frame, isSpeaking, isBlinking),
@@ -203,6 +251,7 @@ export function AvatarBillboard({
         {shouldMountRuntime && (
           <AvatarBillboardRuntime
             blinkEndAtRef={blinkEndAtRef}
+            blinkRandom={blinkRandom}
             blinkStartAtRef={blinkStartAtRef}
             directionLocked={directionLocked}
             effectiveDirectionUpdateMs={effectiveDirectionUpdateMs}
@@ -234,6 +283,7 @@ export function AvatarBillboard({
       {shouldMountRuntime && (
         <AvatarBillboardRuntime
           blinkEndAtRef={blinkEndAtRef}
+          blinkRandom={blinkRandom}
           blinkStartAtRef={blinkStartAtRef}
           directionLocked={directionLocked}
           effectiveDirectionUpdateMs={effectiveDirectionUpdateMs}
