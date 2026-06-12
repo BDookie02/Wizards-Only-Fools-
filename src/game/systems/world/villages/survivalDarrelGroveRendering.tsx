@@ -26,6 +26,7 @@ import {
   getDarrelPetalTexture,
   getDarrelTexture,
 } from "./darrelGroveTextures";
+import { getDarrelQuestGateNowMs } from "./darrelGroveRuntime";
 import { SURVIVAL_DARREL_GROVE_HALF_SIZE as DARREL_GROVE_HALF_SIZE } from "./survivalVillageRegistry";
 
 const DARREL_GROVE_GROUND_Y = 18;
@@ -86,10 +87,6 @@ type DarrelHillStep = {
   width: number;
   depth: number;
 };
-
-export function getDarrelQuestGateNowMs() {
-  return Date.now();
-}
 
 function DarrelBranch({
   start,
