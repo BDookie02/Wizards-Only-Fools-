@@ -45,7 +45,7 @@ import {
   ICESHARD_SPEED,
   RINGSOFPOWER_SPEED,
 } from "./spellProjectileTuning";
-import { getStatusEffectExpiryMs } from "./spellStatusRuntime";
+import { getStatusEffectExpiryMs, getStatusEffectNowMs } from "./spellStatusRuntime";
 import { useLazyRef } from "../react/useLazyRef";
 
 const UNIT_Y = new THREE.Vector3(0, 1, 0);
@@ -426,7 +426,7 @@ export function StatusBolt({ projectile }: { projectile: Projectile }) {
     const connectedPlayerId = getConnectedNetworkPlayerId();
     if (!connectedPlayerId) return;
 
-    const nowMs = Date.now();
+    const nowMs = getStatusEffectNowMs();
     useGameStore.getState().setStatusEffect(config.effect, getStatusEffectExpiryMs(nowMs, config.durationMs));
     emitGameNetworkEvent("applyStatusEffect", {
       targetId: connectedPlayerId,
