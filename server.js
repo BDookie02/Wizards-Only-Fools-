@@ -102,6 +102,7 @@ async function startServer() {
         poison: 10000,
         acid: 10000,
     };
+    const getMultiplayerServerNowMs = () => Date.now();
     const DEFAULT_CHARACTER_CUSTOMIZATION = {
         skinColor: "#d6cf91",
         topColor: "#7c3aed",
@@ -192,7 +193,7 @@ async function startServer() {
             }
             hue += 47;
         }
-        return hslToHex(Date.now() % 360, 82, 52);
+        return hslToHex(getMultiplayerServerNowMs() % 360, 82, 52);
     };
     const normalizePlayerCharacter = (character = {}, assignedColor = DEFAULT_CHARACTER_CUSTOMIZATION.topColor) => {
         const topColor = normalizeHexColor(character.topColor, assignedColor);
@@ -381,7 +382,7 @@ async function startServer() {
             const budget = getServerEventBudget(eventName);
             if (!budget)
                 return true;
-            const now = Date.now();
+            const now = getMultiplayerServerNowMs();
             const state = eventRateState.get(eventName);
             if (!state || now - state.windowStartedAt >= budget.windowMs) {
                 eventRateState.set(eventName, { windowStartedAt: now, count: 1 });
@@ -492,7 +493,7 @@ async function startServer() {
                 if (safeData.survivalLevel !== undefined) {
                     safeData.survivalLevel = sanitizeSurvivalLevel(safeData.survivalLevel);
                 }
-                const now = Date.now();
+                const now = getMultiplayerServerNowMs();
                 const currentCharacterSignature = getCharacterCustomizationSignature(p.character);
                 const nextCharacterSignature = safeData.character
                     ? getCharacterCustomizationSignature(safeData.character)
@@ -573,7 +574,7 @@ async function startServer() {
             if (!isServerDamageTargetAllowed(attacker, p, socket.id, targetId, MULTIPLAYER_MAX_STATUS_TARGET_DISTANCE))
                 return;
             const safeDuration = Math.max(0, Math.min(Number(durationMs) || STATUS_DURATIONS[effect], STATUS_DURATIONS[effect]));
-            const until = Date.now() + safeDuration;
+            const until = getMultiplayerServerNowMs() + safeDuration;
             const key = `${effect}Until`;
             p[key] = until;
             io.to(currentRoom).emit("playerStatusEffect", { id: targetId, effect, until });
