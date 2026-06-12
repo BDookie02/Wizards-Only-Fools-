@@ -200,7 +200,10 @@ import {
   handlePlayerMeditationKeyUp,
   updatePlayerMeditationExitHold,
 } from "./systems/player/playerAstralMeditationRuntime";
-import { resolvePlayerMovementInputIntent } from "./systems/player/playerMovementInputRuntime";
+import {
+  resolvePlayerMovementInputIntent,
+  resolvePlayerMovementMotionState,
+} from "./systems/player/playerMovementInputRuntime";
 import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
@@ -250,7 +253,6 @@ import {
   BOOST_FORCE,
   CONTROLLER_LOOK_VERTICAL_MULTIPLIER,
   CROUCH_HOLD_MS,
-  CROUCH_SPEED_MULTIPLIER,
   FLOOR_DEEP_RECOVERY_TRIGGER_Y,
   GRAB_DEFAULT_DISTANCE,
   GRAB_FOLLOW_SPEED,
@@ -271,11 +273,7 @@ import {
   PLAYER_MEDITATION_CAMERA_HEIGHT,
   SELF_BUFF_SPELLS,
   SLIDE_RESTART_COOLDOWN_MS,
-  SLIDE_SPEED,
   SLIDE_START_MIN_SPEED_SQ,
-  SPEED,
-  SPEED_BOOST_MULTIPLIER,
-  TUNGSTON_SLOW_MULTIPLIER,
   VCLIP_SPRINT_MULTIPLIER,
   VCLIP_VERTICAL_SPEED,
   getPlayerCameraHeight,
@@ -2898,22 +2896,30 @@ export function PlayerController() {
       direction,
     });
 
-    const speedBoostActive = storeState.speedBoostUntil > nowMs;
-    const jumpBoostActive = storeState.jumpBoostUntil > nowMs;
-    const isSprinting = hasMovementInput && (keys.ShiftLeft || controllerSprintLatched.current || touchSprintLatched.current || qaWalkSprintHeld) && !isSliding && !isCrouching;
-    const slideInputHeld = !vclipActive && descendHeld && !isCrouching;
-    const slideHeld = slideInputHeld && (isSliding || isSprinting || hasPlanarMovementInput);
-
-    const boostedSpeed = SPEED * (speedBoostActive ? SPEED_BOOST_MULTIPLIER : 1) * (slowActive ? TUNGSTON_SLOW_MULTIPLIER : 1);
-    const slideSpeed = SLIDE_SPEED * (slowActive ? TUNGSTON_SLOW_MULTIPLIER : 1);
-    const sprintMultiplier = vclipActive ? VCLIP_SPRINT_MULTIPLIER : 1.6;
-    const currentSpeed = sleepActive
-      ? 0
-      : isSliding
-        ? slideSpeed
-        : isCrouching
-          ? boostedSpeed * CROUCH_SPEED_MULTIPLIER
-          : (isSprinting ? boostedSpeed * sprintMultiplier : boostedSpeed);
+    const {
+      jumpBoostActive,
+      isSprinting,
+      slideInputHeld,
+      slideHeld,
+      slideSpeed,
+      currentSpeed,
+    } = resolvePlayerMovementMotionState({
+      nowMs,
+      speedBoostUntil: storeState.speedBoostUntil,
+      jumpBoostUntil: storeState.jumpBoostUntil,
+      slowActive,
+      sleepActive,
+      vclipActive,
+      descendHeld,
+      hasMovementInput,
+      hasPlanarMovementInput,
+      keyboardSprintHeld: keys.ShiftLeft,
+      controllerSprintLatched: controllerSprintLatched.current,
+      touchSprintLatched: touchSprintLatched.current,
+      qaWalkSprintHeld,
+      isSliding,
+      isCrouching,
+    });
 
     qaPosition.set(pos.x, pos.y, pos.z);
     const lilyCoilTubeActive =

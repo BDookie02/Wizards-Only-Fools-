@@ -1,6 +1,14 @@
 import * as THREE from "three";
 import type { PlayerMovementKeyCode, TouchButtonName } from "../input/playerInputState";
 import type { PlayerControllerGamepadMovementInput } from "./playerControllerGamepadRuntime";
+import {
+  CROUCH_SPEED_MULTIPLIER,
+  SLIDE_SPEED,
+  SPEED,
+  SPEED_BOOST_MULTIPLIER,
+  TUNGSTON_SLOW_MULTIPLIER,
+  VCLIP_SPRINT_MULTIPLIER,
+} from "./playerMovementConfig";
 
 type BooleanRef = { current: boolean };
 type MovementKeyState = Record<PlayerMovementKeyCode, boolean>;
@@ -26,6 +34,17 @@ export type PlayerMovementInputIntent = {
   ladderVerticalInput: number;
   hasPlanarMovementInput: boolean;
   hasMovementInput: boolean;
+};
+
+export type PlayerMovementMotionState = {
+  speedBoostActive: boolean;
+  jumpBoostActive: boolean;
+  isSprinting: boolean;
+  slideInputHeld: boolean;
+  slideHeld: boolean;
+  boostedSpeed: number;
+  slideSpeed: number;
+  currentSpeed: number;
 };
 
 const clampUnit = (value: number) => Math.max(-1, Math.min(1, value));
@@ -148,5 +167,72 @@ export function resolvePlayerMovementInputIntent({
     ladderVerticalInput,
     hasPlanarMovementInput,
     hasMovementInput,
+  };
+}
+
+export function resolvePlayerMovementMotionState({
+  nowMs,
+  speedBoostUntil,
+  jumpBoostUntil,
+  slowActive,
+  sleepActive,
+  vclipActive,
+  descendHeld,
+  hasMovementInput,
+  hasPlanarMovementInput,
+  keyboardSprintHeld,
+  controllerSprintLatched,
+  touchSprintLatched,
+  qaWalkSprintHeld,
+  isSliding,
+  isCrouching,
+}: {
+  nowMs: number;
+  speedBoostUntil: number;
+  jumpBoostUntil: number;
+  slowActive: boolean;
+  sleepActive: boolean;
+  vclipActive: boolean;
+  descendHeld: boolean;
+  hasMovementInput: boolean;
+  hasPlanarMovementInput: boolean;
+  keyboardSprintHeld: boolean;
+  controllerSprintLatched: boolean;
+  touchSprintLatched: boolean;
+  qaWalkSprintHeld: boolean;
+  isSliding: boolean;
+  isCrouching: boolean;
+}): PlayerMovementMotionState {
+  const speedBoostActive = speedBoostUntil > nowMs;
+  const jumpBoostActive = jumpBoostUntil > nowMs;
+  const isSprinting =
+    hasMovementInput &&
+    (keyboardSprintHeld || controllerSprintLatched || touchSprintLatched || qaWalkSprintHeld) &&
+    !isSliding &&
+    !isCrouching;
+  const slideInputHeld = !vclipActive && descendHeld && !isCrouching;
+  const slideHeld = slideInputHeld && (isSliding || isSprinting || hasPlanarMovementInput);
+  const boostedSpeed = SPEED * (speedBoostActive ? SPEED_BOOST_MULTIPLIER : 1) * (slowActive ? TUNGSTON_SLOW_MULTIPLIER : 1);
+  const slideSpeed = SLIDE_SPEED * (slowActive ? TUNGSTON_SLOW_MULTIPLIER : 1);
+  const sprintMultiplier = vclipActive ? VCLIP_SPRINT_MULTIPLIER : 1.6;
+  const currentSpeed = sleepActive
+    ? 0
+    : isSliding
+      ? slideSpeed
+      : isCrouching
+        ? boostedSpeed * CROUCH_SPEED_MULTIPLIER
+        : isSprinting
+          ? boostedSpeed * sprintMultiplier
+          : boostedSpeed;
+
+  return {
+    speedBoostActive,
+    jumpBoostActive,
+    isSprinting,
+    slideInputHeld,
+    slideHeld,
+    boostedSpeed,
+    slideSpeed,
+    currentSpeed,
   };
 }
