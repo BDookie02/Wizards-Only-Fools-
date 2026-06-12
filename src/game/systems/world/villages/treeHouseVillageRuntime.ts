@@ -37,6 +37,12 @@ export type TreeHouseSpanTransform = {
   angleY: number;
 };
 
+export type TreeHouseSpiralStep = {
+  index: number;
+  position: [number, number, number];
+  rotation: [number, number, number];
+};
+
 export const TREE_HOUSE_SPECS: TreeHouseSpec[] = [
   { position: [6.5, 15, 6.5], rotation: [0, Math.PI / 4, 0], scale: 1.2 },
   { position: [-7, 22, 5], rotation: [0, -Math.PI / 6, 0], scale: 1.0 },
@@ -82,9 +88,33 @@ const TREE_HOUSE_TREE_PLACEMENTS = [
 ];
 
 const TREE_HOUSE_Y_AXIS = new THREE.Vector3(0, 1, 0);
+const treeHouseSpiralStepCache = new Map<string, readonly TreeHouseSpiralStep[]>();
 
 export function getTreeHouseIndexRange(count: number) {
   return getCachedIndexRange(count);
+}
+
+export function getTreeHouseSpiralSteps(radius: number, height: number, steps: number) {
+  const safeSteps = Math.max(1, Math.floor(steps));
+  const key = `${radius}:${height}:${safeSteps}`;
+  const cached = treeHouseSpiralStepCache.get(key);
+  if (cached) return cached;
+
+  const denominator = Math.max(1, safeSteps - 1);
+  const descriptors = new Array<TreeHouseSpiralStep>(safeSteps);
+  for (let index = 0; index < safeSteps; index += 1) {
+    const t = index / denominator;
+    const y = t * height;
+    const angle = t * Math.PI * 4;
+    descriptors[index] = {
+      index,
+      position: [Math.cos(angle) * radius, y, Math.sin(angle) * radius],
+      rotation: [0, -angle, 0],
+    };
+  }
+
+  treeHouseSpiralStepCache.set(key, descriptors);
+  return descriptors;
 }
 
 export function getTreeHouseSpanTransform(start: THREE.Vector3, end: THREE.Vector3): TreeHouseSpanTransform {

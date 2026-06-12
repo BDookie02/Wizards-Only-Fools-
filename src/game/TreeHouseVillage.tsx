@@ -9,6 +9,7 @@ import {
   TREE_HOUSE_SPECS,
   buildTreeHouseVillageLayout,
   getTreeHouseIndexRange,
+  getTreeHouseSpiralSteps,
   getTreeHouseSpanTransform,
   type TreeHouseTreePlacement,
 } from "./systems/world/villages/treeHouseVillageRuntime";
@@ -134,43 +135,31 @@ function GiantTreeCanopy({ position, angleOffset = 0 }: { position: [number, num
 }
 
 function SpiralStaircase({ radius = 6.5, height = 15, steps = MOBILE_PERFORMANCE_MODE ? 16 : 30 }: { radius?: number, height?: number, steps?: number }) {
+  const stepDescriptors = getTreeHouseSpiralSteps(radius, height, steps);
   return (
     <group>
-      {getTreeHouseIndexRange(steps).map((i) => {
-        const t = i / (steps - 1);
-        const y = t * height;
-        const angle = t * Math.PI * 4; // 2 full turns
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        return (
-          <mesh key={i} position={[x, y, z]} rotation={[0, -angle, 0]} castShadow receiveShadow>
-            <boxGeometry args={[3, 0.2, 1.5]} />
-            <meshStandardMaterial map={getTreeHousePlankTexture()} roughness={0.9} />
-          </mesh>
-        );
-      })}
+      {stepDescriptors.map((step) => (
+        <mesh key={step.index} position={step.position} rotation={step.rotation} castShadow receiveShadow>
+          <boxGeometry args={[3, 0.2, 1.5]} />
+          <meshStandardMaterial map={getTreeHousePlankTexture()} roughness={0.9} />
+        </mesh>
+      ))}
     </group>
   );
 }
 
 function SpiralStaircaseColliders({ radius = 6.5, height = 15, steps = MOBILE_PERFORMANCE_MODE ? 16 : 30 }: { radius?: number; height?: number; steps?: number }) {
+  const stepDescriptors = getTreeHouseSpiralSteps(radius, height, steps);
   return (
     <group>
-      {getTreeHouseIndexRange(steps).map((i) => {
-        const t = i / (steps - 1);
-        const y = t * height;
-        const angle = t * Math.PI * 4;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
-        return (
-          <CuboidCollider
-            key={`stair-step-collider-${i}`}
-            args={[1.5, 0.1, 0.75]}
-            position={[x, y, z]}
-            rotation={[0, -angle, 0]}
-          />
-        );
-      })}
+      {stepDescriptors.map((step) => (
+        <CuboidCollider
+          key={`stair-step-collider-${step.index}`}
+          args={[1.5, 0.1, 0.75]}
+          position={step.position}
+          rotation={step.rotation}
+        />
+      ))}
     </group>
   );
 }
