@@ -8,11 +8,15 @@ import { Villagers } from "../../../Villagers";
 import { getDesertAdobeWallTexture, getDesertSandTexture } from "../terrain/survivalTerrainTextures";
 import { isStrictSurvivalDesertTerrainAtWorld, isSurvivalRestoredMeadowWaterSuppressed } from "../survival/survivalBiome";
 import { shouldBuildSurvivalChunkColliders, shouldRenderSurvivalChunkSkirt } from "../survival/survivalChunks";
-import { lerpNumber, survivalHash01 } from "../survival/survivalMath";
+import { survivalHash01 } from "../survival/survivalMath";
 import { SURVIVAL_VILLAGE_PAD_SEGMENTS, type SurvivalChunkInfo } from "../survival/survivalWorldConfig";
 import { PLANT_EDGE_COLOR } from "../vegetation/SurvivalFoliagePrimitives";
 import { useSurvivalFeatureCount } from "../../../tools/qa/survivalFeatureCounters";
 import { DESERT_VILLAGE_RADIUS, isNearDesertGate } from "./survivalDesertVillageTerrain";
+import {
+  getDesertClothesLineRenderDescriptor,
+  type DesertVillageClothesLine,
+} from "./survivalDesertVillageRuntime";
 
 type GateSide = "north" | "south" | "east" | "west";
 
@@ -110,16 +114,6 @@ type DesertVillageFence = {
   localZ: number;
   rotation: number;
   length: number;
-};
-
-type DesertVillageClothesLine = {
-  key: string;
-  startX: number;
-  startZ: number;
-  endX: number;
-  endZ: number;
-  y: number;
-  colors: [string, string, string];
 };
 
 type DesertVillageStreetProp = {
@@ -722,20 +716,7 @@ function DesertVillageFence({ fence, baseHeight }: { fence: DesertVillageFence; 
 }
 
 function DesertClothesLine({ line, baseHeight }: { line: DesertVillageClothesLine; baseHeight: number }) {
-  const rope = useMemo(() => {
-    const start = new THREE.Vector3(line.startX, baseHeight + line.y, line.startZ);
-    const end = new THREE.Vector3(line.endX, baseHeight + line.y - 0.6, line.endZ);
-    const direction = new THREE.Vector3().subVectors(end, start);
-    const length = Math.max(0.1, direction.length());
-    const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      direction.clone().normalize(),
-    );
-    const yaw = Math.atan2(direction.x, direction.z);
-
-    return { start, end, midpoint, length, quaternion, yaw };
-  }, [baseHeight, line]);
+  const rope = useMemo(() => getDesertClothesLineRenderDescriptor(line, baseHeight), [baseHeight, line]);
 
   return (
     <group>
@@ -743,18 +724,12 @@ function DesertClothesLine({ line, baseHeight }: { line: DesertVillageClothesLin
         <cylinderGeometry args={[0.08, 0.08, rope.length, 5]} />
         <meshBasicMaterial color="#4a2d18" />
       </mesh>
-      {line.colors.map((color, index) => {
-        const t = 0.26 + index * 0.24;
-        const x = lerpNumber(rope.start.x, rope.end.x, t);
-        const y = lerpNumber(rope.start.y, rope.end.y, t) - 1.45;
-        const z = lerpNumber(rope.start.z, rope.end.z, t);
-        return (
-          <mesh key={`${line.key}-cloth-${index}`} position={[x, y, z]} rotation={[0, rope.yaw, 0]} castShadow={false}>
-            <boxGeometry args={[2.8, 2.8 + (index % 2) * 0.65, 0.12]} />
-            <meshBasicMaterial color={color} />
-          </mesh>
-        );
-      })}
+      {rope.cloths.map((cloth) => (
+        <mesh key={cloth.key} position={cloth.position} rotation={cloth.rotation} castShadow={false}>
+          <boxGeometry args={[2.8, cloth.height, 0.12]} />
+          <meshBasicMaterial color={cloth.color} />
+        </mesh>
+      ))}
     </group>
   );
 }
