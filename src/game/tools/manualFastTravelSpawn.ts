@@ -34,7 +34,11 @@ export function publishManualFastTravelSpawn(spawn: DevFastTravelSpawn, nowMs: n
   return manualSpawn;
 }
 
-export function readManualFastTravelSpawn(nowMs = Date.now()): ManualFastTravelSpawn | null {
+export function getManualFastTravelNowMs() {
+  return Date.now();
+}
+
+export function readManualFastTravelSpawn(nowMs = getManualFastTravelNowMs()): ManualFastTravelSpawn | null {
   if (typeof window === "undefined") return null;
   const manual = (window as WindowWithManualFastTravelSpawn).__wofManualFastTravelSpawn;
   if (!manual || typeof manual !== "object" || Number(manual.until) <= nowMs) return null;
