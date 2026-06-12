@@ -90,6 +90,10 @@ const devNpcTargetCenter = new THREE.Vector3();
 const devNpcTargetOffset = new THREE.Vector3();
 const EMPTY_ANCHORED_QUEST_NPC_IDS: ReadonlySet<string> = new Set<string>();
 
+export function getVillagerRuntimeNowMs() {
+  return Date.now();
+}
+
 function hashValue(seed: string, salt: number) {
   let hash = 2166136261 ^ salt;
   for (let i = 0; i < seed.length; i++) {
@@ -342,7 +346,7 @@ function anchorQuestNpcProgram(
     hutId: target.hutId,
     theme: target.theme,
     position: target.position,
-    updatedAt: Date.now(),
+    updatedAt: getVillagerRuntimeNowMs(),
   };
 }
 
@@ -863,7 +867,7 @@ export function Villagers({
         detail.handled = true;
       }
 
-      const now = Date.now();
+      const now = getVillagerRuntimeNowMs();
       latestFrameClockMsRef.current = now;
       if (now - (lastQuestInteractionRef.current[villager.id] ?? 0) < 700) return;
       lastQuestInteractionRef.current[villager.id] = now;
@@ -1194,7 +1198,7 @@ export function PersistentQuestNpcs() {
         detail.handled = true;
       }
 
-      const now = Date.now();
+      const now = getVillagerRuntimeNowMs();
       if (now - (lastQuestInteractionRef.current[villager.id] ?? 0) < 700) return;
       lastQuestInteractionRef.current[villager.id] = now;
 
