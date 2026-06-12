@@ -116,10 +116,8 @@ import {
   getSurvivalLocalFlowerStarGeometry,
   getSurvivalTutorialGrassTuftGeometry,
 } from "./survivalGrassGeometry";
-import {
-  splitSurvivalFlowersByBloomType,
-  type SurvivalFlowerBloomType,
-} from "./survivalFlowerGrouping";
+import { splitSurvivalFlowersByBloomType } from "./survivalFlowerGrouping";
+import { uploadSurvivalFlowerInstances } from "./survivalFlowerInstancing";
 import {
   ensureSurvivalInstancedMeshColors,
   finalizeSurvivalInstancedMesh,
@@ -769,91 +767,27 @@ function SurvivalLocalGrassCellTile({
     const centerMesh = flowerCenterRef.current;
     if (!stemMesh || !starMesh || !roundMesh || !bellMesh || !puffMesh || !centerMesh) return;
 
-    const flowerColor = new THREE.Color();
-    const writeBloomInstances = (mesh: THREE.InstancedMesh, flowers: SurvivalWildflower[], type: NonNullable<SurvivalWildflower["bloomType"]>) => {
-      ensureSurvivalInstancedMeshColors(mesh, flowers.length);
-      for (let index = 0; index < flowers.length; index += 1) {
-        const flower = flowers[index];
-        normal.set(flower.normalX, flower.normalY, flower.normalZ).normalize();
-        const bloomWidth = flower.bloomWidth ?? flower.bloomSize;
-        const bloomHeight = flower.bloomHeight ?? flower.bloomSize;
-
-        dummy.position
-          .set(cell.x + flower.x, flower.y, cell.z + flower.z)
-          .addScaledVector(normal, flower.stemHeight + Math.max(0.08, bloomHeight) * 0.32 + 0.2);
-        dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-        dummy.rotateY(flower.yaw);
-        if (type === "star") {
-          dummy.scale.set(bloomWidth, 1, bloomWidth);
-        } else if (type === "bell") {
-          dummy.scale.set(bloomWidth * 0.74, bloomHeight, bloomWidth * 0.74);
-        } else {
-          dummy.scale.set(bloomWidth, bloomHeight, bloomWidth);
-        }
-        dummy.updateMatrix();
-        mesh.setMatrixAt(index, dummy.matrix);
-        mesh.setColorAt(index, flowerColor.set(flower.color));
-      }
-      mesh.count = flowers.length;
-      mesh.instanceMatrix.needsUpdate = true;
-      finalizeSurvivalInstancedMeshColors(mesh);
-      finalizeSurvivalInstancedMesh(
-        mesh,
-        cell.x + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-        cell.z + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-        SURVIVAL_LOCAL_GRASS_CELL_SIZE,
-        18,
-      );
-    };
-
-    ensureSurvivalInstancedMeshColors(centerMesh, localFlowers.length);
-    for (let index = 0; index < localFlowers.length; index += 1) {
-      const flower = localFlowers[index];
-      normal.set(flower.normalX, flower.normalY, flower.normalZ).normalize();
-
-      dummy.position
-        .set(cell.x + flower.x, flower.y, cell.z + flower.z)
-        .addScaledVector(normal, flower.stemHeight * 0.5);
-      dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-      dummy.rotateY(flower.yaw);
-      dummy.scale.set(flower.stemRadius, flower.stemHeight, flower.stemRadius);
-      dummy.updateMatrix();
-      stemMesh.setMatrixAt(index, dummy.matrix);
-
-      dummy.position
-        .set(cell.x + flower.x, flower.y, cell.z + flower.z)
-        .addScaledVector(normal, flower.stemHeight + Math.max(0.08, flower.bloomHeight ?? flower.bloomSize) * 0.34 + 0.2);
-      dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-      dummy.rotateY(flower.yaw);
-      dummy.scale.setScalar(flower.centerSize ?? flower.bloomSize * 0.12);
-      dummy.updateMatrix();
-      centerMesh.setMatrixAt(index, dummy.matrix);
-      centerMesh.setColorAt(index, flowerColor.set(flower.centerColor ?? "#facc15"));
-    }
-
-    stemMesh.count = localFlowers.length;
-    centerMesh.count = localFlowers.length;
-    stemMesh.instanceMatrix.needsUpdate = true;
-    centerMesh.instanceMatrix.needsUpdate = true;
-    writeBloomInstances(starMesh, starFlowers, "star");
-    writeBloomInstances(roundMesh, roundFlowers, "round");
-    writeBloomInstances(bellMesh, bellFlowers, "bell");
-    writeBloomInstances(puffMesh, puffFlowers, "puff");
-    finalizeSurvivalInstancedMeshColors(centerMesh);
-    finalizeSurvivalInstancedMesh(
+    uploadSurvivalFlowerInstances({
       stemMesh,
-      cell.x + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-      cell.z + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-      SURVIVAL_LOCAL_GRASS_CELL_SIZE,
-      18,
-    );
-    finalizeSurvivalInstancedMesh(
+      starMesh,
+      roundMesh,
+      bellMesh,
+      puffMesh,
       centerMesh,
-      cell.x + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-      cell.z + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-      SURVIVAL_LOCAL_GRASS_CELL_SIZE,
-      18,
-    );
+      flowers: localFlowers,
+      starFlowers,
+      roundFlowers,
+      bellFlowers,
+      puffFlowers,
+      dummy,
+      normal,
+      boundsX: cell.x + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
+      boundsZ: cell.z + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
+      boundsRadius: SURVIVAL_LOCAL_GRASS_CELL_SIZE,
+      boundsPadding: 18,
+      baseX: cell.x,
+      baseZ: cell.z,
+    });
   }, [bellFlowers, cell.x, cell.z, dummy, localFlowers, normal, puffFlowers, roundFlowers, starFlowers]);
 
   if (!solidGrassGeometry && groundPatches.length === 0 && shortBlades.length === 0 && tallBlades.length === 0 && localFlowers.length === 0) return null;
@@ -1168,77 +1102,26 @@ function SurvivalTutorialGrassBatchTile({
     const centerMesh = flowerCenterRef.current;
     if (!stemMesh || !starMesh || !roundMesh || !bellMesh || !puffMesh || !centerMesh) return;
 
-    const flowerColor = new THREE.Color();
-    const writeBloomInstances = (
-      mesh: THREE.InstancedMesh,
-      flowers: SurvivalTutorialGrassFlowerInstance[],
-      type: NonNullable<SurvivalWildflower["bloomType"]>,
-    ) => {
-      ensureSurvivalInstancedMeshColors(mesh, flowers.length);
-      for (let index = 0; index < flowers.length; index += 1) {
-        const flower = flowers[index];
-        normal.set(flower.normalX, flower.normalY, flower.normalZ).normalize();
-        const bloomWidth = flower.bloomWidth ?? flower.bloomSize;
-        const bloomHeight = flower.bloomHeight ?? flower.bloomSize;
-
-        dummy.position
-          .set(flower.worldX, flower.y, flower.worldZ)
-          .addScaledVector(normal, flower.stemHeight + Math.max(0.08, bloomHeight) * 0.32 + 0.2);
-        dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-        dummy.rotateY(flower.yaw);
-        if (type === "star") {
-          dummy.scale.set(bloomWidth, 1, bloomWidth);
-        } else if (type === "bell") {
-          dummy.scale.set(bloomWidth * 0.74, bloomHeight, bloomWidth * 0.74);
-        } else {
-          dummy.scale.set(bloomWidth, bloomHeight, bloomWidth);
-        }
-        dummy.updateMatrix();
-        mesh.setMatrixAt(index, dummy.matrix);
-        mesh.setColorAt(index, flowerColor.set(flower.color));
-      }
-      mesh.count = flowers.length;
-      mesh.instanceMatrix.needsUpdate = true;
-      finalizeSurvivalInstancedMeshColors(mesh);
-      finalizeSurvivalInstancedMesh(mesh, batchBounds.x, batchBounds.z, batchBounds.radius, 18);
-    };
-
-    ensureSurvivalInstancedMeshColors(centerMesh, localFlowers.length);
-    for (let index = 0; index < localFlowers.length; index += 1) {
-      const flower = localFlowers[index];
-      normal.set(flower.normalX, flower.normalY, flower.normalZ).normalize();
-
-      dummy.position
-        .set(flower.worldX, flower.y, flower.worldZ)
-        .addScaledVector(normal, flower.stemHeight * 0.5);
-      dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-      dummy.rotateY(flower.yaw);
-      dummy.scale.set(flower.stemRadius, flower.stemHeight, flower.stemRadius);
-      dummy.updateMatrix();
-      stemMesh.setMatrixAt(index, dummy.matrix);
-
-      dummy.position
-        .set(flower.worldX, flower.y, flower.worldZ)
-        .addScaledVector(normal, flower.stemHeight + Math.max(0.08, flower.bloomHeight ?? flower.bloomSize) * 0.34 + 0.2);
-      dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-      dummy.rotateY(flower.yaw);
-      dummy.scale.setScalar(flower.centerSize ?? flower.bloomSize * 0.12);
-      dummy.updateMatrix();
-      centerMesh.setMatrixAt(index, dummy.matrix);
-      centerMesh.setColorAt(index, flowerColor.set(flower.centerColor ?? "#facc15"));
-    }
-
-    stemMesh.count = localFlowers.length;
-    centerMesh.count = localFlowers.length;
-    stemMesh.instanceMatrix.needsUpdate = true;
-    centerMesh.instanceMatrix.needsUpdate = true;
-    writeBloomInstances(starMesh, starFlowers, "star");
-    writeBloomInstances(roundMesh, roundFlowers, "round");
-    writeBloomInstances(bellMesh, bellFlowers, "bell");
-    writeBloomInstances(puffMesh, puffFlowers, "puff");
-    finalizeSurvivalInstancedMeshColors(centerMesh);
-    finalizeSurvivalInstancedMesh(stemMesh, batchBounds.x, batchBounds.z, batchBounds.radius, 18);
-    finalizeSurvivalInstancedMesh(centerMesh, batchBounds.x, batchBounds.z, batchBounds.radius, 18);
+    uploadSurvivalFlowerInstances({
+      stemMesh,
+      starMesh,
+      roundMesh,
+      bellMesh,
+      puffMesh,
+      centerMesh,
+      flowers: localFlowers,
+      starFlowers,
+      roundFlowers,
+      bellFlowers,
+      puffFlowers,
+      dummy,
+      normal,
+      boundsX: batchBounds.x,
+      boundsZ: batchBounds.z,
+      boundsRadius: batchBounds.radius,
+      boundsPadding: 18,
+      useWorldCoordinates: true,
+    });
   }, [batchBounds, bellFlowers, dummy, localFlowers, normal, puffFlowers, roundFlowers, starFlowers]);
 
   if (!underpaintGeometry && !bladeGeometry && localFlowers.length === 0) return null;
@@ -1472,95 +1355,27 @@ function SurvivalTutorialGrassCellTile({
     const centerMesh = flowerCenterRef.current;
     if (!stemMesh || !starMesh || !roundMesh || !bellMesh || !puffMesh || !centerMesh) return;
 
-    const flowerColor = new THREE.Color();
-    const writeBloomInstances = (
-      mesh: THREE.InstancedMesh,
-      flowers: SurvivalWildflower[],
-      type: NonNullable<SurvivalWildflower["bloomType"]>,
-    ) => {
-      ensureSurvivalInstancedMeshColors(mesh, flowers.length);
-      for (let index = 0; index < flowers.length; index += 1) {
-        const flower = flowers[index];
-        normal.set(flower.normalX, flower.normalY, flower.normalZ).normalize();
-        const bloomWidth = flower.bloomWidth ?? flower.bloomSize;
-        const bloomHeight = flower.bloomHeight ?? flower.bloomSize;
-
-        dummy.position
-          .set(cell.x + flower.x, flower.y, cell.z + flower.z)
-          .addScaledVector(normal, flower.stemHeight + Math.max(0.08, bloomHeight) * 0.32 + 0.2);
-        dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-        dummy.rotateY(flower.yaw);
-        if (type === "star") {
-          dummy.scale.set(bloomWidth, 1, bloomWidth);
-        } else if (type === "bell") {
-          dummy.scale.set(bloomWidth * 0.74, bloomHeight, bloomWidth * 0.74);
-        } else {
-          dummy.scale.set(bloomWidth, bloomHeight, bloomWidth);
-        }
-        dummy.updateMatrix();
-        mesh.setMatrixAt(index, dummy.matrix);
-        mesh.setColorAt(index, flowerColor.set(flower.color));
-      }
-      mesh.count = flowers.length;
-      mesh.instanceMatrix.needsUpdate = true;
-      finalizeSurvivalInstancedMeshColors(mesh);
-      finalizeSurvivalInstancedMesh(
-        mesh,
-        cell.x + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
-        cell.z + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
-        SURVIVAL_TUTORIAL_GRASS_CELL_SIZE,
-        18,
-      );
-    };
-
-    ensureSurvivalInstancedMeshColors(centerMesh, localFlowers.length);
-    for (let index = 0; index < localFlowers.length; index += 1) {
-      const flower = localFlowers[index];
-      normal.set(flower.normalX, flower.normalY, flower.normalZ).normalize();
-
-      dummy.position
-        .set(cell.x + flower.x, flower.y, cell.z + flower.z)
-        .addScaledVector(normal, flower.stemHeight * 0.5);
-      dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-      dummy.rotateY(flower.yaw);
-      dummy.scale.set(flower.stemRadius, flower.stemHeight, flower.stemRadius);
-      dummy.updateMatrix();
-      stemMesh.setMatrixAt(index, dummy.matrix);
-
-      dummy.position
-        .set(cell.x + flower.x, flower.y, cell.z + flower.z)
-        .addScaledVector(normal, flower.stemHeight + Math.max(0.08, flower.bloomHeight ?? flower.bloomSize) * 0.34 + 0.2);
-      dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-      dummy.rotateY(flower.yaw);
-      dummy.scale.setScalar(flower.centerSize ?? flower.bloomSize * 0.12);
-      dummy.updateMatrix();
-      centerMesh.setMatrixAt(index, dummy.matrix);
-      centerMesh.setColorAt(index, flowerColor.set(flower.centerColor ?? "#facc15"));
-    }
-
-    stemMesh.count = localFlowers.length;
-    centerMesh.count = localFlowers.length;
-    stemMesh.instanceMatrix.needsUpdate = true;
-    centerMesh.instanceMatrix.needsUpdate = true;
-    writeBloomInstances(starMesh, starFlowers, "star");
-    writeBloomInstances(roundMesh, roundFlowers, "round");
-    writeBloomInstances(bellMesh, bellFlowers, "bell");
-    writeBloomInstances(puffMesh, puffFlowers, "puff");
-    finalizeSurvivalInstancedMeshColors(centerMesh);
-    finalizeSurvivalInstancedMesh(
+    uploadSurvivalFlowerInstances({
       stemMesh,
-      cell.x + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
-      cell.z + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
-      SURVIVAL_TUTORIAL_GRASS_CELL_SIZE,
-      18,
-    );
-    finalizeSurvivalInstancedMesh(
+      starMesh,
+      roundMesh,
+      bellMesh,
+      puffMesh,
       centerMesh,
-      cell.x + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
-      cell.z + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
-      SURVIVAL_TUTORIAL_GRASS_CELL_SIZE,
-      18,
-    );
+      flowers: localFlowers,
+      starFlowers,
+      roundFlowers,
+      bellFlowers,
+      puffFlowers,
+      dummy,
+      normal,
+      boundsX: cell.x + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
+      boundsZ: cell.z + SURVIVAL_TUTORIAL_GRASS_CELL_SIZE * 0.5,
+      boundsRadius: SURVIVAL_TUTORIAL_GRASS_CELL_SIZE,
+      boundsPadding: 18,
+      baseX: cell.x,
+      baseZ: cell.z,
+    });
   }, [bellFlowers, cell.x, cell.z, dummy, localFlowers, normal, puffFlowers, roundFlowers, starFlowers]);
 
   if (!strandGeometry && tufts.length === 0 && localFlowers.length === 0) return null;
