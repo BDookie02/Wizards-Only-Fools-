@@ -26,7 +26,7 @@ import {
   getDarrelPetalTexture,
   getDarrelTexture,
 } from "./darrelGroveTextures";
-import { getDarrelQuestGateNowMs } from "./darrelGroveRuntime";
+import { getDarrelBranchTransform, getDarrelQuestGateNowMs } from "./darrelGroveRuntime";
 import { SURVIVAL_DARREL_GROVE_HALF_SIZE as DARREL_GROVE_HALF_SIZE } from "./survivalVillageRegistry";
 
 const DARREL_GROVE_GROUND_Y = 18;
@@ -99,18 +99,7 @@ function DarrelBranch({
   radius: number;
   texture: THREE.Texture;
 }) {
-  const data = useMemo(() => {
-    const startVec = new THREE.Vector3(...start);
-    const endVec = new THREE.Vector3(...end);
-    const direction = new THREE.Vector3().subVectors(endVec, startVec);
-    const length = direction.length();
-    const midpoint = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      direction.clone().normalize()
-    );
-    return { length, midpoint, quaternion };
-  }, [start, end]);
+  const data = useMemo(() => getDarrelBranchTransform(start, end), [start, end]);
 
   return (
     <mesh position={data.midpoint} quaternion={data.quaternion} castShadow receiveShadow>
