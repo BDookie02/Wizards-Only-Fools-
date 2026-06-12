@@ -20,6 +20,10 @@ export const questEventPresetButtons = [
 
 export type QuestEventBuilderKind = "message" | "startQuest" | "completeQuest" | "setFlag";
 
+export function getQuestNpcProgramUpdatedAtMs() {
+  return Date.now();
+}
+
 export function cloneQuestNpcProgram(program: QuestNpcProgram): QuestNpcProgram {
   const scriptPoints = new Array<QuestScriptPoint>(program.scriptPoints.length);
   for (let index = 0; index < program.scriptPoints.length; index += 1) {
@@ -201,7 +205,7 @@ export function sanitizeQuestNpcProgramDraft(
     displayName: cleanedName,
     greeting: cleanedGreeting,
     scriptPoints: cleanedPoints,
-    updatedAt: Date.now(),
+    updatedAt: getQuestNpcProgramUpdatedAtMs(),
   };
 }
 
