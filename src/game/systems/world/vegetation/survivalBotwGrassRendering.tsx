@@ -33,17 +33,11 @@ import {
   SURVIVAL_BOTW_GRASS_DESKTOP_PREVIEW_COUNT,
   SURVIVAL_BOTW_GRASS_DESKTOP_PREVIEW_MIN_COUNT,
   SURVIVAL_BOTW_GRASS_EDGE_FADE,
-  SURVIVAL_BOTW_GRASS_FAST_LEAD_SPEED,
-  SURVIVAL_BOTW_GRASS_FAST_MIN_LEAD_DISTANCE,
   SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_FADE,
   SURVIVAL_BOTW_GRASS_FLOWER_VISIBLE_RADIUS,
-  SURVIVAL_BOTW_GRASS_LEAD_SECONDS,
-  SURVIVAL_BOTW_GRASS_LEAD_SMOOTHING,
   SURVIVAL_BOTW_GRASS_MAX_BACKGROUND_PENDING_PREWARMS,
   SURVIVAL_BOTW_GRASS_MAX_DIRECTIONAL_PENDING_PREWARMS,
-  SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE,
   SURVIVAL_BOTW_GRASS_MIN_CENTER_TRAVEL_ALIGNMENT,
-  SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE,
   SURVIVAL_BOTW_GRASS_MOBILE_COUNT,
   SURVIVAL_BOTW_GRASS_MOBILE_PREVIEW_COUNT,
   SURVIVAL_BOTW_GRASS_MOBILE_PREVIEW_MIN_COUNT,
@@ -145,6 +139,12 @@ import {
   createSurvivalBotwGrassUploadScratch,
   uploadSurvivalBotwGrassBladeInstanceRange,
 } from "./survivalBotwBladeUpload";
+import {
+  resolveSurvivalBotwGrassLeadFrame,
+  type SurvivalBotwGrassLastViewerState,
+  type SurvivalBotwGrassLeadVelocity,
+  type SurvivalBotwGrassViewerPosition,
+} from "./survivalBotwGrassFrameRuntime";
 import { SURVIVAL_GRASS_SYSTEM_ENABLED } from "./survivalGrassSystemConfig";
 import { HIDE_FROM_MINIMAP } from "./SurvivalFoliagePrimitives";
 
@@ -173,8 +173,6 @@ const SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE_SQ =
   SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE * SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE;
 const SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE_SQ =
   SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE * SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE;
-
-type SurvivalBotwGrassViewerPosition = { x: number; y: number; z: number };
 
 type SurvivalBotwGrassNeighborPrewarmState = {
   centerKey: string;
@@ -235,13 +233,13 @@ function ActiveSurvivalBotwGrassField() {
   const [center, setCenter] = useState(initialCenter);
   const centerRef = useRef(center);
   const viewerPositionRef = useRef<SurvivalBotwGrassViewerPosition>({ x: center.x, y: center.y, z: center.z });
-  const lastViewerRef = useRef<{ x: number; z: number; time: number; ready: boolean }>({
+  const lastViewerRef = useRef<SurvivalBotwGrassLastViewerState>({
     x: center.x,
     z: center.z,
     time: 0,
     ready: false,
   });
-  const grassLeadVelocityRef = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
+  const grassLeadVelocityRef = useRef<SurvivalBotwGrassLeadVelocity>({ x: 0, z: 0 });
   const lastGrassRecenterAtRef = useRef(0);
   const lowCameraGrassClearanceRef = useRef(0);
   const neighborGrassPrewarmRef = useRef<SurvivalBotwGrassNeighborPrewarmState>({
@@ -720,47 +718,21 @@ function ActiveSurvivalBotwGrassField() {
     }
     const viewerPosition = getSurvivalLocalGrassViewerPositionInto(camera, viewerPositionRef.current);
     const currentCenter = centerRef.current;
-    const lastViewer = lastViewerRef.current;
-    let predictedX = viewerPosition.x;
-    let predictedZ = viewerPosition.z;
-    let leadDistance = 0;
-    let leadSpeed = 0;
-    let leadDirectionX = 0;
-    let leadDirectionZ = 0;
+    const leadFrame = resolveSurvivalBotwGrassLeadFrame({
+      viewerPosition,
+      lastViewer: lastViewerRef.current,
+      leadVelocity: grassLeadVelocityRef.current,
+      elapsedTime: clock.elapsedTime,
+    });
+    const {
+      predictedX,
+      predictedZ,
+      leadDistance,
+      leadSpeed,
+      leadDirectionX,
+      leadDirectionZ,
+    } = leadFrame;
     let centerTravelAlignment = 1;
-    if (lastViewer.ready) {
-      const deltaTime = Math.max(0.016, clock.elapsedTime - lastViewer.time);
-      const deltaX = viewerPosition.x - lastViewer.x;
-      const deltaZ = viewerPosition.z - lastViewer.z;
-      const travelDistanceSq = deltaX * deltaX + deltaZ * deltaZ;
-      const hasTravelDistance = travelDistanceSq > 0.001 * 0.001;
-      const instantVelocityX = hasTravelDistance ? deltaX / deltaTime : 0;
-      const instantVelocityZ = hasTravelDistance ? deltaZ / deltaTime : 0;
-      const velocityAlpha = 1 - Math.exp(-deltaTime * SURVIVAL_BOTW_GRASS_LEAD_SMOOTHING);
-      const leadVelocity = grassLeadVelocityRef.current;
-      leadVelocity.x = THREE.MathUtils.lerp(leadVelocity.x, instantVelocityX, velocityAlpha);
-      leadVelocity.z = THREE.MathUtils.lerp(leadVelocity.z, instantVelocityZ, velocityAlpha);
-      const leadSpeedSq = leadVelocity.x * leadVelocity.x + leadVelocity.z * leadVelocity.z;
-      if (leadSpeedSq > 0.49) {
-        leadSpeed = Math.sqrt(leadSpeedSq);
-        leadDirectionX = leadVelocity.x / leadSpeed;
-        leadDirectionZ = leadVelocity.z / leadSpeed;
-        const minLeadDistance = leadSpeed >= SURVIVAL_BOTW_GRASS_FAST_LEAD_SPEED
-          ? SURVIVAL_BOTW_GRASS_FAST_MIN_LEAD_DISTANCE
-          : SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE;
-        leadDistance = THREE.MathUtils.clamp(
-          leadSpeed * SURVIVAL_BOTW_GRASS_LEAD_SECONDS,
-          minLeadDistance,
-          SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE,
-        );
-        predictedX += leadDirectionX * leadDistance;
-        predictedZ += leadDirectionZ * leadDistance;
-      }
-    }
-    lastViewer.x = viewerPosition.x;
-    lastViewer.z = viewerPosition.z;
-    lastViewer.time = clock.elapsedTime;
-    lastViewer.ready = true;
     const uploadPriority = uploadPriorityRef.current;
     uploadPriority.viewerX = viewerPosition.x;
     uploadPriority.viewerZ = viewerPosition.z;
