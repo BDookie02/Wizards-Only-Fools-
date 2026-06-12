@@ -2336,6 +2336,7 @@ function makeSurvivalTutorialGrassBladeGeometry(cell: SurvivalTutorialGrassCell)
   const baseColor = new THREE.Color();
   const midColor = new THREE.Color();
   const tipColor = new THREE.Color();
+  const cardMidColor = new THREE.Color();
   let placed = 0;
 
   const pushVertex = (
@@ -2459,7 +2460,7 @@ function makeSurvivalTutorialGrassBladeGeometry(cell: SurvivalTutorialGrassCell)
       const cardTipX = worldX + bendX * lean * heightScale + normalX * height * 0.08 * heightScale;
       const cardTipY = baseY + normalY * height * heightScale + bendY * lean * heightScale;
       const cardTipZ = worldZ + bendZ * lean * heightScale + normalZ * height * 0.08 * heightScale;
-      const cardMidColor = midColor.clone().lerp(tipColor, colorOffset);
+      cardMidColor.copy(midColor).lerp(tipColor, colorOffset);
       const vertexBase = positions.length / 3;
 
       pushVertex(
