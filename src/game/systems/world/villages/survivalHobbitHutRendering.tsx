@@ -41,6 +41,11 @@ type SurvivalHobbitHut = {
   variant: number;
 };
 
+const HOBBIT_HUT_BACK_PLANK_XS = [-4.25, -2.55, -0.85, 0.85, 2.55, 4.25] as const;
+const HOBBIT_HUT_FRONT_POST_XS = [-4.76, 4.76] as const;
+const HOBBIT_HUT_SMOKE_INDICES = [0, 1, 2] as const;
+const HOBBIT_HUT_ROOF_LEAF_XS = [-4.9, -2.9, 3.0, 5.2] as const;
+
 function HobbitHutColliders({ hut, chunk }: { hut: SurvivalHobbitHut; chunk: SurvivalChunkInfo }) {
   if (!shouldBuildSurvivalChunkColliders(chunk)) return null;
 
@@ -103,7 +108,7 @@ function SurvivalHobbitHutModel({ hut, chunk }: { hut: SurvivalHobbitHut; chunk:
         <boxGeometry args={[10.2, 5.9, 0.52]} />
         <meshBasicMaterial color="#2c1b13" />
       </mesh>
-      {[-4.25, -2.55, -0.85, 0.85, 2.55, 4.25].map((x) => (
+      {HOBBIT_HUT_BACK_PLANK_XS.map((x) => (
         <mesh key={x} position={[x, 3.0, -7.82]} castShadow={false}>
           <boxGeometry args={[1.06, 5.25, 0.42]} />
           <meshBasicMaterial color={plankColor} />
@@ -121,7 +126,7 @@ function SurvivalHobbitHutModel({ hut, chunk }: { hut: SurvivalHobbitHut; chunk:
         <cylinderGeometry args={[0.34, 0.34, 8.6, 6]} />
         <meshBasicMaterial color="#5a321c" />
       </mesh>
-      {[-4.76, 4.76].map((x) => (
+      {HOBBIT_HUT_FRONT_POST_XS.map((x) => (
         <mesh key={x} position={[x, 2.98, -8.16]} castShadow={false}>
           <cylinderGeometry args={[0.34, 0.34, 5.28, 6]} />
           <meshBasicMaterial color="#5a321c" />
@@ -135,13 +140,13 @@ function SurvivalHobbitHutModel({ hut, chunk }: { hut: SurvivalHobbitHut; chunk:
         <boxGeometry args={[1.45, 4.2, 1.45]} />
         <meshBasicMaterial color="#47301f" />
       </mesh>
-      {[0, 1, 2].map((smoke) => (
+      {HOBBIT_HUT_SMOKE_INDICES.map((smoke) => (
         <mesh key={smoke} position={[4.12 + smoke * 0.62, 10.0 + smoke * 1.35, -1.55 - smoke * 0.34]} scale={[1 + smoke * 0.38, 0.72 + smoke * 0.18, 1 + smoke * 0.32]} castShadow={false}>
           <dodecahedronGeometry args={[0.7, 0]} />
           <meshBasicMaterial color="#d5d0c2" transparent opacity={0.28 - smoke * 0.06} />
         </mesh>
       ))}
-      {[-4.9, -2.9, 3.0, 5.2].map((x, index) => (
+      {HOBBIT_HUT_ROOF_LEAF_XS.map((x, index) => (
         <mesh key={x} position={[x, 5.45 + index * 0.18, -6.25 + (index % 2) * 0.7]} rotation={[0.18, index * 0.7, -0.12]} castShadow={false}>
           <planeGeometry args={[1.1, 2.8]} />
           <meshBasicMaterial color={index % 2 === 0 ? "#4d9a3e" : "#6fb64a"} side={THREE.DoubleSide} transparent opacity={0.9} />
