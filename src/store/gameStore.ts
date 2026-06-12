@@ -920,6 +920,10 @@ export function getGameStoreRandomUnit() {
   return getRuntimeRandomUnit();
 }
 
+export function getGameStoreNowMs() {
+  return Date.now();
+}
+
 export function getGameStoreRandomIndex(length: number) {
   if (!Number.isFinite(length) || length <= 0) return -1;
   return Math.floor(getGameStoreRandomUnit() * Math.floor(length));
@@ -931,10 +935,10 @@ function getGameStoreRandomBase36Suffix() {
 
 function makeLobbyMessage(text: string, tone: LobbyMessageTone = 'system'): LobbyMessage {
   return {
-    id: `${Date.now()}-${getGameStoreRandomBase36Suffix()}`,
+    id: `${getGameStoreNowMs()}-${getGameStoreRandomBase36Suffix()}`,
     text,
     tone,
-    createdAt: Date.now(),
+    createdAt: getGameStoreNowMs(),
   };
 }
 
@@ -942,7 +946,7 @@ function makeQuestId(prefix: string) {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
   }
-  return `${prefix}-${Date.now().toString(36)}-${getGameStoreRandomBase36Suffix()}`;
+  return `${prefix}-${getGameStoreNowMs().toString(36)}-${getGameStoreRandomBase36Suffix()}`;
 }
 
 export function makeQuestScriptPointId() {
@@ -998,7 +1002,7 @@ export function createDefaultQuestNpcProgram(target: QuestNpcEditorTarget): Ques
           eventScript: `setFlag ${DARREL_DRAGON_WOKEN_FLAG}=true\nmessage The Spirit Dragon wakes inside the garden house.`,
         },
       ],
-      updatedAt: Date.now(),
+      updatedAt: getGameStoreNowMs(),
     };
   }
 
@@ -1019,7 +1023,7 @@ export function createDefaultQuestNpcProgram(target: QuestNpcEditorTarget): Ques
         eventScript: 'message Quest scriptpoint reached',
       },
     ],
-    updatedAt: Date.now(),
+    updatedAt: getGameStoreNowMs(),
   };
 }
 
@@ -1162,7 +1166,7 @@ function sanitizeInventoryRecord(raw: unknown): InventoryRecord {
     inventory[itemId] = {
       id: itemId,
       quantity,
-      acquiredAt: sanitizeInteger(value.acquiredAt, Date.now(), 0, Date.now()),
+      acquiredAt: sanitizeInteger(value.acquiredAt, getGameStoreNowMs(), 0, getGameStoreNowMs()),
     };
   }
 
@@ -1187,7 +1191,7 @@ function addInventoryQuantity(inventory: InventoryRecord, itemId: InventoryItemI
     [itemId]: {
       id: itemId,
       quantity: nextQuantity,
-      acquiredAt: current?.acquiredAt ?? Date.now(),
+      acquiredAt: current?.acquiredAt ?? getGameStoreNowMs(),
     },
   };
 }
@@ -1205,7 +1209,7 @@ function removeInventoryQuantity(inventory: InventoryRecord, itemId: InventoryIt
     nextInventory[itemId] = {
       id: itemId,
       quantity: nextQuantity,
-      acquiredAt: nextInventory[itemId]?.acquiredAt ?? Date.now(),
+      acquiredAt: nextInventory[itemId]?.acquiredAt ?? getGameStoreNowMs(),
     };
   }
   return nextInventory;
@@ -1241,8 +1245,8 @@ function sanitizeSpellQuestAssignments(raw: unknown): Record<string, QuestNpcAss
     const definition = spell ? getSpellQuestDefinition(spell) : null;
     if (!npcId || !spell || !definition) continue;
 
-    const assignedAt = sanitizeInteger(value.assignedAt, Date.now(), 0, Date.now());
-    const completedAt = sanitizeInteger(value.completedAt, 0, 0, Date.now());
+    const assignedAt = sanitizeInteger(value.assignedAt, getGameStoreNowMs(), 0, getGameStoreNowMs());
+    const completedAt = sanitizeInteger(value.completedAt, 0, 0, getGameStoreNowMs());
     const status: SpellQuestStatus = value.status === 'completed' ? 'completed' : 'assigned';
     assignments[npcId] = {
       npcId,
@@ -1316,7 +1320,7 @@ function makeSpellQuestAssignment(npc: QuestNpcDescriptor, quest: SpellQuestDefi
     questId: quest.id,
     spell: quest.spell,
     status: 'assigned',
-    assignedAt: Date.now(),
+    assignedAt: getGameStoreNowMs(),
   };
 }
 
@@ -1569,7 +1573,7 @@ function getDarrelQuestDialogSession(
 function completeAssignmentsForSpell(
   assignments: Record<string, QuestNpcAssignment>,
   spell: SpellType,
-  completedAt = Date.now()
+  completedAt = getGameStoreNowMs()
 ) {
   let changed = false;
   const next: Record<string, QuestNpcAssignment> = {};
@@ -1704,7 +1708,7 @@ function sanitizeQuestNpcProgram(value: QuestNpcProgram | Record<string, unknown
     position,
     greeting,
     scriptPoints,
-    updatedAt: typeof value.updatedAt === 'number' ? value.updatedAt : Date.now(),
+    updatedAt: typeof value.updatedAt === 'number' ? value.updatedAt : getGameStoreNowMs(),
   };
 }
 
@@ -1761,7 +1765,7 @@ function getInitialQuestNpcPrograms(): Record<string, QuestNpcProgram> {
       role: 'quest-giver',
       theme: 'village',
       position: DARREL_QUEST_NPC_POSITION,
-      updatedAt: darrelSource?.updatedAt ?? Date.now(),
+      updatedAt: darrelSource?.updatedAt ?? getGameStoreNowMs(),
     });
     if (anchoredDarrel) programs[DARREL_QUEST_NPC_ID] = anchoredDarrel;
     setStoredJson(QUEST_NPC_PROGRAMS_STORAGE_KEY, programs);
@@ -1811,7 +1815,7 @@ function buildSurvivalSaveProfile(value: {
     spellQuestAssignments: sanitizeSpellQuestAssignments(value.spellQuestAssignments),
     inventory: sanitizeInventoryRecord(value.inventory),
     lastMode: sanitizeSurvivalMode(value.lastMode),
-    savedAt: Date.now(),
+    savedAt: getGameStoreNowMs(),
   };
 }
 
@@ -1832,7 +1836,7 @@ function sanitizeSurvivalSaveProfile(value: unknown): SurvivalSaveProfile | null
   if (!profile) return null;
   return {
     ...profile,
-    savedAt: sanitizeInteger(value.savedAt, profile.savedAt, 0, Date.now()),
+    savedAt: sanitizeInteger(value.savedAt, profile.savedAt, 0, getGameStoreNowMs()),
   };
 }
 
@@ -2239,12 +2243,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isAstralMeditating: false,
   astralMeditationStartedAt: 0,
   survivalTimeOverrideSeconds: null,
-  activateSpeedBoost: () => set({ speedBoostUntil: Date.now() + SPEED_BOOST_DURATION_MS }),
-  activateJumpBoost: () => set({ jumpBoostUntil: Date.now() + JUMP_BOOST_DURATION_MS }),
+  activateSpeedBoost: () => set({ speedBoostUntil: getGameStoreNowMs() + SPEED_BOOST_DURATION_MS }),
+  activateJumpBoost: () => set({ jumpBoostUntil: getGameStoreNowMs() + JUMP_BOOST_DURATION_MS }),
   activateMagicGlassOrb: () => set({ magicGlassOrbUntil: Number.MAX_SAFE_INTEGER }),
   setAstralMeditating: (active) => set({
     isAstralMeditating: active,
-    astralMeditationStartedAt: active ? Date.now() : 0,
+    astralMeditationStartedAt: active ? getGameStoreNowMs() : 0,
     isChargingSpell: active ? false : get().isChargingSpell,
     chargingHand: active ? null : get().chargingHand,
     chargingHands: active ? { left: false, right: false } : get().chargingHands,
@@ -2260,7 +2264,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return { acidUntil: clampedUntil };
   }),
   applyStatusEffect: (effect, durationMs) => {
-    const until = Date.now() + Math.max(0, durationMs);
+    const until = getGameStoreNowMs() + Math.max(0, durationMs);
     get().setStatusEffect(effect, until);
   },
   clearStatusEffect: (effect) => get().setStatusEffect(effect, 0),
@@ -2767,7 +2771,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   lobbyMessages: [],
   addLobbyMessage: (text, tone = 'system') => set((state) => {
-    const now = Date.now();
+    const now = getGameStoreNowMs();
     if (hasRecentLobbyMessage(state.lobbyMessages, text, tone, now)) return state;
     return {
       lobbyMessages: appendLobbyMessageBounded(state.lobbyMessages, makeLobbyMessage(text, tone)),
@@ -2805,7 +2809,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   closeQuestNpcEditor: () => set({ questNpcEditorTarget: null }),
   questNpcPrograms: getInitialQuestNpcPrograms(),
   upsertQuestNpcProgram: (program) => {
-    const sanitized = sanitizeQuestNpcProgram({ ...program, updatedAt: Date.now() });
+    const sanitized = sanitizeQuestNpcProgram({ ...program, updatedAt: getGameStoreNowMs() });
     if (!sanitized) return;
     set((state) => {
       const questNpcPrograms = {
@@ -2885,7 +2889,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         townId: npc.townId,
         displayName: 'Darrel',
         status: 'completed',
-        completedAt: Date.now(),
+        completedAt: getGameStoreNowMs(),
       };
       const questUnlockedSpells = addUniqueQuestUnlockedSpell(state.questUnlockedSpells, DARREL_QUEST_REWARD_SPELL);
       const questFlags = {
@@ -3085,7 +3089,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         displayName: npc.displayName,
         townId: npc.townId,
         status: 'completed',
-        completedAt: assignment.completedAt ?? Date.now(),
+        completedAt: assignment.completedAt ?? getGameStoreNowMs(),
       };
       spellQuestAssignments[npc.npcId] = assignment;
       messages.push(`${npc.displayName}: ${SPELL_DISPLAY_NAMES[assignment.spell]} is already yours.`);
@@ -3098,7 +3102,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         displayName: npc.displayName,
         townId: npc.townId,
         status: 'completed',
-        completedAt: Date.now(),
+        completedAt: getGameStoreNowMs(),
       };
       spellQuestAssignments[npc.npcId] = assignment;
       messages.push(`${npc.displayName}: ${quest.readyLine}`);
@@ -3205,7 +3209,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const completedAssignment = {
       ...assignment,
       status: 'completed' as SpellQuestStatus,
-      completedAt: Date.now(),
+      completedAt: getGameStoreNowMs(),
     };
     const questUnlockedSpells = addUniqueQuestUnlockedSpell(state.questUnlockedSpells, assignment.spell);
     const questFlags = {
@@ -3269,7 +3273,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const completedAssignment = {
       ...assignment,
       status: 'completed' as SpellQuestStatus,
-      completedAt: Date.now(),
+      completedAt: getGameStoreNowMs(),
     };
     const questUnlockedSpells = addUniqueQuestUnlockedSpell(state.questUnlockedSpells, DARREL_QUEST_REWARD_SPELL);
     const questFlags = {
@@ -3394,7 +3398,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         spellQuestAssignments[targetNpcId] = {
           ...assignment,
           status: 'completed',
-          completedAt: Date.now(),
+          completedAt: getGameStoreNowMs(),
         };
         if (assignment.spell === DARREL_QUEST_REWARD_SPELL) {
           inventory = addInventoryQuantity(inventory, DARREL_INVENTORY_ITEM_IDS.crystals, 1);
