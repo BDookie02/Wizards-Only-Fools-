@@ -65,6 +65,7 @@ async function startServer() {
     poison: 10000,
     acid: 10000,
   };
+  const getMultiplayerServerNowMs = () => Date.now();
   const DEFAULT_CHARACTER_CUSTOMIZATION = {
     skinColor: "#d6cf91",
     topColor: "#3b82f6",
@@ -208,7 +209,7 @@ async function startServer() {
 
       const p = room.get(targetId);
       const safeDuration = Math.max(0, Math.min(Number(durationMs) || STATUS_DURATIONS[effect], STATUS_DURATIONS[effect]));
-      const until = Date.now() + safeDuration;
+      const until = getMultiplayerServerNowMs() + safeDuration;
       const key = `${effect}Until`;
       p[key] = until;
       io.to(currentRoom).emit("playerStatusEffect", { id: targetId, effect, until });
