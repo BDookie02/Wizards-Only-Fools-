@@ -1,11 +1,12 @@
-import { ALL_SPELLS, type SpellType } from "../../../store/gameStore";
+import { ALL_SPELLS, type HandType, type SpellType } from "../../../store/gameStore";
 import { getSpriteUrl } from "../../SpriteManifest";
 import {
   SPELL_CATALOG,
   spellThumbnails,
   type SpellCatalogEntry,
 } from "../../systems/spells/spellCatalog";
-export { hotkeyLabels } from "./hudHotkeyLabels";
+import { hotkeyLabels } from "./hudHotkeyLabels";
+export { hotkeyLabels };
 
 export type SpellFamilyFilter = SpellCatalogEntry["family"] | "all";
 
@@ -28,6 +29,21 @@ export const spellFamilyFilters: SpellFamilyFilter[] = [
   "status",
   "quest",
 ];
+
+export const SPELL_MENU_NAV_CLOSE_INDEX = 0;
+export const SPELL_MENU_NAV_FAMILY_BASE = 20;
+export const SPELL_MENU_NAV_LEFT_HOTBAR_BASE = 100;
+export const SPELL_MENU_NAV_SPELL_BASE = 200;
+export const SPELL_MENU_NAV_RIGHT_HOTBAR_BASE = 500;
+export const SPELL_MENU_NAV_COUNT = 620;
+export const SPELL_MENU_NAV_SELECTOR = "[data-spell-menu-nav-index]";
+export const SPELL_MENU_NAV_ATTRIBUTE = "data-spell-menu-nav-index";
+
+export type SpellMenuNavTarget =
+  | { type: "close" }
+  | { type: "family"; family: SpellFamilyFilter }
+  | { type: "hotbar"; hand: HandType; slotIndex: number }
+  | { type: "spell"; spell: SpellType; spellIndex: number };
 
 const SPELL_MENU_FALLBACK_THUMBNAIL = "/sprites/fireball/fireball_1.png";
 
@@ -103,6 +119,41 @@ export function getFirstSpellInFamily(activeFamily: SpellFamilyFilter) {
 
 export function getSpellMenuIndex(spell: SpellType) {
   return cachedSpellMenuIndexBySpell[spell];
+}
+
+export function getSpellMenuFamilyNavIndex(family: SpellFamilyFilter) {
+  return SPELL_MENU_NAV_FAMILY_BASE + Math.max(0, spellFamilyFilters.indexOf(family));
+}
+
+export function getSpellMenuHotbarNavIndex(hand: HandType, slotIndex: number) {
+  return (hand === "right" ? SPELL_MENU_NAV_RIGHT_HOTBAR_BASE : SPELL_MENU_NAV_LEFT_HOTBAR_BASE) + slotIndex;
+}
+
+export function getSpellMenuSpellNavIndex(spellIndex: number) {
+  return SPELL_MENU_NAV_SPELL_BASE + spellIndex;
+}
+
+export function getSpellMenuNavTarget(navIndex: number): SpellMenuNavTarget | null {
+  if (navIndex === SPELL_MENU_NAV_CLOSE_INDEX) return { type: "close" };
+
+  if (navIndex >= SPELL_MENU_NAV_FAMILY_BASE && navIndex < SPELL_MENU_NAV_FAMILY_BASE + spellFamilyFilters.length) {
+    return { type: "family", family: spellFamilyFilters[navIndex - SPELL_MENU_NAV_FAMILY_BASE] };
+  }
+
+  if (navIndex >= SPELL_MENU_NAV_LEFT_HOTBAR_BASE && navIndex < SPELL_MENU_NAV_LEFT_HOTBAR_BASE + hotkeyLabels.length) {
+    return { type: "hotbar", hand: "left", slotIndex: navIndex - SPELL_MENU_NAV_LEFT_HOTBAR_BASE };
+  }
+
+  if (navIndex >= SPELL_MENU_NAV_SPELL_BASE && navIndex < SPELL_MENU_NAV_SPELL_BASE + ALL_SPELLS.length) {
+    const spellIndex = navIndex - SPELL_MENU_NAV_SPELL_BASE;
+    return { type: "spell", spell: ALL_SPELLS[spellIndex], spellIndex };
+  }
+
+  if (navIndex >= SPELL_MENU_NAV_RIGHT_HOTBAR_BASE && navIndex < SPELL_MENU_NAV_RIGHT_HOTBAR_BASE + hotkeyLabels.length) {
+    return { type: "hotbar", hand: "right", slotIndex: navIndex - SPELL_MENU_NAV_RIGHT_HOTBAR_BASE };
+  }
+
+  return null;
 }
 
 export type SpellMenuHotbarSlotLookup = Partial<Record<SpellType, number>>;

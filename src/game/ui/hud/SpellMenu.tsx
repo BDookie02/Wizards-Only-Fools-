@@ -7,72 +7,30 @@ import {
   createSpellMenuHotbarSlotLookup,
   getFallbackSpellThumbnail,
   getSpellMenuAssignedSlot,
+  getSpellMenuFamilyNavIndex,
+  getSpellMenuHotbarNavIndex,
   getFirstSpellInFamily,
   getSpellMenuIndex,
   getSpellMenuFamilyCounts,
   getSpellMenuFamilyForSpell,
+  getSpellMenuNavTarget,
+  getSpellMenuSpellNavIndex,
   getSpellThumbnail,
   getVisibleSpellMenuSpells,
   hotkeyLabels,
   isAnimatedThumbnailSource,
   spellFamilyFilters,
   spellFamilyLabels,
+  SPELL_MENU_NAV_ATTRIBUTE,
+  SPELL_MENU_NAV_CLOSE_INDEX,
+  SPELL_MENU_NAV_COUNT,
+  SPELL_MENU_NAV_SELECTOR,
   type SpellFamilyFilter,
 } from "./spellMenuRuntime";
 import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
-}
-
-const SPELL_MENU_NAV_CLOSE_INDEX = 0;
-const SPELL_MENU_NAV_FAMILY_BASE = 20;
-const SPELL_MENU_NAV_LEFT_HOTBAR_BASE = 100;
-const SPELL_MENU_NAV_SPELL_BASE = 200;
-const SPELL_MENU_NAV_RIGHT_HOTBAR_BASE = 500;
-const SPELL_MENU_NAV_COUNT = 620;
-const SPELL_MENU_NAV_SELECTOR = "[data-spell-menu-nav-index]";
-const SPELL_MENU_NAV_ATTRIBUTE = "data-spell-menu-nav-index";
-
-type SpellMenuNavTarget =
-  | { type: "close" }
-  | { type: "family"; family: SpellFamilyFilter }
-  | { type: "hotbar"; hand: HandType; slotIndex: number }
-  | { type: "spell"; spell: SpellType; spellIndex: number };
-
-function getSpellMenuFamilyNavIndex(family: SpellFamilyFilter) {
-  return SPELL_MENU_NAV_FAMILY_BASE + Math.max(0, spellFamilyFilters.indexOf(family));
-}
-
-function getSpellMenuHotbarNavIndex(hand: HandType, slotIndex: number) {
-  return (hand === "right" ? SPELL_MENU_NAV_RIGHT_HOTBAR_BASE : SPELL_MENU_NAV_LEFT_HOTBAR_BASE) + slotIndex;
-}
-
-function getSpellMenuSpellNavIndex(spellIndex: number) {
-  return SPELL_MENU_NAV_SPELL_BASE + spellIndex;
-}
-
-function getSpellMenuNavTarget(navIndex: number): SpellMenuNavTarget | null {
-  if (navIndex === SPELL_MENU_NAV_CLOSE_INDEX) return { type: "close" };
-
-  if (navIndex >= SPELL_MENU_NAV_FAMILY_BASE && navIndex < SPELL_MENU_NAV_FAMILY_BASE + spellFamilyFilters.length) {
-    return { type: "family", family: spellFamilyFilters[navIndex - SPELL_MENU_NAV_FAMILY_BASE] };
-  }
-
-  if (navIndex >= SPELL_MENU_NAV_LEFT_HOTBAR_BASE && navIndex < SPELL_MENU_NAV_LEFT_HOTBAR_BASE + hotkeyLabels.length) {
-    return { type: "hotbar", hand: "left", slotIndex: navIndex - SPELL_MENU_NAV_LEFT_HOTBAR_BASE };
-  }
-
-  if (navIndex >= SPELL_MENU_NAV_SPELL_BASE && navIndex < SPELL_MENU_NAV_SPELL_BASE + ALL_SPELLS.length) {
-    const spellIndex = navIndex - SPELL_MENU_NAV_SPELL_BASE;
-    return { type: "spell", spell: ALL_SPELLS[spellIndex], spellIndex };
-  }
-
-  if (navIndex >= SPELL_MENU_NAV_RIGHT_HOTBAR_BASE && navIndex < SPELL_MENU_NAV_RIGHT_HOTBAR_BASE + hotkeyLabels.length) {
-    return { type: "hotbar", hand: "right", slotIndex: navIndex - SPELL_MENU_NAV_RIGHT_HOTBAR_BASE };
-  }
-
-  return null;
 }
 
 type SpellThumbnailBlock = [number, number, number, number, string, number?];
