@@ -4,6 +4,7 @@ import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { CharacterCustomization, createDefaultQuestNpcProgram, type QuestNpcDescriptor, type QuestNpcRole, useGameStore } from "../store/gameStore";
 import { getHutList, type HutInfo } from "./systems/world/villages/baseVillageHutLayout";
+import { playVillagerYelp } from "./systems/world/villages/villagerAudioRuntime";
 import { DARREL_CHARACTER, hashValue, makeVillager, type VillagerInfo } from "./systems/world/villages/villagerCharacterRuntime";
 import { anchorQuestNpcProgram, getQuestTownId, getQuestVillagerDisplayName, hasQuestNpcAnchor, isDarrelName, isDarrelQuestAssignment, isDarrelVillagerIdentity, makePersistentQuestNpcVillager, makeQuestNpcEditorTarget } from "./systems/world/villages/villagerQuestRuntime";
 import { angleDistance, getNearestPlayerFacingYaw, getTargetedVillager, getVillagerCellKey, isPlayerInsideHut, sameSet, VILLAGER_SPATIAL_CELL_SIZE, visitNearbyVillagers } from "./systems/world/villages/villagerSpatialRuntime";
@@ -27,7 +28,6 @@ type QuestVillagerInteractDetail = {
 const VILLAGER_INSIDE_CHECK_INTERVAL_MS = 80;
 const VILLAGER_INSIDE_CHECK_MOVE_EPSILON_SQ = 0.04;
 const VILLAGER_RUNTIME_TICK_INTERVAL_MS = 50;
-let villagerAudioContext: AudioContext | null = null;
 const EMPTY_ANCHORED_QUEST_NPC_IDS: ReadonlySet<string> = new Set<string>();
 
 function isEditableDomTarget(target: EventTarget | null) {
@@ -42,44 +42,6 @@ function getReactionCount(reactions: Record<string, ReactionState>) {
     if (Object.prototype.hasOwnProperty.call(reactions, id)) count += 1;
   }
   return count;
-}
-
-function playVillagerYelp(volume: number) {
-  if (typeof window === "undefined") return;
-
-  const AudioContextCtor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!AudioContextCtor) return;
-
-  try {
-    const ctx = villagerAudioContext ?? new AudioContextCtor();
-    villagerAudioContext = ctx;
-    void ctx.resume();
-
-    const now = ctx.currentTime + 0.01;
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const safeVolume = THREE.MathUtils.clamp(volume, 0.12, 0.8);
-
-    oscillator.type = "square";
-    oscillator.frequency.setValueAtTime(760, now);
-    oscillator.frequency.exponentialRampToValueAtTime(1320, now + 0.08);
-    oscillator.frequency.exponentialRampToValueAtTime(520, now + 0.24);
-
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.18 * safeVolume, now + 0.025);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
-
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
-    oscillator.start(now);
-    oscillator.stop(now + 0.31);
-    oscillator.onended = () => {
-      oscillator.disconnect();
-      gain.disconnect();
-    };
-  } catch {
-    // Audio can still be blocked before the first user gesture; the villager reaction should continue visually.
-  }
 }
 
 function QuestNpcDevMarker({ role }: { role: QuestNpcRole }) {
