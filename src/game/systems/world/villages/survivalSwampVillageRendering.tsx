@@ -117,6 +117,8 @@ const SWAMP_MOSS_COLORS = ["#5d7d34", "#425f27", "#728644", "#30491f"];
 const SWAMP_DARK_WOOD = "#21150c";
 const SWAMP_WET_WOOD = "#2b1c12";
 const SWAMP_ROPE_LIGHT_COLORS = ["#fde68a", "#fbbf24", "#bbf7d0", "#86efac"];
+const SWAMP_SIDE_SIGNS = [-1, 1] as const;
+const SWAMP_HUT_STILT_CORNERS = [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const;
 const SWAMP_DOCK_DIRECTIONS = [
   { key: "north", localX: 0, localZ: -SWAMP_VILLAGE_RADIUS * 0.5, rotation: 0, rampX: 0, rampZ: -1, rampRotation: Math.PI },
   { key: "south", localX: 0, localZ: SWAMP_VILLAGE_RADIUS * 0.5, rotation: 0, rampX: 0, rampZ: 1, rampRotation: 0 },
@@ -1053,7 +1055,7 @@ function SwampVillageWalkway({ walkway, waterY }: { walkway: SwampVillageWalkway
           </mesh>
         );
       })}
-      {[-1, 1].map((side) => (
+      {SWAMP_SIDE_SIGNS.map((side) => (
         <mesh key={`rail-${side}`} position={[side * (walkway.width * 0.52), walkway.y + 1.15, 0]} castShadow={false}>
           <boxGeometry args={[0.42, 0.48, walkway.length * 0.96]} />
           <meshBasicMaterial color={SWAMP_DARK_WOOD} />
@@ -1071,7 +1073,7 @@ function SwampVillageWalkway({ walkway, waterY }: { walkway: SwampVillageWalkway
       })}
       {getCachedIndexRange(supportCount).map((index) => {
         const z = -walkway.length / 2 + (index + 0.5) * (walkway.length / supportCount);
-        return [-1, 1].map((side) => (
+        return SWAMP_SIDE_SIGNS.map((side) => (
           <mesh key={`${index}-${side}`} position={[side * (walkway.width * 0.42), waterY + stiltHeight / 2, z]} castShadow={false}>
             <cylinderGeometry args={[0.42, 0.54, stiltHeight, 6]} />
             <meshBasicMaterial color="#2d1c10" />
@@ -1103,7 +1105,7 @@ function SwampVillageRamp({ ramp }: { ramp: SwampVillageRamp }) {
             </mesh>
           );
         })}
-        {[-1, 1].map((side) => (
+        {SWAMP_SIDE_SIGNS.map((side) => (
           <mesh key={`ramp-rail-${side}`} position={[side * (ramp.width * 0.54), 1.08, 0]} castShadow={false}>
             <boxGeometry args={[0.46, 0.46, ramp.length * 0.92]} />
             <meshBasicMaterial color={SWAMP_DARK_WOOD} />
@@ -1140,7 +1142,7 @@ function SwampStiltHut({ hut, waterY, showDetails }: { hut: SwampVillageHut; wat
 
   return (
     <group position={[hut.localX, 0, hut.localZ]} rotation={[0, hut.rotation, 0]}>
-      {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([xSign, zSign]) => (
+      {SWAMP_HUT_STILT_CORNERS.map(([xSign, zSign]) => (
         <mesh
           key={`${xSign}:${zSign}`}
           position={[xSign * hut.width * 0.42, waterY + stiltHeight / 2, zSign * hut.depth * 0.42]}
@@ -1194,7 +1196,7 @@ function SwampStiltHut({ hut, waterY, showDetails }: { hut: SwampVillageHut; wat
         <boxGeometry args={[3.2, 2.5, 0.38]} />
         <meshBasicMaterial color="#91d7b7" />
       </mesh>
-      {[-1, 1].map((side) => (
+      {SWAMP_SIDE_SIGNS.map((side) => (
         <mesh key={`side-window-${side}`} position={[side * (hut.width / 2 + 0.18), hut.platformY + Math.min(hut.height - 2.1, 6.2), -hut.depth * 0.12]} castShadow={false}>
           <boxGeometry args={[0.36, 2.3, 3.25]} />
           <meshBasicMaterial color="#6cb69d" />
@@ -1210,7 +1212,7 @@ function SwampStiltHut({ hut, waterY, showDetails }: { hut: SwampVillageHut; wat
           </mesh>
         );
       })}
-      {[-1, 1].map((side) => (
+      {SWAMP_SIDE_SIGNS.map((side) => (
         <mesh key={`wet-band-side-${side}`} position={[side * (hut.width / 2 + 0.2), hut.platformY + 1.55, 0]} castShadow={false}>
           <boxGeometry args={[0.32, 1.15, hut.depth * 0.9]} />
           <meshBasicMaterial color={SWAMP_WET_WOOD} transparent opacity={0.72} />
