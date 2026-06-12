@@ -4,6 +4,8 @@ import { absoluteAngleDeltaRadians } from "../../math/angleMath";
 import {
   getMountainMineshaftCatwalkDescriptors,
   getMountainMineshaftCatwalkLightPoles,
+} from "./mountainVillageMineshaftCatwalkRuntime";
+import {
   type MountainMineshaftHut,
   type MountainMineshaftLadder,
 } from "./mountainVillageMineshaftRuntime";
