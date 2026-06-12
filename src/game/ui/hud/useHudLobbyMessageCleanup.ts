@@ -5,10 +5,14 @@ import {
   type HudLobbyMessageLifetime,
 } from "./hudLobbyMessageRuntime";
 
+export function getHudLobbyMessageCleanupNowMs() {
+  return Date.now();
+}
+
 export function useHudLobbyMessageCleanup(
   messages: readonly HudLobbyMessageLifetime[],
   removeMessage: (id: string) => void,
-  nowProvider: () => number = Date.now,
+  nowProvider: () => number = getHudLobbyMessageCleanupNowMs,
 ) {
   useEffect(() => {
     if (messages.length === 0) return;
