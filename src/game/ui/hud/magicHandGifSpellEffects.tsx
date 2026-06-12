@@ -1,6 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { getSpriteUrl } from "../../SpriteManifest";
+import { createSeededRandom } from "../../systems/random/seededRandom";
+import { useLazyRef } from "../../systems/react/useLazyRef";
 import { SVG_PALM_X, SVG_PALM_Y } from "./MagicHandSpriteCanvas";
 import { useMagicHandEquipScale } from "./useMagicHandEquipScale";
 
@@ -17,14 +19,24 @@ function getFallbackFireballUrl() {
   return getSpriteUrl("/sprites/fireball/fireball_1.png") || "/sprites/fireball/fireball_1.png";
 }
 
+function useChargingShake(seed: string, isCharging: boolean) {
+  const randomRef = useLazyRef(() => createSeededRandom(seed));
+  if (!isCharging) return { shakeX: 0, shakeY: 0 };
+
+  const random = randomRef.current;
+  return {
+    shakeX: (random() - 0.5) * 4,
+    shakeY: (random() - 0.5) * 4,
+  };
+}
+
 export function BlinkGifCanvas({ isActive, isCharging }: GifSpellEffectProps) {
   const equipScale = useMagicHandEquipScale(isActive);
+  const { shakeX, shakeY } = useChargingShake("magic-hand-blink-gif", isCharging);
 
   if (equipScale === 0) return null;
 
   const scale = (isCharging ? 1.1 : 0.82) * equipScale;
-  const shakeX = isCharging ? (Math.random() - 0.5) * 4 : 0;
-  const shakeY = isCharging ? (Math.random() - 0.5) * 4 : 0;
   const fbW = 40 * scale;
   const fbH = 40 * scale;
   const fbX = SVG_PALM_X - fbW / 2 + shakeX;
@@ -57,12 +69,11 @@ export function BlinkGifCanvas({ isActive, isCharging }: GifSpellEffectProps) {
 
 export function SmokeBombGifCanvas({ isActive, isCharging }: GifSpellEffectProps) {
   const equipScale = useMagicHandEquipScale(isActive);
+  const { shakeX, shakeY } = useChargingShake("magic-hand-smoke-gif", isCharging);
 
   if (equipScale === 0) return null;
 
   const scale = (isCharging ? 1.4 : 1.0) * equipScale;
-  const shakeX = isCharging ? (Math.random() - 0.5) * 4 : 0;
-  const shakeY = isCharging ? (Math.random() - 0.5) * 4 : 0;
   const fbW = 48 * scale;
   const fbH = 48 * scale;
   const fbX = SVG_PALM_X - fbW / 2 + shakeX;
@@ -125,12 +136,11 @@ function PortalGifImage({ src }: { src: string }) {
 
 export function PortalGifCanvas({ isActive, isCharging }: GifSpellEffectProps) {
   const equipScale = useMagicHandEquipScale(isActive);
+  const { shakeX, shakeY } = useChargingShake("magic-hand-portal-gif", isCharging);
 
   if (equipScale === 0) return null;
 
   const scale = (isCharging ? 1.4 : 1.0) * equipScale;
-  const shakeX = isCharging ? (Math.random() - 0.5) * 4 : 0;
-  const shakeY = isCharging ? (Math.random() - 0.5) * 4 : 0;
   const fbW = 48 * scale;
   const fbH = 48 * scale;
   const fbX = SVG_PALM_X - fbW / 2 + shakeX;
