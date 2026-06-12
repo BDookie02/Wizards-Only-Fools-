@@ -14,11 +14,9 @@ import {
   getPlayerNetworkSyncInterval,
 } from "./network/playerNetworkSync";
 import { getPrimaryGamepad } from "./systems/input/controllerInput";
-import { isEditableTarget } from "./systems/input/editableTargets";
 import {
   getNumberSlotFromCode,
   installMovementKeyboardListeners,
-  isMeditationControl,
   isMouseGameplayInputActive,
   isMouseLookFallbackActive,
   keys,
@@ -198,6 +196,11 @@ import {
   canUsePlayerGameplayInput,
 } from "./systems/player/playerGameplayInputGate";
 import {
+  handlePlayerMeditationKeyDown,
+  handlePlayerMeditationKeyUp,
+  updatePlayerMeditationExitHold,
+} from "./systems/player/playerAstralMeditationRuntime";
+import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
   dispatchPlayerState,
@@ -243,7 +246,6 @@ import {
   isInLilyCoilTubeChunk,
 } from "./systems/world/villages/lilyCoilTubeMotion";
 import {
-  ASTRAL_EXIT_HOLD_MS,
   BOOST_FORCE,
   CONTROLLER_LOOK_VERTICAL_MULTIPLIER,
   CROUCH_HOLD_MS,
@@ -662,34 +664,22 @@ export function PlayerController() {
     };
 
     const onMeditationKeyDown = (e: KeyboardEvent) => {
-      if (!isMeditationControl(e.code) || isEditableTarget(e.target)) return;
-      const store = useGameStore.getState();
-      if (store.isPauseMenuOpen || store.isSpellMenuOpen || store.questNpcEditorTarget || store.questDialogSession || store.isInventoryOpen || store.isMapExpanded || store.isScoreboardOpen || store.health <= 0) return;
-
-      e.preventDefault();
-      if (!store.isAstralMeditating) {
-        stopAllCasting();
-        resetMovementKeys();
-        store.setAstralMeditating(true);
-        astralExitHoldStartedAt.current = null;
-        astralExitArmed.current = false;
-        return;
-      }
-
-      if (!astralExitArmed.current) return;
-      if (astralExitHoldStartedAt.current === null) {
-        astralExitHoldStartedAt.current = getPlayerEventEpochMs();
-      }
+      handlePlayerMeditationKeyDown(e, {
+        state: useGameStore.getState(),
+        astralExitHoldStartedAt,
+        astralExitArmed,
+        stopAllCasting,
+        resetMovementKeys,
+        getNowMs: getPlayerEventEpochMs,
+      });
     };
 
     const onMeditationKeyUp = (e: KeyboardEvent) => {
-      if (!isMeditationControl(e.code)) return;
-      if (!keys.ControlLeft && !keys.ControlRight) {
-        astralExitHoldStartedAt.current = null;
-        if (useGameStore.getState().isAstralMeditating) {
-          astralExitArmed.current = true;
-        }
-      }
+      handlePlayerMeditationKeyUp(e, {
+        state: useGameStore.getState(),
+        astralExitHoldStartedAt,
+        astralExitArmed,
+      });
     };
     
     const startHandCast = (hand: HandType) => {
@@ -1127,12 +1117,7 @@ export function PlayerController() {
     const sleepActive = storeState.sleepUntil > nowMs;
     const slowActive = storeState.slowUntil > nowMs;
     const vclipActive = storeState.isVClipEnabled;
-    let astralActive = storeState.isAstralMeditating;
-    if (astralActive && astralExitHoldStartedAt.current !== null && nowMs - astralExitHoldStartedAt.current >= ASTRAL_EXIT_HOLD_MS) {
-      useGameStore.getState().setAstralMeditating(false);
-      astralExitHoldStartedAt.current = null;
-      astralActive = false;
-    }
+    const astralActive = updatePlayerMeditationExitHold(storeState, nowMs, astralExitHoldStartedAt);
     const mouseGameplayRequested = isMouseGameplayInputActive();
     const controllerGameplayRequested = storeState.isControllerGameplayActive || mouseGameplayRequested;
     const controllerModeReady = canUsePlayerControllerMode(storeState, {
