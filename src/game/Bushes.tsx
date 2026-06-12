@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { getBaseVillageTerrainHeight as getTerrainHeight } from "./systems/world/terrain/BaseVillageTerrain";
 import { isHutCell } from "./systems/world/villages/baseVillageHutLayout";
 import { isMobilePerformanceMode } from "./systems/input/performanceMode";
+import { createSeededRandom } from "./systems/random/seededRandom";
 
 type BushInstance = {
   x: number;
@@ -110,10 +111,11 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
   const effectiveAmount = mobilePerformanceMode ? Math.min(amount, 150) : amount;
 
   const bushData = useMemo(() => {
+    const random = createSeededRandom(`base-village-bushes:${mapSize}`);
     const data: BushInstance[] = [];
     for (let i = 0; i < effectiveAmount; i++) {
-      const x = (Math.random() - 0.5) * mapSize;
-      const z = (Math.random() - 0.5) * mapSize;
+      const x = (random() - 0.5) * mapSize;
+      const z = (random() - 0.5) * mapSize;
       const y = getTerrainHeight(x, z);
       
       // Skip spawning bushes on walls or in moats/roads
@@ -149,16 +151,16 @@ export function Bushes({ amount = 600, mapSize = 510 }) {
       }
 
       // Keep bushes huge to hide behind
-      const heightScale = 3 + Math.random() * 4;
-      const widthScale = heightScale * (1.5 + Math.random() * 2); // wider for hedge look
+      const heightScale = 3 + random() * 4;
+      const widthScale = heightScale * (1.5 + random() * 2); // wider for hedge look
       data.push({
         x,
         y,
         z,
         widthScale,
         heightScale,
-        yaw: Math.random() * Math.PI * 2,
-        variant: Math.random(),
+        yaw: random() * Math.PI * 2,
+        variant: random(),
       });
     }
     return data;
