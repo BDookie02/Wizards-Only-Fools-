@@ -169,7 +169,10 @@ import {
   castPlayerWorldRay,
   getExcludeSensorsQueryFlags,
 } from "./systems/player/playerRapierQueryRuntime";
-import { installPlayerControllerWindowListeners } from "./systems/player/playerControllerEvents";
+import {
+  getPlayerControllerEventEpochMs,
+  installPlayerControllerWindowListeners,
+} from "./systems/player/playerControllerEvents";
 import { startPlayerControllerCastingLoop } from "./systems/player/playerControllerCasting";
 import { installPlayerLadderZoneListeners } from "./systems/player/playerLadderZones";
 import { installPlayerMouseLookFallback } from "./systems/player/playerMouseLookRuntime";
@@ -308,10 +311,6 @@ function dispatchPlayerStateIfChanged(
     isGrounded,
     isMeditating,
   });
-}
-
-export function getPlayerControllerEventEpochMs(latestEpochMs: number) {
-  return latestEpochMs || Date.now();
 }
 
 export function PlayerController() {

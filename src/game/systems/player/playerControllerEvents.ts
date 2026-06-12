@@ -1,5 +1,9 @@
 type PlayerWindowListener = (event: any) => void;
 
+export function getPlayerControllerEventEpochMs(latestEpochMs: number) {
+  return latestEpochMs || Date.now();
+}
+
 export type PlayerControllerWindowHandlers = {
   onMouseDown: (event: MouseEvent) => void;
   onMouseUp: (event: MouseEvent) => void;
