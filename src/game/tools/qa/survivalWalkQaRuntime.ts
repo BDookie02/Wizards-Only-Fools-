@@ -2,10 +2,21 @@ import { useCallback, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLazyRef } from "../../systems/react/useLazyRef";
 import {
+  QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
+  QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
   QA_SURVIVAL_ROUTE_WAYPOINT_SECONDS,
+  QA_SURVIVAL_ROUTE_YAW_SMOOTH_RATE,
+  QA_SURVIVAL_ROUTE_YAW_SNAP_DELTA,
+  QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
+  QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
+  QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
+  QA_SURVIVAL_WALK_SOFT_CLEARANCE,
+  QA_SURVIVAL_WALK_SOFT_LOOKAHEAD,
+  angleDeltaRadians,
   getQaSurvivalWalkStartDelaySeconds,
   isQaSurvivalWalkEnabled,
+  lerpAngleRadians,
   type QaSurvivalIntent,
   type QaSurvivalRouteWaypoint,
   type QaSurvivalWalkInputState,
@@ -59,6 +70,107 @@ export function resolveQaWalkRouteWaypoint({
       x: target.x,
       z: target.z,
       expiresAt: elapsedSeconds + waypointSeconds,
+    },
+  };
+}
+
+export function resolveQaWalkRouteSteeringState({
+  active,
+  elapsedSeconds,
+  deltaSeconds,
+  routeBlockedSince,
+  routeTargetId,
+  previousRouteTargetId,
+  previousSmoothedYaw,
+  desiredYaw,
+  forwardClearance,
+  forwardLookAhead,
+  viewClearance,
+  overheadClearance,
+  blockedClearance = QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
+  softLookAhead = QA_SURVIVAL_WALK_SOFT_LOOKAHEAD,
+  softClearance = QA_SURVIVAL_WALK_SOFT_CLEARANCE,
+  viewBlockedClearance = QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
+  viewSoftClearance = QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
+  overheadBlockedClearance = QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
+  dwellSeconds = QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS,
+  yawSnapDelta = QA_SURVIVAL_ROUTE_YAW_SNAP_DELTA,
+  yawSmoothRate = QA_SURVIVAL_ROUTE_YAW_SMOOTH_RATE,
+}: {
+  active: boolean;
+  elapsedSeconds: number;
+  deltaSeconds: number;
+  routeBlockedSince: number;
+  routeTargetId: string | null;
+  previousRouteTargetId: string | null;
+  previousSmoothedYaw: number | null;
+  desiredYaw: number;
+  forwardClearance: number;
+  forwardLookAhead: number;
+  viewClearance: number;
+  overheadClearance: number;
+  blockedClearance?: number;
+  softLookAhead?: number;
+  softClearance?: number;
+  viewBlockedClearance?: number;
+  viewSoftClearance?: number;
+  overheadBlockedClearance?: number;
+  dwellSeconds?: number;
+  yawSnapDelta?: number;
+  yawSmoothRate?: number;
+}) {
+  const routeHardBlocked = active && (
+    forwardClearance < blockedClearance ||
+    viewClearance < viewBlockedClearance ||
+    overheadClearance < overheadBlockedClearance
+  );
+  const routeSoftBlocked = active && (
+    routeHardBlocked ||
+    forwardLookAhead < softLookAhead * 0.72 ||
+    forwardClearance < softClearance * 0.86
+  );
+  const nextRouteBlockedSince = routeSoftBlocked
+    ? (routeBlockedSince <= 0 ? elapsedSeconds : routeBlockedSince)
+    : 0;
+  const routeBlockDwelled = active &&
+    nextRouteBlockedSince > 0 &&
+    elapsedSeconds - nextRouteBlockedSince >= dwellSeconds;
+
+  if (!active) {
+    return {
+      routeHardBlocked,
+      routeSoftBlocked,
+      routeBlockedSince: 0,
+      routeBlockDwelled,
+      route: null,
+    };
+  }
+
+  const routeTargetChanged = routeTargetId !== previousRouteTargetId;
+  const routeYawDelta = previousSmoothedYaw === null ? 0 : Math.abs(angleDeltaRadians(previousSmoothedYaw, desiredYaw));
+  const routeSmoothedYaw = routeTargetChanged || previousSmoothedYaw === null || routeYawDelta > yawSnapDelta
+    ? desiredYaw
+    : lerpAngleRadians(
+      previousSmoothedYaw,
+      desiredYaw,
+      1 - Math.exp(-yawSmoothRate * deltaSeconds),
+    );
+
+  return {
+    routeHardBlocked,
+    routeSoftBlocked,
+    routeBlockedSince: nextRouteBlockedSince,
+    routeBlockDwelled,
+    route: {
+      targetYaw: routeSmoothedYaw,
+      smoothedYaw: routeSmoothedYaw,
+      targetId: routeTargetId,
+      forwardAmount: 0.92,
+      strafeAmount: 0,
+      sprint: forwardClearance > blockedClearance * 1.35 &&
+        forwardLookAhead > softLookAhead * 0.82 &&
+        viewClearance > viewBlockedClearance * 1.35 &&
+        overheadClearance > overheadBlockedClearance,
     },
   };
 }

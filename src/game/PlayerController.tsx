@@ -84,10 +84,7 @@ import {
   QA_SURVIVAL_RECOVERY_REVERSE_SECONDS,
   QA_SURVIVAL_RECOVERY_REVERSE_STUCK_SECONDS,
   QA_SURVIVAL_RECOVERY_TURN_RATE,
-  QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
-  QA_SURVIVAL_ROUTE_YAW_SMOOTH_RATE,
-  QA_SURVIVAL_ROUTE_YAW_SNAP_DELTA,
   QA_SURVIVAL_STUCK_CHECK_SECONDS,
   QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
   QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
@@ -126,7 +123,7 @@ import {
   type QaSurvivalIntentKind,
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
-import { resolveQaWalkRouteWaypoint, useQaSurvivalWalkRuntimeState } from "./tools/qa/survivalWalkQaRuntime";
+import { resolveQaWalkRouteSteeringState, resolveQaWalkRouteWaypoint, useQaSurvivalWalkRuntimeState } from "./tools/qa/survivalWalkQaRuntime";
 import {
   clearSurvivalWalkRouteTelemetry,
   getSurvivalWalkSpellDummyHitCount,
@@ -2021,26 +2018,25 @@ export function PlayerController() {
       const forwardLookAhead = lilyCoilTubeQaActive ? QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE : measuredForwardLookAhead;
       const viewClearance = lilyCoilTubeQaActive ? QA_SURVIVAL_VIEW_SOFT_CLEARANCE : measuredViewClearance;
       const overheadClearance = lilyCoilTubeQaActive ? QA_SURVIVAL_OVERHEAD_PROBE_DISTANCE : measuredOverheadClearance;
-      const routeHardBlocked = qaRouteActive && (
-        forwardClearance < QA_SURVIVAL_WALK_BLOCKED_CLEARANCE ||
-        viewClearance < QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE ||
-        overheadClearance < QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE
-      );
-      const routeSoftBlocked = qaRouteActive && (
-        routeHardBlocked ||
-        forwardLookAhead < QA_SURVIVAL_WALK_SOFT_LOOKAHEAD * 0.72 ||
-        forwardClearance < QA_SURVIVAL_WALK_SOFT_CLEARANCE * 0.86
-      );
-      if (routeSoftBlocked) {
-        if (qaWalkRouteBlockedSince.current <= 0) {
-          qaWalkRouteBlockedSince.current = elapsed;
-        }
-      } else {
-        qaWalkRouteBlockedSince.current = 0;
-      }
-      const routeBlockDwelled = qaRouteActive &&
-        qaWalkRouteBlockedSince.current > 0 &&
-        elapsed - qaWalkRouteBlockedSince.current >= QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS;
+      const routeSteering = resolveQaWalkRouteSteeringState({
+        active: qaRouteActive,
+        elapsedSeconds: elapsed,
+        deltaSeconds: delta,
+        routeBlockedSince: qaWalkRouteBlockedSince.current,
+        routeTargetId: qaRouteActive
+          ? qaRouteWaypoints[qaWalkRouteIndex.current % qaRouteWaypoints.length]?.id ?? null
+          : null,
+        previousRouteTargetId: qaWalkRouteTargetId.current,
+        previousSmoothedYaw: qaWalkRouteSmoothedYaw.current,
+        desiredYaw,
+        forwardClearance,
+        forwardLookAhead,
+        viewClearance,
+        overheadClearance,
+      });
+      qaWalkRouteBlockedSince.current = routeSteering.routeBlockedSince;
+      const routeHardBlocked = routeSteering.routeHardBlocked;
+      const routeBlockDwelled = routeSteering.routeBlockDwelled;
       let mode: QaSurvivalWalkMode = qaRouteActive ? "route" : "travel";
       let targetYaw = desiredYaw
         + Math.sin(elapsed * 0.43 + pos.x * 0.002) * 0.14
@@ -2052,28 +2048,13 @@ export function PlayerController() {
         && forwardLookAhead > QA_SURVIVAL_WALK_SOFT_LOOKAHEAD
         && viewClearance > QA_SURVIVAL_VIEW_SOFT_CLEARANCE * 0.72
         && Math.sin(elapsed * 0.29 + pos.x * 0.0017) > -0.18;
-      if (qaRouteActive) {
-        const routeTarget = qaRouteWaypoints[qaWalkRouteIndex.current % qaRouteWaypoints.length];
-        const routeTargetChanged = routeTarget?.id !== qaWalkRouteTargetId.current;
-        const routeYaw = qaWalkRouteSmoothedYaw.current;
-        const routeYawDelta = routeYaw === null ? 0 : Math.abs(angleDeltaRadians(routeYaw, desiredYaw));
-        if (routeTargetChanged || routeYaw === null || routeYawDelta > QA_SURVIVAL_ROUTE_YAW_SNAP_DELTA) {
-          qaWalkRouteSmoothedYaw.current = desiredYaw;
-          qaWalkRouteTargetId.current = routeTarget?.id ?? null;
-        } else {
-          qaWalkRouteSmoothedYaw.current = lerpAngleRadians(
-            routeYaw,
-            desiredYaw,
-            1 - Math.exp(-QA_SURVIVAL_ROUTE_YAW_SMOOTH_RATE * delta),
-          );
-        }
-        targetYaw = qaWalkRouteSmoothedYaw.current;
-        forwardAmount = 0.92;
-        strafeAmount = 0;
-        sprint = forwardClearance > QA_SURVIVAL_WALK_BLOCKED_CLEARANCE * 1.35 &&
-          forwardLookAhead > QA_SURVIVAL_WALK_SOFT_LOOKAHEAD * 0.82 &&
-          viewClearance > QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE * 1.35 &&
-          overheadClearance > QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE;
+      if (routeSteering.route) {
+        qaWalkRouteSmoothedYaw.current = routeSteering.route.smoothedYaw;
+        qaWalkRouteTargetId.current = routeSteering.route.targetId;
+        targetYaw = routeSteering.route.targetYaw;
+        forwardAmount = routeSteering.route.forwardAmount;
+        strafeAmount = routeSteering.route.strafeAmount;
+        sprint = routeSteering.route.sprint;
       } else {
         qaWalkRouteSmoothedYaw.current = null;
         qaWalkRouteTargetId.current = null;
