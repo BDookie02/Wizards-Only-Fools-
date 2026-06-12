@@ -107,6 +107,11 @@ import {
 import { getCharacterCustomizationStep } from "./ui/hud/characterCustomizationRuntime";
 import { closeHudCommandConsole, openHudCommandConsole } from "./ui/hud/hudCommandConsoleRuntime";
 import {
+  countOwnRecordEntries,
+  getHudScoreboardSourceUpdate,
+  type HudScoreboardSource,
+} from "./ui/hud/hudScoreboardRuntime";
+import {
   dispatchHudGameplayModalOpened,
   exitPointerLockIfActive,
   getHudPointerLockNowMs,
@@ -170,14 +175,6 @@ type HudPlayerState = {
   isMeditating: boolean;
 };
 const SURVIVAL_AUTOSAVE_INTERVAL_MS = 15000;
-
-function countOwnRecordEntries(record: Record<string, unknown>): number {
-  let count = 0;
-  for (const key in record) {
-    if (Object.prototype.hasOwnProperty.call(record, key)) count += 1;
-  }
-  return count;
-}
 
 export function HUD() {
   const health = useGameStore(s => s.health);
@@ -545,17 +542,20 @@ export function HUD() {
     setLocalPlayerName(cleaned);
   };
 
-  const setScoreboardSource = (source: "keyboard" | "controller", open: boolean) => {
-    if (source === "keyboard") {
-      if (keyboardScoreboardRef.current === open) return;
-      keyboardScoreboardRef.current = open;
-    } else {
-      if (controllerScoreboardRef.current === open) return;
-      controllerScoreboardRef.current = open;
-    }
-    const nextOpen = keyboardScoreboardRef.current || controllerScoreboardRef.current;
-    if (useGameStore.getState().isScoreboardOpen !== nextOpen) {
-      setScoreboardOpen(nextOpen);
+  const setScoreboardSource = (source: HudScoreboardSource, open: boolean) => {
+    const update = getHudScoreboardSourceUpdate({
+      source,
+      open,
+      keyboardOpen: keyboardScoreboardRef.current,
+      controllerOpen: controllerScoreboardRef.current,
+      currentOpen: useGameStore.getState().isScoreboardOpen,
+    });
+    if (!update.changed) return;
+
+    keyboardScoreboardRef.current = update.keyboardOpen;
+    controllerScoreboardRef.current = update.controllerOpen;
+    if (update.shouldSetOpen) {
+      setScoreboardOpen(update.open);
     }
   };
 
