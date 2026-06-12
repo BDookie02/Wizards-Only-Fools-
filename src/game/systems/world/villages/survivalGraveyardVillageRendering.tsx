@@ -13,6 +13,21 @@ import {
   makeGraveyardLayout,
   type GraveyardFenceSegment,
 } from "./survivalGraveyardVillageLayout";
+import {
+  CHAPEL_CENTER_NPC_SEAT_OFFSETS,
+  CHAPEL_CENTER_PEW_COLLIDERS,
+  CHAPEL_CENTER_PEW_ROWS,
+  CHAPEL_CENTER_PEW_X,
+  CHAPEL_NAVE_CEILING_BEAM_ROWS,
+  CHAPEL_POPE_TARGET,
+  CHAPEL_SIDE_NPC_SEAT_OFFSETS,
+  CHAPEL_SIDE_SIGNS,
+  CHAPEL_SIDE_WING_PEW_LAYOUT,
+  CHAPEL_WING_CEILING_BEAMS,
+  getAvatarYawFacingTarget,
+  getChapelSideWingPewLayout,
+  getYawForPewFacingTarget,
+} from "./survivalGraveyardChapelLayout";
 import { ChapelCrack, ChapelGiantGothicWindow, createChapelStoneBrickTexture } from "./survivalGraveyardChapelDetails";
 import { GraveyardPathStones, GraveyardSpikedFence } from "./survivalGraveyardVillageGroundProps";
 import { GraveyardTombs } from "./survivalGraveyardVillageTombs";
@@ -287,108 +302,12 @@ function ChapelPew({ z, side }: { z: number; side: -1 | 1 }) {
   );
 }
 
-function getYawForPewFacingTarget(x: number, z: number, targetX: number, targetZ: number) {
-  return Math.atan2(-(targetX - x), -(targetZ - z));
-}
-
-function getAvatarYawFacingTarget(x: number, z: number, targetX: number, targetZ: number) {
-  return Math.atan2(targetX - x, -(targetZ - z));
-}
-
-type ChapelSideWingPewPlacement = {
-  key: string;
-  x: number;
-  z: number;
-  width: number;
-};
-
-type ChapelWingCeilingBeamPlacement = {
-  key: string;
-  side: -1 | 1;
-  z: number;
-  color: string;
-};
-
-type ChapelCenterPewColliderPlacement = {
-  key: string;
-  x: number;
-  z: number;
-};
-
-const CHAPEL_POPE_TARGET = { x: 0, z: -68.6 };
-const CHAPEL_CENTER_PEW_X = 17.2;
-const CHAPEL_CENTER_PEW_SEATS = [12.1, 19.2];
-const CHAPEL_CENTER_PEW_ROWS = [-32, -20, -8, 4, 16];
-const CHAPEL_SIDE_SIGNS = [-1, 1] as const;
 const CHAPEL_PEW_SEAT_GRAIN_X = [-5.6, 0, 5.6] as const;
 const CHAPEL_PEW_BACK_GRAIN_X = [-6.5, 0, 6.5] as const;
 const CHAPEL_PEW_LEG_X = [-7.2, 7.2] as const;
 const CHAPEL_DIAGONAL_PEW_PLANK_OFFSETS = [-0.28, 0.28] as const;
 const CHAPEL_DIAGONAL_PEW_BACK_OFFSETS = [-0.38, 0, 0.38] as const;
 const CHAPEL_DIAGONAL_PEW_LEG_OFFSETS = [-0.42, 0.42] as const;
-const CHAPEL_CENTER_NPC_SEAT_OFFSETS = [
-  { x: CHAPEL_CENTER_PEW_SEATS[0], z: -0.92 },
-  { x: CHAPEL_CENTER_PEW_SEATS[1], z: -0.22 },
-] as const;
-const CHAPEL_SIDE_NPC_SEAT_OFFSETS = [-0.24, 0.24] as const;
-const CHAPEL_NAVE_CEILING_BEAM_ROWS = [-66, -44, -22, 0, 22, 44, 66] as const;
-const CHAPEL_WING_CEILING_BEAM_ROWS = [-42, -21, 0, 21, 42] as const;
-const CHAPEL_SIDE_WING_PEW_LAYOUT = buildChapelSideWingPewLayout();
-const CHAPEL_WING_CEILING_BEAMS = buildChapelWingCeilingBeams();
-const CHAPEL_CENTER_PEW_COLLIDERS = buildChapelCenterPewColliders();
-
-function buildChapelSideWingPewLayout(): ChapelSideWingPewPlacement[] {
-  const layout: ChapelSideWingPewPlacement[] = [];
-  for (let sideIndex = 0; sideIndex < CHAPEL_SIDE_SIGNS.length; sideIndex += 1) {
-    const side = CHAPEL_SIDE_SIGNS[sideIndex];
-    layout.push(
-      { key: `${side}-rear-outer`, x: side * 94, z: -44, width: 16 },
-      { key: `${side}-rear-inner`, x: side * 76, z: -34, width: 18 },
-      { key: `${side}-rear-mid`, x: side * 94, z: -22, width: 16 },
-      { key: `${side}-front-mid`, x: side * 94, z: 22, width: 16 },
-      { key: `${side}-front-inner`, x: side * 76, z: 34, width: 18 },
-      { key: `${side}-front-outer`, x: side * 94, z: 44, width: 16 },
-    );
-  }
-  return layout;
-}
-
-function buildChapelWingCeilingBeams(): ChapelWingCeilingBeamPlacement[] {
-  const beams: ChapelWingCeilingBeamPlacement[] = [];
-  for (let sideIndex = 0; sideIndex < CHAPEL_SIDE_SIGNS.length; sideIndex += 1) {
-    const side = CHAPEL_SIDE_SIGNS[sideIndex];
-    for (let rowIndex = 0; rowIndex < CHAPEL_WING_CEILING_BEAM_ROWS.length; rowIndex += 1) {
-      const z = CHAPEL_WING_CEILING_BEAM_ROWS[rowIndex];
-      beams.push({
-        key: `chapel-wing-ceiling-beam-${side}-${z}`,
-        side,
-        z,
-        color: rowIndex % 2 === 0 ? "#171017" : "#241821",
-      });
-    }
-  }
-  return beams;
-}
-
-function buildChapelCenterPewColliders(): ChapelCenterPewColliderPlacement[] {
-  const colliders: ChapelCenterPewColliderPlacement[] = [];
-  for (let rowIndex = 0; rowIndex < CHAPEL_CENTER_PEW_ROWS.length; rowIndex += 1) {
-    const z = CHAPEL_CENTER_PEW_ROWS[rowIndex];
-    for (let sideIndex = 0; sideIndex < CHAPEL_SIDE_SIGNS.length; sideIndex += 1) {
-      const side = CHAPEL_SIDE_SIGNS[sideIndex];
-      colliders.push({
-        key: `chapel-center-pew-collider-${side}-${z}`,
-        x: side * CHAPEL_CENTER_PEW_X,
-        z: z + 0.45,
-      });
-    }
-  }
-  return colliders;
-}
-
-function getChapelSideWingPewLayout(): ChapelSideWingPewPlacement[] {
-  return CHAPEL_SIDE_WING_PEW_LAYOUT;
-}
 
 function ChapelDiagonalPew({
   position,
