@@ -43,8 +43,8 @@ const SPELL_DUMMY_ROWS = [
 
 const QA_PROJECTILE_TOKEN_SCALE = 0x1000000;
 
-export function getSpellDummyQaNowMs(nowMs = Date.now()) {
-  return nowMs;
+export function getSpellDummyQaNowMs() {
+  return Date.now();
 }
 
 function createQaSpellDummyProjectileId(spell: SpellType, nowMs: number, random: RandomSource = Math.random) {
