@@ -35,6 +35,7 @@ import {
   getMountainMineshaftLadderLandingLocalX,
   getMountainMineshaftPlatformPieces,
   getMountainMineshaftRimBeams,
+  getMountainMineshaftRoyalBanquetDescriptors,
   getMountainMineshaftWallDecorDescriptors,
 } from "./mountainVillageMineshaftRuntime";
 import {
@@ -44,8 +45,6 @@ import {
   MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET,
-  MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_COUNT,
-  MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS,
@@ -132,27 +131,6 @@ const MOUNTAIN_MINESHAFT_CHAIR_LEG_OFFSETS = [
 const MOUNTAIN_MINESHAFT_CHAIR_BACK_SPIRE_X = [-0.72, 0, 0.72] as const;
 const MOUNTAIN_MINESHAFT_THRONE_ARM_SIDES = [-1.94, 1.94] as const;
 const MOUNTAIN_MINESHAFT_THRONE_SPIRE_X = [-1.72, 0, 1.72] as const;
-const MOUNTAIN_MINESHAFT_BANQUET_BREAD_POSITIONS = [
-  { x: -2.9, z: -1.3 },
-  { x: 2.65, z: 1.45 },
-  { x: -0.9, z: 3.2 },
-  { x: 1.34, z: -3.1 },
-] as const;
-const MOUNTAIN_MINESHAFT_FRUIT_BOWL_POSITIONS = [
-  { x: -3.7, z: 1.7 },
-  { x: 3.55, z: -1.55 },
-  { x: 0.8, z: 3.9 },
-  { x: -1.2, z: -3.75 },
-] as const;
-const MOUNTAIN_MINESHAFT_FRUIT_COLORS = ["#b7202e", "#d6a43e", "#7aa34b", "#8a2b5f", "#efc55b"] as const;
-const MOUNTAIN_MINESHAFT_TABLE_CANDLE_POSITIONS = [
-  { x: -1.8, z: 2.2 },
-  { x: 1.8, z: -2.2 },
-] as const;
-const MOUNTAIN_MINESHAFT_BANQUET_PLATE_ANGLES = [
-  ...MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES,
-  Math.PI,
-] as const;
 
 type MountainVillageTrailPoint = {
   localX: number;
@@ -2179,54 +2157,45 @@ function MountainMineshaftWallRopeLights({
 }
 
 function MountainMineshaftBottomLightRing() {
+  const { bottomLights } = getMountainMineshaftRoyalBanquetDescriptors();
+
   return (
     <group name="mineshaft-bottom-light-ring">
-      {getCachedIndexRange(MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_COUNT).map((index) => {
-        const angle = (index / MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_COUNT) * Math.PI * 2;
-        const x = Math.sin(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_RADIUS;
-        const z = Math.cos(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_RADIUS;
-
-        return (
-          <group key={`bottom-light-${index}`} position={[x, 0.08, z]} rotation={[0, angle + Math.PI, 0]}>
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} renderOrder={9}>
-              <circleGeometry args={[3.4, 12]} />
-              <meshBasicMaterial color="#ff9d36" transparent opacity={0.24} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
-            </mesh>
-            <mesh position={[0, 0.12, 0]} castShadow={false}>
-              <cylinderGeometry args={[1.55, 1.85, 0.24, 8]} />
-              <meshBasicMaterial color="#20140d" />
-            </mesh>
-            <mesh position={[0, 0.42, 0]} castShadow={false}>
-              <cylinderGeometry args={[1.1, 1.35, 0.46, 8]} />
-              <meshBasicMaterial color={index % 2 === 0 ? "#5c3d24" : "#372315"} />
-            </mesh>
-            <mesh position={[0, 1.1, 0]} castShadow={false}>
-              <boxGeometry args={[0.42, 1.35, 0.42]} />
-              <meshBasicMaterial color="#1a100a" />
-            </mesh>
-            <RetroMineshaftLantern position={[0, 2.08, 0]} scale={0.72} withLight={index % 3 === 0} />
-          </group>
-        );
-      })}
+      {bottomLights.map((light) => (
+        <group key={`bottom-light-${light.index}`} position={light.position} rotation={light.rotation}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} renderOrder={9}>
+            <circleGeometry args={[3.4, 12]} />
+            <meshBasicMaterial color="#ff9d36" transparent opacity={0.24} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+          </mesh>
+          <mesh position={[0, 0.12, 0]} castShadow={false}>
+            <cylinderGeometry args={[1.55, 1.85, 0.24, 8]} />
+            <meshBasicMaterial color="#20140d" />
+          </mesh>
+          <mesh position={[0, 0.42, 0]} castShadow={false}>
+            <cylinderGeometry args={[1.1, 1.35, 0.46, 8]} />
+            <meshBasicMaterial color={light.bodyColor} />
+          </mesh>
+          <mesh position={[0, 1.1, 0]} castShadow={false}>
+            <boxGeometry args={[0.42, 1.35, 0.42]} />
+            <meshBasicMaterial color="#1a100a" />
+          </mesh>
+          <RetroMineshaftLantern position={[0, 2.08, 0]} scale={0.72} withLight={light.withLight} />
+        </group>
+      ))}
     </group>
   );
 }
 
 function MountainMineshaftBanquetChair({
-  angle,
-  index,
+  chair,
 }: {
-  angle: number;
-  index: number;
+  chair: ReturnType<typeof getMountainMineshaftRoyalBanquetDescriptors>["chairs"][number];
 }) {
-  const x = Math.sin(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS;
-  const z = Math.cos(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS;
-
   return (
-    <group position={[x, 0, z]} rotation={[0, angle, 0]}>
+    <group position={chair.position} rotation={chair.rotation}>
       <mesh position={[0, 0.72, 0]} castShadow={false}>
         <boxGeometry args={[2.0, 0.38, 1.72]} />
-        <meshBasicMaterial color={index % 2 === 0 ? "#6f4528" : "#55341e"} />
+        <meshBasicMaterial color={chair.seatColor} />
       </mesh>
       <mesh position={[0, 0.96, -0.12]} castShadow={false}>
         <boxGeometry args={[1.62, 0.22, 1.2]} />
@@ -2318,7 +2287,7 @@ function MountainMineshaftKingsThrone() {
 }
 
 function MountainMineshaftBanquetTable() {
-  const tableRadius = MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS;
+  const { table } = getMountainMineshaftRoyalBanquetDescriptors();
 
   return (
     <group name="mineshaft-royal-banquet-table">
@@ -2327,33 +2296,25 @@ function MountainMineshaftBanquetTable() {
         <meshBasicMaterial color="#3a2415" />
       </mesh>
       <mesh position={[0, 1.78, 0]} castShadow={false}>
-        <cylinderGeometry args={[tableRadius, tableRadius * 0.96, 0.58, 20]} />
+        <cylinderGeometry args={[table.radius, table.radius * 0.96, 0.58, 20]} />
         <meshBasicMaterial color="#5e3a20" />
       </mesh>
       <mesh position={[0, 2.14, 0]} castShadow={false}>
-        <cylinderGeometry args={[tableRadius * 1.05, tableRadius * 1.05, 0.22, 20]} />
+        <cylinderGeometry args={[table.radius * 1.05, table.radius * 1.05, 0.22, 20]} />
         <meshBasicMaterial color="#2a1a10" />
       </mesh>
-      {getCachedIndexRange(9).map((index) => {
-        const z = -tableRadius * 0.72 + index * ((tableRadius * 1.44) / 8);
-        const width = Math.sqrt(Math.max(0, tableRadius * tableRadius - z * z)) * 1.82;
-
-        return (
-          <mesh key={`table-plank-${index}`} position={[0, 2.28, z]} castShadow={false}>
-            <boxGeometry args={[width, 0.08, 0.32]} />
-            <meshBasicMaterial color={index % 2 === 0 ? "#8a5b34" : "#3c2415"} transparent opacity={0.76} />
-          </mesh>
-        );
-      })}
-      {getCachedIndexRange(6).map((index) => {
-        const angle = (index / 6) * Math.PI * 2;
-        return (
-          <mesh key={`table-leg-${index}`} position={[Math.sin(angle) * 3.95, 0.92, Math.cos(angle) * 3.95]} castShadow={false}>
-            <boxGeometry args={[0.42, 1.55, 0.42]} />
-            <meshBasicMaterial color="#21140c" />
-          </mesh>
-        );
-      })}
+      {table.planks.map((plank) => (
+        <mesh key={`table-plank-${plank.index}`} position={[0, 2.28, plank.z]} castShadow={false}>
+          <boxGeometry args={[plank.width, 0.08, 0.32]} />
+          <meshBasicMaterial color={plank.color} transparent opacity={0.76} />
+        </mesh>
+      ))}
+      {table.legs.map((leg) => (
+        <mesh key={`table-leg-${leg.index}`} position={leg.position} castShadow={false}>
+          <boxGeometry args={[0.42, 1.55, 0.42]} />
+          <meshBasicMaterial color="#21140c" />
+        </mesh>
+      ))}
       <mesh position={[0, 2.7, 0]} scale={[2.35, 0.52, 1.22]} castShadow={false}>
         <sphereGeometry args={[1, 10, 6]} />
         <meshBasicMaterial color="#9a4f2c" />
@@ -2366,11 +2327,11 @@ function MountainMineshaftBanquetTable() {
         <cylinderGeometry args={[0.16, 0.16, 1.42, 8]} />
         <meshBasicMaterial color="#f1d8a0" />
       </mesh>
-      {MOUNTAIN_MINESHAFT_BANQUET_BREAD_POSITIONS.map(({ x, z }, index) => (
-        <group key={`banquet-bread-${index}`} position={[x, 2.5, z]} rotation={[0, index * 0.7, 0]}>
+      {table.breads.map((bread) => (
+        <group key={`banquet-bread-${bread.index}`} position={bread.position} rotation={bread.rotation}>
           <mesh scale={[1.18, 0.36, 0.62]} castShadow={false}>
             <sphereGeometry args={[1, 8, 5]} />
-            <meshBasicMaterial color={index % 2 === 0 ? "#d29a4a" : "#b87833"} />
+            <meshBasicMaterial color={bread.color} />
           </mesh>
           <mesh position={[0, 0.12, 0.18]} castShadow={false}>
             <boxGeometry args={[1.4, 0.08, 0.12]} />
@@ -2378,29 +2339,29 @@ function MountainMineshaftBanquetTable() {
           </mesh>
         </group>
       ))}
-      {MOUNTAIN_MINESHAFT_FRUIT_BOWL_POSITIONS.map(({ x, z }, index) => (
-        <group key={`fruit-bowl-${index}`} position={[x, 2.48, z]}>
+      {table.fruitBowls.map((bowl) => (
+        <group key={`fruit-bowl-${bowl.index}`} position={bowl.position}>
           <mesh position={[0, -0.04, 0]} castShadow={false}>
             <cylinderGeometry args={[0.86, 0.7, 0.18, 10]} />
             <meshBasicMaterial color="#2b1a0f" />
           </mesh>
-          {getCachedIndexRange(5).map((fruitIndex) => (
-            <mesh key={`fruit-${fruitIndex}`} position={[(fruitIndex - 2) * 0.22, 0.18 + (fruitIndex % 2) * 0.12, Math.sin(fruitIndex) * 0.24]} scale={[0.24, 0.24, 0.24]} castShadow={false}>
+          {bowl.fruits.map((fruit) => (
+            <mesh key={`fruit-${fruit.index}`} position={fruit.position} scale={[0.24, 0.24, 0.24]} castShadow={false}>
               <sphereGeometry args={[1, 6, 4]} />
-              <meshBasicMaterial color={MOUNTAIN_MINESHAFT_FRUIT_COLORS[(fruitIndex + index) % MOUNTAIN_MINESHAFT_FRUIT_COLORS.length]} />
+              <meshBasicMaterial color={fruit.color} />
             </mesh>
           ))}
         </group>
       ))}
-      {MOUNTAIN_MINESHAFT_BANQUET_PLATE_ANGLES.map((angle, index) => (
-        <group key={`banquet-place-${index}`} position={[Math.sin(angle) * 4.5, 2.42, Math.cos(angle) * 4.5]} rotation={[0, angle, 0]}>
+      {table.plates.map((plate) => (
+        <group key={`banquet-place-${plate.index}`} position={plate.position} rotation={plate.rotation}>
           <mesh castShadow={false}>
             <cylinderGeometry args={[0.82, 0.9, 0.08, 12]} />
             <meshBasicMaterial color="#d7cab2" />
           </mesh>
           <mesh position={[0, 0.09, -0.05]} scale={[0.48, 0.12, 0.32]} castShadow={false}>
             <sphereGeometry args={[1, 6, 4]} />
-            <meshBasicMaterial color={index % 3 === 0 ? "#89422b" : "#c38a42"} />
+            <meshBasicMaterial color={plate.foodColor} />
           </mesh>
           <mesh position={[0.78, 0.2, -0.18]} castShadow={false}>
             <cylinderGeometry args={[0.16, 0.22, 0.42, 8]} />
@@ -2408,8 +2369,8 @@ function MountainMineshaftBanquetTable() {
           </mesh>
         </group>
       ))}
-      {MOUNTAIN_MINESHAFT_TABLE_CANDLE_POSITIONS.map(({ x, z }, index) => (
-        <group key={`table-candle-${index}`} position={[x, 2.54, z]}>
+      {table.candles.map((candle) => (
+        <group key={`table-candle-${candle.index}`} position={candle.position}>
           <mesh position={[0, 0.3, 0]} castShadow={false}>
             <cylinderGeometry args={[0.16, 0.16, 0.6, 8]} />
             <meshBasicMaterial color="#f6e2a8" />
@@ -2427,6 +2388,8 @@ function MountainMineshaftBanquetTable() {
 function MountainMineshaftRoyalBanquet({ bottomY, showDetails }: { bottomY: number; showDetails: boolean }) {
   if (!showDetails) return null;
 
+  const { chairs } = getMountainMineshaftRoyalBanquetDescriptors();
+
   return (
     <group name="mineshaft-bottom-royal-banquet" position={[0, bottomY, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.09, 0]} renderOrder={8}>
@@ -2435,8 +2398,8 @@ function MountainMineshaftRoyalBanquet({ bottomY, showDetails }: { bottomY: numb
       </mesh>
       <MountainMineshaftBottomLightRing />
       <MountainMineshaftBanquetTable />
-      {MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES.map((angle, index) => (
-        <MountainMineshaftBanquetChair key={`banquet-chair-${index}`} angle={angle} index={index} />
+      {chairs.map((chair) => (
+        <MountainMineshaftBanquetChair key={`banquet-chair-${chair.index}`} chair={chair} />
       ))}
       <MountainMineshaftKingsThrone />
     </group>
