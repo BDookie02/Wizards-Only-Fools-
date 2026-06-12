@@ -84,7 +84,7 @@ import {
   getMountainVillageTrailSurfaceMask,
   getMountainVillageTrailWidth,
 } from "./mountainVillageTerrain";
-import { shouldHideMountainWaterfallForCamera } from "./mountainVillageWaterfallRuntime";
+import { getMountainWaterfallVisualDescriptors, shouldHideMountainWaterfallForCamera } from "./mountainVillageWaterfallRuntime";
 
 function shouldPublishMountainSlopeGrassTelemetry() {
   return shouldPublishCurrentMountainSlopeGrassTelemetry();
@@ -3065,57 +3065,42 @@ function VisibleMountainWaterfall({
     group.visible = nextVisible;
   });
 
-  const surfaceOffset = 3.6;
-  const outwardX = Math.sin(waterfall.angle) * surfaceOffset;
-  const outwardZ = Math.cos(waterfall.angle) * surfaceOffset;
-  const midX = (waterfall.topX + waterfall.bottomX) / 2 + outwardX;
-  const midZ = (waterfall.topZ + waterfall.bottomZ) / 2 + outwardZ;
-  const height = Math.max(18, waterfall.topY - waterfall.bottomY);
-  const midY = waterfall.bottomY + height / 2;
+  const waterfallVisuals = getMountainWaterfallVisualDescriptors({ waterfall, summitY });
 
   return (
     <group ref={waterfallRef} name="mountain-village-waterfall">
-      <mesh position={[midX, midY, midZ]} rotation={[0, waterfall.angle, 0]}>
-        <planeGeometry args={[waterfall.width, height]} />
+      <mesh position={waterfallVisuals.mainFall.position} rotation={waterfallVisuals.mainFall.rotation}>
+        <planeGeometry args={[waterfallVisuals.mainFall.width, waterfallVisuals.mainFall.height]} />
         <meshBasicMaterial color="#89e9ff" transparent opacity={0.48} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
-      <mesh position={[midX + outwardX * 0.18, midY + height * 0.04, midZ + outwardZ * 0.18]} rotation={[0, waterfall.angle, 0]}>
-        <planeGeometry args={[waterfall.width * 0.36, height * 0.96]} />
+      <mesh position={waterfallVisuals.brightFall.position} rotation={waterfallVisuals.brightFall.rotation}>
+        <planeGeometry args={[waterfallVisuals.brightFall.width, waterfallVisuals.brightFall.height]} />
         <meshBasicMaterial color="#effdff" transparent opacity={0.28} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
-      {MOUNTAIN_RENDER_SIDES.map((side) => {
-        const sideOffset = side * waterfall.width * 0.43;
-        return (
-          <mesh
-            key={`mountain-fall-dark-edge-${side}`}
-            position={[midX + Math.cos(waterfall.angle) * sideOffset, midY - height * 0.02, midZ - Math.sin(waterfall.angle) * sideOffset]}
-            rotation={[0, waterfall.angle, 0]}
-          >
-            <planeGeometry args={[waterfall.width * 0.12, height * 0.92]} />
-            <meshBasicMaterial color="#16596d" transparent opacity={0.2} side={THREE.DoubleSide} depthWrite={false} />
-          </mesh>
-        );
-      })}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[waterfall.topX * 0.74 + outwardX * 0.35, summitY + 0.98, waterfall.topZ * 0.74 + outwardZ * 0.35]} scale={[28, 9, 1]}>
+      {waterfallVisuals.darkEdges.map((edge) => (
+        <mesh
+          key={`mountain-fall-dark-edge-${edge.side}`}
+          position={edge.position}
+          rotation={edge.rotation}
+        >
+          <planeGeometry args={[edge.width, edge.height]} />
+          <meshBasicMaterial color="#16596d" transparent opacity={0.2} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      ))}
+      <mesh rotation={waterfallVisuals.topFoam.rotation} position={waterfallVisuals.topFoam.position} scale={waterfallVisuals.topFoam.scale}>
         <circleGeometry args={[1, 18]} />
         <meshBasicMaterial color="#b9f1ff" transparent opacity={0.48} depthWrite={false} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[waterfall.bottomX + outwardX, waterfall.bottomY + 0.32, waterfall.bottomZ + outwardZ]} scale={[35, 24, 1]}>
+      <mesh rotation={waterfallVisuals.bottomFoam.rotation} position={waterfallVisuals.bottomFoam.position} scale={waterfallVisuals.bottomFoam.scale}>
         <circleGeometry args={[1, 24]} />
         <meshBasicMaterial color="#5bbbd4" transparent opacity={0.56} depthWrite={false} />
       </mesh>
-      {getCachedIndexRange(10).map((index) => {
-        const t = index / 9;
-        const x = lerpNumber(waterfall.topX, waterfall.bottomX, t) + outwardX;
-        const z = lerpNumber(waterfall.topZ, waterfall.bottomZ, t) + outwardZ;
-        const y = lerpNumber(waterfall.topY, waterfall.bottomY, t);
-        return (
-          <mesh key={`mountain-fall-spray-${index}`} position={[x, y, z]} scale={[1.8 + (index % 3), 0.7, 1.8 + (index % 2)]} castShadow={false}>
-            <sphereGeometry args={[1, 6, 4]} />
-            <meshBasicMaterial color="#dffaff" transparent opacity={0.26} depthWrite={false} />
-          </mesh>
-        );
-      })}
+      {waterfallVisuals.sprayPuffs.map((spray) => (
+        <mesh key={`mountain-fall-spray-${spray.index}`} position={spray.position} scale={spray.scale} castShadow={false}>
+          <sphereGeometry args={[1, 6, 4]} />
+          <meshBasicMaterial color="#dffaff" transparent opacity={0.26} depthWrite={false} />
+        </mesh>
+      ))}
     </group>
   );
 }
