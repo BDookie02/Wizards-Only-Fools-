@@ -11,6 +11,7 @@ import { isLocalProjectileCreator } from "./spellProjectileOwnership";
 import { useProjectileLifetime } from "./spellProjectileLifetime";
 import { SMOKE_CLOUD_PARTICLE_COUNT } from "./spellProjectileTuning";
 import { isMobilePerformanceMode } from "../input/performanceMode";
+import { getSeededRandom } from "./spellProjectileMath";
 
 type SmokeCloudParticle = {
   x: number;
@@ -22,25 +23,27 @@ type SmokeCloudParticle = {
 
 const MOBILE_SMOKE_CLOUD_UPDATE_INTERVAL_SECONDS = 1 / 24;
 
-function SmokeCloud() {
+function makeSmokeCloudParticles(seed: string): SmokeCloudParticle[] {
+  const random = getSeededRandom(seed);
+  const nextParticles: SmokeCloudParticle[] = [];
+  for (let index = 0; index < SMOKE_CLOUD_PARTICLE_COUNT; index += 1) {
+    nextParticles.push({
+      x: (random() - 0.5) * 4,
+      y: (random() - 0.5) * 2.4,
+      z: (random() - 0.5) * 4,
+      s: 0.8 + random() * 1.25,
+      rot: random() * Math.PI,
+    });
+  }
+  return nextParticles;
+}
+
+function SmokeCloud({ seed }: { seed: string }) {
   const groupRef = useRef<THREE.Group>(null);
   const timeRef = useRef(0);
   const lastMobileUpdateAtRef = useRef(-Infinity);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
-
-  const particles = useRef((() => {
-    const nextParticles: SmokeCloudParticle[] = [];
-    for (let index = 0; index < SMOKE_CLOUD_PARTICLE_COUNT; index += 1) {
-      nextParticles.push({
-        x: (Math.random() - 0.5) * 4,
-        y: (Math.random() - 0.5) * 2.4,
-        z: (Math.random() - 0.5) * 4,
-        s: 0.8 + Math.random() * 1.25,
-        rot: Math.random() * Math.PI,
-      });
-    }
-    return nextParticles;
-  })()).current;
+  const particles = useMemo(() => makeSmokeCloudParticles(seed), [seed]);
 
   useFrame((state, delta) => {
     timeRef.current += delta;
@@ -99,6 +102,7 @@ export function SmokeBomb({ projectile }: { projectile: Projectile }) {
   useProjectileLifetime(projectile.id, 16000);
   const [collided, setCollided] = useState(false);
   const [smokeSpawn, setSmokeSpawn] = useState<{ x: number, y: number, z: number } | null>(null);
+  const smokeSeed = `${projectile.id}:${projectile.createdAt ?? 0}:smoke`;
 
   useEffect(() => {
     return () => {
@@ -153,7 +157,7 @@ export function SmokeBomb({ projectile }: { projectile: Projectile }) {
       </RigidBody>
       {smokeSpawn && (
         <group position={[smokeSpawn.x, smokeSpawn.y + 2, smokeSpawn.z]}>
-          <SmokeCloud />
+          <SmokeCloud seed={smokeSeed} />
         </group>
       )}
     </>
