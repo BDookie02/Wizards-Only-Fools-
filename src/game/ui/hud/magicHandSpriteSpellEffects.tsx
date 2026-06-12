@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { getSpriteUrl } from "../../SpriteManifest";
+import { createSeededRandom } from "../../systems/random/seededRandom";
+import { useLazyRef } from "../../systems/react/useLazyRef";
 import {
   PALM_X,
   PALM_Y,
@@ -42,6 +44,15 @@ function buildFallbackSprite(color: string) {
     offCtx.fill();
   }
   return offscreen;
+}
+
+function getChargingShake(random: () => number, isCharging: boolean) {
+  if (!isCharging) return { shakeX: 0, shakeY: 0 };
+
+  return {
+    shakeX: (random() - 0.5) * 4,
+    shakeY: (random() - 0.5) * 4,
+  };
 }
 
 function loadProcessedFrame({
@@ -107,11 +118,11 @@ function drawPalmSprite(
   cacheCanvas: HTMLCanvasElement,
   isCharging: boolean,
   scaleIn = 1,
+  shakeX = 0,
+  shakeY = 0,
 ) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const scale = (isCharging ? 1.4 : 1.0) * scaleIn;
-  const shakeX = isCharging ? (Math.random() - 0.5) * 4 : 0;
-  const shakeY = isCharging ? (Math.random() - 0.5) * 4 : 0;
   const fbW = 160 * scale;
   const fbH = 160 * scale;
   const fbX = PALM_X - fbW / 2 + shakeX;
@@ -128,6 +139,7 @@ function PalmSpriteCanvas({
   fallbackColor = "rgba(255, 150, 0, 0.5)",
   chargingClassName,
   idleClassName,
+  shakeSeed,
 }: SpriteSpellEffectProps & {
   frameCount: number;
   framePath: (frame: number) => string;
@@ -135,8 +147,10 @@ function PalmSpriteCanvas({
   fallbackColor?: string;
   chargingClassName: string;
   idleClassName: string;
+  shakeSeed: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const shakeRandomRef = useLazyRef(() => createSeededRandom(shakeSeed));
   const equipScale = useMagicHandEquipScale(isActive);
   const idleFrame = useLoopedFrame(equipScale > 0, frameCount);
   const imageSrc = resolveSpriteUrl(framePath(idleFrame));
@@ -147,14 +161,15 @@ function PalmSpriteCanvas({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    const { shakeX, shakeY } = getChargingShake(shakeRandomRef.current, isCharging);
 
     loadProcessedFrame({
       cache: frameCache,
       imageSrc,
       fallbackColor,
-      onReady: (frame) => drawPalmSprite(ctx, canvas, frame, isCharging, equipScale),
+      onReady: (frame) => drawPalmSprite(ctx, canvas, frame, isCharging, equipScale, shakeX, shakeY),
     });
-  }, [equipScale, fallbackColor, frameCache, imageSrc, isCharging]);
+  }, [equipScale, fallbackColor, frameCache, imageSrc, isCharging, shakeRandomRef]);
 
   if (equipScale === 0) return null;
 
@@ -187,6 +202,7 @@ function useFireballEquipFrame(isActive: boolean) {
 
 export function FireballCanvas({ isActive, isCharging }: SpriteSpellEffectProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const shakeRandomRef = useLazyRef(() => createSeededRandom("magic-hand-fireball-sprite"));
   const equipFrame = useFireballEquipFrame(isActive);
   const idleFrame = useLoopedFrame(equipFrame > 0, 10);
   const rawImageSrc = equipFrame === 0
@@ -202,14 +218,15 @@ export function FireballCanvas({ isActive, isCharging }: SpriteSpellEffectProps)
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    const { shakeX, shakeY } = getChargingShake(shakeRandomRef.current, isCharging);
 
     loadProcessedFrame({
       cache: fireballFrameCache,
       imageSrc,
       fallbackColor: "rgba(255, 150, 0, 0.5)",
-      onReady: (frame) => drawPalmSprite(ctx, canvas, frame, isCharging),
+      onReady: (frame) => drawPalmSprite(ctx, canvas, frame, isCharging, 1, shakeX, shakeY),
     });
-  }, [equipFrame, imageSrc, isCharging]);
+  }, [equipFrame, imageSrc, isCharging, shakeRandomRef]);
 
   if (equipFrame === 0) return null;
 
@@ -293,6 +310,7 @@ export function HealSpellCanvas(props: SpriteSpellEffectProps) {
       frameCount={13}
       framePath={(frame) => `/sprites/healspell/healspell_${frame}.png`}
       frameCache={healSpellFrameCache}
+      shakeSeed="magic-hand-heal-sprite"
       chargingClassName="drop-shadow-[0_0_80px_rgba(255,215,0,1)] scale-[1.05]"
       idleClassName="drop-shadow-[0_0_20px_rgba(255,215,0,0.8)]"
     />
@@ -308,6 +326,7 @@ export function IceSpellCanvas(props: SpriteSpellEffectProps) {
       frameCount={8}
       framePath={(frame) => `/sprites/icespell/icespell_${frame}.png`}
       frameCache={iceSpellFrameCache}
+      shakeSeed="magic-hand-ice-sprite"
       chargingClassName="drop-shadow-[0_0_30px_rgba(0,255,255,1)] scale-[1.02] mix-blend-screen"
       idleClassName="drop-shadow-[0_0_20px_rgba(0,255,255,0.8)] mix-blend-screen"
     />
@@ -323,6 +342,7 @@ export function RingsSpellCanvas(props: SpriteSpellEffectProps) {
       frameCount={6}
       framePath={(frame) => `/sprites/ringsofpower/ringsofpower_${frame}.png`}
       frameCache={ringsSpellFrameCache}
+      shakeSeed="magic-hand-rings-sprite"
       chargingClassName="drop-shadow-[0_0_30px_rgba(168,85,247,1)] scale-[1.02]"
       idleClassName="drop-shadow-[0_0_20px_rgba(168,85,247,0.8)]"
     />
