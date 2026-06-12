@@ -52,6 +52,10 @@ export function isNetworkConnected() {
   return gameNetworkTransport?.isConnected() ?? false;
 }
 
+export function getGameNetworkEventNowMs() {
+  return Date.now();
+}
+
 export function getNetworkPlayerIdsKey(players: Record<string, unknown>) {
   let key = "";
   for (const playerId in players) {

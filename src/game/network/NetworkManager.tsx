@@ -4,7 +4,12 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { sanitizePlayerName, useGameStore, PlayerState, SpellType, StatusEffectType } from "../../store/gameStore";
 import { socket } from "./socket";
-import { bindGameNetworkTransport, getNetworkPlayerIdsKey, visitNetworkPlayerIdsKey } from "./gameNetworkClient";
+import {
+  bindGameNetworkTransport,
+  getGameNetworkEventNowMs,
+  getNetworkPlayerIdsKey,
+  visitNetworkPlayerIdsKey,
+} from "./gameNetworkClient";
 import { RigidBody, CapsuleCollider, BallCollider, RapierRigidBody } from "@react-three/rapier";
 import { Html } from "@react-three/drei";
 import { AvatarBillboard, normalizeCharacterCustomization } from "../PixelAvatar";
@@ -612,7 +617,7 @@ export function NetworkManager() {
         type: spell.type as SpellType,
         pos: spell.pos,
         dir: spell.dir,
-        createdAt: Date.now(),
+        createdAt: getGameNetworkEventNowMs(),
         hand: spell.hand === "right" ? "right" : "left",
         grabId: spell.grabId,
         grabPhase: spell.grabPhase
@@ -671,7 +676,7 @@ export function NetworkManager() {
       const detail = {
         ...safeData,
         sourcePlayerId,
-        receivedAt: Date.now(),
+        receivedAt: getGameNetworkEventNowMs(),
       };
       if (typeof window !== "undefined") {
         (window as Window & { wofEnginePlaceableNetworkSnapshot?: typeof detail }).wofEnginePlaceableNetworkSnapshot = detail;
