@@ -13,6 +13,14 @@ function isQaPerfStatsProbeEnabled() {
   return shouldMountCurrentQaPerfStatsProbe();
 }
 
+export function getQaPerfStatsEpochNowMs() {
+  return Date.now();
+}
+
+export function getQaPerfStatsFrameNowMs() {
+  return typeof performance !== "undefined" ? performance.now() : getQaPerfStatsEpochNowMs();
+}
+
 export function QaPerfStatsProbe() {
   const enabled = useMemo(isQaPerfStatsProbeEnabled, []);
   if (!enabled) return null;
@@ -21,7 +29,7 @@ export function QaPerfStatsProbe() {
 }
 
 function QaPerfStatsSampler() {
-  const startedAtRef = useRef(Date.now());
+  const startedAtRef = useRef(getQaPerfStatsEpochNowMs());
   const samplesRef = useLazyRef<number[]>(() => []);
   const sampleScratchRef = useLazyRef<number[]>(() => []);
   const sampleWriteIndexRef = useRef(0);
@@ -73,7 +81,7 @@ function QaPerfStatsSampler() {
       stutter50Count,
       stutter100Count,
       startedAtMs: startedAtRef.current,
-      updatedAtMs: Date.now(),
+      updatedAtMs: getQaPerfStatsEpochNowMs(),
     };
     publishQaPerfStatsDataset(stats);
   }, []);
@@ -82,7 +90,7 @@ function QaPerfStatsSampler() {
     document.documentElement.dataset.wofPerfProbeEnabled = "1";
 
     const resetStats = () => {
-      startedAtRef.current = Date.now();
+      startedAtRef.current = getQaPerfStatsEpochNowMs();
       samplesRef.current.length = 0;
       sampleScratchRef.current.length = 0;
       sampleWriteIndexRef.current = 0;
@@ -93,7 +101,7 @@ function QaPerfStatsSampler() {
 
     window.addEventListener("wof-reset-perf-stats", resetStats);
     let raf = 0;
-    let lastFrameTime = performance.now();
+    let lastFrameTime = getQaPerfStatsFrameNowMs();
     const firstFrameTime = lastFrameTime;
     const tick = (now: number) => {
       document.documentElement.dataset.wofPerfProbeFrameHook = "raf";
@@ -105,7 +113,7 @@ function QaPerfStatsSampler() {
     let fallbackTimeout = 0;
     let cancelled = false;
     const checkFallbackFrame = () => {
-      const now = performance.now();
+      const now = getQaPerfStatsFrameNowMs();
       if (now - lastFrameTime >= 950) {
         document.documentElement.dataset.wofPerfProbeFrameHook = "timeout";
         publishSample(now - lastFrameTime, (now - firstFrameTime) / 1000);
