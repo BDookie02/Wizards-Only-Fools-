@@ -10,6 +10,7 @@ import { absoluteAngleDeltaRadians } from "./systems/math/angleMath";
 import { getPublishedLocalPlayerPosition } from "./systems/player/playerEventBridge";
 import { useLazyRef } from "./systems/react/useLazyRef";
 import { getEpochMsFromRenderClock } from "./systems/rendering/renderClockEpoch";
+import { getVillagerRuntimeNowMs } from "./systems/world/villages/villagerRuntime";
 
 interface VillagerInfo {
   id: string;
@@ -89,10 +90,6 @@ const devNpcRayDirection = new THREE.Vector3();
 const devNpcTargetCenter = new THREE.Vector3();
 const devNpcTargetOffset = new THREE.Vector3();
 const EMPTY_ANCHORED_QUEST_NPC_IDS: ReadonlySet<string> = new Set<string>();
-
-export function getVillagerRuntimeNowMs() {
-  return Date.now();
-}
 
 function hashValue(seed: string, salt: number) {
   let hash = 2166136261 ^ salt;
