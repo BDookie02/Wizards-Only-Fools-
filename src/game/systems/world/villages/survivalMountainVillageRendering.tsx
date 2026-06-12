@@ -52,7 +52,6 @@ import {
   getMountainMineshaftExitBridgeFrame,
   getMountainMineshaftLadderLandingLocalX,
   getMountainMineshaftPlatformPieces,
-  getMountainMineshaftSummitSnowDrifts,
   makeMountainMineshaftHuts,
   makeMountainMineshaftLadders,
   type MountainMineshaftHut,
@@ -78,6 +77,7 @@ import { getMountainVillageTerrainColorInto, makeMountainVillageTerrainGeometry 
 import { makeMountainVillageTrailDeckGeometry, makeMountainVillageTrailSurfaceGeometry } from "./mountainVillageTrailGeometry";
 import { MountainVillageTrailView } from "./mountainVillageTrailView";
 import { getMountainWaterfallVisualDescriptors, shouldHideMountainWaterfallForCamera } from "./mountainVillageWaterfallRuntime";
+import { MountainSnowCapView } from "./mountainVillageSnowCap";
 
 function shouldPublishMountainSlopeGrassTelemetry() {
   return shouldPublishCurrentMountainSlopeGrassTelemetry();
@@ -392,28 +392,6 @@ function VisibleMountainWaterfall({
   );
 }
 
-function MountainSnowCap({ summitY, showDetails }: { summitY: number; showDetails: boolean }) {
-  if (!showDetails) return null;
-
-  const snowDrifts = getMountainMineshaftSummitSnowDrifts();
-
-  return (
-    <group name="mountain-village-snow-cap">
-      {snowDrifts.map((drift) => (
-        <mesh
-          key={`summit-snow-drift-${drift.index}`}
-          rotation={drift.rotation}
-          position={[drift.positionXZ[0], summitY + drift.yOffset, drift.positionXZ[1]]}
-          scale={drift.scale}
-        >
-          <circleGeometry args={[1, 12]} />
-          <meshBasicMaterial color={drift.color} transparent opacity={0.46} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
 function MountainVillageColliders({
   chunk,
   terrainColliderGeometry,
@@ -658,7 +636,7 @@ export function SurvivalMountainVillage({
         {layout && (
           <>
             <MountainCliffBreakup patches={layout.cliffPatches} showDetails={showTrailAndCabinDetails} />
-            <MountainSnowCap summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
+            <MountainSnowCapView summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
             <MountainVillageTrailView
               trailSegments={layout.trailSegments}
               trailDeckGeometry={layout.trailDeckGeometry}
