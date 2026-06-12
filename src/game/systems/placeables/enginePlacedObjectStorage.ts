@@ -31,6 +31,10 @@ type EnginePlacementStorageLike = {
 
 const slotSummarySeenScratch = new Set<string>();
 
+export function getEnginePlacedObjectSlotSavedAtMs() {
+  return Date.now();
+}
+
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -244,7 +248,7 @@ export function saveStoredEngineObjectSlot(
   const slotId = sanitizeEnginePlacementSlotId(slotIdValue);
   const label = getEnginePlacementSlotLabel(slotId, labelValue);
   const savedObjects = copyLastStoredEngineObjects(objects);
-  const savedAt = Date.now();
+  const savedAt = getEnginePlacedObjectSlotSavedAtMs();
   try {
     storage?.setItem?.(getEnginePlacementSlotStorageKey(slotId), JSON.stringify(savedObjects));
     const currentSummaries = removeStoredEngineObjectSlotSummary(loadStoredEngineObjectSlotSummaries(storage), slotId);
