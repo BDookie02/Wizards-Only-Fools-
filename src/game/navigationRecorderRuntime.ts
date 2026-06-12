@@ -63,6 +63,10 @@ export interface NavigationRecorderResult {
 
 let activeRecording: ActiveNavigationRecording | null = null;
 
+export function getNavigationRecorderNowMs() {
+  return Date.now();
+}
+
 function makeRecordingId() {
   return makeRuntimeRandomId("nav", 6);
 }
@@ -92,7 +96,7 @@ function sanitizeRecordingLabel(value?: string) {
 
 export function makeNavigationRecordingSession(
   recording: ActiveNavigationRecording,
-  endedAt = Date.now(),
+  endedAt = getNavigationRecorderNowMs(),
 ): NavigationRecordingSession {
   return {
     id: recording.id,
@@ -129,7 +133,7 @@ export function startNavigationRecordingRuntime(label?: string): NavigationRecor
   activeRecording = {
     id: makeRecordingId(),
     label: sanitizeRecordingLabel(label),
-    startedAt: Date.now(),
+    startedAt: getNavigationRecorderNowMs(),
     lastSampleAt: 0,
     samples: [],
   };
@@ -140,7 +144,7 @@ export function startNavigationRecordingRuntime(label?: string): NavigationRecor
   };
 }
 
-export function recordNavigationSample(input: NavigationSampleInput, now = Date.now()) {
+export function recordNavigationSample(input: NavigationSampleInput, now = getNavigationRecorderNowMs()) {
   if (!activeRecording) return;
 
   if (now - activeRecording.lastSampleAt < NAV_SAMPLE_INTERVAL_MS) return;
@@ -187,7 +191,7 @@ export function stopNavigationRecordingRuntime(): NavigationRecorderResult {
 
 export function getActiveNavigationRecorderStatus() {
   const sampleCount = activeRecording?.samples.length ?? 0;
-  const durationMs = activeRecording ? Date.now() - activeRecording.startedAt : 0;
+  const durationMs = activeRecording ? getNavigationRecorderNowMs() - activeRecording.startedAt : 0;
 
   return {
     active: Boolean(activeRecording),

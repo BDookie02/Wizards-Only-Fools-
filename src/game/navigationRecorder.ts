@@ -2,6 +2,7 @@ import {
   clearActiveNavigationRecording,
   getActiveNavigationRecorderStatus,
   getActiveNavigationRecordingSession,
+  getNavigationRecorderNowMs,
   startNavigationRecordingRuntime,
   stopNavigationRecordingRuntime,
   type NavigationRecorderResult,
@@ -117,7 +118,7 @@ export function exportNavigationRecording(): NavigationRecorderResult {
   const safeLabel = latest.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const filename = `wizards-nav-${safeLabel || "recording"}-${latest.id}.json`;
   const downloaded = downloadJson(filename, {
-    exportedAt: Date.now(),
+    exportedAt: getNavigationRecorderNowMs(),
     activeRecording: Boolean(activeSession),
     sessions,
   });
