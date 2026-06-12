@@ -28,6 +28,8 @@ import {
   useMountainVillageDetailPhase,
 } from "./mountainVillageDetailPhase";
 import {
+  getMountainMineshaftCatwalkDescriptors,
+  getMountainMineshaftCatwalkLightPoles,
   getMountainMineshaftExitBridgeFrame,
   getMountainMineshaftLadderLandingLocalX,
   getMountainMineshaftPlatformPieces,
@@ -2728,11 +2730,21 @@ function MountainMineshaftCatwalkRing({
   nextLadder?: MountainMineshaftLadder;
   showDetails: boolean;
 }) {
-  const plankRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
-  const centerGuardRailRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 0.55;
-  const centerGuardPostCount = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS * 2;
-  const centerGuardRailSegmentLength = ((Math.PI * 2 * centerGuardRailRadius) / centerGuardPostCount) * 0.78;
-  const lightPoleRadius = MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS + 0.95;
+  const catwalkDescriptors = useMemo(
+    () =>
+      getMountainMineshaftCatwalkDescriptors({
+        segments: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS,
+        innerRadius: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS,
+        outerRadius: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS,
+      }),
+    [],
+  );
+  const lightPoles = useMemo(
+    () => getMountainMineshaftCatwalkLightPoles(hut.angle, catwalkDescriptors.lightPoleRadius),
+    [hut.angle, catwalkDescriptors.lightPoleRadius],
+  );
+  const centerGuardRailRadius = catwalkDescriptors.centerGuardRailRadius;
+  const centerGuardRailSegmentLength = catwalkDescriptors.centerGuardRailSegmentLength;
   const balconyGapHalfAngle = Math.min(0.52, Math.max(0.34, (hut.platformWidth * 0.38) / centerGuardRailRadius));
   const ladderGapHalfAngle = ladder
     ? Math.min(0.5, Math.max(0.34, (ladder.width * 1.35) / centerGuardRailRadius))
@@ -2768,56 +2780,49 @@ function MountainMineshaftCatwalkRing({
           </mesh>
         </>
       )}
-      {showDetails && getCachedIndexRange(MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS).map((index) => {
-        const angle = ((index + 0.5) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
+      {showDetails && catwalkDescriptors.planks.map((plank) => {
         return (
-          <mesh key={`catwalk-plank-${index}`} position={[Math.sin(angle) * plankRadius, 0.22, Math.cos(angle) * plankRadius]} rotation={[0, angle, 0]} castShadow={false}>
+          <mesh key={`catwalk-plank-${plank.index}`} position={plank.position} rotation={plank.rotation} castShadow={false}>
             <boxGeometry args={[1.15, 0.24, MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS - MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 0.8]} />
-            <meshBasicMaterial color={index % 2 === 0 ? "#7a5635" : "#5d3f28"} />
+            <meshBasicMaterial color={plank.index % 2 === 0 ? "#7a5635" : "#5d3f28"} />
           </mesh>
         );
       })}
-      {showDetails && getCachedIndexRange(MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS).map((index) => {
-        const angle = (index / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
-        const radius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
-
+      {showDetails && catwalkDescriptors.darkGaps.map((darkGap) => {
         return (
-          <mesh key={`catwalk-dark-gap-${index}`} position={[Math.sin(angle) * radius, 0.33, Math.cos(angle) * radius]} rotation={[0, angle, 0]} castShadow={false}>
+          <mesh key={`catwalk-dark-gap-${darkGap.index}`} position={darkGap.position} rotation={darkGap.rotation} castShadow={false}>
             <boxGeometry args={[0.16, 0.08, MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS - MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + 1.0]} />
             <meshBasicMaterial color="#080504" transparent opacity={0.58} />
           </mesh>
         );
       })}
-      {showDetails && getCachedIndexRange(MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS).map((index) => {
-        const angle = ((index + 0.5) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
-        if (isGuardRailOpening(angle)) return null;
+      {showDetails && catwalkDescriptors.edgeBlocks.map((edgeBlock) => {
+        if (isGuardRailOpening(edgeBlock.angle)) return null;
 
         return (
-          <mesh key={`catwalk-edge-block-${index}`} position={[Math.sin(angle) * centerGuardRailRadius, 0.46, Math.cos(angle) * centerGuardRailRadius]} rotation={[0, angle, 0]} castShadow={false}>
+          <mesh key={`catwalk-edge-block-${edgeBlock.index}`} position={edgeBlock.position} rotation={edgeBlock.rotation} castShadow={false}>
             <boxGeometry args={[0.68, 0.34, 0.54]} />
-            <meshBasicMaterial color={index % 3 === 0 ? "#9b6a3b" : "#2f1e13"} />
+            <meshBasicMaterial color={edgeBlock.index % 3 === 0 ? "#9b6a3b" : "#2f1e13"} />
           </mesh>
         );
       })}
-      {showDetails && getCachedIndexRange(centerGuardPostCount).map((index) => {
-        const angle = (index / centerGuardPostCount) * Math.PI * 2;
-        if (isGuardRailOpening(angle)) return null;
+      {showDetails && catwalkDescriptors.guardPosts.map((guardPost) => {
+        if (isGuardRailOpening(guardPost.angle)) return null;
 
         return (
-          <mesh key={`catwalk-center-guard-post-${index}`} position={[Math.sin(angle) * centerGuardRailRadius, 1.18, Math.cos(angle) * centerGuardRailRadius]} rotation={[0, angle, 0]} castShadow={false}>
+          <mesh key={`catwalk-center-guard-post-${guardPost.index}`} position={guardPost.position} rotation={guardPost.rotation} castShadow={false}>
             <boxGeometry args={[0.42, 1.48, 0.42]} />
-            <meshBasicMaterial color={index % 2 === 0 ? "#2b1c12" : "#4d301b"} />
+            <meshBasicMaterial color={guardPost.index % 2 === 0 ? "#2b1c12" : "#4d301b"} />
           </mesh>
         );
       })}
       {showDetails && MOUNTAIN_CATWALK_CENTER_RAIL_HEIGHTS.map((height, railIndex) => (
         <Fragment key={`catwalk-center-guard-rail-row-${railIndex}`}>
-          {getCachedIndexRange(centerGuardPostCount).map((index) => {
-            const angle = ((index + 0.5) / centerGuardPostCount) * Math.PI * 2;
-            if (isGuardRailOpening(angle)) return null;
+          {catwalkDescriptors.railSegments.map((railSegment) => {
+            if (isGuardRailOpening(railSegment.angle)) return null;
 
             return (
-              <mesh key={`rail-${index}`} position={[Math.sin(angle) * centerGuardRailRadius, height, Math.cos(angle) * centerGuardRailRadius]} rotation={[0, angle, 0]} castShadow={false}>
+              <mesh key={`rail-${railSegment.index}`} position={[railSegment.position[0], height, railSegment.position[2]]} rotation={railSegment.rotation} castShadow={false}>
                 <boxGeometry args={[centerGuardRailSegmentLength, 0.24, railIndex === 0 ? 0.32 : 0.28]} />
                 <meshBasicMaterial color={railIndex === 1 ? "#8d6238" : "#24170f"} />
               </mesh>
@@ -2825,13 +2830,9 @@ function MountainMineshaftCatwalkRing({
           })}
         </Fragment>
       ))}
-      {showDetails && getCachedIndexRange(4).map((index) => {
-        const angle = hut.angle + index * Math.PI / 2 + 0.38;
-        const x = Math.sin(angle) * lightPoleRadius;
-        const z = Math.cos(angle) * lightPoleRadius;
-
+      {showDetails && lightPoles.map((lightPole) => {
         return (
-          <group key={`catwalk-light-pole-${index}`} position={[x, 0.78, z]} rotation={[0, angle + Math.PI / 2, 0]}>
+          <group key={`catwalk-light-pole-${lightPole.index}`} position={lightPole.position} rotation={lightPole.rotation}>
             <mesh position={[0, 1.44, 0]} castShadow={false}>
               <boxGeometry args={[0.34, 2.88, 0.34]} />
               <meshBasicMaterial color="#25170e" />
