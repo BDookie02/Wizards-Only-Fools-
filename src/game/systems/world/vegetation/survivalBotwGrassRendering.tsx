@@ -77,7 +77,6 @@ import {
   type SurvivalBotwGrassBladeInstance,
   type SurvivalBotwGrassCenter,
 } from "./survivalBotwGrassConfig";
-import { SURVIVAL_GRASS_BLADE_SOURCE_UP } from "./survivalBotwGrassPlacement";
 import { getCachedSurvivalBotwGrassCarpetGeometry } from "./survivalBotwGrassCarpetGeometry";
 import {
   appendSurvivalBotwTallFeatureFlowers,
@@ -142,6 +141,10 @@ import {
   getSurvivalBotwGrassBuildKey,
   prewarmSurvivalBotwGrassBuild,
 } from "./survivalBotwGrassPrewarm";
+import {
+  createSurvivalBotwGrassUploadScratch,
+  uploadSurvivalBotwGrassBladeInstanceRange,
+} from "./survivalBotwBladeUpload";
 import { SURVIVAL_GRASS_SYSTEM_ENABLED } from "./survivalGrassSystemConfig";
 import { HIDE_FROM_MINIMAP } from "./SurvivalFoliagePrimitives";
 
@@ -180,24 +183,6 @@ type SurvivalBotwGrassNeighborPrewarmState = {
   travelOffsets: Array<[number, number]>;
   seenOffsets: Array<[number, number]>;
 };
-
-type SurvivalBotwGrassUploadScratch = {
-  dummy: THREE.Object3D;
-  normal: THREE.Vector3;
-  normalQuaternion: THREE.Quaternion;
-  yawQuaternion: THREE.Quaternion;
-  color: THREE.Color;
-};
-
-function createSurvivalBotwGrassUploadScratch(): SurvivalBotwGrassUploadScratch {
-  return {
-    dummy: new THREE.Object3D(),
-    normal: new THREE.Vector3(),
-    normalQuaternion: new THREE.Quaternion(),
-    yawQuaternion: new THREE.Quaternion(),
-    color: new THREE.Color(),
-  };
-}
 
 function makeOffsetScratch(count: number): Array<[number, number]> {
   const offsets: Array<[number, number]> = [];
@@ -589,12 +574,6 @@ function ActiveSurvivalBotwGrassField() {
     let cancelled = false;
     let frameId: number | null = null;
     let uploadIndex = 0;
-    const uploadDummy = uploadScratch.dummy;
-    const uploadNormal = uploadScratch.normal;
-    const uploadNormalQuaternion = uploadScratch.normalQuaternion;
-    const uploadYawQuaternion = uploadScratch.yawQuaternion;
-    const uploadColor = uploadScratch.color;
-
     if (count <= 0) {
       mesh.count = 0;
       bladeUploadCountRef.current = 0;
@@ -632,18 +611,7 @@ function ActiveSurvivalBotwGrassField() {
       if (cancelled) return;
       const currentBatchSize = uploadIndex === 0 ? Math.max(batchSize, initialBatchSize) : batchSize;
       const end = Math.min(count, uploadIndex + currentBatchSize);
-      for (let index = uploadIndex; index < end; index += 1) {
-        const instance = bladeInstances[index];
-        uploadNormal.set(instance.normalX, instance.normalY, instance.normalZ).normalize();
-        uploadNormalQuaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, uploadNormal);
-        uploadYawQuaternion.setFromAxisAngle(SURVIVAL_GRASS_BLADE_SOURCE_UP, instance.yaw);
-        uploadDummy.position.set(instance.x, instance.y, instance.z);
-        uploadDummy.quaternion.copy(uploadNormalQuaternion).multiply(uploadYawQuaternion);
-        uploadDummy.scale.set(instance.width, instance.height, instance.width);
-        uploadDummy.updateMatrix();
-        mesh.setMatrixAt(index, uploadDummy.matrix);
-        mesh.setColorAt(index, uploadColor.setRGB(instance.colorR, instance.colorG, instance.colorB));
-      }
+      uploadSurvivalBotwGrassBladeInstanceRange(mesh, bladeInstances, uploadIndex, end, uploadScratch);
 
       const batchStart = uploadIndex;
       uploadIndex = end;
