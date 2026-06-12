@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { RigidBody, CapsuleCollider, useRapier, RapierRigidBody, interactionGroups } from "@react-three/rapier";
 import * as THREE from "three";
-import { ARMOR_MAX, DARREL_DRAGON_WORLD_POSITION, DARREL_QUEST_CHUNK, DEFAULT_CONTROLLER_LOOK_SENSITIVITY, DEFAULT_MOUSE_SENSITIVITY, HandType, SpellType, SURVIVAL_BLOCK_SIZE, TOXIC_DAMAGE_PER_SECOND, TUNGSTON_SLOW_DURATION_MS, hasRunePower, useGameStore } from "../store/gameStore";
+import { ARMOR_MAX, DARREL_DRAGON_WORLD_POSITION, DARREL_QUEST_CHUNK, DEFAULT_MOUSE_SENSITIVITY, HandType, SpellType, SURVIVAL_BLOCK_SIZE, TOXIC_DAMAGE_PER_SECOND, TUNGSTON_SLOW_DURATION_MS, hasRunePower, useGameStore } from "../store/gameStore";
 import {
   emitGameNetworkEvent,
   getConnectedNetworkPlayerId,
@@ -206,6 +206,11 @@ import {
   resolvePlayerMovementMotionState,
 } from "./systems/player/playerMovementInputRuntime";
 import {
+  applyPlayerLookInputFrame,
+  isPlayerLookInputAllowed,
+  resolvePlayerLookInputFrame,
+} from "./systems/player/playerLookInputRuntime";
+import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
   dispatchPlayerState,
@@ -252,7 +257,6 @@ import {
 } from "./systems/world/villages/lilyCoilTubeMotion";
 import {
   BOOST_FORCE,
-  CONTROLLER_LOOK_VERTICAL_MULTIPLIER,
   CROUCH_HOLD_MS,
   FLOOR_DEEP_RECOVERY_TRIGGER_Y,
   GRAB_DEFAULT_DISTANCE,
@@ -262,8 +266,6 @@ import {
   GROUND_JUMP_MAX_UPWARD_VELOCITY,
   JUMP_BOOST_MULTIPLIER,
   JUMP_FORCE,
-  KEYBOARD_ARROW_LOOK_SPEED,
-  KEYBOARD_ARROW_LOOK_VERTICAL_MULTIPLIER,
   LADDER_CLIMB_SPEED,
   LADDER_IDLE_HOLD_SPEED,
   PLAYER_CAMERA_HEIGHT,
@@ -364,6 +366,7 @@ export function PlayerController() {
     controllerGamepadArmingRefs,
     controllerGamepadMovementRefs,
     controllerGamepadLookInput,
+    playerLookInputFrame,
     controllerGamepadMovementInput,
     touchMove,
     touchLookDelta,
@@ -1271,50 +1274,49 @@ export function PlayerController() {
       return;
     }
 
-    if (!storeState.isSpellMenuOpen && !storeState.questDialogSession && !storeState.isInventoryOpen && gameplayInputActive && !sleepActive) {
+    const lookInputAllowed = isPlayerLookInputAllowed({
+      isSpellMenuOpen: storeState.isSpellMenuOpen,
+      questDialogActive: Boolean(storeState.questDialogSession),
+      isInventoryOpen: storeState.isInventoryOpen,
+      gameplayInputActive,
+      sleepActive,
+    });
+    if (lookInputAllowed) {
       readPlayerControllerGamepadLookInput({
         gamepad,
         controllerInputActive,
         target: controllerGamepadLookInput,
       });
-      if (controllerGamepadLookInput.lookX !== 0 || controllerGamepadLookInput.lookY !== 0) {
-        const lookSensitivity = storeState.controllerLookSensitivity || DEFAULT_CONTROLLER_LOOK_SENSITIVITY;
-        applyCameraLookDelta(
-          -controllerGamepadLookInput.lookX * lookSensitivity * delta,
-          -controllerGamepadLookInput.lookY * lookSensitivity * CONTROLLER_LOOK_VERTICAL_MULTIPLIER * delta,
-        );
-      }
+    }
 
-      if (storeState.isTouchControlsActive && (touchLookDelta.current.x !== 0 || touchLookDelta.current.y !== 0)) {
-        const touchLookSensitivity = storeState.mouseSensitivity || DEFAULT_MOUSE_SENSITIVITY;
-        applyCameraLookDelta(
-          -touchLookDelta.current.x * touchLookSensitivity,
-          -touchLookDelta.current.y * touchLookSensitivity,
-        );
-        touchLookDelta.current.x = 0;
-        touchLookDelta.current.y = 0;
-      }
+    const lookInputFrame = resolvePlayerLookInputFrame({
+      deltaSeconds: delta,
+      lookInputAllowed,
+      controllerLookX: controllerGamepadLookInput.lookX,
+      controllerLookY: controllerGamepadLookInput.lookY,
+      controllerLookSensitivity: storeState.controllerLookSensitivity,
+      touchControlsActive: storeState.isTouchControlsActive,
+      touchLookX: touchLookDelta.current.x,
+      touchLookY: touchLookDelta.current.y,
+      mouseGameplayRequested,
+      mouseSensitivity: storeState.mouseSensitivity,
+      keyboardArrowLookEnabled: storeState.keyboardArrowLookEnabled,
+      isPauseMenuOpen: storeState.isPauseMenuOpen,
+      isSpellMenuOpen: storeState.isSpellMenuOpen,
+      questDialogActive: Boolean(storeState.questDialogSession),
+      isInventoryOpen: storeState.isInventoryOpen,
+      isMapExpanded: storeState.isMapExpanded,
+      isScoreboardOpen: storeState.isScoreboardOpen,
+      arrowRight: keys.ArrowRight,
+      arrowLeft: keys.ArrowLeft,
+      arrowDown: keys.ArrowDown,
+      arrowUp: keys.ArrowUp,
+    }, playerLookInputFrame);
 
-      if (
-        storeState.keyboardArrowLookEnabled &&
-        (mouseGameplayRequested || storeState.isTouchControlsActive) &&
-        !storeState.isPauseMenuOpen &&
-        !storeState.isSpellMenuOpen &&
-        !storeState.questDialogSession &&
-        !storeState.isInventoryOpen &&
-        !storeState.isMapExpanded &&
-        !storeState.isScoreboardOpen
-      ) {
-        const arrowLookX = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
-        const arrowLookY = (keys.ArrowDown ? 1 : 0) - (keys.ArrowUp ? 1 : 0);
-        if (arrowLookX !== 0 || arrowLookY !== 0) {
-          const keyboardLookSensitivity = ((storeState.mouseSensitivity || DEFAULT_MOUSE_SENSITIVITY) / DEFAULT_MOUSE_SENSITIVITY) * KEYBOARD_ARROW_LOOK_SPEED;
-          applyCameraLookDelta(
-            -arrowLookX * keyboardLookSensitivity * delta,
-            -arrowLookY * keyboardLookSensitivity * KEYBOARD_ARROW_LOOK_VERTICAL_MULTIPLIER * delta,
-          );
-        }
-      }
+    applyPlayerLookInputFrame(lookInputFrame, applyCameraLookDelta);
+    if (lookInputFrame.clearTouchLook) {
+      touchLookDelta.current.x = 0;
+      touchLookDelta.current.y = 0;
     }
 
     const qaSurvivalModeActive = storeState.gameMode === "solo-survival" || storeState.gameMode === "multiplayer-survival";

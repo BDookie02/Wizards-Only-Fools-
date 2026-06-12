@@ -8,6 +8,7 @@ import {
   createPlayerControllerGamepadLookInput,
   createPlayerControllerGamepadMovementInput,
 } from "./playerControllerGamepadRuntime";
+import { createPlayerLookInputFrame } from "./playerLookInputRuntime";
 import type { PlayerRapierQueryOptions } from "./playerRapierQueryRuntime";
 import {
   createLilyCoilTubeFrame,
@@ -70,6 +71,7 @@ export function usePlayerControllerRuntimeState() {
     sprintWasPressed: controllerSprintWasPressed,
   }), []);
   const controllerGamepadLookInput = useMemo(createPlayerControllerGamepadLookInput, []);
+  const playerLookInputFrame = useMemo(createPlayerLookInputFrame, []);
   const controllerGamepadMovementInput = useMemo(createPlayerControllerGamepadMovementInput, []);
   const touchMove = useLazyRef(() => ({ x: 0, y: 0 }));
   const touchLookDelta = useLazyRef(() => ({ x: 0, y: 0 }));
@@ -156,6 +158,7 @@ export function usePlayerControllerRuntimeState() {
     controllerGamepadArmingRefs,
     controllerGamepadMovementRefs,
     controllerGamepadLookInput,
+    playerLookInputFrame,
     controllerGamepadMovementInput,
     touchMove,
     touchLookDelta,
