@@ -26,6 +26,10 @@ export function getRemoteStatusClockDelayMs(
   return Math.max(0, nextExpiry - nowMs + paddingMs);
 }
 
+export function getRemoteStatusClockNowMs() {
+  return Date.now();
+}
+
 function hasAnyRemoteStatusExpiry(expiries: RemoteStatusExpiries) {
   return (
     expiries.slowUntil > 0 ||
@@ -46,8 +50,8 @@ export function hasActiveRemoteStatusExpiry(expiries: RemoteStatusExpiries, nowM
 
 export function useRemoteStatusClock(expiries: RemoteStatusExpiries, paddingMs = 24) {
   const hasTimedStatus = hasAnyRemoteStatusExpiry(expiries);
-  const [clock, setClock] = useState(() => (hasTimedStatus ? Date.now() : 0));
-  const effectiveClock = hasTimedStatus ? clock || Date.now() : 0;
+  const [clock, setClock] = useState(() => (hasTimedStatus ? getRemoteStatusClockNowMs() : 0));
+  const effectiveClock = hasTimedStatus ? clock || getRemoteStatusClockNowMs() : 0;
 
   useEffect(() => {
     if (!hasTimedStatus) {
@@ -55,7 +59,7 @@ export function useRemoteStatusClock(expiries: RemoteStatusExpiries, paddingMs =
       return undefined;
     }
 
-    const now = Date.now();
+    const now = getRemoteStatusClockNowMs();
     if (!hasActiveRemoteStatusExpiry(expiries, now)) {
       if (clock === 0 || Math.abs(clock - now) > 100) setClock(now);
       return undefined;
@@ -69,7 +73,7 @@ export function useRemoteStatusClock(expiries: RemoteStatusExpiries, paddingMs =
     const delay = getRemoteStatusClockDelayMs(expiries, now, paddingMs);
     if (!Number.isFinite(delay)) return undefined;
 
-    const timeout = window.setTimeout(() => setClock(Date.now()), delay);
+    const timeout = window.setTimeout(() => setClock(getRemoteStatusClockNowMs()), delay);
     return () => window.clearTimeout(timeout);
   }, [
     clock,

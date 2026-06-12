@@ -28,6 +28,10 @@ export function hasAnyHudBuffExpiry(expiries: HudBuffClockExpiries) {
     expiries.magicGlassOrbUntil > 0;
 }
 
+export function getHudBuffClockNowMs() {
+  return Date.now();
+}
+
 function getNextVisibleSecondBoundaryMs(expiresAtMs: number, nowMs: number) {
   const remainingMs = expiresAtMs - nowMs;
   if (remainingMs <= 0) return Number.POSITIVE_INFINITY;

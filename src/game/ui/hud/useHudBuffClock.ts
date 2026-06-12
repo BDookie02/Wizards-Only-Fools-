@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   getHudBuffClockDelayMs,
+  getHudBuffClockNowMs,
   hasAnyHudBuffExpiry,
   hasActiveHudBuff,
   type HudBuffClockExpiries,
@@ -8,8 +9,8 @@ import {
 
 export function useHudBuffClock(expiries: HudBuffClockExpiries, wakePaddingMs = 24) {
   const hasTimedBuff = hasAnyHudBuffExpiry(expiries);
-  const [clock, setClock] = useState(() => (hasTimedBuff ? Date.now() : 0));
-  const effectiveClock = hasTimedBuff ? clock || Date.now() : 0;
+  const [clock, setClock] = useState(() => (hasTimedBuff ? getHudBuffClockNowMs() : 0));
+  const effectiveClock = hasTimedBuff ? clock || getHudBuffClockNowMs() : 0;
 
   useEffect(() => {
     if (!hasTimedBuff) {
@@ -17,7 +18,7 @@ export function useHudBuffClock(expiries: HudBuffClockExpiries, wakePaddingMs = 
       return undefined;
     }
 
-    const now = Date.now();
+    const now = getHudBuffClockNowMs();
     if (!hasActiveHudBuff(expiries, now)) {
       if (clock === 0 || Math.abs(clock - now) > 100) setClock(now);
       return undefined;
@@ -31,7 +32,7 @@ export function useHudBuffClock(expiries: HudBuffClockExpiries, wakePaddingMs = 
     const delay = getHudBuffClockDelayMs(expiries, now, wakePaddingMs);
     if (!Number.isFinite(delay)) return undefined;
 
-    const timeout = window.setTimeout(() => setClock(Date.now()), delay);
+    const timeout = window.setTimeout(() => setClock(getHudBuffClockNowMs()), delay);
     return () => window.clearTimeout(timeout);
   }, [
     clock,
