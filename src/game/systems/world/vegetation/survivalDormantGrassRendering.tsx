@@ -28,8 +28,6 @@ import {
   SURVIVAL_LOCAL_GRASS_CELL_AREA_SCALE,
   SURVIVAL_LOCAL_GRASS_CELL_MOUNT_INTERVAL_MS,
   SURVIVAL_LOCAL_GRASS_CELL_SIZE,
-  SURVIVAL_LOCAL_GRASS_DEFAULT_LIFT_COLOR,
-  SURVIVAL_LOCAL_GRASS_DESERT_LIFT_COLOR,
   SURVIVAL_LOCAL_GRASS_DETAIL_RADIUS,
   SURVIVAL_LOCAL_GRASS_EDGE_FADE,
   SURVIVAL_LOCAL_GRASS_GROUND_PATCHES_PER_CELL,
@@ -41,7 +39,6 @@ import {
   SURVIVAL_LOCAL_GRASS_MOBILE_CELL_MOUNT_INTERVAL_MS,
   SURVIVAL_LOCAL_GRASS_RADIUS_BUCKET_SIZE,
   SURVIVAL_LOCAL_GRASS_SHORT_BLADES_PER_TUFT,
-  SURVIVAL_LOCAL_GRASS_SWAMP_LIFT_COLOR,
   getSurvivalLocalGrassCellCoord,
   getSurvivalLocalGrassHysteresisCell,
   getSurvivalLocalGrassStreamRadius,
@@ -119,13 +116,16 @@ import {
 import { splitSurvivalFlowersByBloomType } from "./survivalFlowerGrouping";
 import { uploadSurvivalFlowerInstances } from "./survivalFlowerInstancing";
 import {
+  getSurvivalLocalGrassMaterialColors,
+  tintSurvivalLocalGrassMeshMaterial,
+} from "./survivalLocalGrassMaterials";
+import {
   ensureSurvivalInstancedMeshColors,
   finalizeSurvivalInstancedMesh,
   finalizeSurvivalInstancedMeshColors,
 } from "./survivalInstancing";
 import { HIDE_FROM_MINIMAP } from "./SurvivalFoliagePrimitives";
 import {
-  clampDormantGrassColor,
   copyInitialVisibleGrassCells,
   getDormantGrassVectorLength2D,
   getDormantGrassVectorLength3D,
@@ -139,14 +139,12 @@ import {
 import {
   getSurvivalChunkGrassSurfaceBiome,
   getSurvivalChunkInfoAtWorld,
-  getSurvivalGrassBladeColor,
   getSurvivalGrassDebugRejectionSummary,
   getSurvivalGrassSurfaceBiome,
   getSurvivalGrassSurfaceHeightAtWorld,
   getSurvivalGrassSurfaceHeightForChunk,
   getSurvivalIntegratedGrassBladeColor,
   getSurvivalLocalGrassPlacement,
-  getSurvivalSmoothedTerrainColor,
   getSurvivalTerrainHeightForChunk,
 } from "./survivalDormantGrassSurface";
 
@@ -163,11 +161,6 @@ const SURVIVAL_GRASS_SYSTEM_ENABLED = true;
 export const SURVIVAL_LEGACY_GRASS_SYSTEM_ENABLED = false;
 const MOBILE_SURVIVAL_GRASS_WIND_UPDATE_INTERVAL_SECONDS = 1 / 24;
 const MOBILE_SURVIVAL_GRASS_FIELD_UPDATE_INTERVAL_SECONDS = 1 / 30;
-const SURVIVAL_LOCAL_GRASS_MEADOW_DRY_COLOR = new THREE.Color("#a9a35a");
-const SURVIVAL_LOCAL_GRASS_MEADOW_SWAMP_COLOR = new THREE.Color("#789344");
-const SURVIVAL_LOCAL_GRASS_MEADOW_JUNGLE_COLOR = new THREE.Color("#69b14f");
-const SURVIVAL_LOCAL_GRASS_MEADOW_BRIGHT_COLOR = new THREE.Color("#92d84b");
-const SURVIVAL_LOCAL_GRASS_MEADOW_DEFAULT_COLOR = new THREE.Color("#6fb63d");
 
 export function SurvivalGrassGroundCover({ chunk, loadStage = 4 }: { chunk: SurvivalChunkInfo; loadStage?: number }) {
   const groundRef = useRef<THREE.InstancedMesh>(null);
@@ -504,46 +497,10 @@ function SurvivalLocalGrassCellTile({
     () => hasBladeDetail ? makeSurvivalLocalSolidGrassBladeGeometry(cell, cellDensity, bladeStreamScale, mobilePerformanceMode) : null,
     [cell, cellDensity, hasBladeDetail, mobilePerformanceMode, bladeStreamScale],
   );
-  const localGrassMaterialColors = useMemo(() => {
-    const sampleWorldX = cell.x + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.48;
-    const sampleWorldZ = cell.z + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.52;
-    const sampleChunk = getSurvivalChunkInfoAtWorld(sampleWorldX, sampleWorldZ);
-    const sampleTerrainY = getSurvivalGrassSurfaceHeightForChunk(
-      sampleChunk,
-      sampleWorldX - sampleChunk.x,
-      sampleWorldZ - sampleChunk.z,
-    );
-    const sampleBiome = getSurvivalGrassSurfaceBiome(sampleChunk.biome, sampleWorldX, sampleWorldZ, sampleTerrainY);
-    const terrainColor = getSurvivalSmoothedTerrainColor(sampleWorldX, sampleWorldZ, sampleTerrainY);
-    const grassColor = getSurvivalGrassBladeColor(sampleBiome, sampleWorldX, sampleWorldZ, sampleTerrainY, survivalHash01(cell.cellX, cell.cellZ, 19690));
-    const meadowMask = getSurvivalRestoredMeadowMask(sampleWorldX, sampleWorldZ);
-    const dryTerrain = sampleBiome === "desert" && terrainColor.g < terrainColor.r * 1.06;
-    const meadowGreen = dryTerrain
-      ? SURVIVAL_LOCAL_GRASS_MEADOW_DRY_COLOR
-      : sampleBiome === "swamp"
-        ? SURVIVAL_LOCAL_GRASS_MEADOW_SWAMP_COLOR
-        : sampleBiome === "jungle"
-          ? SURVIVAL_LOCAL_GRASS_MEADOW_JUNGLE_COLOR
-          : meadowMask > 0.28
-            ? SURVIVAL_LOCAL_GRASS_MEADOW_BRIGHT_COLOR
-            : SURVIVAL_LOCAL_GRASS_MEADOW_DEFAULT_COLOR;
-    const liftColor = sampleBiome === "desert"
-      ? SURVIVAL_LOCAL_GRASS_DESERT_LIFT_COLOR
-      : sampleBiome === "swamp"
-        ? SURVIVAL_LOCAL_GRASS_SWAMP_LIFT_COLOR
-        : SURVIVAL_LOCAL_GRASS_DEFAULT_LIFT_COLOR;
-    const ground = terrainColor.clone().lerp(meadowGreen, dryTerrain ? 0.3 : lerpNumber(0.48, 0.62, meadowMask)).lerp(grassColor, 0.08).lerp(liftColor, dryTerrain ? 0.02 : 0.035);
-    const short = meadowGreen.clone().lerp(grassColor, dryTerrain ? 0.24 : 0.16).lerp(liftColor, dryTerrain ? 0.05 : 0.07).multiplyScalar(dryTerrain ? 1 : lerpNumber(1.0, 1.08, meadowMask));
-    const tall = meadowGreen.clone().lerp(grassColor, dryTerrain ? 0.22 : 0.18).lerp(liftColor, dryTerrain ? 0.04 : 0.06).multiplyScalar(dryTerrain ? 0.98 : lerpNumber(0.99, 1.06, meadowMask));
-    clampDormantGrassColor(ground);
-    clampDormantGrassColor(short);
-    clampDormantGrassColor(tall);
-    return {
-      ground: `#${ground.getHexString()}`,
-      short: `#${short.getHexString()}`,
-      tall: `#${tall.getHexString()}`,
-    };
-  }, [cell.cellX, cell.cellZ, cell.x, cell.z]);
+  const localGrassMaterialColors = useMemo(
+    () => getSurvivalLocalGrassMaterialColors(cell),
+    [cell],
+  );
 
   const groundPatches = useMemo<SurvivalGroundGrassPatch[]>(
     () => makeSurvivalLocalGroundGrassPatches(cell, cellDensity, coverStreamScale, mobilePerformanceMode),
@@ -597,30 +554,11 @@ function SurvivalLocalGrassCellTile({
       .lerp(grassDayTint, cycle.dayAmount)
       .lerp(grassDuskTint, cycle.duskAmount * 0.18);
 
-    const tintMaterial = (mesh: THREE.InstancedMesh | THREE.Mesh | null, opacity: number) => {
-      if (!mesh) return;
-      const tintOneMaterial = (material: THREE.Material) => {
-        if ("color" in material && material.color instanceof THREE.Color) {
-          material.color.copy(grassLightTint);
-        }
-        if ("opacity" in material && typeof material.opacity === "number") {
-          material.opacity = opacity * opacityScale;
-        }
-      };
-      if (Array.isArray(mesh.material)) {
-        for (let index = 0; index < mesh.material.length; index += 1) {
-          tintOneMaterial(mesh.material[index]);
-        }
-      } else {
-        tintOneMaterial(mesh.material);
-      }
-    };
-
-    tintMaterial(carpetRef.current, SURVIVAL_LOCAL_GRASS_CARPET_OPACITY);
-    tintMaterial(solidGrassRef.current, 0.96);
-    tintMaterial(groundRef.current, SURVIVAL_LOCAL_GRASS_GROUND_PATCH_OPACITY);
-    tintMaterial(shortGrassRef.current, 1);
-    tintMaterial(tallGrassRef.current, 0.38);
+    tintSurvivalLocalGrassMeshMaterial(carpetRef.current, grassLightTint, SURVIVAL_LOCAL_GRASS_CARPET_OPACITY * opacityScale);
+    tintSurvivalLocalGrassMeshMaterial(solidGrassRef.current, grassLightTint, 0.96 * opacityScale);
+    tintSurvivalLocalGrassMeshMaterial(groundRef.current, grassLightTint, SURVIVAL_LOCAL_GRASS_GROUND_PATCH_OPACITY * opacityScale);
+    tintSurvivalLocalGrassMeshMaterial(shortGrassRef.current, grassLightTint, opacityScale);
+    tintSurvivalLocalGrassMeshMaterial(tallGrassRef.current, grassLightTint, 0.38 * opacityScale);
 
     if (shortGrassUniformRef.current) {
       shortGrassUniformRef.current.value = elapsed;
