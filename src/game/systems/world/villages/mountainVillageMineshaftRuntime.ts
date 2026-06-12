@@ -9,6 +9,7 @@ import {
   MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_COUNT,
   MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS,
+  MOUNTAIN_VILLAGE_MINESHAFT_THRONE_Z,
   MOUNTAIN_VILLAGE_MINESHAFT_WALL_FIBONACCI_SEQUENCE,
   MOUNTAIN_VILLAGE_MINESHAFT_WALL_LANTERN_COUNT,
   MOUNTAIN_VILLAGE_MINESHAFT_WALL_PAINTING_COUNT,
@@ -313,6 +314,34 @@ export type MountainMineshaftCatwalkDescriptors = {
   railSegments: MountainMineshaftCatwalkRingPoint[];
 };
 
+export type MountainMineshaftCatwalkColliderSegment = {
+  index: number;
+  positionOffset: [number, number, number];
+  rotation: [number, number, number];
+};
+
+export type MountainMineshaftCatwalkColliderDetails = {
+  args: [number, number, number];
+  segments: MountainMineshaftCatwalkColliderSegment[];
+};
+
+export type MountainMineshaftBanquetCollider = {
+  args: [number, number, number];
+  positionOffset: [number, number, number];
+  rotation?: [number, number, number];
+};
+
+export type MountainMineshaftBanquetChairCollider = MountainMineshaftBanquetCollider & {
+  index: number;
+  rotation: [number, number, number];
+};
+
+export type MountainMineshaftBanquetColliderDetails = {
+  table: MountainMineshaftBanquetCollider;
+  throne: MountainMineshaftBanquetCollider;
+  chairs: MountainMineshaftBanquetChairCollider[];
+};
+
 export type MountainMineshaftSupportPostDescriptor = {
   side: -1 | 1;
   positionOffset: [number, number, number];
@@ -335,6 +364,7 @@ export type MountainMineshaftSupportFrame = {
 
 const catwalkDescriptorCache = new Map<string, MountainMineshaftCatwalkDescriptors>();
 const catwalkLightPoleCache = new Map<string, MountainMineshaftCatwalkLightPole[]>();
+const catwalkColliderCache = new Map<string, MountainMineshaftCatwalkColliderDetails>();
 const platformDetailCache = new Map<string, MountainMineshaftPlatformDetails>();
 const exitBridgeDetailCache = new Map<string, MountainMineshaftExitBridgeDetails>();
 const ladderDetailCache = new Map<string, MountainMineshaftLadderDetails>();
@@ -344,6 +374,7 @@ const supportFrameCache = new Map<string, MountainMineshaftSupportFrame[]>();
 const bottomRockCache = new Map<string, MountainMineshaftBottomRock[]>();
 const wallDecorCache = new Map<string, MountainMineshaftWallDecorDescriptors>();
 let royalBanquetDescriptorCache: MountainMineshaftRoyalBanquetDescriptors | null = null;
+let banquetColliderDescriptorCache: MountainMineshaftBanquetColliderDetails | null = null;
 
 const MOUNTAIN_MINESHAFT_BRIDGE_SIDES = [-1, 1] as const;
 const MOUNTAIN_MINESHAFT_SUPPORT_SIDES = [-1, 1] as const;
@@ -725,6 +756,42 @@ export function getMountainMineshaftCatwalkDescriptors({
   return descriptors;
 }
 
+export function getMountainMineshaftCatwalkColliderDetails({
+  segments,
+  innerRadius,
+  outerRadius,
+}: {
+  segments: number;
+  innerRadius: number;
+  outerRadius: number;
+}): MountainMineshaftCatwalkColliderDetails {
+  const safeSegments = Math.max(1, Math.floor(segments));
+  const cacheKey = `${safeSegments}:${innerRadius}:${outerRadius}`;
+  const cached = catwalkColliderCache.get(cacheKey);
+  if (cached) return cached;
+
+  const midRadius = (innerRadius + outerRadius) / 2;
+  const radialHalfWidth = (outerRadius - innerRadius) / 2;
+  const arcHalfLength = ((Math.PI * 2 * midRadius) / safeSegments) * 0.56;
+  const colliderSegments = new Array<MountainMineshaftCatwalkColliderSegment>(safeSegments);
+
+  for (let index = 0; index < safeSegments; index += 1) {
+    const angle = ((index + 0.5) / safeSegments) * Math.PI * 2;
+    colliderSegments[index] = {
+      index,
+      positionOffset: [Math.sin(angle) * midRadius, 0, Math.cos(angle) * midRadius],
+      rotation: [0, angle, 0],
+    };
+  }
+
+  const details = {
+    args: [arcHalfLength, 0.32, radialHalfWidth] as [number, number, number],
+    segments: colliderSegments,
+  };
+  catwalkColliderCache.set(cacheKey, details);
+  return details;
+}
+
 export function getMountainMineshaftCatwalkLightPoles(hutAngle: number, lightPoleRadius: number) {
   const cacheKey = `${hutAngle}:${lightPoleRadius}`;
   const cached = catwalkLightPoleCache.get(cacheKey);
@@ -1006,4 +1073,32 @@ export function getMountainMineshaftRoyalBanquetDescriptors(): MountainMineshaft
     },
   };
   return royalBanquetDescriptorCache;
+}
+
+export function getMountainMineshaftBanquetColliderDetails(): MountainMineshaftBanquetColliderDetails {
+  if (banquetColliderDescriptorCache) return banquetColliderDescriptorCache;
+
+  const { chairs } = getMountainMineshaftRoyalBanquetDescriptors();
+  banquetColliderDescriptorCache = {
+    table: {
+      args: [
+        MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS * 0.82,
+        1.18,
+        MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS * 0.82,
+      ],
+      positionOffset: [0, 1.2, 0],
+    },
+    throne: {
+      args: [2.65, 2.2, 1.85],
+      positionOffset: [0, 2.12, MOUNTAIN_VILLAGE_MINESHAFT_THRONE_Z],
+      rotation: [0, Math.PI, 0],
+    },
+    chairs: chairs.map((chair) => ({
+      index: chair.index,
+      args: [1.18, 1.35, 1.05] as [number, number, number],
+      positionOffset: [chair.position[0], 1.28, chair.position[2]] as [number, number, number],
+      rotation: chair.rotation,
+    })),
+  };
+  return banquetColliderDescriptorCache;
 }

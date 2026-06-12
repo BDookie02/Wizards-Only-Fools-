@@ -28,8 +28,10 @@ import {
   useMountainVillageDetailPhase,
 } from "./mountainVillageDetailPhase";
 import {
+  getMountainMineshaftBanquetColliderDetails,
   getMountainMineshaftBottomRocks,
   getMountainMineshaftCatwalkDescriptors,
+  getMountainMineshaftCatwalkColliderDetails,
   getMountainMineshaftCatwalkLightPoles,
   getMountainMineshaftExitBridgeDetails,
   getMountainMineshaftExitBridgeFrame,
@@ -46,9 +48,6 @@ import {
 import {
   MOUNTAIN_VILLAGE_EDGE_BLEND_START,
   MOUNTAIN_VILLAGE_HEIGHT,
-  MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES,
-  MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS,
-  MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET,
   MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS,
@@ -3151,9 +3150,12 @@ function MountainVillageColliders({
   const topExitLadder = layout.interiorLadders[layout.interiorLadders.length - 1];
   const topExitBridge = topExitLadder ? getMountainMineshaftExitBridgeFrame(topExitLadder) : null;
   const bottomY = layout.baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET;
-  const catwalkMidRadius = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS) / 2;
-  const catwalkRadialHalfWidth = (MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS - MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS) / 2;
-  const catwalkArcHalfLength = ((Math.PI * 2 * catwalkMidRadius) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * 0.56;
+  const banquetColliderDetails = getMountainMineshaftBanquetColliderDetails();
+  const catwalkColliderDetails = getMountainMineshaftCatwalkColliderDetails({
+    segments: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS,
+    innerRadius: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_INNER_RADIUS,
+    outerRadius: MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_OUTER_RADIUS,
+  });
 
   return (
     <>
@@ -3195,42 +3197,46 @@ function MountainVillageColliders({
           </RigidBody>
           <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
             <CuboidCollider
-              args={[MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS * 0.82, 1.18, MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS * 0.82]}
-              position={[0, bottomY + 1.2, 0]}
+              args={banquetColliderDetails.table.args}
+              position={[
+                banquetColliderDetails.table.positionOffset[0],
+                bottomY + banquetColliderDetails.table.positionOffset[1],
+                banquetColliderDetails.table.positionOffset[2],
+              ]}
             />
             <CuboidCollider
-              args={[2.65, 2.2, 1.85]}
-              position={[0, bottomY + 2.12, MOUNTAIN_VILLAGE_MINESHAFT_THRONE_Z]}
-              rotation={[0, Math.PI, 0]}
+              args={banquetColliderDetails.throne.args}
+              position={[
+                banquetColliderDetails.throne.positionOffset[0],
+                bottomY + banquetColliderDetails.throne.positionOffset[1],
+                banquetColliderDetails.throne.positionOffset[2],
+              ]}
+              rotation={banquetColliderDetails.throne.rotation}
             />
-            {MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_ANGLES.map((angle, index) => (
+            {banquetColliderDetails.chairs.map((chair) => (
               <CuboidCollider
-                key={`banquet-chair-collider-${index}`}
-                args={[1.18, 1.35, 1.05]}
+                key={`banquet-chair-collider-${chair.index}`}
+                args={chair.args}
                 position={[
-                  Math.sin(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS,
-                  bottomY + 1.28,
-                  Math.cos(angle) * MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_CHAIR_RADIUS,
+                  chair.positionOffset[0],
+                  bottomY + chair.positionOffset[1],
+                  chair.positionOffset[2],
                 ]}
-                rotation={[0, angle, 0]}
+                rotation={chair.rotation}
               />
             ))}
           </RigidBody>
           <RigidBody type="fixed" colliders={false} friction={0.78} restitution={0} position={[chunk.x, 0, chunk.z]}>
             {layout.interiorHuts.map((hut) => (
               <Fragment key={`${hut.key}-catwalk-colliders`}>
-                {getCachedIndexRange(MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS).map((segmentIndex) => {
-                  const angle = ((segmentIndex + 0.5) / MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS) * Math.PI * 2;
-
-                  return (
-                    <CuboidCollider
-                      key={`${hut.key}-catwalk-collider-${segmentIndex}`}
-                      args={[catwalkArcHalfLength, 0.32, catwalkRadialHalfWidth]}
-                      position={[Math.sin(angle) * catwalkMidRadius, hut.y, Math.cos(angle) * catwalkMidRadius]}
-                      rotation={[0, angle, 0]}
-                    />
-                  );
-                })}
+                {catwalkColliderDetails.segments.map((segment) => (
+                  <CuboidCollider
+                    key={`${hut.key}-catwalk-collider-${segment.index}`}
+                    args={catwalkColliderDetails.args}
+                    position={[segment.positionOffset[0], hut.y + segment.positionOffset[1], segment.positionOffset[2]]}
+                    rotation={segment.rotation}
+                  />
+                ))}
               </Fragment>
             ))}
           </RigidBody>
