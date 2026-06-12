@@ -8,7 +8,7 @@ import {
   TREE_HOUSE_ROOT_COLLIDERS,
   TREE_HOUSE_SPECS,
   buildTreeHouseVillageLayout,
-  getTreeHouseIndexRange,
+  getTreeHouseRopeRungs,
   getTreeHouseSpiralSteps,
   getTreeHouseSpanTransform,
   type TreeHouseTreePlacement,
@@ -271,7 +271,7 @@ function BridgeColliders({ start, end }: { start: THREE.Vector3; end: THREE.Vect
 function RopeClimb({ start, end }: { start: THREE.Vector3, end: THREE.Vector3 }) {
   const { length, position, angleX, angleY } = getTreeHouseSpanTransform(start, end);
   const rungStep = MOBILE_PERFORMANCE_MODE ? 2 : 1;
-  const rungCount = Math.floor(length / rungStep);
+  const rungDescriptors = getTreeHouseRopeRungs(length, rungStep);
   
   return (
     <group position={position} rotation={[angleX, angleY, 0]}>
@@ -281,14 +281,12 @@ function RopeClimb({ start, end }: { start: THREE.Vector3, end: THREE.Vector3 })
         <meshStandardMaterial color="#8b5a2b" roughness={0.9} />
       </mesh>
       {/* Wooden climbing rungs */}
-      {getTreeHouseIndexRange(rungCount).map((i) => {
-        return (
-         <mesh key={i} position={[0, 0, -length / 2 + i * rungStep + rungStep * 0.5]} castShadow receiveShadow>
-            <boxGeometry args={[1.5, 0.2, 0.2]} />
-            <meshStandardMaterial map={getTreeHouseBarkTexture()} />
-         </mesh>
-        );
-      })}
+      {rungDescriptors.map((rung) => (
+        <mesh key={rung.index} position={rung.position} castShadow receiveShadow>
+          <boxGeometry args={[1.5, 0.2, 0.2]} />
+          <meshStandardMaterial map={getTreeHouseBarkTexture()} />
+        </mesh>
+      ))}
     </group>
   );
 }

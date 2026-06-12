@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { getCachedIndexRange } from "../../rendering/indexRange";
 
 export type TreeHouseSpec = {
   position: [number, number, number];
@@ -41,6 +40,11 @@ export type TreeHouseSpiralStep = {
   index: number;
   position: [number, number, number];
   rotation: [number, number, number];
+};
+
+export type TreeHouseRopeRung = {
+  index: number;
+  position: [number, number, number];
 };
 
 export const TREE_HOUSE_SPECS: TreeHouseSpec[] = [
@@ -89,10 +93,7 @@ const TREE_HOUSE_TREE_PLACEMENTS = [
 
 const TREE_HOUSE_Y_AXIS = new THREE.Vector3(0, 1, 0);
 const treeHouseSpiralStepCache = new Map<string, readonly TreeHouseSpiralStep[]>();
-
-export function getTreeHouseIndexRange(count: number) {
-  return getCachedIndexRange(count);
-}
+const treeHouseRopeRungCache = new Map<string, readonly TreeHouseRopeRung[]>();
 
 export function getTreeHouseSpiralSteps(radius: number, height: number, steps: number) {
   const safeSteps = Math.max(1, Math.floor(steps));
@@ -114,6 +115,26 @@ export function getTreeHouseSpiralSteps(radius: number, height: number, steps: n
   }
 
   treeHouseSpiralStepCache.set(key, descriptors);
+  return descriptors;
+}
+
+export function getTreeHouseRopeRungs(length: number, rungStep: number) {
+  const safeLength = Number.isFinite(length) ? Math.max(0, length) : 0;
+  const safeRungStep = Number.isFinite(rungStep) ? Math.max(0.001, rungStep) : 1;
+  const rungCount = Math.floor(safeLength / safeRungStep);
+  const key = `${safeLength}:${safeRungStep}:${rungCount}`;
+  const cached = treeHouseRopeRungCache.get(key);
+  if (cached) return cached;
+
+  const descriptors = new Array<TreeHouseRopeRung>(rungCount);
+  for (let index = 0; index < rungCount; index += 1) {
+    descriptors[index] = {
+      index,
+      position: [0, 0, -safeLength / 2 + index * safeRungStep + safeRungStep * 0.5],
+    };
+  }
+
+  treeHouseRopeRungCache.set(key, descriptors);
   return descriptors;
 }
 
