@@ -45,6 +45,13 @@ const DARREL_HUT_LANTERN_X = [-28, 28] as const;
 const DARREL_HUT_FOUNDATION_FRONT_STONE_X = [-42, -28, 28, 42] as const;
 const DARREL_HUT_FRONT_POST_X = [-34, -14, 14, 34] as const;
 const DARREL_WATERFALL_CASCADE_INDICES = [0, 1, 2] as const;
+const DARREL_MOAT_STONE_RADII = [84, 116] as const;
+const DARREL_HILL_SIDE_STONE_X = [-54, 54] as const;
+const DARREL_BACKYARD_RIVER_STONE_X = [-170, -128, -88, -48, -8, 34, 78, 122, 166] as const;
+const DARREL_BACKYARD_BRIDGE_RAIL_X = [-25, 25] as const;
+const DARREL_WATERFALL_RUNNEL_Z = [128, 148, 166] as const;
+const DARREL_RETURN_GATE_POST_X = [-8, 8] as const;
+const DARREL_GROUND_BLOSSOM_X = [-118, -74, 72, 126] as const;
 const DARREL_FALLEN_PETAL_TARGET_COUNT = 360;
 const DARREL_FALLING_PETAL_COUNT = 68;
 const MOBILE_DARREL_WATER_UPDATE_INTERVAL_SECONDS = 1 / 30;
@@ -639,7 +646,7 @@ function DarrelHouseHillAndMoat() {
           side={THREE.DoubleSide}
         />
       </mesh>
-      {[84, 116].map((radius, index) => (
+      {DARREL_MOAT_STONE_RADII.map((radius, index) => (
         <mesh key={`moat-stone-ring-${radius}`} position={[0, 0.48 + index * 0.08, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
           <torusGeometry args={[radius, 1.35 + index * 0.25, 8, 96]} />
           <meshStandardMaterial map={stoneTexture} color={index === 0 ? "#8f958d" : "#6f776f"} roughness={1} />
@@ -674,7 +681,7 @@ function DarrelHouseHillAndMoat() {
           <meshStandardMaterial map={stoneTexture} color={index % 2 === 0 ? "#8f968d" : "#77806f"} roughness={1} />
         </mesh>
       ))}
-      {[-54, 54].map((x) => (
+      {DARREL_HILL_SIDE_STONE_X.map((x) => (
         <mesh key={`hill-side-stone-${x}`} position={[x, DARREL_HUT_HILL_SURFACE_OFFSET - 1.8, -38]} rotation={[0, x > 0 ? -0.2 : 0.2, 0]} castShadow receiveShadow>
           <boxGeometry args={[12, 4, 18]} />
           <meshStandardMaterial map={stoneTexture} color="#757d73" roughness={1} />
@@ -701,7 +708,7 @@ function DarrelBackyardRiver() {
           <meshStandardMaterial map={waterTexture} color="#49bfd0" roughness={0.58} metalness={0.05} transparent opacity={0.88} />
         </mesh>
       ))}
-      {[-170, -128, -88, -48, -8, 34, 78, 122, 166].map((x, index) => (
+      {DARREL_BACKYARD_RIVER_STONE_X.map((x, index) => (
         <mesh key={`river-stone-${index}`} position={[x, 0.42, 135 + Math.sin(index) * 10]} rotation={[0, index * 0.7, 0]} castShadow receiveShadow>
           <boxGeometry args={[12 + (index % 3) * 3, 1.2, 7 + (index % 2) * 4]} />
           <meshStandardMaterial map={stoneTexture} color="#9aa09a" roughness={1} />
@@ -712,7 +719,7 @@ function DarrelBackyardRiver() {
           <boxGeometry args={[58, 2.4, 9]} />
           <meshStandardMaterial map={getDarrelTexture("wood")} color="#7b4b2c" roughness={0.9} />
         </mesh>
-        {[-25, 25].map((x) => (
+        {DARREL_BACKYARD_BRIDGE_RAIL_X.map((x) => (
           <mesh key={`bridge-rail-${x}`} position={[x, 3.2, 0]} castShadow>
             <boxGeometry args={[2.2, 5.2, 11]} />
             <meshStandardMaterial map={getDarrelTexture("wood")} color="#4a2d1c" roughness={0.95} />
@@ -897,7 +904,7 @@ function DarrelWaterfallHill() {
         <circleGeometry args={[1, 32]} />
         <meshBasicMaterial color="#dffbff" transparent opacity={0.14} depthWrite={false} toneMapped={false} />
       </mesh>
-      {[128, 148, 166].map((z, index) => (
+      {DARREL_WATERFALL_RUNNEL_Z.map((z, index) => (
         <mesh
           key={`darrel-fall-runnel-${index}`}
           ref={(mesh) => {
@@ -999,7 +1006,7 @@ function DarrelQuestReturnGate() {
       <RigidBody type="fixed" sensor colliders={false} onIntersectionEnter={onReturn}>
         <CuboidCollider args={[8, 8, 5]} position={[0, 8, 0]} />
       </RigidBody>
-      {[-8, 8].map((x) => (
+      {DARREL_RETURN_GATE_POST_X.map((x) => (
         <mesh key={`return-post-${x}`} position={[x, 8, 0]} castShadow>
           <cylinderGeometry args={[1.4, 1.8, 16, 8]} />
           <meshStandardMaterial color="#7f1d1d" roughness={0.7} />
@@ -1942,7 +1949,7 @@ export function SurvivalDarrelGrove({ chunk }: { chunk: SurvivalChunkInfo }) {
             <DarrelPetalDriftPatches />
             <DarrelFallenPetalField />
             <DarrelFallingPetals />
-            {[-118, -74, 72, 126].map((x, index) => (
+            {DARREL_GROUND_BLOSSOM_X.map((x, index) => (
               <DarrelBlossomCluster key={`ground-blossom-${index}`} position={[x, DARREL_GROVE_GROUND_Y + 2.4, 64 + Math.sin(index) * 42]} size={3.6} count={4} />
             ))}
             <pointLight position={[0, DARREL_GROVE_GROUND_Y + 26, -6]} color="#ffd6a0" intensity={1.6} distance={88} />
