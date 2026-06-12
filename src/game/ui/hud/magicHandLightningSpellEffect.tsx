@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { getSpriteUrl } from "../../SpriteManifest";
+import { createSeededRandom } from "../../systems/random/seededRandom";
 import { useLazyRef } from "../../systems/react/useLazyRef";
 import { MAGIC_HANDS_MOBILE_PERFORMANCE_MODE, PALM_X, PALM_Y } from "./MagicHandSpriteCanvas";
 import { useMagicHandEquipScale } from "./useMagicHandEquipScale";
@@ -17,6 +18,7 @@ type LightningBolt = {
   points: LightningPoint[];
   length: number;
 };
+type RandomSource = () => number;
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -52,7 +54,7 @@ function clearInactiveBolts(bolts: LightningBolt[], activeCount: number) {
   }
 }
 
-function updateLightningBoltBuffer(bolts: LightningBolt[], isCharging: boolean, cx: number, cy: number) {
+function updateLightningBoltBuffer(bolts: LightningBolt[], isCharging: boolean, cx: number, cy: number, random: RandomSource) {
   const activeCount = isCharging ? 8 : 4;
   for (let i = 0; i < activeCount; i += 1) {
     const bolt = bolts[i];
@@ -62,11 +64,11 @@ function updateLightningBoltBuffer(bolts: LightningBolt[], isCharging: boolean, 
     writeLightningPoint(bolt, 0, px, py);
 
     if (isCharging) {
-      let currentAngle = (Math.PI * 2 * i) / activeCount + (Math.random() - 0.5) * 0.5;
-      const steps = Math.min(LIGHTNING_MAX_POINTS - 1, 6 + Math.floor(Math.random() * 4));
+      let currentAngle = (Math.PI * 2 * i) / activeCount + (random() - 0.5) * 0.5;
+      const steps = Math.min(LIGHTNING_MAX_POINTS - 1, 6 + Math.floor(random() * 4));
       for (let j = 1; j <= steps; j += 1) {
-        currentAngle += (Math.random() - 0.5) * 1.5;
-        const stepDist = 8 + Math.random() * 6;
+        currentAngle += (random() - 0.5) * 1.5;
+        const stepDist = 8 + random() * 6;
         px += Math.cos(currentAngle) * stepDist;
         py += Math.sin(currentAngle) * stepDist;
         writeLightningPoint(bolt, j, px, py);
@@ -74,11 +76,11 @@ function updateLightningBoltBuffer(bolts: LightningBolt[], isCharging: boolean, 
       continue;
     }
 
-    let angle = Math.random() * Math.PI * 2;
-    const steps = Math.min(LIGHTNING_MAX_POINTS - 1, 3 + Math.floor(Math.random() * 3));
+    let angle = random() * Math.PI * 2;
+    const steps = Math.min(LIGHTNING_MAX_POINTS - 1, 3 + Math.floor(random() * 3));
     for (let j = 1; j <= steps; j += 1) {
-      angle += (Math.random() - 0.5) * 2.0;
-      const stepDist = 4 + Math.random() * 5;
+      angle += (random() - 0.5) * 2.0;
+      const stepDist = 4 + random() * 5;
       px += Math.cos(angle) * stepDist;
       py += Math.sin(angle) * stepDist;
       writeLightningPoint(bolt, j, px, py);
@@ -92,6 +94,7 @@ export function LightningSpellCanvas({ isActive, isCharging }: LightningSpellEff
   const cacheRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const boltsRef = useLazyRef(createLightningBoltBuffer);
+  const randomRef = useLazyRef(() => createSeededRandom("magic-hand-lightning"));
   const lastBoltUpdate = useRef<number>(0);
   const equipScale = useMagicHandEquipScale(isActive);
   const idleFrame = useLoopedFrameTimer({
@@ -218,9 +221,10 @@ export function LightningSpellCanvas({ isActive, isCharging }: LightningSpellEff
       lastRenderAt = time;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const random = randomRef.current;
       const scale = (isCharging ? 1.4 : 1.0) * equipScale;
-      const shakeX = isCharging ? (Math.random() - 0.5) * 4 : 0;
-      const shakeY = isCharging ? (Math.random() - 0.5) * 4 : 0;
+      const shakeX = isCharging ? (random() - 0.5) * 4 : 0;
+      const shakeY = isCharging ? (random() - 0.5) * 4 : 0;
       const fbW = 160 * scale;
       const fbH = 160 * scale;
       const fbX = PALM_X - fbW / 2 + shakeX;
@@ -230,7 +234,7 @@ export function LightningSpellCanvas({ isActive, isCharging }: LightningSpellEff
 
       if (time - lastBoltUpdate.current > (isCharging ? 50 : 100)) {
         lastBoltUpdate.current = time;
-        updateLightningBoltBuffer(boltsRef.current, isCharging, cx, cy);
+        updateLightningBoltBuffer(boltsRef.current, isCharging, cx, cy, random);
       }
 
       ctx.save();
@@ -247,10 +251,10 @@ export function LightningSpellCanvas({ isActive, isCharging }: LightningSpellEff
         for (let j = 1; j < bolt.length; j += 1) {
           ctx.lineTo(points[j].x, points[j].y);
         }
-        ctx.lineWidth = 1 + Math.random() * 0.5;
+        ctx.lineWidth = 1 + random() * 0.5;
         ctx.strokeStyle = "#ffffff";
         ctx.stroke();
-        ctx.lineWidth = isCharging ? (2 + Math.random() * 2) : 2;
+        ctx.lineWidth = isCharging ? (2 + random() * 2) : 2;
         ctx.strokeStyle = "rgba(100, 200, 255, 0.7)";
         ctx.stroke();
       }
