@@ -82,7 +82,6 @@ import {
   type SurvivalTutorialGrassCellBatch,
 } from "./survivalTutorialGrassStreaming";
 import { SURVIVAL_FLOWER_COLORS } from "./survivalFoliagePalettes";
-import { shouldPublishCurrentSurvivalWorldTelemetry } from "../../../tools/qa/survivalQaTelemetryRoutes";
 import {
   applySurvivalLocalGrassShader,
   type SurvivalLocalGrassFadeUniforms,
@@ -118,6 +117,11 @@ import {
   getDormantGrassVectorLength3D,
   getSurvivalLocalGrassViewerPositionInto,
 } from "./survivalDormantGrassRuntime";
+import {
+  publishSurvivalLocalGrassTelemetry,
+  publishSurvivalTutorialGrassDebugSummary,
+  publishSurvivalTutorialGrassTelemetry,
+} from "./survivalDormantGrassTelemetry";
 
 export {
   configureDormantSurvivalGrassResolvers,
@@ -231,10 +235,6 @@ function getSurvivalLocalGrassPlacement(
 
 function getSurvivalGrassDebugRejectionSummary(worldX: number, worldZ: number) {
   return getDormantSurvivalGrassResolvers().getGrassDebugRejectionSummary(worldX, worldZ);
-}
-
-function shouldPublishSurvivalLocalGrassTelemetry() {
-  return shouldPublishCurrentSurvivalWorldTelemetry();
 }
 
 type SurvivalGrassBlade = {
@@ -3845,11 +3845,11 @@ function ActiveSurvivalTutorialGrassField() {
       altitude,
     );
 
-    if (grassDebugViewEnabled && typeof document !== "undefined") {
+    if (grassDebugViewEnabled) {
       const debugSecond = Math.floor(elapsed);
       if (debugSampleSecondRef.current !== debugSecond) {
         debugSampleSecondRef.current = debugSecond;
-        document.documentElement.dataset.wofTutorialGrassDebug = getSurvivalGrassDebugRejectionSummary(worldX, worldZ);
+        publishSurvivalTutorialGrassDebugSummary(getSurvivalGrassDebugRejectionSummary(worldX, worldZ));
       }
     }
   });
@@ -3919,12 +3919,12 @@ function ActiveSurvivalTutorialGrassField() {
   }, [cells]);
 
   useEffect(() => {
-    if (!shouldPublishSurvivalLocalGrassTelemetry()) return;
-    document.documentElement.dataset.wofTutorialGrassCenter = `${centerCell.cellX},${centerCell.cellZ}`;
-    document.documentElement.dataset.wofTutorialGrassCells = String(visibleCells.length);
-    document.documentElement.dataset.wofTutorialGrassBatches = "0";
-    document.documentElement.dataset.wofTutorialGrassTargetCells = String(cells.length);
-    document.documentElement.dataset.wofTutorialGrassPendingCells = String(Math.max(0, cells.length - visibleCells.length));
+    publishSurvivalTutorialGrassTelemetry({
+      centerCellX: centerCell.cellX,
+      centerCellZ: centerCell.cellZ,
+      visibleCellCount: visibleCells.length,
+      targetCellCount: cells.length,
+    });
   }, [centerCell.cellX, centerCell.cellZ, cells.length, visibleCells.length]);
 
   if (visibleCells.length === 0) return null;
@@ -4086,12 +4086,13 @@ function ActiveSurvivalLocalGrassField() {
   }, [cells, mobilePerformanceMode]);
 
   useEffect(() => {
-    if (!shouldPublishSurvivalLocalGrassTelemetry()) return;
-    document.documentElement.dataset.wofLocalGrassCenter = `${centerCell.cellX},${centerCell.cellZ}`;
-    document.documentElement.dataset.wofLocalGrassCells = String(visibleCells.length);
-    document.documentElement.dataset.wofLocalGrassTargetCells = String(cells.length);
-    document.documentElement.dataset.wofLocalGrassPendingCells = String(Math.max(0, cells.length - visibleCells.length));
-    document.documentElement.dataset.wofLocalGrassStreamRadius = String(Math.round(cellStreamRadius));
+    publishSurvivalLocalGrassTelemetry({
+      centerCellX: centerCell.cellX,
+      centerCellZ: centerCell.cellZ,
+      visibleCellCount: visibleCells.length,
+      targetCellCount: cells.length,
+      streamRadius: cellStreamRadius,
+    });
   }, [cellStreamRadius, centerCell.cellX, centerCell.cellZ, cells.length, visibleCells.length]);
 
   if (visibleCells.length === 0) return null;
