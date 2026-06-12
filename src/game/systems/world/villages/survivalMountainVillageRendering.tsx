@@ -13,44 +13,20 @@ import {
   useMountainVillageDetailPhase,
 } from "./mountainVillageDetailPhase";
 import { MountainCabinView } from "./mountainVillageCabinView";
-import { MountainMineshaftCatwalkRingView } from "./mountainVillageMineshaftCatwalk";
-import { MountainMineshaftMiniHutView } from "./mountainVillageMineshaftHut";
-import { MountainMineshaftLadderView } from "./mountainVillageMineshaftLadder";
 import { MountainMineshaftOpeningView } from "./mountainVillageMineshaftOpening";
 import { getMountainVillageTerrainColorInto, makeMountainVillageTerrainGeometry } from "./mountainVillageTerrainGeometry";
 import { MountainVillageTrailView } from "./mountainVillageTrailView";
 import { MountainWaterfallView } from "./mountainVillageWaterfallView";
 import { MountainSnowCapView } from "./mountainVillageSnowCap";
 import { MountainSlopeGrassView } from "./mountainVillageSlopeGrassView";
-import { makeMountainVillageLayout, type MountainVillageLayout } from "./mountainVillageSceneLayout";
+import { makeMountainVillageLayout } from "./mountainVillageSceneLayout";
 import { MountainVillageColliders } from "./mountainVillageColliders";
 import { MountainCliffBreakupView } from "./mountainVillageCliffBreakup";
+import { MountainMineshaftInteriorView } from "./mountainVillageMineshaftInterior";
 
 type SurvivalTerrainHeightForChunk = (chunk: SurvivalChunkInfo, localX: number, localZ: number) => number;
 type SurvivalTerrainColorAtWorld = (worldX: number, worldZ: number, height: number) => THREE.Color;
 type SurvivalVillageBaseHeightForChunk = (chunk: SurvivalChunkInfo) => number;
-
-function MountainMineshaftInterior({ layout, showDetails }: { layout: MountainVillageLayout; showDetails: boolean }) {
-  return (
-    <group name="mountain-village-mineshaft-wall-huts">
-      {layout.interiorHuts.map((hut, index) => (
-        <MountainMineshaftCatwalkRingView
-          key={`${hut.key}-catwalk-ring`}
-          hut={hut}
-          ladder={layout.interiorLadders[index]}
-          nextLadder={layout.interiorLadders[index + 1]}
-          showDetails={showDetails}
-        />
-      ))}
-      {layout.interiorHuts.map((hut, index) => (
-        <MountainMineshaftMiniHutView key={hut.key} hut={hut} ladder={layout.interiorLadders[index]} showDetails={showDetails} />
-      ))}
-      {layout.interiorLadders.map((ladder) => (
-        <MountainMineshaftLadderView key={ladder.key} ladder={ladder} showDetails={showDetails} />
-      ))}
-    </group>
-  );
-}
 
 export function SurvivalMountainVillage({
   chunk,
@@ -126,7 +102,7 @@ export function SurvivalMountainVillage({
                   exitLadder={layout.interiorLadders[layout.interiorLadders.length - 1]}
                   showDetails={showMineshaftInterior}
                 />
-                {showMineshaftInterior && <MountainMineshaftInterior layout={layout} showDetails={showFinishingDetails} />}
+                {showMineshaftInterior && <MountainMineshaftInteriorView layout={layout} showDetails={showFinishingDetails} />}
               </>
             )}
             {layout.cabins.map((cabin) => (
