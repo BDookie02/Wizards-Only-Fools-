@@ -9,6 +9,10 @@ export function shouldPublishCanvasRuntimeFrameTelemetryFromSearch(search: strin
   return shouldMountCanvasRuntimeProbeFromSearch(search);
 }
 
+export function getCanvasRuntimeFrameNowMs() {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
 export function CanvasRuntimeProbe() {
   const publishFrameTelemetry = useMemo(shouldMountCurrentCanvasRuntimeProbe, []);
   if (!publishFrameTelemetry) return null;
@@ -40,7 +44,7 @@ function CanvasRuntimeFrameTelemetry() {
     frameCountRef.current += 1;
     if (frameCountRef.current === 1 || frameCountRef.current % 10 === 0) {
       document.documentElement.dataset.wofCanvasRuntimeFrames = String(frameCountRef.current);
-      document.documentElement.dataset.wofCanvasRuntimeLastFrameAt = String(Math.round(performance.now()));
+      document.documentElement.dataset.wofCanvasRuntimeLastFrameAt = String(Math.round(getCanvasRuntimeFrameNowMs()));
     }
   });
 
