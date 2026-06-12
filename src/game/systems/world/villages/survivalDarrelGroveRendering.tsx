@@ -82,6 +82,10 @@ type DarrelHillStep = {
   depth: number;
 };
 
+export function getDarrelQuestGateNowMs() {
+  return Date.now();
+}
+
 function DarrelBranch({
   start,
   end,
@@ -983,7 +987,7 @@ function DarrelQuestReturnGate() {
   const onReturn = (event: any) => {
     const objectName = event.colliderObject?.name || event.other?.rigidBodyObject?.name;
     if (objectName !== "player") return;
-    const now = Date.now();
+    const now = getDarrelQuestGateNowMs();
     const lastReturn = (window as unknown as { __darrelQuestReturnAt?: number }).__darrelQuestReturnAt ?? 0;
     if (now - lastReturn < 1200) return;
     (window as unknown as { __darrelQuestReturnAt?: number }).__darrelQuestReturnAt = now;
