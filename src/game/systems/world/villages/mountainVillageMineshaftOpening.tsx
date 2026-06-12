@@ -13,6 +13,8 @@ import {
   getMountainMineshaftBottomRocks,
   getMountainMineshaftRimBeams,
   getMountainMineshaftSupportFrames,
+} from "./mountainVillageMineshaftOpeningRuntime";
+import {
   type MountainMineshaftLadder,
 } from "./mountainVillageMineshaftRuntime";
 import {

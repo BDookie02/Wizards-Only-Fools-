@@ -1,4 +1,4 @@
-import { getMountainMineshaftSummitSnowDrifts } from "./mountainVillageMineshaftRuntime";
+import { getMountainMineshaftSummitSnowDrifts } from "./mountainVillageMineshaftOpeningRuntime";
 
 export function MountainSnowCapView({ summitY, showDetails }: { summitY: number; showDetails: boolean }) {
   if (!showDetails) return null;
