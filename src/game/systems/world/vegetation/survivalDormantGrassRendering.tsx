@@ -1179,6 +1179,7 @@ function SurvivalLocalGrassCellTile({
     const attempts = gridSize * gridSize;
     const sampleOffset = Math.floor(survivalHash01(cell.cellX, cell.cellZ, 18050) * attempts);
     const meadowPatchTone = new THREE.Color();
+    const patchColor = new THREE.Color();
 
     for (let index = 0; index < attempts && generated.length < targetCount; index += 1) {
       const sampleIndex = (sampleOffset + index * 8191) % attempts;
@@ -1206,8 +1207,8 @@ function SurvivalLocalGrassCellTile({
           ? SURVIVAL_LOCAL_GRASS_SWAMP_LIFT_COLOR
           : SURVIVAL_LOCAL_GRASS_DEFAULT_LIFT_COLOR;
       const slopeTerrainBlend = (1 - clamp01((placement.normal.y - 0.58) / 0.32)) * 0.34;
-      const color = terrainColor
-        .clone()
+      const color = patchColor
+        .copy(terrainColor)
         .lerp(grassColor, placement.biome === "desert" ? 0.28 : 0.58)
         .lerp(coverLift, placement.biome === "desert" ? 0.04 : 0.08)
         .lerp(terrainColor, slopeTerrainBlend);
@@ -1216,7 +1217,7 @@ function SurvivalLocalGrassCellTile({
           .copy(SURVIVAL_LOCAL_GRASS_GROUND_PATCH_MEADOW_BASE_COLOR)
           .lerp(SURVIVAL_LOCAL_GRASS_MEADOW_LIFT_COLOR, 0.36 + variant * 0.46);
         meadowPatchTone.multiplyScalar(0.92 + variant * 0.2);
-        color.copy(color.lerp(meadowPatchTone, meadowMask));
+        color.lerp(meadowPatchTone, meadowMask);
       }
       color.multiplyScalar(placement.biome === "desert" ? 1.0 : lerpNumber(1.03, 1.18, meadowMask));
       color.r = clamp01(color.r);
