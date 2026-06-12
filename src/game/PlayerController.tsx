@@ -200,6 +200,7 @@ import {
   handlePlayerMeditationKeyUp,
   updatePlayerMeditationExitHold,
 } from "./systems/player/playerAstralMeditationRuntime";
+import { resolvePlayerMovementInputIntent } from "./systems/player/playerMovementInputRuntime";
 import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
@@ -2860,54 +2861,42 @@ export function PlayerController() {
       refs: controllerGamepadMovementRefs,
       target: controllerGamepadMovementInput,
     });
-    const controllerMoveX = controllerGamepadMovementInput.moveX;
-    const controllerMoveZ = controllerGamepadMovementInput.moveZ;
-    const touchMoveX = storeState.isTouchControlsActive ? touchMove.current.x : 0;
-    const touchMoveZ = storeState.isTouchControlsActive ? touchMove.current.y : 0;
-    const qaWalkForwardInput = qaWalkActive ? qaWalkInputState.current.forward : 0;
-    const qaWalkStrafeInput = qaWalkActive ? qaWalkInputState.current.strafe : 0;
-    const qaWalkSprintHeld = qaWalkActive && qaWalkInputState.current.sprint;
-    const controllerSlideHeld = controllerGamepadMovementInput.slideHeld;
-    const keyboardJumpHeld = keys.Space;
-    const keyboardJumpPressed = keyboardJumpHeld && !keyboardJumpWasPressed.current;
-    keyboardJumpWasPressed.current = keyboardJumpHeld;
-    const controllerJumpHeld = controllerGamepadMovementInput.jumpHeld;
-    const controllerJumpPressed = controllerGamepadMovementInput.jumpPressed;
-    const controllerSprintPressed = controllerGamepadMovementInput.sprintPressed;
-    const touchSlideHeld = storeState.isTouchControlsActive && touchButtons.current.slide;
-    const touchJumpHeld = storeState.isTouchControlsActive && touchButtons.current.jump;
-    const touchJumpPressed = touchJumpHeld && !touchJumpWasPressed.current;
-    touchJumpWasPressed.current = touchJumpHeld;
     const qaJumpHeld = qaWalkActive && state.clock.elapsedTime < qaWalkJumpHeldUntil.current;
-    const qaJumpPressed = qaJumpHeld && !qaWalkJumpWasPressed.current;
-    qaWalkJumpWasPressed.current = qaJumpHeld;
-    const touchSprintHeld = storeState.isTouchControlsActive && touchButtons.current.sprint;
-    const touchSprintPressed = touchSprintHeld && !touchSprintWasPressed.current;
-    touchSprintWasPressed.current = touchSprintHeld;
-    const jumpHeld = keyboardJumpHeld || controllerJumpHeld || touchJumpHeld || qaJumpHeld;
-    const jumpRequested = keyboardJumpPressed || controllerJumpPressed || touchJumpPressed || qaJumpPressed;
-    const descendHeld = keys.KeyC || controllerSlideHeld || touchSlideHeld;
-    const crouchInputHeld = !vclipActive && !sleepActive && (keys.KeyC || controllerSlideHeld);
-    const verticalInput = vclipActive ? (jumpHeld ? 1 : 0) - (descendHeld ? 1 : 0) : 0;
-    const forwardInput = THREE.MathUtils.clamp((keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - controllerMoveZ - touchMoveZ + qaWalkForwardInput, -1, 1);
-    const ladderActive = !vclipActive && !sleepActive && activeLadderZones.current.size > 0;
-    const ladderVerticalInput = ladderActive
-      ? THREE.MathUtils.clamp(forwardInput + (jumpHeld ? 1 : 0) - (descendHeld ? 1 : 0), -1, 1)
-      : 0;
-
-    frontVector.set(0, 0, (keys.KeyS ? 1 : 0) - (keys.KeyW ? 1 : 0) + controllerMoveZ + touchMoveZ - qaWalkForwardInput);
-    sideVector.set((keys.KeyA ? 1 : 0) - (keys.KeyD ? 1 : 0) - controllerMoveX - touchMoveX - qaWalkStrafeInput, 0, 0);
-    direction.subVectors(frontVector, sideVector);
-    const hasPlanarMovementInput = direction.lengthSq() > 0;
-    const hasMovementInput = !sleepActive && (hasPlanarMovementInput || verticalInput !== 0 || ladderVerticalInput !== 0);
-    if (!hasMovementInput) {
-      controllerSprintLatched.current = false;
-      touchSprintLatched.current = false;
-    } else if (controllerSprintPressed) {
-      controllerSprintLatched.current = true;
-    } else if (touchSprintPressed) {
-      touchSprintLatched.current = true;
-    }
+    const {
+      qaWalkSprintHeld,
+      jumpHeld,
+      jumpRequested,
+      descendHeld,
+      crouchInputHeld,
+      verticalInput,
+      forwardInput,
+      strafeInput,
+      ladderActive,
+      ladderVerticalInput,
+      hasPlanarMovementInput,
+      hasMovementInput,
+    } = resolvePlayerMovementInputIntent({
+      keys,
+      controllerMovementInput: controllerGamepadMovementInput,
+      touchControlsActive: storeState.isTouchControlsActive,
+      touchMove: touchMove.current,
+      touchButtons: touchButtons.current,
+      keyboardJumpWasPressed,
+      touchJumpWasPressed,
+      touchSprintWasPressed,
+      controllerSprintLatched,
+      touchSprintLatched,
+      qaWalkActive,
+      qaWalkInput: qaWalkInputState.current,
+      qaJumpHeld,
+      qaJumpWasPressed: qaWalkJumpWasPressed,
+      activeLadderZoneCount: activeLadderZones.current.size,
+      vclipActive,
+      sleepActive,
+      frontVector,
+      sideVector,
+      direction,
+    });
 
     const speedBoostActive = storeState.speedBoostUntil > nowMs;
     const jumpBoostActive = storeState.jumpBoostUntil > nowMs;
@@ -2966,11 +2955,7 @@ export function PlayerController() {
       }
 
       const tubeMoveSpeed = (tubeSliding ? slideSpeed : currentSpeed) * 4.8;
-      const tubeStrafeInput = THREE.MathUtils.clamp(
-        (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + controllerMoveX + touchMoveX + qaWalkStrafeInput,
-        -1,
-        1,
-      );
+      const tubeStrafeInput = strafeInput;
       const qaTubeAutoPilot = qaWalkActive && qaWalkInputState.current.mode === "tube";
       const currentFrame = getLilyCoilTubeFrameInto(tubeState.t, lilyCoilCurrentFrame);
       const currentRadial = tubeCurrentRadial
@@ -3309,8 +3294,8 @@ export function PlayerController() {
         aimDir: [navigationAimDirection.x, navigationAimDirection.y, navigationAimDirection.z],
         velocity: [direction.x, vclipActive ? direction.y : velocity.y, direction.z],
         input: {
-          forward: THREE.MathUtils.clamp((keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - controllerMoveZ - touchMoveZ + qaWalkForwardInput, -1, 1),
-          strafe: THREE.MathUtils.clamp((keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + controllerMoveX + touchMoveX + qaWalkStrafeInput, -1, 1),
+          forward: forwardInput,
+          strafe: strafeInput,
           sprint: isSprinting,
           jump: jumpHeld,
           slide: slideHeld,
