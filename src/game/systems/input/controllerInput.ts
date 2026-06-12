@@ -1,3 +1,5 @@
+import { getGamepadScanNowMs } from "./controllerInputRuntime";
+
 export type GamepadButtonName =
   | "a"
   | "b"
@@ -49,10 +51,6 @@ let cachedPrimaryGamepadResult: Gamepad | null = null;
 let cachedPrimaryGamepadScanAtMs = Number.NEGATIVE_INFINITY;
 let lastNoGamepadScanAtMs = Number.NEGATIVE_INFINITY;
 let gamepadCacheResetListenersInstalled = false;
-
-function getGamepadScanNowMs() {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
-}
 
 function clearGamepadSelectionCache() {
   preferredGamepadIndex = null;
