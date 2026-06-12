@@ -28,6 +28,7 @@ import {
   useMountainVillageDetailPhase,
 } from "./mountainVillageDetailPhase";
 import {
+  getMountainMineshaftBottomRocks,
   getMountainMineshaftCatwalkDescriptors,
   getMountainMineshaftCatwalkLightPoles,
   getMountainMineshaftExitBridgeFrame,
@@ -2970,6 +2971,14 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
         count: 12,
         holeRadius: MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS,
         outerRadius: MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS,
+    }),
+    [],
+  );
+  const bottomRocks = useMemo(
+    () =>
+      getMountainMineshaftBottomRocks({
+        count: 14,
+        bottomRadius: MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS,
       }),
     [],
   );
@@ -2997,20 +3006,12 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
           <meshBasicMaterial color="#070504" transparent opacity={0.38} />
         </mesh>
       )}
-      {showDetails && getCachedIndexRange(14).map((index) => {
-        const angle = survivalHash01(9110, index, 3) * Math.PI * 2;
-        const radius = lerpNumber(12.5, MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS - 4, Math.pow(survivalHash01(9120, index, 7), 0.7));
-        const x = Math.sin(angle) * radius;
-        const z = Math.cos(angle) * radius;
-        const scale = lerpNumber(0.7, 1.8, survivalHash01(9130, index, 11));
-
-        return (
-          <mesh key={`mine-bottom-rock-${index}`} position={[x, bottomY + 0.12, z]} rotation={[0, angle, 0]} scale={[scale * 1.4, scale * 0.38, scale]} castShadow={false}>
-            <boxGeometry args={[1.8, 0.65, 1.25]} />
-            <meshStandardMaterial color={index % 3 === 0 ? "#4b4237" : index % 3 === 1 ? "#2f2b27" : "#66533c"} roughness={1} />
-          </mesh>
-        );
-      })}
+      {showDetails && bottomRocks.map((rock) => (
+        <mesh key={`mine-bottom-rock-${rock.index}`} position={[rock.x, bottomY + 0.12, rock.z]} rotation={rock.rotation} scale={rock.scale} castShadow={false}>
+          <boxGeometry args={[1.8, 0.65, 1.25]} />
+          <meshStandardMaterial color={rock.color} roughness={1} />
+        </mesh>
+      ))}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, bottomY - 0.08, 0]} renderOrder={4}>
         <circleGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS * 0.32, 36]} />
         <meshBasicMaterial color="#080605" transparent opacity={0.48} />

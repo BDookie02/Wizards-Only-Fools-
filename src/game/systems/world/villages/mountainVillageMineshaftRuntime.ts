@@ -2,6 +2,7 @@ import {
   MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_END_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_START_RADIUS,
 } from "./mountainVillageTerrain";
+import { lerpNumber, survivalHash01 } from "../survival/survivalMath";
 
 type MountainMineshaftLandingHut = {
   localX: number;
@@ -44,6 +45,16 @@ export type MountainMineshaftRimBeam = {
   rotation: [number, number, number];
 };
 
+export type MountainMineshaftBottomRock = {
+  index: number;
+  angle: number;
+  x: number;
+  z: number;
+  rotation: [number, number, number];
+  scale: [number, number, number];
+  color: string;
+};
+
 export type MountainMineshaftCatwalkDescriptors = {
   centerGuardPostCount: number;
   centerGuardRailRadius: number;
@@ -59,6 +70,9 @@ export type MountainMineshaftCatwalkDescriptors = {
 const catwalkDescriptorCache = new Map<string, MountainMineshaftCatwalkDescriptors>();
 const catwalkLightPoleCache = new Map<string, MountainMineshaftCatwalkLightPole[]>();
 const rimBeamCache = new Map<string, MountainMineshaftRimBeam[]>();
+const bottomRockCache = new Map<string, MountainMineshaftBottomRock[]>();
+
+const MOUNTAIN_MINESHAFT_BOTTOM_ROCK_COLORS = ["#4b4237", "#2f2b27", "#66533c"];
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -229,4 +243,39 @@ export function getMountainMineshaftRimBeams({
   }
   rimBeamCache.set(cacheKey, beams);
   return beams;
+}
+
+export function getMountainMineshaftBottomRocks({
+  count,
+  bottomRadius,
+  minRadius = 12.5,
+}: {
+  count: number;
+  bottomRadius: number;
+  minRadius?: number;
+}) {
+  const safeCount = Math.max(0, Math.floor(count));
+  const maxRadius = Math.max(minRadius, bottomRadius - 4);
+  const cacheKey = `${safeCount}:${bottomRadius}:${minRadius}`;
+  const cached = bottomRockCache.get(cacheKey);
+  if (cached) return cached;
+
+  const rocks = new Array<MountainMineshaftBottomRock>(safeCount);
+  for (let index = 0; index < safeCount; index += 1) {
+    const angle = survivalHash01(9110, index, 3) * Math.PI * 2;
+    const radius = lerpNumber(minRadius, maxRadius, Math.pow(survivalHash01(9120, index, 7), 0.7));
+    const rockScale = lerpNumber(0.7, 1.8, survivalHash01(9130, index, 11));
+
+    rocks[index] = {
+      index,
+      angle,
+      x: Math.sin(angle) * radius,
+      z: Math.cos(angle) * radius,
+      rotation: [0, angle, 0],
+      scale: [rockScale * 1.4, rockScale * 0.38, rockScale],
+      color: MOUNTAIN_MINESHAFT_BOTTOM_ROCK_COLORS[index % MOUNTAIN_MINESHAFT_BOTTOM_ROCK_COLORS.length],
+    };
+  }
+  bottomRockCache.set(cacheKey, rocks);
+  return rocks;
 }
