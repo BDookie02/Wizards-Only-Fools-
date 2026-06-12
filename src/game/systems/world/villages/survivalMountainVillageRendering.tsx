@@ -38,6 +38,7 @@ import {
   getMountainMineshaftPlatformPieces,
   getMountainMineshaftRimBeams,
   getMountainMineshaftRoyalBanquetDescriptors,
+  getMountainMineshaftSummitSnowDrifts,
   getMountainMineshaftWallDecorDescriptors,
 } from "./mountainVillageMineshaftRuntime";
 import {
@@ -3122,18 +3123,21 @@ function VisibleMountainWaterfall({
 function MountainSnowCap({ summitY, showDetails }: { summitY: number; showDetails: boolean }) {
   if (!showDetails) return null;
 
+  const snowDrifts = getMountainMineshaftSummitSnowDrifts();
+
   return (
     <group name="mountain-village-snow-cap">
-      {getCachedIndexRange(28).map((index) => {
-        const angle = (index * Math.PI * 2) / 28 + Math.sin(index * 1.83) * 0.14;
-        const radius = MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS + 9 + (index % 5) * 7.2 + Math.sin(index * 2.4) * 2.1;
-        return (
-          <mesh key={`summit-snow-drift-${index}`} rotation={[-Math.PI / 2, 0, angle]} position={[Math.sin(angle) * radius, summitY + 0.84, Math.cos(angle) * radius]} scale={[4.4 + (index % 4) * 1.7, 1.9 + (index % 3) * 0.85, 1]}>
-            <circleGeometry args={[1, 12]} />
-            <meshBasicMaterial color={index % 2 === 0 ? "#f8fdff" : "#cdeafa"} transparent opacity={0.46} />
-          </mesh>
-        );
-      })}
+      {snowDrifts.map((drift) => (
+        <mesh
+          key={`summit-snow-drift-${drift.index}`}
+          rotation={drift.rotation}
+          position={[drift.positionXZ[0], summitY + drift.yOffset, drift.positionXZ[1]]}
+          scale={drift.scale}
+        >
+          <circleGeometry args={[1, 12]} />
+          <meshBasicMaterial color={drift.color} transparent opacity={0.46} />
+        </mesh>
+      ))}
     </group>
   );
 }

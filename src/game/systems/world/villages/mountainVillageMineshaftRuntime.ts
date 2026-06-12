@@ -8,6 +8,7 @@ import {
   MOUNTAIN_VILLAGE_MINESHAFT_BANQUET_TABLE_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_COUNT,
   MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_LIGHT_RADIUS,
+  MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_WALL_FIBONACCI_SEQUENCE,
   MOUNTAIN_VILLAGE_MINESHAFT_WALL_LANTERN_COUNT,
   MOUNTAIN_VILLAGE_MINESHAFT_WALL_PAINTING_COUNT,
@@ -108,6 +109,15 @@ export type MountainMineshaftLadderDetails = {
   wraps: MountainMineshaftLadderWrap[];
   brightEdges: MountainMineshaftLadderEdge[];
   darkEdges: MountainMineshaftLadderEdge[];
+};
+
+export type MountainMineshaftSummitSnowDrift = {
+  index: number;
+  positionXZ: [number, number];
+  yOffset: number;
+  rotation: [number, number, number];
+  scale: [number, number, number];
+  color: string;
 };
 
 export type MountainMineshaftCatwalkRingPoint = {
@@ -258,6 +268,7 @@ const catwalkDescriptorCache = new Map<string, MountainMineshaftCatwalkDescripto
 const catwalkLightPoleCache = new Map<string, MountainMineshaftCatwalkLightPole[]>();
 const exitBridgeDetailCache = new Map<string, MountainMineshaftExitBridgeDetails>();
 const ladderDetailCache = new Map<string, MountainMineshaftLadderDetails>();
+const summitSnowDriftCache = new Map<string, MountainMineshaftSummitSnowDrift[]>();
 const rimBeamCache = new Map<string, MountainMineshaftRimBeam[]>();
 const bottomRockCache = new Map<string, MountainMineshaftBottomRock[]>();
 const wallDecorCache = new Map<string, MountainMineshaftWallDecorDescriptors>();
@@ -487,6 +498,35 @@ export function getMountainMineshaftLadderDetails({
   };
   ladderDetailCache.set(cacheKey, details);
   return details;
+}
+
+export function getMountainMineshaftSummitSnowDrifts({
+  count = 28,
+  rimOuterRadius = MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS,
+}: {
+  count?: number;
+  rimOuterRadius?: number;
+} = {}) {
+  const safeCount = Math.max(0, Math.floor(count));
+  const cacheKey = `${safeCount}:${rimOuterRadius}`;
+  const cached = summitSnowDriftCache.get(cacheKey);
+  if (cached) return cached;
+
+  const drifts = new Array<MountainMineshaftSummitSnowDrift>(safeCount);
+  for (let index = 0; index < safeCount; index += 1) {
+    const angle = (index * Math.PI * 2) / safeCount + Math.sin(index * 1.83) * 0.14;
+    const radius = rimOuterRadius + 9 + (index % 5) * 7.2 + Math.sin(index * 2.4) * 2.1;
+    drifts[index] = {
+      index,
+      positionXZ: [Math.sin(angle) * radius, Math.cos(angle) * radius],
+      yOffset: 0.84,
+      rotation: [-Math.PI / 2, 0, angle],
+      scale: [4.4 + (index % 4) * 1.7, 1.9 + (index % 3) * 0.85, 1],
+      color: index % 2 === 0 ? "#f8fdff" : "#cdeafa",
+    };
+  }
+  summitSnowDriftCache.set(cacheKey, drifts);
+  return drifts;
 }
 
 export function getMountainMineshaftCatwalkDescriptors({
