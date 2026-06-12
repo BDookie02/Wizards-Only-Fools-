@@ -26,7 +26,12 @@ import {
   getDarrelPetalTexture,
   getDarrelTexture,
 } from "./darrelGroveTextures";
-import { getDarrelBranchTransform, getDarrelQuestGateNowMs } from "./darrelGroveRuntime";
+import {
+  getDarrelBranchTransform,
+  getDarrelHillStairRamp,
+  getDarrelHillSteps,
+  getDarrelQuestGateNowMs,
+} from "./darrelGroveRuntime";
 import { SURVIVAL_DARREL_GROVE_HALF_SIZE as DARREL_GROVE_HALF_SIZE } from "./survivalVillageRegistry";
 
 const DARREL_GROVE_GROUND_Y = 18;
@@ -79,13 +84,6 @@ type DarrelBlossomSprite = {
   y: number;
   z: number;
   scale: number;
-};
-
-type DarrelHillStep = {
-  y: number;
-  z: number;
-  width: number;
-  depth: number;
 };
 
 function DarrelBranch({
@@ -598,36 +596,11 @@ function DarrelHouseHillAndMoat() {
   const stoneTexture = useMemo(() => getDarrelTexture("stone"), []);
   const woodTexture = useMemo(() => getDarrelTexture("wood"), []);
   const stepCount = 16;
-  const stairRamp = useMemo(() => {
-    const startZ = -120.5;
-    const endZ = -44;
-    const startSurfaceY = 1.55;
-    const endSurfaceY = DARREL_HUT_ENTRY_SURFACE_OFFSET + 0.05;
-    const run = endZ - startZ;
-    const rise = endSurfaceY - startSurfaceY;
-    const halfThickness = 0.44;
-    const angle = -Math.atan2(rise, run);
-    return {
-      angle,
-      centerY: (startSurfaceY + endSurfaceY) / 2 - Math.cos(angle) * halfThickness,
-      centerZ: (startZ + endZ) / 2,
-      halfThickness,
-      length: Math.sqrt(run * run + rise * rise),
-    };
-  }, []);
-  const steps = useMemo(() => {
-    const generated: DarrelHillStep[] = [];
-    for (let index = 0; index < stepCount; index += 1) {
-      const progress = (index + 1) / stepCount;
-      generated.push({
-        y: DARREL_HUT_ENTRY_SURFACE_OFFSET * progress,
-        z: -116 + index * 4.8,
-        width: 34 - Math.min(index, 6) * 1.2,
-        depth: 9,
-      });
-    }
-    return generated;
-  }, []);
+  const stairRamp = useMemo(
+    () => getDarrelHillStairRamp(-120.5, -44, 1.55, DARREL_HUT_ENTRY_SURFACE_OFFSET + 0.05, 0.44),
+    [],
+  );
+  const steps = useMemo(() => getDarrelHillSteps(DARREL_HUT_ENTRY_SURFACE_OFFSET, stepCount), [stepCount]);
 
   return (
     <group name="darrel-house-hill-and-moat" position={[0, DARREL_GROVE_GROUND_Y, 0]}>
