@@ -29,9 +29,11 @@ import {
 } from "./mountainVillageDetailPhase";
 import {
   makeMountainVillageCabins,
+  makeMountainVillageCliffPatches,
   makeMountainVillageHutInfos,
   makeMountainVillageWaterfall,
   type MountainVillageCabin,
+  type MountainVillageCliffPatch,
   type MountainVillageWaterfall,
 } from "./mountainVillageLayoutRuntime";
 import {
@@ -173,20 +175,6 @@ type MountainVillageTrailSegment = {
   supports: MountainVillageTrailSupport[];
 };
 
-type MountainVillageCliffPatch = {
-  key: string;
-  localX: number;
-  localZ: number;
-  y: number;
-  yaw: number;
-  roll: number;
-  width: number;
-  depth: number;
-  thickness: number;
-  color: string;
-  opacity: number;
-};
-
 type MountainVillageLayout = {
   baseHeight: number;
   summitY: number;
@@ -208,8 +196,6 @@ const EMPTY_MOUNTAIN_SLOPE_GRASS_TUFTS: MountainSlopeGrassTuft[] = [];
 const EMPTY_MOUNTAIN_MINESHAFT_HUTS: MountainMineshaftHut[] = [];
 const EMPTY_MOUNTAIN_MINESHAFT_LADDERS: MountainMineshaftLadder[] = [];
 const EMPTY_MOUNTAIN_HUT_INFOS: HutInfo[] = [];
-const MOUNTAIN_CLIFF_STONE_COLORS = ["#3f474a", "#545d60", "#6f7a7d", "#838f94", "#2f3638"] as const;
-const MOUNTAIN_CLIFF_SNOW_COLORS = ["#d9eef7", "#eef9ff", "#bcdce9"] as const;
 
 type MountainVillageLayoutOptions = {
   includeMineshaftLayout?: boolean;
@@ -480,45 +466,6 @@ function MountainSlopeGrass({
       />
     </instancedMesh>
   );
-}
-
-function makeMountainVillageCliffPatches(chunk: SurvivalChunkInfo, baseHeight: number, terrainHeightForChunk: SurvivalTerrainHeightForChunk): MountainVillageCliffPatch[] {
-  const count = chunk.lod === "near" ? 48 : 20;
-  const patches = new Array<MountainVillageCliffPatch>(count);
-
-  for (let index = 0; index < count; index += 1) {
-    const ringT = survivalHash01(chunk.cx, chunk.cz, 5200 + index);
-    const angle = (index / count) * Math.PI * 2 + (survivalHash01(chunk.cx, chunk.cz, 5230 + index) - 0.5) * 0.32;
-    const radius = lerpNumber(
-      MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 16,
-      MOUNTAIN_VILLAGE_RADIUS - 20,
-      Math.pow(ringT, 0.92)
-    ) + Math.sin(index * 2.17 + chunk.cx * 0.7) * 5.5;
-    const localX = Math.sin(angle) * radius;
-    const localZ = Math.cos(angle) * radius;
-    const y = getMountainVillageHeight(chunk, localX, localZ, terrainHeightForChunk, baseHeight);
-    const lift = y - baseHeight;
-    const snowMix = smoothstepRange(MOUNTAIN_VILLAGE_HEIGHT * 0.6, MOUNTAIN_VILLAGE_HEIGHT * 0.92, lift);
-    const colorSet = snowMix > 0.56 && index % 3 !== 1 ? MOUNTAIN_CLIFF_SNOW_COLORS : MOUNTAIN_CLIFF_STONE_COLORS;
-    const width = lerpNumber(9, 23, survivalHash01(chunk.cx, chunk.cz, 5260 + index)) * (snowMix > 0.62 ? 0.78 : 1);
-    const depth = lerpNumber(2.2, 6.4, survivalHash01(chunk.cx, chunk.cz, 5290 + index));
-
-    patches[index] = {
-      key: `${chunk.key}-mountain-cliff-patch-${index}`,
-      localX,
-      localZ,
-      y: y + 0.46,
-      yaw: angle + Math.PI / 2,
-      roll: (survivalHash01(chunk.cx, chunk.cz, 5320 + index) - 0.5) * 0.34,
-      width,
-      depth,
-      thickness: lerpNumber(0.18, 0.46, survivalHash01(chunk.cx, chunk.cz, 5350 + index)),
-      color: colorSet[Math.floor(survivalHash01(chunk.cx, chunk.cz, 5380 + index) * colorSet.length) % colorSet.length],
-      opacity: lerpNumber(0.48, 0.82, survivalHash01(chunk.cx, chunk.cz, 5410 + index)),
-    };
-  }
-
-  return patches;
 }
 
 function makeMountainVillageTerrainColliderGeometry(

@@ -1,10 +1,13 @@
 import type { HutInfo } from "./baseVillageHutLayout";
 import type { MountainMineshaftHut } from "./mountainVillageMineshaftRuntime";
 import {
+  MOUNTAIN_VILLAGE_HEIGHT,
+  MOUNTAIN_VILLAGE_PLATEAU_RADIUS,
+  MOUNTAIN_VILLAGE_RADIUS,
   MOUNTAIN_VILLAGE_TRAIL_START_RADIUS,
   getMountainVillageHeight,
 } from "./mountainVillageTerrain";
-import { survivalHash01 } from "../survival/survivalMath";
+import { lerpNumber, smoothstepRange, survivalHash01 } from "../survival/survivalMath";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
 
 type MountainVillageTerrainHeightForChunk = (chunk: SurvivalChunkInfo, localX: number, localZ: number) => number;
@@ -33,9 +36,25 @@ export type MountainVillageWaterfall = {
   width: number;
 };
 
+export type MountainVillageCliffPatch = {
+  key: string;
+  localX: number;
+  localZ: number;
+  y: number;
+  yaw: number;
+  roll: number;
+  width: number;
+  depth: number;
+  thickness: number;
+  color: string;
+  opacity: number;
+};
+
 const MOUNTAIN_CABIN_BODY_COLORS = ["#584633", "#64513d", "#4f4538", "#6b573f"] as const;
 const MOUNTAIN_CABIN_ROOF_COLORS = ["#dceefa", "#cfe4f3", "#edf7ff", "#b9d3e8"] as const;
 const MOUNTAIN_CABIN_ACCENT_COLORS = ["#82d8ff", "#f5d28a", "#bce7ff", "#d6f4ff"] as const;
+const MOUNTAIN_CLIFF_STONE_COLORS = ["#3f474a", "#545d60", "#6f7a7d", "#838f94", "#2f3638"] as const;
+const MOUNTAIN_CLIFF_SNOW_COLORS = ["#d9eef7", "#eef9ff", "#bcdce9"] as const;
 
 export function makeMountainVillageCabins(chunk: SurvivalChunkInfo): MountainVillageCabin[] {
   const cabinCount = chunk.lod === "near" ? 8 : 5;
@@ -64,6 +83,49 @@ export function makeMountainVillageCabins(chunk: SurvivalChunkInfo): MountainVil
   }
 
   return cabins;
+}
+
+export function makeMountainVillageCliffPatches(
+  chunk: SurvivalChunkInfo,
+  baseHeight: number,
+  terrainHeightForChunk: MountainVillageTerrainHeightForChunk,
+): MountainVillageCliffPatch[] {
+  const count = chunk.lod === "near" ? 48 : 20;
+  const patches = new Array<MountainVillageCliffPatch>(count);
+
+  for (let index = 0; index < count; index += 1) {
+    const ringT = survivalHash01(chunk.cx, chunk.cz, 5200 + index);
+    const angle = (index / count) * Math.PI * 2 + (survivalHash01(chunk.cx, chunk.cz, 5230 + index) - 0.5) * 0.32;
+    const radius = lerpNumber(
+      MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 16,
+      MOUNTAIN_VILLAGE_RADIUS - 20,
+      Math.pow(ringT, 0.92)
+    ) + Math.sin(index * 2.17 + chunk.cx * 0.7) * 5.5;
+    const localX = Math.sin(angle) * radius;
+    const localZ = Math.cos(angle) * radius;
+    const y = getMountainVillageHeight(chunk, localX, localZ, terrainHeightForChunk, baseHeight);
+    const lift = y - baseHeight;
+    const snowMix = smoothstepRange(MOUNTAIN_VILLAGE_HEIGHT * 0.6, MOUNTAIN_VILLAGE_HEIGHT * 0.92, lift);
+    const colorSet = snowMix > 0.56 && index % 3 !== 1 ? MOUNTAIN_CLIFF_SNOW_COLORS : MOUNTAIN_CLIFF_STONE_COLORS;
+    const width = lerpNumber(9, 23, survivalHash01(chunk.cx, chunk.cz, 5260 + index)) * (snowMix > 0.62 ? 0.78 : 1);
+    const depth = lerpNumber(2.2, 6.4, survivalHash01(chunk.cx, chunk.cz, 5290 + index));
+
+    patches[index] = {
+      key: `${chunk.key}-mountain-cliff-patch-${index}`,
+      localX,
+      localZ,
+      y: y + 0.46,
+      yaw: angle + Math.PI / 2,
+      roll: (survivalHash01(chunk.cx, chunk.cz, 5320 + index) - 0.5) * 0.34,
+      width,
+      depth,
+      thickness: lerpNumber(0.18, 0.46, survivalHash01(chunk.cx, chunk.cz, 5350 + index)),
+      color: colorSet[Math.floor(survivalHash01(chunk.cx, chunk.cz, 5380 + index) * colorSet.length) % colorSet.length],
+      opacity: lerpNumber(0.48, 0.82, survivalHash01(chunk.cx, chunk.cz, 5410 + index)),
+    };
+  }
+
+  return patches;
 }
 
 export function makeMountainVillageWaterfall(
