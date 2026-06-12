@@ -7,6 +7,7 @@ import {
   FLOOR_RECOVERY_RAY_UP,
   FLOOR_RECOVERY_TRIGGER_DEPTH,
   FLOOR_RECOVERY_VERTICAL_SETTLE,
+  GROUND_COYOTE_MS,
   GROUND_PROBE_CAST_DISTANCE,
   GROUND_PROBE_MAX_TOI,
   GROUND_PROBE_OFFSETS,
@@ -64,6 +65,15 @@ export type PlayerFloorRecoveryMovePayload = {
   grounded: boolean;
 };
 
+export type PlayerGroundMotionState = {
+  lastGroundedAt: number;
+  grounded: boolean;
+  climbingLadder: boolean;
+  effectiveGrounded: boolean;
+  idleGroundedPlanarLock: boolean;
+  crouchAllowed: boolean;
+};
+
 export function samplePlayerGroundToi(options: {
   pos: PlayerGroundingPosition;
   world: PlayerGroundingWorld;
@@ -104,6 +114,72 @@ export function samplePlayerGroundToi(options: {
 
 export function hasPlayerGroundHit(nearestGroundToi: number) {
   return nearestGroundToi < GROUND_PROBE_MAX_TOI;
+}
+
+export function resolvePlayerGroundMotionState({
+  nowMs,
+  lastGroundedAt,
+  hasGroundHit,
+  velocityY,
+  vclipActive,
+  ladderActive,
+  hasGrabbedState,
+  hasMovementInput,
+  slideHeld,
+  isSliding,
+  hasActiveExternalPull,
+  crouchInputHeld,
+  jumpHeld,
+  isSprinting,
+}: {
+  nowMs: number;
+  lastGroundedAt: number;
+  hasGroundHit: boolean;
+  velocityY: number;
+  vclipActive: boolean;
+  ladderActive: boolean;
+  hasGrabbedState: boolean;
+  hasMovementInput: boolean;
+  slideHeld: boolean;
+  isSliding: boolean;
+  hasActiveExternalPull: boolean;
+  crouchInputHeld: boolean;
+  jumpHeld: boolean;
+  isSprinting: boolean;
+}): PlayerGroundMotionState {
+  const nextLastGroundedAt = hasGroundHit ? nowMs : lastGroundedAt;
+  const grounded = !vclipActive && (
+    hasGroundHit ||
+    (velocityY <= 0.1 && nowMs - nextLastGroundedAt <= GROUND_COYOTE_MS)
+  );
+  const climbingLadder = ladderActive && !vclipActive;
+  const effectiveGrounded = grounded || climbingLadder;
+  const idleGroundedPlanarLock =
+    !vclipActive &&
+    effectiveGrounded &&
+    !climbingLadder &&
+    !hasGrabbedState &&
+    !hasMovementInput &&
+    !slideHeld &&
+    !isSliding &&
+    !hasActiveExternalPull;
+  const crouchAllowed =
+    crouchInputHeld &&
+    effectiveGrounded &&
+    !climbingLadder &&
+    !jumpHeld &&
+    !isSliding &&
+    !isSprinting &&
+    Math.abs(velocityY) < 0.35;
+
+  return {
+    lastGroundedAt: nextLastGroundedAt,
+    grounded,
+    climbingLadder,
+    effectiveGrounded,
+    idleGroundedPlanarLock,
+    crouchAllowed,
+  };
 }
 
 function resolveFloorRecoveryTarget(options: {

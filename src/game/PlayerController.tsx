@@ -160,6 +160,7 @@ import {
   applyPlayerFloorRecovery,
   getPlayerFloorRecoveryTarget,
   hasPlayerGroundHit,
+  resolvePlayerGroundMotionState,
   samplePlayerGroundToi,
 } from "./systems/player/playerGroundingRuntime";
 import {
@@ -258,7 +259,6 @@ import {
   GRAB_FOLLOW_SPEED,
   GRAB_MAX_DURATION_MS,
   GRAB_THROW_SPEED,
-  GROUND_COYOTE_MS,
   GROUND_JUMP_MAX_UPWARD_VELOCITY,
   JUMP_BOOST_MULTIPLIER,
   JUMP_FORCE,
@@ -3210,30 +3210,30 @@ export function PlayerController() {
       ? Number.POSITIVE_INFINITY
       : samplePlayerGroundToi({ pos, world, rapier, queryOptions: playerQueryOptions });
     const hasGroundHit = hasPlayerGroundHit(nearestGroundToi);
-    if (hasGroundHit) lastGroundedAt.current = nowMs;
-    let grounded = !vclipActive && (
-      hasGroundHit ||
-      (velocity.y <= 0.1 && nowMs - lastGroundedAt.current <= GROUND_COYOTE_MS)
-    );
-    const climbingLadder = ladderActive && !vclipActive;
-    let effectiveGrounded = grounded || climbingLadder;
-    const idleGroundedPlanarLock =
-      !vclipActive &&
-      effectiveGrounded &&
-      !climbingLadder &&
-      !grabbedState.current &&
-      !hasMovementInput &&
-      !slideHeld &&
-      !isSliding &&
-      !hasActiveExternalPull;
-    const crouchAllowed =
-      crouchInputHeld &&
-      effectiveGrounded &&
-      !climbingLadder &&
-      !jumpHeld &&
-      !isSliding &&
-      !isSprinting &&
-      Math.abs(velocity.y) < 0.35;
+    const {
+      lastGroundedAt: nextLastGroundedAt,
+      grounded,
+      climbingLadder,
+      effectiveGrounded,
+      idleGroundedPlanarLock,
+      crouchAllowed,
+    } = resolvePlayerGroundMotionState({
+      nowMs,
+      lastGroundedAt: lastGroundedAt.current,
+      hasGroundHit,
+      velocityY: velocity.y,
+      vclipActive,
+      ladderActive,
+      hasGrabbedState: Boolean(grabbedState.current),
+      hasMovementInput,
+      slideHeld,
+      isSliding,
+      hasActiveExternalPull,
+      crouchInputHeld,
+      jumpHeld,
+      isSprinting,
+    });
+    lastGroundedAt.current = nextLastGroundedAt;
 
     if (crouchAllowed) {
       if (crouchHoldStartedAt.current === null) {
