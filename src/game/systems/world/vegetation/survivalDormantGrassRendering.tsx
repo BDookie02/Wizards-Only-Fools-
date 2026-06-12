@@ -1023,19 +1023,16 @@ function makeSurvivalLocalSolidGrassBladeGeometry(
     clampDormantGrassColor(baseColor);
     clampDormantGrassColor(tipColor);
 
-    const baseSide = side.clone();
-    const midSide = side.clone().multiplyScalar(0.58);
-    const tipSide = side.clone().multiplyScalar(0.08);
-    left.copy(base).add(baseSide);
-    right.copy(base).sub(baseSide);
+    left.copy(base).add(side);
+    right.copy(base).addScaledVector(side, -1);
     const baseLeftIndex = pushVertex(left, baseColor, 0);
     const baseRightIndex = pushVertex(right, baseColor, 0);
-    left.copy(mid).add(midSide);
-    right.copy(mid).sub(midSide);
+    left.copy(mid).addScaledVector(side, 0.58);
+    right.copy(mid).addScaledVector(side, -0.58);
     const midLeftIndex = pushVertex(left, midColor, 0.54);
     const midRightIndex = pushVertex(right, midColor, 0.54);
-    left.copy(tip).add(tipSide);
-    right.copy(tip).sub(tipSide);
+    left.copy(tip).addScaledVector(side, 0.08);
+    right.copy(tip).addScaledVector(side, -0.08);
     const tipLeftIndex = pushVertex(left, tipColor, 1);
     const tipRightIndex = pushVertex(right, tipColor, 1);
     indices.push(
