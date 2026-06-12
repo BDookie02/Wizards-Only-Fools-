@@ -27,6 +27,14 @@ import {
   getDarrelTexture,
 } from "./darrelGroveTextures";
 import {
+  DARREL_BACKYARD_RIVER_SEGMENTS,
+  DARREL_BACKYARD_RIVER_STONES,
+  DARREL_WATERFALL_HILL_STONES,
+  DARREL_WATERFALL_MOSS_PADS,
+  DARREL_WATERFALL_RIVER_FEED_CHANNELS,
+  DARREL_WATERFALL_RIVER_MOUTHS,
+  DARREL_WATERFALL_RUNNELS,
+  DARREL_WATERFALL_SPRAY_PUFFS,
   getDarrelBranchTransform,
   getDarrelHillStairRamp,
   getDarrelHillSteps,
@@ -59,9 +67,7 @@ const DARREL_MOAT_BRIDGES = [
   { key: "back", z: 101, width: 26, depth: 52, railZ: [78, 124] as const, deckColor: "#6b4228" },
 ] as const;
 const DARREL_HILL_SIDE_STONE_X = [-54, 54] as const;
-const DARREL_BACKYARD_RIVER_STONE_X = [-170, -128, -88, -48, -8, 34, 78, 122, 166] as const;
 const DARREL_BACKYARD_BRIDGE_RAIL_X = [-25, 25] as const;
-const DARREL_WATERFALL_RUNNEL_Z = [128, 148, 166] as const;
 const DARREL_RETURN_GATE_POST_X = [-8, 8] as const;
 const DARREL_GROUND_BLOSSOM_X = [-118, -74, 72, 126] as const;
 const DARREL_FALLEN_PETAL_TARGET_COUNT = 360;
@@ -664,23 +670,18 @@ function DarrelHouseHillAndMoat() {
 function DarrelBackyardRiver() {
   const waterTexture = useMemo(() => getDarrelTexture("water"), []);
   const stoneTexture = useMemo(() => getDarrelTexture("stone"), []);
-  const segments = [
-    { x: -110, z: 104, width: 112, depth: 34, rot: -0.18 },
-    { x: -12, z: 116, width: 118, depth: 38, rot: 0.08 },
-    { x: 96, z: 106, width: 124, depth: 34, rot: 0.22 },
-  ];
 
   return (
     <group position={[0, DARREL_GROVE_GROUND_Y + 0.08, 0]}>
-      {segments.map((segment, index) => (
-        <mesh key={`river-${index}`} position={[segment.x, 0.05, segment.z]} rotation={[-Math.PI / 2, 0, segment.rot]} receiveShadow>
+      {DARREL_BACKYARD_RIVER_SEGMENTS.map((segment, index) => (
+        <mesh key={`river-${index}`} position={[segment.x, 0.05, segment.z]} rotation={[-Math.PI / 2, 0, segment.rotation]} receiveShadow>
           <planeGeometry args={[segment.width, segment.depth]} />
           <meshStandardMaterial map={waterTexture} color="#49bfd0" roughness={0.58} metalness={0.05} transparent opacity={0.88} />
         </mesh>
       ))}
-      {DARREL_BACKYARD_RIVER_STONE_X.map((x, index) => (
-        <mesh key={`river-stone-${index}`} position={[x, 0.42, 135 + Math.sin(index) * 10]} rotation={[0, index * 0.7, 0]} castShadow receiveShadow>
-          <boxGeometry args={[12 + (index % 3) * 3, 1.2, 7 + (index % 2) * 4]} />
+      {DARREL_BACKYARD_RIVER_STONES.map((stone, index) => (
+        <mesh key={`river-stone-${index}`} position={[stone.x, 0.42, stone.z]} rotation={[0, stone.rotation, 0]} castShadow receiveShadow>
+          <boxGeometry args={[stone.width, stone.height, stone.depth]} />
           <meshStandardMaterial map={stoneTexture} color="#9aa09a" roughness={1} />
         </mesh>
       ))}
@@ -741,39 +742,6 @@ function DarrelWaterfallHill() {
   const sprayRefs = useLazyRef<Array<THREE.Mesh | null>>(() => []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const lastMobileWaterUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
-  const hillStones = [
-    [-62, 3.2, 28, 18, 5, 12, -0.3],
-    [-42, 7.4, -24, 14, 7, 11, 0.48],
-    [-24, 1.9, 62, 12, 3.8, 9, 0.16],
-    [28, 6.8, 18, 18, 7, 12, -0.16],
-    [52, 3.1, 41, 15, 4.8, 10, 0.33],
-    [40, 10.5, -20, 15, 7.2, 10, -0.54],
-  ] as const;
-  const mossPads = [
-    [-34, 24.35, -16, 26, 10, -0.18],
-    [22, 23.9, -10, 24, 9, 0.2],
-    [-50, 14.9, 10, 28, 8, 0.52],
-    [48, 14.7, 7, 25, 8, -0.44],
-  ] as const;
-  const riverFeedChannels = [
-    [-30, 184, 37, 20, -0.26],
-    [-48, 210, 44, 22, -0.1],
-    [-63, 238, 54, 24, 0.08],
-    [30, 184, 37, 20, 0.26],
-    [48, 210, 44, 22, 0.1],
-    [63, 238, 54, 24, -0.08],
-  ] as const;
-  const riverMouths = [
-    [-78, 251, 44, 17, -0.14],
-    [78, 251, 44, 17, 0.14],
-  ] as const;
-  const sprayPuffs = [
-    [-12, 5.8, 92, 3.8],
-    [10, 6.6, 94, 4.2],
-    [-4, 8.2, 87, 3.2],
-    [18, 4.7, 89, 3.5],
-    [-20, 4.9, 89, 3.4],
-  ] as const;
 
   useFrame(({ clock }) => {
     const elapsed = clock.elapsedTime;
@@ -810,7 +778,9 @@ function DarrelWaterfallHill() {
     for (let index = 0; index < sprayRefs.current.length; index += 1) {
       const mesh = sprayRefs.current[index];
       if (!mesh) continue;
-      const [, baseY, , baseScale] = sprayPuffs[index] ?? [0, 0, 0, 1];
+      const sprayPuff = DARREL_WATERFALL_SPRAY_PUFFS[index];
+      const baseY = sprayPuff?.y ?? 0;
+      const baseScale = sprayPuff?.scale ?? 1;
       const pulse = 0.86 + Math.sin(elapsed * 3.8 + index * 1.4) * 0.18;
       mesh.position.y = baseY + Math.sin(elapsed * 4.7 + index) * 0.42;
       mesh.scale.set(baseScale * pulse, baseScale * 0.45 * pulse, baseScale * pulse);
@@ -874,23 +844,23 @@ function DarrelWaterfallHill() {
         <circleGeometry args={[1, 32]} />
         <meshBasicMaterial color="#dffbff" transparent opacity={0.14} depthWrite={false} toneMapped={false} />
       </mesh>
-      {DARREL_WATERFALL_RUNNEL_Z.map((z, index) => (
+      {DARREL_WATERFALL_RUNNELS.map((runnel, index) => (
         <mesh
           key={`darrel-fall-runnel-${index}`}
           ref={(mesh) => {
             runnelRefs.current[index + 3] = mesh;
           }}
-          position={[Math.sin(index) * 7, 0.2, z]}
-          rotation={[-Math.PI / 2, 0, index % 2 === 0 ? 0.12 : -0.16]}
+          position={[runnel.x, 0.2, runnel.z]}
+          rotation={[-Math.PI / 2, 0, runnel.yaw]}
           renderOrder={3}
         >
-          <planeGeometry args={[24 - index * 3, 18]} />
+          <planeGeometry args={[runnel.width, runnel.depth]} />
           <meshStandardMaterial map={runnelWaterTexture} color="#5dc3d6" roughness={0.55} transparent opacity={0.56} />
         </mesh>
       ))}
-      {riverFeedChannels.map(([x, z, width, depth, yaw], index) => (
-        <mesh key={`darrel-waterfall-feed-${index}`} position={[x, 0.24 + index * 0.003, z]} rotation={[-Math.PI / 2, 0, yaw]} renderOrder={4}>
-          <planeGeometry args={[width, depth]} />
+      {DARREL_WATERFALL_RIVER_FEED_CHANNELS.map((channel, index) => (
+        <mesh key={`darrel-waterfall-feed-${index}`} position={[channel.x, 0.24 + index * 0.003, channel.z]} rotation={[-Math.PI / 2, 0, channel.yaw]} renderOrder={4}>
+          <planeGeometry args={[channel.width, channel.depth]} />
           <meshStandardMaterial
             map={runnelWaterTexture}
             color="#58c7d8"
@@ -903,9 +873,9 @@ function DarrelWaterfallHill() {
           />
         </mesh>
       ))}
-      {riverMouths.map(([x, z, width, depth, yaw], index) => (
-        <mesh key={`darrel-waterfall-river-mouth-${index}`} position={[x, 0.27 + index * 0.004, z]} rotation={[-Math.PI / 2, 0, yaw]} renderOrder={5}>
-          <planeGeometry args={[width, depth]} />
+      {DARREL_WATERFALL_RIVER_MOUTHS.map((mouth, index) => (
+        <mesh key={`darrel-waterfall-river-mouth-${index}`} position={[mouth.x, 0.27 + index * 0.004, mouth.z]} rotation={[-Math.PI / 2, 0, mouth.yaw]} renderOrder={5}>
+          <planeGeometry args={[mouth.width, mouth.depth]} />
           <meshStandardMaterial
             map={poolWaterTexture}
             color="#72dbe4"
@@ -918,26 +888,26 @@ function DarrelWaterfallHill() {
           />
         </mesh>
       ))}
-      {hillStones.map(([x, y, z, sx, sy, sz, yaw], index) => (
-        <mesh key={`darrel-waterfall-stone-${index}`} position={[x, y, z]} rotation={[0, yaw, 0]} castShadow receiveShadow>
-          <boxGeometry args={[sx, sy, sz]} />
+      {DARREL_WATERFALL_HILL_STONES.map((stone, index) => (
+        <mesh key={`darrel-waterfall-stone-${index}`} position={[stone.x, stone.y, stone.z]} rotation={[0, stone.yaw, 0]} castShadow receiveShadow>
+          <boxGeometry args={[stone.width, stone.height, stone.depth]} />
           <meshStandardMaterial map={stoneTexture} color={index % 2 === 0 ? "#89908b" : "#717c75"} roughness={1} />
         </mesh>
       ))}
-      {mossPads.map(([x, y, z, sx, sz, yaw], index) => (
-        <mesh key={`darrel-waterfall-moss-${index}`} position={[x, y, z]} rotation={[-Math.PI / 2, 0, yaw]} renderOrder={7}>
-          <planeGeometry args={[sx, sz]} />
+      {DARREL_WATERFALL_MOSS_PADS.map((mossPad, index) => (
+        <mesh key={`darrel-waterfall-moss-${index}`} position={[mossPad.x, mossPad.y, mossPad.z]} rotation={[-Math.PI / 2, 0, mossPad.yaw]} renderOrder={7}>
+          <planeGeometry args={[mossPad.width, mossPad.depth]} />
           <meshStandardMaterial map={leafTexture} color={index % 2 === 0 ? "#6fb85a" : "#4f8b43"} roughness={1} transparent opacity={0.92} />
         </mesh>
       ))}
-      {sprayPuffs.map(([x, y, z, scale], index) => (
+      {DARREL_WATERFALL_SPRAY_PUFFS.map((sprayPuff, index) => (
         <mesh
           key={`darrel-waterfall-spray-${index}`}
           ref={(mesh) => {
             sprayRefs.current[index] = mesh;
           }}
-          position={[x, y, z]}
-          scale={[scale, scale * 0.45, scale]}
+          position={[sprayPuff.x, sprayPuff.y, sprayPuff.z]}
+          scale={[sprayPuff.scale, sprayPuff.scale * 0.45, sprayPuff.scale]}
           renderOrder={8}
         >
           <sphereGeometry args={[1, 7, 4]} />
