@@ -1,4 +1,4 @@
-import { isMobileLikeDevice } from "./performanceMode";
+import { isIOSLikeDevice, isMobileLikeDevice } from "./performanceMode";
 
 export type MobileLayoutDefaultState = {
   aspectRatio: string;
@@ -32,9 +32,16 @@ export function readAppViewportSize({
     return { width: 1, height: 1 };
   }
   const visualViewport = window.visualViewport;
+  const visualViewportWidth = visualViewport?.width ?? window.innerWidth;
+  const visualViewportHeight = visualViewport?.height ?? window.innerHeight;
+  const coverIOSViewport = useVisualViewport && isIOSLikeDevice();
   return {
-    width: Math.max(1, Math.round(useVisualViewport ? (visualViewport?.width ?? window.innerWidth) : window.innerWidth)),
-    height: Math.max(1, Math.round(useVisualViewport ? (visualViewport?.height ?? window.innerHeight) : window.innerHeight)),
+    width: Math.max(1, Math.round(useVisualViewport
+      ? coverIOSViewport ? Math.max(visualViewportWidth, window.innerWidth) : visualViewportWidth
+      : window.innerWidth)),
+    height: Math.max(1, Math.round(useVisualViewport
+      ? coverIOSViewport ? Math.max(visualViewportHeight, window.innerHeight) : visualViewportHeight
+      : window.innerHeight)),
   };
 }
 
