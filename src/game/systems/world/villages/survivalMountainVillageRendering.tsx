@@ -39,6 +39,7 @@ import {
   getMountainMineshaftRimBeams,
   getMountainMineshaftRoyalBanquetDescriptors,
   getMountainMineshaftSummitSnowDrifts,
+  getMountainMineshaftSupportFrames,
   getMountainMineshaftWallDecorDescriptors,
 } from "./mountainVillageMineshaftRuntime";
 import {
@@ -2893,6 +2894,7 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
       }),
     [],
   );
+  const supportFrames = useMemo(() => getMountainMineshaftSupportFrames({ count: 4 }), []);
 
   return (
     <group name="mountain-village-mineshaft">
@@ -2979,40 +2981,36 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
         );
       })}
       {exitLadder && <MountainMineshaftTopExitBridge ladder={exitLadder} summitY={summitY} showDetails={showDetails} />}
-      {showDetails && getCachedIndexRange(4).map((index) => {
-        const angle = index * Math.PI / 2 + Math.PI / 4;
-        return (
-          <group key={`mine-support-${index}`} rotation={[0, angle, 0]}>
-            <group position={[-12, summitY + 8.2, 29]} rotation={[0, 0, -0.12]}>
+      {showDetails && supportFrames.map((frame) => (
+        <group key={`mine-support-${frame.index}`} rotation={frame.rotation}>
+          {frame.posts.map((post) => (
+            <group
+              key={`mine-support-post-${post.side}`}
+              position={[post.positionOffset[0], summitY + post.positionOffset[1], post.positionOffset[2]]}
+              rotation={post.rotation}
+            >
               <mesh castShadow={false}>
                 <boxGeometry args={[2.3, 15.5, 2.3]} />
                 <meshBasicMaterial color="#392719" />
               </mesh>
               <RetroVerticalTimberDetails height={15.5} width={2.3} depth={2.3} bandColor="#a67642" lightColor="#8a5b34" />
             </group>
-            <group position={[12, summitY + 8.2, 29]} rotation={[0, 0, 0.12]}>
-              <mesh castShadow={false}>
-                <boxGeometry args={[2.3, 15.5, 2.3]} />
-                <meshBasicMaterial color="#392719" />
+          ))}
+          <group position={[frame.topBeamPositionOffset[0], summitY + frame.topBeamPositionOffset[1], frame.topBeamPositionOffset[2]]}>
+            <mesh castShadow={false}>
+              <boxGeometry args={[27.5, 2.4, 2.6]} />
+              <meshBasicMaterial color="#513821" />
+            </mesh>
+            <RetroHorizontalTimberDetails length={27.5} height={2.4} depth={2.6} bandColor="#be8a4c" />
+            {frame.snowCaps.map((snowCap) => (
+              <mesh key={`support-snow-cap-${snowCap.side}`} position={snowCap.position} castShadow={false}>
+                <boxGeometry args={[5.1, 0.22, 1.88]} />
+                <meshBasicMaterial color="#e8f8ff" transparent opacity={0.7} />
               </mesh>
-              <RetroVerticalTimberDetails height={15.5} width={2.3} depth={2.3} bandColor="#a67642" lightColor="#8a5b34" />
-            </group>
-            <group position={[0, summitY + 16.2, 29]}>
-              <mesh castShadow={false}>
-                <boxGeometry args={[27.5, 2.4, 2.6]} />
-                <meshBasicMaterial color="#513821" />
-              </mesh>
-              <RetroHorizontalTimberDetails length={27.5} height={2.4} depth={2.6} bandColor="#be8a4c" />
-              {MOUNTAIN_RENDER_SIDES.map((side) => (
-                <mesh key={`support-snow-cap-${side}`} position={[side * 8.7, 1.32, 0]} castShadow={false}>
-                  <boxGeometry args={[5.1, 0.22, 1.88]} />
-                  <meshBasicMaterial color="#e8f8ff" transparent opacity={0.7} />
-                </mesh>
-              ))}
-            </group>
+            ))}
           </group>
-        );
-      })}
+        </group>
+      ))}
     </group>
   );
 }

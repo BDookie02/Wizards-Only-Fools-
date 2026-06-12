@@ -264,17 +264,39 @@ export type MountainMineshaftCatwalkDescriptors = {
   railSegments: MountainMineshaftCatwalkRingPoint[];
 };
 
+export type MountainMineshaftSupportPostDescriptor = {
+  side: -1 | 1;
+  positionOffset: [number, number, number];
+  rotation: [number, number, number];
+};
+
+export type MountainMineshaftSupportSnowCapDescriptor = {
+  side: -1 | 1;
+  position: [number, number, number];
+};
+
+export type MountainMineshaftSupportFrame = {
+  index: number;
+  angle: number;
+  rotation: [number, number, number];
+  posts: MountainMineshaftSupportPostDescriptor[];
+  topBeamPositionOffset: [number, number, number];
+  snowCaps: MountainMineshaftSupportSnowCapDescriptor[];
+};
+
 const catwalkDescriptorCache = new Map<string, MountainMineshaftCatwalkDescriptors>();
 const catwalkLightPoleCache = new Map<string, MountainMineshaftCatwalkLightPole[]>();
 const exitBridgeDetailCache = new Map<string, MountainMineshaftExitBridgeDetails>();
 const ladderDetailCache = new Map<string, MountainMineshaftLadderDetails>();
 const summitSnowDriftCache = new Map<string, MountainMineshaftSummitSnowDrift[]>();
 const rimBeamCache = new Map<string, MountainMineshaftRimBeam[]>();
+const supportFrameCache = new Map<string, MountainMineshaftSupportFrame[]>();
 const bottomRockCache = new Map<string, MountainMineshaftBottomRock[]>();
 const wallDecorCache = new Map<string, MountainMineshaftWallDecorDescriptors>();
 let royalBanquetDescriptorCache: MountainMineshaftRoyalBanquetDescriptors | null = null;
 
 const MOUNTAIN_MINESHAFT_BRIDGE_SIDES = [-1, 1] as const;
+const MOUNTAIN_MINESHAFT_SUPPORT_SIDES = [-1, 1] as const;
 const MOUNTAIN_MINESHAFT_BOTTOM_ROCK_COLORS = ["#4b4237", "#2f2b27", "#66533c"];
 const MOUNTAIN_MINESHAFT_ROPE_LIGHT_GLOW_COLORS = ["#fff0a8", "#ffd56f", "#ffb65b", "#ff8a3a"];
 const MOUNTAIN_MINESHAFT_BANQUET_BREAD_POSITIONS = [
@@ -629,6 +651,36 @@ export function getMountainMineshaftRimBeams({
   }
   rimBeamCache.set(cacheKey, beams);
   return beams;
+}
+
+export function getMountainMineshaftSupportFrames({ count = 4 }: { count?: number } = {}) {
+  const safeCount = Math.max(0, Math.floor(count));
+  const cacheKey = `${safeCount}`;
+  const cached = supportFrameCache.get(cacheKey);
+  if (cached) return cached;
+
+  const frames = new Array<MountainMineshaftSupportFrame>(safeCount);
+  for (let index = 0; index < safeCount; index += 1) {
+    const angle = (index * Math.PI) / 2 + Math.PI / 4;
+    frames[index] = {
+      index,
+      angle,
+      rotation: [0, angle, 0],
+      posts: MOUNTAIN_MINESHAFT_SUPPORT_SIDES.map((side) => ({
+        side,
+        positionOffset: [side * 12, 8.2, 29] as [number, number, number],
+        rotation: [0, 0, side * 0.12] as [number, number, number],
+      })),
+      topBeamPositionOffset: [0, 16.2, 29],
+      snowCaps: MOUNTAIN_MINESHAFT_SUPPORT_SIDES.map((side) => ({
+        side,
+        position: [side * 8.7, 1.32, 0] as [number, number, number],
+      })),
+    };
+  }
+
+  supportFrameCache.set(cacheKey, frames);
+  return frames;
 }
 
 export function getMountainMineshaftBottomRocks({
