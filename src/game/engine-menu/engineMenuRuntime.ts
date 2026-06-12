@@ -135,6 +135,18 @@ export function getSelectedEnginePlacedObject(
   return null;
 }
 
+export function hasEnginePlacedObjectSummaryId(
+  placedObjects: readonly EnginePlacedObjectSummary[],
+  instanceId: string,
+) {
+  for (let index = 0; index < placedObjects.length; index += 1) {
+    if (placedObjects[index].instanceId === instanceId) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function createEngineMenuSlotLookup(
   slotSummaries: readonly EnginePlacedObjectSlotSummary[],
 ): EnginePlacedObjectSlotLookup {

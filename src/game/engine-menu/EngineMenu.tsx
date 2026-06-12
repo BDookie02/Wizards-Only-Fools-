@@ -1,7 +1,5 @@
-import { memo, useEffect, useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Canvas, useThree } from "@react-three/fiber";
-import type { OrthographicCamera } from "three";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import {
@@ -11,7 +9,6 @@ import {
   type PlaceableCategory,
   type PlaceableDefinition,
 } from "../systems/placeables/placeableCatalog";
-import { getPlaceablePreviewCamera, PlaceableModel } from "../systems/placeables/PlaceableModel";
 import { getDefaultPlaceableGridSize } from "../systems/placeables/placementRules";
 import { dispatchEnginePlaceableEvent, subscribeEnginePlaceableEvent } from "../systems/placeables/enginePlaceableEvents";
 import { GAME_SYSTEM_CATALOG } from "../systems/systemCatalog";
@@ -26,83 +23,19 @@ import {
   getSelectedEnginePlaceable,
   getSelectedEnginePlacedObject,
   getSelectedEngineSlot,
+  hasEnginePlacedObjectSummaryId,
   normalizeEnginePlaceableSearchQuery,
   type EngineMenuPlacementOptions,
   type EnginePlacedObjectSlotSummary,
   type EnginePlacedObjectSummary,
 } from "./engineMenuRuntime";
+import { EngineMenuPlaceableCard } from "./EngineMenuPlaceableCard";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-function hasEnginePlacedObjectSummaryId(objects: EnginePlacedObjectSummary[], instanceId: string) {
-  for (let index = 0; index < objects.length; index += 1) {
-    if (objects[index].instanceId === instanceId) {
-      return true;
-    }
-  }
-  return false;
-}
-
 const ENGINE_GRID_SIZE_OPTIONS = [1, 2, 4, 8] as const;
-const ENGINE_PLACEABLE_TAG_CHIP_LIMIT = 3;
-
-function renderPlaceableTagChips(tags: readonly string[]) {
-  const tagCount = Math.min(tags.length, ENGINE_PLACEABLE_TAG_CHIP_LIMIT);
-  const tagChips: ReactElement[] = [];
-  for (let index = 0; index < tagCount; index += 1) {
-    const tag = tags[index];
-    tagChips.push(
-      <span key={tag} className="max-w-full truncate border border-cyan-100/15 bg-cyan-200/6 px-1 py-0.5 text-[6px] tracking-[0.1em] text-cyan-100/45">
-        {tag}
-      </span>,
-    );
-  }
-  return tagChips;
-}
-
-function PlaceablePreviewCamera({ placeable }: { placeable: PlaceableDefinition }) {
-  const { camera, invalidate } = useThree();
-
-  useEffect(() => {
-    const previewCamera = camera as OrthographicCamera;
-    const { targetY, zoom } = getPlaceablePreviewCamera(placeable);
-    previewCamera.position.set(12, 9.5, 14);
-    previewCamera.lookAt(0, targetY, 0);
-    previewCamera.zoom = zoom;
-    previewCamera.near = 0.1;
-    previewCamera.far = 100;
-    previewCamera.updateProjectionMatrix();
-    invalidate();
-  }, [camera, invalidate, placeable]);
-
-  return null;
-}
-
-function PlaceablePreview({ placeable }: { placeable: PlaceableDefinition }) {
-  return (
-    <div className="engine-preview-grid h-full w-full overflow-hidden bg-black/35">
-      <Canvas
-        orthographic
-        frameloop="demand"
-        dpr={[1, 1.5]}
-        gl={{ alpha: true, antialias: true, powerPreference: "low-power", preserveDrawingBuffer: true }}
-        className="pointer-events-none h-full w-full"
-      >
-        <PlaceablePreviewCamera placeable={placeable} />
-        <ambientLight intensity={1.45} />
-        <directionalLight position={[8, 12, 7]} intensity={2.2} />
-        <directionalLight position={[-6, 5, -4]} intensity={0.65} color="#67e8f9" />
-        <group rotation={[0, -0.32, 0]}>
-          <PlaceableModel placeable={placeable} />
-        </group>
-      </Canvas>
-    </div>
-  );
-}
-
-const MemoizedPlaceablePreview = memo(PlaceablePreview);
 
 export function EngineMenu({
   open,
@@ -349,39 +282,14 @@ export function EngineMenu({
             </div>
             <div className="min-h-0 min-w-0 overflow-y-auto">
             <div className="engine-placeable-grid grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-2">
-              {filteredPlaceables.map((placeable) => {
-                const selected = selectedId === placeable.id;
-                return (
-                  <button
-                    key={placeable.id}
-                    type="button"
-                    data-testid={`engine-placeable-${placeable.id}`}
-                    className={cn(
-                      "grid min-h-[194px] grid-rows-[78px_1fr] overflow-hidden border text-left transition",
-                      selected
-                        ? "border-yellow-200 bg-yellow-200/12 text-yellow-50 shadow-[0_0_18px_rgba(250,204,21,0.25)]"
-                        : "border-cyan-100/25 bg-black/28 text-cyan-50/85 hover:border-cyan-100/60 hover:bg-cyan-200/8"
-                    )}
-                    onClick={() => previewPlaceable(placeable)}
-                  >
-                    <MemoizedPlaceablePreview placeable={placeable} />
-                    <span className="flex min-w-0 flex-col gap-1 p-2">
-                      <span className="line-clamp-2 text-[10px] leading-4 tracking-widest">{placeable.name}</span>
-                      <span className="line-clamp-3 text-[8px] leading-4 tracking-[0.14em] text-cyan-100/55 normal-case">
-                        {placeable.description}
-                      </span>
-                      <span className="mt-auto grid gap-1 pt-1">
-                        <span className="truncate text-[7px] tracking-[0.12em] text-yellow-100/55">
-                          r{placeable.footprintRadius} / slope {placeable.maxSlopeDelta}
-                        </span>
-                        <span className="flex min-w-0 flex-wrap gap-1">
-                          {renderPlaceableTagChips(placeable.tags)}
-                        </span>
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+              {filteredPlaceables.map((placeable) => (
+                <EngineMenuPlaceableCard
+                  key={placeable.id}
+                  placeable={placeable}
+                  selected={selectedId === placeable.id}
+                  onPreviewPlaceable={previewPlaceable}
+                />
+              ))}
               {filteredPlaceables.length === 0 && (
                 <div className="col-span-full border border-cyan-100/15 bg-black/24 px-3 py-5 text-center text-[9px] tracking-[0.16em] text-cyan-100/45 normal-case">
                   No placeables match this category and search.
