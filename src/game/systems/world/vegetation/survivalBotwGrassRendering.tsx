@@ -103,9 +103,9 @@ import {
 import { splitSurvivalFlowersByBloomType } from "./survivalFlowerGrouping";
 import {
   ensureSurvivalInstancedMeshColors,
-  finalizeSurvivalInstancedMeshColors,
   markSurvivalInstancedMeshRange,
 } from "./survivalInstancing";
+import { uploadSurvivalBotwFlowerInstances } from "./survivalBotwFlowerUpload";
 import {
   getSurvivalBotwGrassUploadPrioritizedInstances,
   type SurvivalBotwGrassUploadPriority,
@@ -205,12 +205,6 @@ function makeOffsetScratch(count: number): Array<[number, number]> {
     offsets.push([0, 0]);
   }
   return offsets;
-}
-
-function clearSurvivalFlowerMesh(mesh: THREE.InstancedMesh) {
-  mesh.count = 0;
-  mesh.instanceMatrix.needsUpdate = true;
-  mesh.frustumCulled = false;
 }
 
 function getSurvivalLocalGrassViewerPositionInto(camera: THREE.Camera, target: SurvivalBotwGrassViewerPosition) {
@@ -704,121 +698,31 @@ function ActiveSurvivalBotwGrassField() {
       return;
     }
 
-    clearSurvivalFlowerMesh(starMesh);
-    clearSurvivalFlowerMesh(roundMesh);
-    clearSurvivalFlowerMesh(bellMesh);
-    clearSurvivalFlowerMesh(puffMesh);
-
-    for (let index = 0; index < flowerInstances.length; index += 1) {
-      const flower = flowerInstances[index];
-      normalScratch.set(flower.normalX, flower.normalY, flower.normalZ).normalize();
-
-      dummy.position
-        .set(flower.x, flower.y, flower.z)
-        .addScaledVector(normalScratch, flower.stemHeight * 0.5);
-      dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normalScratch);
-      dummy.rotateY(flower.yaw);
-      dummy.scale.set(flower.stemRadius, flower.stemHeight, flower.stemRadius);
-      dummy.updateMatrix();
-      stemMesh.setMatrixAt(index, dummy.matrix);
-    }
-
-    ensureSurvivalInstancedMeshColors(leafMesh, flowerInstances.length * 2);
-    let leafInstance = 0;
-    for (let index = 0; index < flowerInstances.length; index += 1) {
-      const flower = flowerInstances[index];
-      normalScratch.set(flower.normalX, flower.normalY, flower.normalZ).normalize();
-
-      for (let leafSide = 0; leafSide < flower.leafCount; leafSide += 1) {
-        const side = leafSide === 0 ? -1 : 1;
-        dummy.position
-          .set(flower.x, flower.y, flower.z)
-          .addScaledVector(normalScratch, flower.stemHeight * flower.leafHeight);
-        dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normalScratch);
-        dummy.rotateY(flower.yaw + side * (0.92 + flower.leafYawOffset));
-        dummy.rotateZ(side * -0.42);
-        dummy.scale.set(flower.leafWidth, flower.leafLength, 1);
-        dummy.updateMatrix();
-        leafMesh.setMatrixAt(leafInstance, dummy.matrix);
-        leafMesh.setColorAt(
-          leafInstance,
-          flowerColorScratch.setRGB(flower.leafColorR, flower.leafColorG, flower.leafColorB),
-        );
-        leafInstance += 1;
-      }
-    }
-
-    const writeReadableFlowerHeads = (
-      mesh: THREE.InstancedMesh,
-      flowers: SurvivalBotwFlowerInstance[],
-      widthScale: number,
-      heightScale: number,
-    ) => {
-      ensureSurvivalInstancedMeshColors(mesh, flowers.length);
-      let headInstance = 0;
-      for (let index = 0; index < flowers.length; index += 1) {
-        const flower = flowers[index];
-        normalScratch.set(flower.normalX, flower.normalY, flower.normalZ).normalize();
-        const batchBloomBoost = flower.largeBloomAmount ?? 0;
-        const blossomY = flower.stemHeight + Math.max(0.06, flower.bloomHeight) * 0.05 + 0.08 + batchBloomBoost * 0.08;
-        const headWidth = Math.min(1.35, flower.bloomWidth * (widthScale * 1.08 + batchBloomBoost * 0.08));
-        const headHeight = Math.min(1.28, flower.bloomHeight * (heightScale * 1.04 + batchBloomBoost * 0.08));
-        const bloomYaw = flower.yaw;
-
-        flowerForwardScratch.set(center.x - flower.x, 0, center.z - flower.z);
-        if (flowerForwardScratch.lengthSq() < 0.0001) {
-          flowerForwardScratch.set(Math.sin(bloomYaw), 0, Math.cos(bloomYaw));
-        }
-        flowerForwardScratch
-          .addScaledVector(normalScratch, -flowerForwardScratch.dot(normalScratch))
-          .normalize();
-        flowerRightScratch.crossVectors(normalScratch, flowerForwardScratch);
-        if (flowerRightScratch.lengthSq() < 0.0001) {
-          flowerRightScratch.set(Math.cos(bloomYaw), 0, -Math.sin(bloomYaw));
-        } else {
-          flowerRightScratch.normalize();
-        }
-        flowerBasisScratch.makeBasis(flowerRightScratch, normalScratch, flowerForwardScratch);
-        dummy.position
-          .set(flower.x, flower.y, flower.z)
-          .addScaledVector(normalScratch, blossomY);
-        dummy.quaternion.setFromRotationMatrix(flowerBasisScratch);
-        dummy.rotateZ(bloomYaw * 0.18);
-        dummy.scale.set(headWidth, headHeight, 1);
-        dummy.updateMatrix();
-        mesh.setMatrixAt(headInstance, dummy.matrix);
-        mesh.setColorAt(
-          headInstance,
-          flowerColorScratch.setRGB(flower.colorR, flower.colorG, flower.colorB),
-        );
-        headInstance += 1;
-      }
-      mesh.count = headInstance;
-      mesh.frustumCulled = false;
-      mesh.instanceMatrix.needsUpdate = true;
-      finalizeSurvivalInstancedMeshColors(mesh);
-    };
-
-    stemMesh.count = flowerInstances.length;
-    leafMesh.count = leafInstance;
-    stemMesh.frustumCulled = false;
-    leafMesh.frustumCulled = false;
-    stemMesh.instanceMatrix.needsUpdate = true;
-    leafMesh.instanceMatrix.needsUpdate = true;
-    writeReadableFlowerHeads(starMesh, starFlowers, 0.72, 0.76);
-    writeReadableFlowerHeads(roundMesh, roundFlowers, 0.66, 0.68);
-    writeReadableFlowerHeads(bellMesh, bellFlowers, 0.6, 0.68);
-    writeReadableFlowerHeads(puffMesh, puffFlowers, 0.68, 0.7);
-    finalizeSurvivalInstancedMeshColors(leafMesh);
-
-    let largeFlowerCount = 0;
-    for (let index = 0; index < flowerInstances.length; index += 1) {
-      const flower = flowerInstances[index];
-      if ((flower.largeBloomAmount ?? 0) > 0.12) largeFlowerCount += 1;
-    }
+    const uploadResult = uploadSurvivalBotwFlowerInstances({
+      stemMesh,
+      leafMesh,
+      starMesh,
+      roundMesh,
+      bellMesh,
+      puffMesh,
+      flowers: flowerInstances,
+      starFlowers,
+      roundFlowers,
+      bellFlowers,
+      puffFlowers,
+      center,
+      scratch: {
+        dummy,
+        normal: normalScratch,
+        forward: flowerForwardScratch,
+        right: flowerRightScratch,
+        basis: flowerBasisScratch,
+        color: flowerColorScratch,
+      },
+    });
     publishSurvivalBotwGrassFlowerCounts(
-      flowerInstances.length,
-      largeFlowerCount,
+      uploadResult.flowerCount,
+      uploadResult.largeFlowerCount,
     );
   }, [
     bellFlowers,
