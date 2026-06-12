@@ -1,10 +1,11 @@
-import { useRef } from "react";
+import { useId } from "react";
 import { getSpriteUrl } from "../../SpriteManifest";
 import {
   PALM_X,
   PALM_Y,
   heldSpellSpriteSize,
 } from "./MagicHandSpriteCanvas";
+import { getMagicHandSvgIdSuffix } from "./magicHandSvgIds";
 import { useMagicHandEquipScale } from "./useMagicHandEquipScale";
 
 type DefenseSpellEffectProps = {
@@ -60,16 +61,13 @@ export function DiscShieldCanvas({ isActive, isCharging }: DefenseSpellEffectPro
 
 export function OrbShieldCanvas({ isActive, isCharging }: DefenseSpellEffectProps) {
   const equipScale = useMagicHandEquipScale(isActive);
-  const idSuffixRef = useRef<string | null>(null);
-  if (!idSuffixRef.current) {
-    idSuffixRef.current = Math.random().toString(36).slice(2);
-  }
+  const idSuffix = getMagicHandSvgIdSuffix(useId());
 
   if (equipScale === 0) return null;
 
-  const hexPatternId = `orb-hex-pattern-${idSuffixRef.current}`;
-  const orbGlowId = `orb-glow-${idSuffixRef.current}`;
-  const orbClipId = `orb-clip-${idSuffixRef.current}`;
+  const hexPatternId = `orb-hex-pattern-${idSuffix}`;
+  const orbGlowId = `orb-glow-${idSuffix}`;
+  const orbClipId = `orb-clip-${idSuffix}`;
 
   return (
     <div

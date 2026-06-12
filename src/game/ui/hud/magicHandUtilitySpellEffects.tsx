@@ -1,10 +1,11 @@
-import { useRef } from "react";
+import { useId } from "react";
 import { getSpriteUrl } from "../../SpriteManifest";
 import {
   PALM_X,
   PALM_Y,
   heldSpellSpriteSize,
 } from "./MagicHandSpriteCanvas";
+import { getMagicHandSvgIdSuffix } from "./magicHandSvgIds";
 import { useMagicHandEquipScale } from "./useMagicHandEquipScale";
 
 type UtilitySpellEffectProps = {
@@ -61,15 +62,12 @@ export function HealingCrystalsCanvas({ isActive, isCharging }: UtilitySpellEffe
 
 export function GrabSpellCanvas({ isActive, isCharging }: UtilitySpellEffectProps) {
   const equipScale = useMagicHandEquipScale(isActive);
-  const idSuffixRef = useRef<string | null>(null);
-  if (!idSuffixRef.current) {
-    idSuffixRef.current = Math.random().toString(36).slice(2);
-  }
+  const idSuffix = getMagicHandSvgIdSuffix(useId());
 
   if (equipScale === 0) return null;
 
-  const glowId = `grab-hand-glow-${idSuffixRef.current}`;
-  const armId = `grab-arm-core-${idSuffixRef.current}`;
+  const glowId = `grab-hand-glow-${idSuffix}`;
+  const armId = `grab-arm-core-${idSuffix}`;
 
   return (
     <div
