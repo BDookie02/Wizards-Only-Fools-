@@ -16,7 +16,6 @@ import {
 import { isMobilePerformanceMode } from "../../input/performanceMode";
 import { useLazyRef } from "../../react/useLazyRef";
 import { configurePixelSpriteTexture } from "../../rendering/textures/pixelSpriteTexture";
-import { getDarrelPetalNoise } from "../../rendering/textures/textureNoise";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
 import { HIDE_FROM_MINIMAP } from "../vegetation/SurvivalFoliagePrimitives";
 import {
@@ -35,7 +34,12 @@ import {
   DARREL_WATERFALL_RIVER_MOUTHS,
   DARREL_WATERFALL_RUNNELS,
   DARREL_WATERFALL_SPRAY_PUFFS,
+  DARREL_PETAL_DRIFT_PATCHES,
+  type DarrelFallenPetal,
+  type DarrelFallingPetal,
   getDarrelBranchTransform,
+  getDarrelFallenPetals,
+  getDarrelFallingPetals,
   getDarrelHillStairRamp,
   getDarrelHillSteps,
   getDarrelQuestGateNowMs,
@@ -1013,48 +1017,14 @@ function DarrelGroveBoundary() {
   );
 }
 
-type DarrelFallenPetal = {
-  x: number;
-  z: number;
-  y: number;
-  yaw: number;
-  sx: number;
-  sz: number;
-};
-
-type DarrelFallingPetal = {
-  x: number;
-  z: number;
-  phase: number;
-  speed: number;
-  sway: number;
-  drift: number;
-  scale: number;
-  spin: number;
-};
-
-function isInsideDarrelHutFootprint(x: number, z: number) {
-  return Math.abs(x) < 48 && Math.abs(z) < 40;
-}
-
 function DarrelPetalDriftPatches() {
   const carpetTexture = useMemo(() => getDarrelPetalCarpetTexture(), []);
-  const patches = [
-    [-154, -158, 136, 76, -0.18],
-    [154, -156, 138, 78, 0.14],
-    [-158, 154, 142, 80, 0.26],
-    [158, 154, 138, 78, -0.2],
-    [0, -186, 174, 50, 0.05],
-    [0, 186, 180, 52, -0.08],
-    [-190, 0, 58, 168, 0.08],
-    [190, 0, 60, 168, -0.1],
-  ] as const;
 
   return (
     <group name="darrel-petal-drift-patches" userData={HIDE_FROM_MINIMAP}>
-      {patches.map(([x, z, width, depth, yaw], index) => (
-        <mesh key={`darrel-petal-drift-${index}`} position={[x, DARREL_GROVE_GROUND_Y + 0.105 + index * 0.002, z]} rotation={[-Math.PI / 2, 0, yaw]} renderOrder={2}>
-          <planeGeometry args={[width, depth]} />
+      {DARREL_PETAL_DRIFT_PATCHES.map((patch, index) => (
+        <mesh key={`darrel-petal-drift-${index}`} position={[patch.x, DARREL_GROVE_GROUND_Y + 0.105 + index * 0.002, patch.z]} rotation={[-Math.PI / 2, 0, patch.yaw]} renderOrder={2}>
+          <planeGeometry args={[patch.width, patch.depth]} />
           <meshBasicMaterial
             map={carpetTexture}
             color="#ffd9e8"
@@ -1077,26 +1047,7 @@ function DarrelFallenPetalField() {
   const petalTexture = useMemo(() => getDarrelPetalTexture(), []);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
-  const petals = useMemo<DarrelFallenPetal[]>(() => {
-    const generated: DarrelFallenPetal[] = [];
-    for (let index = 0; index < DARREL_FALLEN_PETAL_TARGET_COUNT; index += 1) {
-      const x = -242 + getDarrelPetalNoise(index, 1) * 484;
-      const z = -242 + getDarrelPetalNoise(index, 2) * 484;
-      if (isInsideDarrelHutFootprint(x, z)) continue;
-
-      const nearTree = Math.abs(x) > 118 || Math.abs(z) > 118;
-      const scale = nearTree ? 3.15 : 2.25;
-      generated.push({
-        x,
-        z,
-        y: DARREL_GROVE_GROUND_Y + 0.16 + (index % 5) * 0.004,
-        yaw: getDarrelPetalNoise(index, 3) * Math.PI * 2,
-        sx: (4.4 + getDarrelPetalNoise(index, 4) * 7.8) * scale,
-        sz: (2.3 + getDarrelPetalNoise(index, 5) * 4.2) * scale,
-      });
-    }
-    return generated;
-  }, []);
+  const petals = useMemo<DarrelFallenPetal[]>(() => getDarrelFallenPetals(DARREL_FALLEN_PETAL_TARGET_COUNT, DARREL_GROVE_GROUND_Y), []);
 
   useEffect(() => {
     const mesh = meshRef.current;
@@ -1141,33 +1092,7 @@ function DarrelFallingPetals() {
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const lastMobilePetalUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
-  const petals = useMemo<DarrelFallingPetal[]>(() => {
-    const generated: DarrelFallingPetal[] = [];
-    for (let index = 0; index < DARREL_FALLING_PETAL_COUNT; index += 1) {
-      const nearCorner = getDarrelPetalNoise(index, 8) > 0.34;
-      const side = Math.floor(getDarrelPetalNoise(index, 9) * 4);
-      const cornerX = side === 0 || side === 3 ? -1 : 1;
-      const cornerZ = side < 2 ? -1 : 1;
-      const x = nearCorner
-        ? cornerX * (110 + getDarrelPetalNoise(index, 1) * 115)
-        : -165 + getDarrelPetalNoise(index, 1) * 330;
-      const z = nearCorner
-        ? cornerZ * (110 + getDarrelPetalNoise(index, 2) * 115)
-        : -165 + getDarrelPetalNoise(index, 2) * 330;
-
-      generated.push({
-        x,
-        z,
-        phase: getDarrelPetalNoise(index, 3),
-        speed: 0.045 + getDarrelPetalNoise(index, 4) * 0.05,
-        sway: 4 + getDarrelPetalNoise(index, 5) * 8,
-        drift: getDarrelPetalNoise(index, 6) * Math.PI * 2,
-        scale: 7.2 + getDarrelPetalNoise(index, 7) * 8.8,
-        spin: (getDarrelPetalNoise(index, 10) - 0.5) * 2.2,
-      });
-    }
-    return generated;
-  }, []);
+  const petals = useMemo<DarrelFallingPetal[]>(() => getDarrelFallingPetals(DARREL_FALLING_PETAL_COUNT), []);
 
   useEffect(() => {
     const mesh = meshRef.current;

@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+import { getDarrelPetalNoise } from "../../rendering/textures/textureNoise";
+
 export type DarrelBranchTransform = {
   length: number;
   midpoint: THREE.Vector3;
@@ -105,6 +107,34 @@ export type DarrelWaterfallRunnel = {
   yaw: number;
 };
 
+export type DarrelPetalDriftPatch = {
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  yaw: number;
+};
+
+export type DarrelFallenPetal = {
+  x: number;
+  z: number;
+  y: number;
+  yaw: number;
+  sx: number;
+  sz: number;
+};
+
+export type DarrelFallingPetal = {
+  x: number;
+  z: number;
+  phase: number;
+  speed: number;
+  sway: number;
+  drift: number;
+  scale: number;
+  spin: number;
+};
+
 const DARREL_BRANCH_UP = new THREE.Vector3(0, 1, 0);
 const DARREL_SIDE_SIGNS: readonly DarrelSideSign[] = [-1, 1];
 const DARREL_BACKYARD_RIVER_STONE_X = [-170, -128, -88, -48, -8, 34, 78, 122, 166] as const;
@@ -166,6 +196,17 @@ export const DARREL_WATERFALL_RUNNELS: readonly DarrelWaterfallRunnel[] = [
   { x: Math.sin(0) * 7, z: 128, width: 24, depth: 18, yaw: 0.12 },
   { x: Math.sin(1) * 7, z: 148, width: 21, depth: 18, yaw: -0.16 },
   { x: Math.sin(2) * 7, z: 166, width: 18, depth: 18, yaw: 0.12 },
+];
+
+export const DARREL_PETAL_DRIFT_PATCHES: readonly DarrelPetalDriftPatch[] = [
+  { x: -154, z: -158, width: 136, depth: 76, yaw: -0.18 },
+  { x: 154, z: -156, width: 138, depth: 78, yaw: 0.14 },
+  { x: -158, z: 154, width: 142, depth: 80, yaw: 0.26 },
+  { x: 158, z: 154, width: 138, depth: 78, yaw: -0.2 },
+  { x: 0, z: -186, width: 174, depth: 50, yaw: 0.05 },
+  { x: 0, z: 186, width: 180, depth: 52, yaw: -0.08 },
+  { x: -190, z: 0, width: 58, depth: 168, yaw: 0.08 },
+  { x: 190, z: 0, width: 60, depth: 168, yaw: -0.1 },
 ];
 
 export function getDarrelQuestGateNowMs() {
@@ -268,4 +309,59 @@ export function getDarrelSideStairLayout({
     ramps,
     steps,
   };
+}
+
+export function isInsideDarrelHutFootprint(x: number, z: number) {
+  return Math.abs(x) < 48 && Math.abs(z) < 40;
+}
+
+export function getDarrelFallenPetals(targetCount: number, groundY: number) {
+  const safeTargetCount = Math.max(0, Math.floor(targetCount));
+  const generated: DarrelFallenPetal[] = [];
+  for (let index = 0; index < safeTargetCount; index += 1) {
+    const x = -242 + getDarrelPetalNoise(index, 1) * 484;
+    const z = -242 + getDarrelPetalNoise(index, 2) * 484;
+    if (isInsideDarrelHutFootprint(x, z)) continue;
+
+    const nearTree = Math.abs(x) > 118 || Math.abs(z) > 118;
+    const scale = nearTree ? 3.15 : 2.25;
+    generated.push({
+      x,
+      z,
+      y: groundY + 0.16 + (index % 5) * 0.004,
+      yaw: getDarrelPetalNoise(index, 3) * Math.PI * 2,
+      sx: (4.4 + getDarrelPetalNoise(index, 4) * 7.8) * scale,
+      sz: (2.3 + getDarrelPetalNoise(index, 5) * 4.2) * scale,
+    });
+  }
+  return generated;
+}
+
+export function getDarrelFallingPetals(count: number) {
+  const safeCount = Math.max(0, Math.floor(count));
+  const generated: DarrelFallingPetal[] = [];
+  for (let index = 0; index < safeCount; index += 1) {
+    const nearCorner = getDarrelPetalNoise(index, 8) > 0.34;
+    const side = Math.floor(getDarrelPetalNoise(index, 9) * 4);
+    const cornerX = side === 0 || side === 3 ? -1 : 1;
+    const cornerZ = side < 2 ? -1 : 1;
+    const x = nearCorner
+      ? cornerX * (110 + getDarrelPetalNoise(index, 1) * 115)
+      : -165 + getDarrelPetalNoise(index, 1) * 330;
+    const z = nearCorner
+      ? cornerZ * (110 + getDarrelPetalNoise(index, 2) * 115)
+      : -165 + getDarrelPetalNoise(index, 2) * 330;
+
+    generated.push({
+      x,
+      z,
+      phase: getDarrelPetalNoise(index, 3),
+      speed: 0.045 + getDarrelPetalNoise(index, 4) * 0.05,
+      sway: 4 + getDarrelPetalNoise(index, 5) * 8,
+      drift: getDarrelPetalNoise(index, 6) * Math.PI * 2,
+      scale: 7.2 + getDarrelPetalNoise(index, 7) * 8.8,
+      spin: (getDarrelPetalNoise(index, 10) - 0.5) * 2.2,
+    });
+  }
+  return generated;
 }
