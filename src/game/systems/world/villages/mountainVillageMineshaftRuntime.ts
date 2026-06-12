@@ -36,6 +36,14 @@ export type MountainMineshaftCatwalkRingPoint = {
 
 export type MountainMineshaftCatwalkLightPole = MountainMineshaftCatwalkRingPoint;
 
+export type MountainMineshaftRimBeam = {
+  index: number;
+  angle: number;
+  x: number;
+  z: number;
+  rotation: [number, number, number];
+};
+
 export type MountainMineshaftCatwalkDescriptors = {
   centerGuardPostCount: number;
   centerGuardRailRadius: number;
@@ -50,6 +58,7 @@ export type MountainMineshaftCatwalkDescriptors = {
 
 const catwalkDescriptorCache = new Map<string, MountainMineshaftCatwalkDescriptors>();
 const catwalkLightPoleCache = new Map<string, MountainMineshaftCatwalkLightPole[]>();
+const rimBeamCache = new Map<string, MountainMineshaftRimBeam[]>();
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -190,4 +199,34 @@ export function getMountainMineshaftCatwalkLightPoles(hutAngle: number, lightPol
   }
   catwalkLightPoleCache.set(cacheKey, lightPoles);
   return lightPoles;
+}
+
+export function getMountainMineshaftRimBeams({
+  count,
+  holeRadius,
+  outerRadius,
+}: {
+  count: number;
+  holeRadius: number;
+  outerRadius: number;
+}) {
+  const safeCount = Math.max(1, Math.floor(count));
+  const centerRadius = (holeRadius + outerRadius) / 2;
+  const cacheKey = `${safeCount}:${holeRadius}:${outerRadius}`;
+  const cached = rimBeamCache.get(cacheKey);
+  if (cached) return cached;
+
+  const beams = new Array<MountainMineshaftRimBeam>(safeCount);
+  for (let index = 0; index < safeCount; index += 1) {
+    const angle = (Math.PI * 2 * index) / safeCount;
+    beams[index] = {
+      index,
+      angle,
+      x: Math.sin(angle) * centerRadius,
+      z: Math.cos(angle) * centerRadius,
+      rotation: [0, angle + Math.PI / 2, 0],
+    };
+  }
+  rimBeamCache.set(cacheKey, beams);
+  return beams;
 }

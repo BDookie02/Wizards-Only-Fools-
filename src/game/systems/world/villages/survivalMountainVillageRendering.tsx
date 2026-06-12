@@ -33,6 +33,7 @@ import {
   getMountainMineshaftExitBridgeFrame,
   getMountainMineshaftLadderLandingLocalX,
   getMountainMineshaftPlatformPieces,
+  getMountainMineshaftRimBeams,
 } from "./mountainVillageMineshaftRuntime";
 import {
   MOUNTAIN_VILLAGE_EDGE_BLEND_START,
@@ -2963,6 +2964,15 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
   const bottomY = baseHeight + MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET;
   const shaftWallHeight = Math.max(32, summitY - bottomY + 1.2);
   const shaftWallY = bottomY + shaftWallHeight / 2 - 0.2;
+  const rimBeams = useMemo(
+    () =>
+      getMountainMineshaftRimBeams({
+        count: 12,
+        holeRadius: MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS,
+        outerRadius: MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS,
+      }),
+    [],
+  );
 
   return (
     <group name="mountain-village-mineshaft">
@@ -3026,17 +3036,14 @@ function MountainMineshaftOpening({ baseHeight, summitY, exitLadder, showDetails
           </mesh>
         </>
       )}
-      {getCachedIndexRange(12).map((index) => {
-        const angle = (Math.PI * 2 * index) / 12;
-        if (exitLadder && absoluteAngleDeltaRadians(exitLadder.angle, angle) < 0.38) return null;
+      {rimBeams.map((beam) => {
+        if (exitLadder && absoluteAngleDeltaRadians(exitLadder.angle, beam.angle) < 0.38) return null;
 
-        const x = Math.sin(angle) * ((MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS) / 2);
-        const z = Math.cos(angle) * ((MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS + MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS) / 2);
         return (
-          <group key={`mine-rim-beam-${index}`} position={[x, summitY + 1.02, z]} rotation={[0, angle + Math.PI / 2, 0]}>
+          <group key={`mine-rim-beam-${beam.index}`} position={[beam.x, summitY + 1.02, beam.z]} rotation={beam.rotation}>
             <mesh castShadow={false}>
               <boxGeometry args={[3.4, 0.9, 9.5]} />
-              <meshBasicMaterial color={index % 2 === 0 ? "#4b3421" : "#5e442d"} />
+              <meshBasicMaterial color={beam.index % 2 === 0 ? "#4b3421" : "#5e442d"} />
             </mesh>
             {showDetails && (
               <>
