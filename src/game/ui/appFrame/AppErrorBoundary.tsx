@@ -8,6 +8,10 @@ type AppErrorBoundaryState = {
 let rapierTeardownWindowStartedAt = 0;
 let rapierTeardownErrorsInWindow = 0;
 
+export function getAppErrorBoundaryNowMs() {
+  return Date.now();
+}
+
 function isKnownRapierTeardownError(error: unknown) {
   const text = String(error instanceof Error ? error.stack || error.message : error);
   return (
@@ -19,7 +23,7 @@ function isKnownRapierTeardownError(error: unknown) {
 function shouldIgnoreRapierTeardownError(error: unknown) {
   if (!isKnownRapierTeardownError(error)) return false;
 
-  const now = Date.now();
+  const now = getAppErrorBoundaryNowMs();
   if (now - rapierTeardownWindowStartedAt > 1500) {
     rapierTeardownWindowStartedAt = now;
     rapierTeardownErrorsInWindow = 0;
@@ -34,7 +38,7 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, AppErro
 
   static getDerivedStateFromError(error: Error) {
     if (shouldIgnoreRapierTeardownError(error)) {
-      return { error: null, ignoredRapierTeardownAt: Date.now() };
+      return { error: null, ignoredRapierTeardownAt: getAppErrorBoundaryNowMs() };
     }
     return { error };
   }
