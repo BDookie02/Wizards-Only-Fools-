@@ -11,9 +11,6 @@ import {
   DEFAULT_VOICE_OUTPUT_VOLUME,
   DEFAULT_VOICE_PROXIMITY_RANGE,
   DEFAULT_VOICE_PUSH_TO_TALK_KEY,
-  ENEMY_DIFFICULTY_SETTINGS,
-  LOBBY_MAP_PRESETS,
-  MANA_SPAWN_RATE_SETTINGS,
   getSurvivalDifficultyMultiplier,
   useGameStore,
   SpellType,
@@ -23,11 +20,6 @@ import {
   type QuestDialogSession,
   sanitizePlayerName,
 } from "../store/gameStore";
-import {
-  MULTIPLAYER_MAX_PLAYERS_PER_ROOM,
-  MULTIPLAYER_MIN_CUSTOM_LOBBY_PLAYERS,
-  MULTIPLAYER_MIN_SURVIVAL_PLAYERS,
-} from "./network/multiplayerSessionConfig";
 import {
   canRequestPointerLockHere,
   isPermanentPointerLockRejection,
@@ -53,7 +45,16 @@ import { releaseMobileGameplayInputs } from "./ui/hud/mobileTouchEvents";
 import { readCurrentHudQaRouteFlags } from "./ui/hud/hudQaRouteFlags";
 import { isQuestNpcEditorTarget } from "./ui/hud/questNpcEditorGuard";
 import { dispatchEnginePlaceableSignal, subscribeEnginePlaceableEvent } from "./systems/placeables/enginePlaceableEvents";
-import { cycleOption, wrapIndex } from "./ui/hud/hudSettingsUtils";
+import { wrapIndex } from "./ui/hud/hudSettingsUtils";
+import {
+  getNextHudLobbyDifficultyRules,
+  getNextHudLobbyManaRateRules,
+  getNextHudLobbyMapRules,
+  getNextHudLobbyMaxPlayersRules,
+  getNextHudSurvivalDifficultyRules,
+  getNextHudSurvivalManaRateRules,
+  getNextHudSurvivalMaxPlayersRules,
+} from "./ui/hud/hudLaunchRulesRuntime";
 import { useHudLobbyMessageCleanup } from "./ui/hud/useHudLobbyMessageCleanup";
 import { clampMenuIndex, findDirectionalMenuIndex, getHudMenuNowMs, type MenuDirection } from "./ui/hud/hudMenuNavigation";
 import {
@@ -1662,51 +1663,31 @@ export function HUD() {
   }, [gameMode, isGameLaunched, saveSurvivalProgress, survivalSave]);
 
   const cycleLobbyMap = (direction: 1 | -1) => {
-    setLobbyRules({
-      mapPreset: cycleOption(LOBBY_MAP_PRESETS, lobbyRules.mapPreset, direction) as typeof lobbyRules.mapPreset,
-    });
+    setLobbyRules(getNextHudLobbyMapRules(lobbyRules, direction));
   };
 
   const cycleLobbyDifficulty = (direction: 1 | -1) => {
-    setLobbyRules({
-      enemyDifficulty: cycleOption(ENEMY_DIFFICULTY_SETTINGS, lobbyRules.enemyDifficulty, direction) as typeof lobbyRules.enemyDifficulty,
-    });
+    setLobbyRules(getNextHudLobbyDifficultyRules(lobbyRules, direction));
   };
 
   const cycleSurvivalDifficulty = (direction: 1 | -1) => {
-    setSurvivalRules({
-      enemyDifficulty: cycleOption(ENEMY_DIFFICULTY_SETTINGS, survivalRules.enemyDifficulty, direction) as typeof survivalRules.enemyDifficulty,
-    });
+    setSurvivalRules(getNextHudSurvivalDifficultyRules(survivalRules, direction));
   };
 
   const cycleLobbyManaRate = (direction: 1 | -1) => {
-    setLobbyRules({
-      manaSpawnRate: cycleOption(MANA_SPAWN_RATE_SETTINGS, lobbyRules.manaSpawnRate, direction) as typeof lobbyRules.manaSpawnRate,
-    });
+    setLobbyRules(getNextHudLobbyManaRateRules(lobbyRules, direction));
   };
 
   const cycleSurvivalManaRate = (direction: 1 | -1) => {
-    setSurvivalRules({
-      manaSpawnRate: cycleOption(MANA_SPAWN_RATE_SETTINGS, survivalRules.manaSpawnRate, direction) as typeof survivalRules.manaSpawnRate,
-    });
+    setSurvivalRules(getNextHudSurvivalManaRateRules(survivalRules, direction));
   };
 
   const adjustLobbyMaxPlayers = (direction: 1 | -1) => {
-    setLobbyRules({
-      maxPlayers: Math.max(
-        MULTIPLAYER_MIN_CUSTOM_LOBBY_PLAYERS,
-        Math.min(MULTIPLAYER_MAX_PLAYERS_PER_ROOM, lobbyRules.maxPlayers + direction),
-      ),
-    });
+    setLobbyRules(getNextHudLobbyMaxPlayersRules(lobbyRules, direction));
   };
 
   const adjustSurvivalMaxPlayers = (direction: 1 | -1) => {
-    setSurvivalRules({
-      maxPlayers: Math.max(
-        MULTIPLAYER_MIN_SURVIVAL_PLAYERS,
-        Math.min(MULTIPLAYER_MAX_PLAYERS_PER_ROOM, survivalRules.maxPlayers + direction),
-      ),
-    });
+    setSurvivalRules(getNextHudSurvivalMaxPlayersRules(survivalRules, direction));
   };
 
   const closePauseMenu = (preferredInput: GameplayInputMode | "last" = "last") => {
