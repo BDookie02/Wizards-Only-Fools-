@@ -100,6 +100,15 @@ const CHICAGO_PARKING_LINE_INDICES = [0, 1, 2, 3, 4, 5, 6, 7] as const;
 const CHICAGO_CAR_WHEEL_SIDES = [-1, 1] as const;
 const CHICAGO_BENCH_LEG_X = [-2.2, 2.2] as const;
 const CHICAGO_BEAN_BOLLARD_X = [-18, -6, 6, 18] as const;
+const CHICAGO_TRAFFIC_LIGHT_POLES = [
+  { key: "northwest", offsetX: -18, offsetZ: -18, yaw: 0 },
+  { key: "southeast", offsetX: 18, offsetZ: 18, yaw: Math.PI },
+] as const;
+const CHICAGO_TRAFFIC_SIGNAL_LIGHTS = [
+  { color: "#ef4444", y: 8.42 },
+  { color: "#facc15", y: 7.55 },
+  { color: "#22c55e", y: 6.68 },
+] as const;
 
 let cachedChicagoWindowTexture: THREE.Texture | null = null;
 let cachedChicagoFacadeTextures: THREE.Texture[] | null = null;
@@ -1203,14 +1212,11 @@ function ChicagoTrafficLights({ baseHeight }: { baseHeight: number }) {
     <group name="chicago-traffic-lights">
       {intersections.map((intersection, index) => (
         <group key={`traffic-light-${intersection.key}`}>
-          {[
-            [-18, -18, 0],
-            [18, 18, Math.PI],
-          ].map(([offsetX, offsetZ, yaw], poleIndex) => (
+          {CHICAGO_TRAFFIC_LIGHT_POLES.map((pole, poleIndex) => (
             <group
-              key={`traffic-light-pole-${poleIndex}`}
-              position={[intersection.x + offsetX, baseHeight + 0.36, intersection.z + offsetZ]}
-              rotation={[0, yaw, 0]}
+              key={`traffic-light-pole-${pole.key}`}
+              position={[intersection.x + pole.offsetX, baseHeight + 0.36, intersection.z + pole.offsetZ]}
+              rotation={[0, pole.yaw, 0]}
             >
               <mesh position={[0, 4.1, 0]} castShadow={false}>
                 <cylinderGeometry args={[0.28, 0.34, 8.2, 6]} />
@@ -1224,15 +1230,11 @@ function ChicagoTrafficLights({ baseHeight }: { baseHeight: number }) {
                 <boxGeometry args={[1.45, 3.4, 1.0]} />
                 <meshBasicMaterial color="#111827" />
               </mesh>
-              {[
-                ["#ef4444", 8.42],
-                ["#facc15", 7.55],
-                ["#22c55e", 6.68],
-              ].map(([color, y], lightIndex) => (
-                <mesh key={`signal-light-${lightIndex}`} position={[8.32, Number(y), 0.55]} castShadow={false}>
+              {CHICAGO_TRAFFIC_SIGNAL_LIGHTS.map((light, lightIndex) => (
+                <mesh key={`signal-light-${light.color}`} position={[8.32, light.y, 0.55]} castShadow={false}>
                   <sphereGeometry args={[0.33, 8, 6]} />
                   <meshBasicMaterial
-                    color={color}
+                    color={light.color}
                     transparent
                     opacity={(index + poleIndex + lightIndex) % 3 === 0 ? 1 : 0.42}
                   />
@@ -2326,14 +2328,11 @@ function ChicagoCityColliders({
         })}
         {trafficLightIntersections.map((intersection) => (
           <Fragment key={`traffic-light-colliders-${intersection.key}`}>
-            {([
-              [-18, -18, 0],
-              [18, 18, Math.PI],
-            ] as const).map(([offsetX, offsetZ, yaw], poleIndex) => (
+            {CHICAGO_TRAFFIC_LIGHT_POLES.map((pole) => (
               <group
-                key={`traffic-light-collider-${intersection.key}-${poleIndex}`}
-                position={[intersection.x + offsetX, baseHeight + 0.36, intersection.z + offsetZ]}
-                rotation={[0, yaw, 0]}
+                key={`traffic-light-collider-${intersection.key}-${pole.key}`}
+                position={[intersection.x + pole.offsetX, baseHeight + 0.36, intersection.z + pole.offsetZ]}
+                rotation={[0, pole.yaw, 0]}
               >
                 <CylinderCollider args={[4.1, 0.34]} position={[0, 4.1, 0]} />
                 <CuboidCollider args={[4.05, 0.18, 0.18]} position={[4, 8.1, 0]} />
