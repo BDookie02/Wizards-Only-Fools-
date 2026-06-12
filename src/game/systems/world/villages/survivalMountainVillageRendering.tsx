@@ -31,6 +31,7 @@ import {
   useMountainVillageDetailPhase,
 } from "./mountainVillageDetailPhase";
 import {
+  getMountainCabinDoorMetrics,
   makeMountainVillageCabins,
   makeMountainVillageCliffPatches,
   makeMountainVillageHutInfos,
@@ -309,16 +310,6 @@ function MountainCliffBreakup({ patches, showDetails }: { patches: MountainVilla
       ))}
     </group>
   );
-}
-
-function getMountainCabinDoorMetrics(cabin: MountainVillageCabin) {
-  const wallThickness = Math.min(1.05, cabin.width * 0.12, cabin.depth * 0.12);
-  const doorWidth = Math.min(6.2, cabin.width - wallThickness * 4);
-  const doorHeight = Math.min(7.4, cabin.height - 1.15);
-  const frontWallWidth = Math.max(1.05, (cabin.width - doorWidth) / 2);
-  const lintelHeight = Math.max(0.75, cabin.height - doorHeight);
-
-  return { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight };
 }
 
 function RetroVerticalTimberDetails({

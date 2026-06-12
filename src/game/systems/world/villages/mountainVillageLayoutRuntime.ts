@@ -86,6 +86,22 @@ export type MountainVillageTrailSegment = {
   supports: MountainVillageTrailSupport[];
 };
 
+type MountainVillageCabinDoorMetricsSource = {
+  width: number;
+  depth: number;
+  height: number;
+};
+
+export function getMountainCabinDoorMetrics(cabin: MountainVillageCabinDoorMetricsSource) {
+  const wallThickness = Math.min(1.05, cabin.width * 0.12, cabin.depth * 0.12);
+  const doorWidth = Math.min(6.2, cabin.width - wallThickness * 4);
+  const doorHeight = Math.min(7.4, cabin.height - 1.15);
+  const frontWallWidth = Math.max(1.05, (cabin.width - doorWidth) / 2);
+  const lintelHeight = Math.max(0.75, cabin.height - doorHeight);
+
+  return { wallThickness, doorWidth, doorHeight, frontWallWidth, lintelHeight };
+}
+
 const MOUNTAIN_CABIN_BODY_COLORS = ["#584633", "#64513d", "#4f4538", "#6b573f"] as const;
 const MOUNTAIN_CABIN_ROOF_COLORS = ["#dceefa", "#cfe4f3", "#edf7ff", "#b9d3e8"] as const;
 const MOUNTAIN_CABIN_ACCENT_COLORS = ["#82d8ff", "#f5d28a", "#bce7ff", "#d6f4ff"] as const;
