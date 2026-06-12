@@ -389,13 +389,17 @@ function getSurvivalBotwGrassBuildKey(center: SurvivalBotwGrassCenter, mobilePer
 
 const SURVIVAL_BOTW_GRASS_SLICE_CLOCK_CHECK_INTERVAL = 16;
 
+function getSurvivalBotwGrassNowMs() {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
 function shouldContinueSurvivalBotwGrassSlice(workCount: number, sliceStartedAt: number, sliceBudgetMs: number) {
   if (workCount === 0 || workCount % SURVIVAL_BOTW_GRASS_SLICE_CLOCK_CHECK_INTERVAL !== 0) return true;
-  return performance.now() - sliceStartedAt < sliceBudgetMs;
+  return getSurvivalBotwGrassNowMs() - sliceStartedAt < sliceBudgetMs;
 }
 
 function getSurvivalBotwGrassElapsedMs(startedAt: number) {
-  return performance.now() - startedAt;
+  return getSurvivalBotwGrassNowMs() - startedAt;
 }
 
 function publishSurvivalBotwGrassPendingPrewarmCount() {
@@ -423,12 +427,12 @@ function prewarmSurvivalBotwGrassBuild(
   const sliceBudgetMs = mobilePerformanceMode
     ? SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_MS
     : SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS;
-  const startedAt = performance.now();
+  const startedAt = getSurvivalBotwGrassNowMs();
   let bladeCandidate = 0;
   let flowerCandidate = 0;
 
   const runSlice = () => {
-    const sliceStartedAt = performance.now();
+    const sliceStartedAt = getSurvivalBotwGrassNowMs();
     let workCount = 0;
     while (
       bladeCandidate < bladeContext.candidateCount &&
@@ -637,7 +641,7 @@ function ActiveSurvivalBotwGrassField() {
     const sliceBudgetMs = mobilePerformanceMode
       ? SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_MS
       : SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS;
-    const startedAt = performance.now();
+    const startedAt = getSurvivalBotwGrassNowMs();
     let bladeCandidate = 0;
     let flowerCandidate = 0;
     let lastPreviewPublishCount = 0;
@@ -724,7 +728,7 @@ function ActiveSurvivalBotwGrassField() {
       timer = null;
       if (cancelled) return;
 
-      const sliceStartedAt = performance.now();
+      const sliceStartedAt = getSurvivalBotwGrassNowMs();
       let workCount = 0;
       const previewCount = mobilePerformanceMode
         ? SURVIVAL_BOTW_GRASS_MOBILE_PREVIEW_COUNT
