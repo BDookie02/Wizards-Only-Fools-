@@ -10,7 +10,7 @@ import { Villagers } from "../../../Villagers";
 import { shouldPublishCurrentMountainSlopeGrassTelemetry } from "../../../tools/qa/survivalQaTelemetryRoutes";
 import { getMountainVillageTerrainDetailTexture } from "../terrain/survivalTerrainTextures";
 import { shouldBuildSurvivalChunkColliders } from "../survival/survivalChunks";
-import { clamp01, lerpNumber, smoothstep01, smoothstepRange, survivalHash01 } from "../survival/survivalMath";
+import { clamp01, lerpNumber, smoothstepRange, survivalHash01 } from "../survival/survivalMath";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
 import { getSurvivalTutorialGrassTuftGeometry } from "../vegetation/survivalGrassGeometry";
 import { HIDE_FROM_MINIMAP } from "../vegetation/SurvivalFoliagePrimitives";
@@ -20,7 +20,10 @@ import {
   finalizeSurvivalInstancedMeshColors,
 } from "../vegetation/survivalInstancing";
 import { makeMountainVillageSlopeGrassTufts, type MountainSlopeGrassTuft } from "../vegetation/survivalMountainSlopeGrass";
-import { makeMountainVillageSummitColliderGeometry } from "./mountainVillageColliderGeometry";
+import {
+  makeMountainVillageSummitColliderGeometry,
+  makeMountainVillageTerrainColliderGeometry,
+} from "./mountainVillageColliderGeometry";
 import {
   MOUNTAIN_VILLAGE_DETAIL_PHASE_FINISHING,
   MOUNTAIN_VILLAGE_DETAIL_PHASE_MINESHAFT_INTERIOR,
@@ -88,7 +91,6 @@ import {
   getMountainVillageLocalRadius,
   getMountainVillageRadialLift,
   getMountainVillageSummitFlatMask,
-  getMountainVillageSummitFloorHeight,
   getMountainVillageTerrainSegments,
   getMountainVillageTrailSurfaceMask,
 } from "./mountainVillageTerrain";
@@ -170,31 +172,6 @@ type MountainVillageLayoutOptions = {
   includeMineshaftLayout?: boolean;
   includeVillagerHutInfos?: boolean;
 };
-
-function getMountainVillageColliderHeight(
-  chunk: SurvivalChunkInfo,
-  localX: number,
-  localZ: number,
-  terrainHeightForChunk: SurvivalTerrainHeightForChunk,
-  baseHeight: number,
-) {
-  const naturalHeight = terrainHeightForChunk(chunk, localX, localZ);
-  const radius = getMountainVillageLocalRadius(localX, localZ);
-  const angle = Math.atan2(localX, localZ);
-  const raw = 1 - (radius - MOUNTAIN_VILLAGE_PLATEAU_RADIUS) / (MOUNTAIN_VILLAGE_RADIUS - MOUNTAIN_VILLAGE_PLATEAU_RADIUS);
-  const shoulder = Math.pow(smoothstep01(raw), 1.08);
-  const ridgeNoise = (
-    Math.sin(angle * 9 + radius * 0.053 + chunk.cx * 1.7) +
-    Math.cos(angle * 5 - radius * 0.037 + chunk.cz * 1.3)
-  ) * 0.7;
-  const roughness = (1 - smoothstepRange(82, MOUNTAIN_VILLAGE_RADIUS, radius)) * ridgeNoise;
-  const mountainHeight = baseHeight + shoulder * MOUNTAIN_VILLAGE_HEIGHT + roughness;
-  const edgeBlend = smoothstepRange(MOUNTAIN_VILLAGE_EDGE_BLEND_START, SURVIVAL_BLOCK_SIZE / 2, radius);
-  const plateauCutout = 1 - smoothstepRange(MOUNTAIN_VILLAGE_PLATEAU_RADIUS - 7, MOUNTAIN_VILLAGE_PLATEAU_RADIUS + 7, radius);
-  const hiddenUnderSummit = getMountainVillageSummitFloorHeight(baseHeight) - 0.08;
-
-  return lerpNumber(lerpNumber(mountainHeight, naturalHeight, edgeBlend), hiddenUnderSummit, plateauCutout);
-}
 
 function getMountainVillageTerrainColorInto(
   target: THREE.Color,
@@ -435,29 +412,6 @@ function MountainSlopeGrass({
       />
     </instancedMesh>
   );
-}
-
-function makeMountainVillageTerrainColliderGeometry(
-  chunk: SurvivalChunkInfo,
-  cutMineshaftOpening: boolean,
-  terrainHeightForChunk: SurvivalTerrainHeightForChunk,
-  villageBaseHeightForChunk: SurvivalVillageBaseHeightForChunk,
-) {
-  const segments = getMountainVillageTerrainSegments(chunk);
-  const baseHeight = villageBaseHeightForChunk(chunk);
-  const geo = new THREE.PlaneGeometry(SURVIVAL_BLOCK_SIZE, SURVIVAL_BLOCK_SIZE, segments, segments);
-  geo.rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position;
-
-  for (let i = 0; i < pos.count; i += 1) {
-    pos.setY(i, getMountainVillageColliderHeight(chunk, pos.getX(i), pos.getZ(i), terrainHeightForChunk, baseHeight));
-  }
-
-  if (cutMineshaftOpening) {
-    cutCircularHoleFromPlaneGeometry(geo, MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS);
-  }
-  geo.computeVertexNormals();
-  return geo;
 }
 
 function makeMountainVillageLayout(
