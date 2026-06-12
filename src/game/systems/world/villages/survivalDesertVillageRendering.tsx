@@ -150,6 +150,7 @@ const DESERT_BUILDING_COLORS = ["#d8b06f", "#c99a55", "#e0bd82", "#bf8542", "#d1
 const DESERT_ROOF_COLORS = ["#a96835", "#8f552e", "#bd7a3d", "#7a462a"];
 const DESERT_MARKET_COLORS = ["#2f9bb2", "#d95f3d", "#d6b145", "#7f5bb8", "#52a35a"];
 const DESERT_CLOTH_COLORS = ["#e9d7a0", "#c94f3f", "#3f9fb5", "#dfb548", "#8d6bbb", "#f2eee3"];
+const DESERT_FENCE_POST_OFFSETS = [-0.5, 0, 0.5] as const;
 const DESERT_BUILDING_WALL_THICKNESS = 1.05;
 const DESERT_BUILDING_DOOR_WIDTH = 5.4;
 const DESERT_BUILDING_DOOR_HEIGHT = 7.25;
@@ -702,7 +703,7 @@ function DesertVillageLadder({ ladder, baseHeight }: { ladder: DesertVillageLadd
 function DesertVillageFence({ fence, baseHeight }: { fence: DesertVillageFence; baseHeight: number }) {
   return (
     <group position={[fence.localX, baseHeight, fence.localZ]} rotation={[0, fence.rotation, 0]}>
-      {[-0.5, 0, 0.5].map((offset) => (
+      {DESERT_FENCE_POST_OFFSETS.map((offset) => (
         <mesh key={offset} position={[offset * fence.length, 1.7, 0]} castShadow={false}>
           <boxGeometry args={[0.66, 3.4, 0.58]} />
           <meshBasicMaterial color="#2f1d12" />
@@ -1098,7 +1099,7 @@ function DesertVillageColliders({
         })}
         {layout.fences.map((fence) => (
           <group key={`${fence.key}-colliders`} position={[fence.localX, baseHeight, fence.localZ]} rotation={[0, fence.rotation, 0]}>
-            {[-0.5, 0, 0.5].map((offset) => (
+            {DESERT_FENCE_POST_OFFSETS.map((offset) => (
               <CuboidCollider key={`${fence.key}-post-${offset}`} args={[0.33, 1.7, 0.29]} position={[offset * fence.length, 1.7, 0]} />
             ))}
             <CuboidCollider args={[fence.length / 2, 0.19, 0.19]} position={[0, 1.55, 0]} />
