@@ -3,10 +3,14 @@ const BASE36_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyz";
 let fallbackRandomCounter = 0;
 let fallbackRandomState = 0x6d2b79f5;
 
+export function getRuntimeRandomNowMs() {
+  return Date.now();
+}
+
 function getFallbackRandomUnit() {
   fallbackRandomCounter += 1;
   fallbackRandomState = Math.imul(
-    fallbackRandomState ^ Date.now() ^ fallbackRandomCounter,
+    fallbackRandomState ^ getRuntimeRandomNowMs() ^ fallbackRandomCounter,
     1664525,
   ) + 1013904223;
 
@@ -35,6 +39,6 @@ export function getRandomBase36Suffix(length: number) {
   return suffix;
 }
 
-export function makeRuntimeRandomId(prefix: string, suffixLength = 6, nowMs = Date.now()) {
+export function makeRuntimeRandomId(prefix: string, suffixLength = 6, nowMs = getRuntimeRandomNowMs()) {
   return `${prefix}-${nowMs.toString(36)}-${getRandomBase36Suffix(suffixLength)}`;
 }
