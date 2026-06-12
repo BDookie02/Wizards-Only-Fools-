@@ -186,6 +186,14 @@ import {
   readPlayerTouchCastEvent,
 } from "./systems/player/playerTouchInputRuntime";
 import {
+  LILY_COIL_TUBE_PLAYER_RADIUS,
+  QA_LILY_COIL_TUBE_FORWARD,
+  QA_LILY_COIL_TUBE_LOOK_AHEAD_T,
+  QA_LILY_COIL_TUBE_RESTART_EDGE_T,
+  QA_LILY_COIL_TUBE_REVERSE_EDGE_T,
+  QA_LILY_COIL_TUBE_STRAFE,
+} from "./systems/player/playerLilyCoilTubeRuntime";
+import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
   dispatchPlayerState,
@@ -227,7 +235,6 @@ import {
   LILY_COIL_TUBE_MAX_JUMP_OFFSET,
   LILY_COIL_TUBE_PATH_LENGTH,
   getLilyCoilTubeFrameInto,
-  getLilyCoilTubePlayerRadius,
   getNearestLilyCoilTubeState,
   isInLilyCoilTubeChunk,
 } from "./systems/world/villages/lilyCoilTubeMotion";
@@ -268,12 +275,6 @@ import {
 } from "./systems/player/playerMovementConfig";
 
 const PLAYER_HANDS: readonly HandType[] = ["left", "right"];
-const LILY_COIL_TUBE_PLAYER_RADIUS = getLilyCoilTubePlayerRadius(PLAYER_FOOT_OFFSET);
-const QA_LILY_COIL_TUBE_FORWARD = 0.78;
-const QA_LILY_COIL_TUBE_STRAFE = 0.24;
-const QA_LILY_COIL_TUBE_LOOK_AHEAD_T = 0.048;
-const QA_LILY_COIL_TUBE_REVERSE_EDGE_T = 0.94;
-const QA_LILY_COIL_TUBE_RESTART_EDGE_T = 0.045;
 
 export function PlayerController() {
   const rigidBody = useRef<RapierRigidBody>(null);
