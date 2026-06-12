@@ -1,6 +1,6 @@
 import { Fragment } from "react";
+import { getMountainMineshaftLadderDetails } from "./mountainVillageMineshaftAccessRuntime";
 import {
-  getMountainMineshaftLadderDetails,
   type MountainMineshaftLadder,
 } from "./mountainVillageMineshaftRuntime";
 

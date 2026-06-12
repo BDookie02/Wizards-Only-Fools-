@@ -2,6 +2,8 @@ import { Fragment } from "react";
 import {
   getMountainMineshaftExitBridgeDetails,
   getMountainMineshaftExitBridgeFrame,
+} from "./mountainVillageMineshaftAccessRuntime";
+import {
   type MountainMineshaftLadder,
 } from "./mountainVillageMineshaftRuntime";
 import {

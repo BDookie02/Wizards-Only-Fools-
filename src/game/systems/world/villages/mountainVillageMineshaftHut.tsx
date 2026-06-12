@@ -8,6 +8,8 @@ import {
   getMountainMineshaftLadderLandingLocalX,
   getMountainMineshaftPlatformDetails,
   getMountainMineshaftPlatformPieces,
+} from "./mountainVillageMineshaftAccessRuntime";
+import {
   type MountainMineshaftHut,
   type MountainMineshaftLadder,
 } from "./mountainVillageMineshaftRuntime";

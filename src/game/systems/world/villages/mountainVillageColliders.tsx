@@ -10,7 +10,7 @@ import {
   getMountainMineshaftExitBridgeFrame,
   getMountainMineshaftLadderLandingLocalX,
   getMountainMineshaftPlatformPieces,
-} from "./mountainVillageMineshaftRuntime";
+} from "./mountainVillageMineshaftAccessRuntime";
 import {
   MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_BASE_OFFSET,
   MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS,
