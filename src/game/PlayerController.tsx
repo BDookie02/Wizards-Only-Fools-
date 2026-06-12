@@ -23,7 +23,6 @@ import {
   isMouseLookFallbackActive,
   keys,
   resetMovementKeys,
-  type TouchButtonName,
 } from "./systems/input/playerInputState";
 import { isNavigationRecordingActive, recordNavigationSample } from "./navigationRecorderRuntime";
 import {
@@ -181,6 +180,11 @@ import {
   applyPlayerScreenShakeEvent,
 } from "./systems/player/playerScreenShakeRuntime";
 import { updatePlayerToxicDamageFrame } from "./systems/player/playerToxicDamageRuntime";
+import {
+  applyPlayerTouchControlEvent,
+  applyPlayerTouchHotbarEvent,
+  readPlayerTouchCastEvent,
+} from "./systems/player/playerTouchInputRuntime";
 import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
@@ -913,28 +917,12 @@ export function PlayerController() {
     };
 
     const onMobileControl = (e: Event) => {
-      const detail = (e as CustomEvent).detail ?? {};
-      if (detail.type === 'move') {
-        touchMove.current.x = THREE.MathUtils.clamp(Number(detail.x) || 0, -1, 1);
-        touchMove.current.y = THREE.MathUtils.clamp(Number(detail.y) || 0, -1, 1);
-        return;
-      }
-
-      if (detail.type === 'look') {
-        touchLookDelta.current.x += THREE.MathUtils.clamp(Number(detail.dx) || 0, -80, 80);
-        touchLookDelta.current.y += THREE.MathUtils.clamp(Number(detail.dy) || 0, -80, 80);
-        return;
-      }
-
-      if (detail.type === 'button' && ['jump', 'slide', 'sprint'].includes(detail.button)) {
-        touchButtons.current[detail.button as TouchButtonName] = Boolean(detail.pressed);
-      }
+      applyPlayerTouchControlEvent(e, touchMove, touchLookDelta, touchButtons);
     };
 
     const onMobileCast = (e: Event) => {
-      const detail = (e as CustomEvent).detail ?? {};
-      const hand: HandType = detail.hand === 'right' ? 'right' : 'left';
-      if (detail.phase === 'start') {
+      const { hand, phase } = readPlayerTouchCastEvent(e);
+      if (phase === 'start') {
         startHandCast(hand);
       } else {
         releaseHandCast(hand);
@@ -942,17 +930,7 @@ export function PlayerController() {
     };
 
     const onMobileHotbar = (e: Event) => {
-      const detail = (e as CustomEvent).detail ?? {};
-      const hand: HandType = detail.hand === 'right' ? 'right' : 'left';
-      const direction = Number(detail.direction) >= 0 ? 1 : -1;
-      const store = useGameStore.getState();
-      if (store.questDialogSession || store.isInventoryOpen) return;
-      if (direction > 0) {
-        store.nextSpell(hand);
-      } else {
-        store.prevSpell(hand);
-      }
-      store.setActiveHand(hand);
+      applyPlayerTouchHotbarEvent(e);
     };
     
     // Wheel to switch spells
