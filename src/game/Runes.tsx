@@ -9,6 +9,7 @@ import {
   BASE_RUNE_SOURCE_CYCLE_INTERVAL_MS,
   MANA_FLOWER_RESPAWN_MS,
   getEpochMsFromManaRenderClock,
+  getRunesManaEpochMs,
   getNextManaFlowerCooldownExpiry,
   pickActiveRuneIds,
   pruneManaFlowerCooldowns,
@@ -42,10 +43,6 @@ function findBaseRuneHutPositionById(hutPositions: readonly BaseRuneHutPosition[
     if (hut.id === id) return hut;
   }
   return null;
-}
-
-export function getRunesManaEpochMs(latestEpochMs: number) {
-  return latestEpochMs || Date.now();
 }
 
 export function Runes() {

@@ -34,6 +34,10 @@ export function getManaRenderClockEpochNowMs() {
   return Date.now();
 }
 
+export function getRunesManaEpochMs(latestEpochMs: number) {
+  return latestEpochMs || getManaRenderClockEpochNowMs();
+}
+
 export type BaseVillageRuneSourceVisibilityInput = {
   isSurvivalMode: boolean;
   playerX?: number;
