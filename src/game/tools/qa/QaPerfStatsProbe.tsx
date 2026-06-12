@@ -5,20 +5,14 @@ import {
   QA_PERF_RECENT_SAMPLE_COUNT,
   QA_PERF_SAMPLE_CAPACITY,
   clearQaPerfStatsDataset,
+  getQaPerfStatsEpochNowMs,
+  getQaPerfStatsFrameNowMs,
   publishQaPerfStatsDataset,
   selectQaPerfSampleByRank,
 } from "./qaPerfStatsRuntime";
 
 function isQaPerfStatsProbeEnabled() {
   return shouldMountCurrentQaPerfStatsProbe();
-}
-
-export function getQaPerfStatsEpochNowMs() {
-  return Date.now();
-}
-
-export function getQaPerfStatsFrameNowMs() {
-  return typeof performance !== "undefined" ? performance.now() : getQaPerfStatsEpochNowMs();
 }
 
 export function QaPerfStatsProbe() {

@@ -19,6 +19,14 @@ declare global {
 export const QA_PERF_SAMPLE_CAPACITY = 720;
 export const QA_PERF_RECENT_SAMPLE_COUNT = 120;
 
+export function getQaPerfStatsEpochNowMs() {
+  return Date.now();
+}
+
+export function getQaPerfStatsFrameNowMs() {
+  return typeof performance !== "undefined" ? performance.now() : getQaPerfStatsEpochNowMs();
+}
+
 export function selectQaPerfSampleByRank(
   samples: number[],
   count: number,
