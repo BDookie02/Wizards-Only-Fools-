@@ -149,6 +149,10 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function getHudMenuNowMs() {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
 let hudCommandConsoleModulePromise: Promise<typeof import("./ui/hud/hudCommandConsole")> | null = null;
 
 function loadHudCommandConsoleModule() {
@@ -612,7 +616,7 @@ export function HUD() {
   };
 
   const beginControllerRemap = (action: ControllerAction) => {
-    remapReadyAtRef.current = performance.now() + 260;
+    remapReadyAtRef.current = getHudMenuNowMs() + 260;
     setRemappingVoiceKey(false);
     setRemappingAction(action);
   };
@@ -1254,7 +1258,7 @@ export function HUD() {
     setIsLocked(false);
     setCanLock(true);
     setDevFastTravelIndex(0);
-    devFastTravelOpenedAtRef.current = performance.now();
+    devFastTravelOpenedAtRef.current = getHudMenuNowMs();
     setDevFastTravelOpen(true);
     dispatchHudGameplayModalOpened();
 
