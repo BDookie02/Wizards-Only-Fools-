@@ -310,6 +310,10 @@ function dispatchPlayerStateIfChanged(
   });
 }
 
+export function getPlayerControllerEventEpochMs(latestEpochMs: number) {
+  return latestEpochMs || Date.now();
+}
+
 export function PlayerController() {
   const rigidBody = useRef<RapierRigidBody>(null);
   const { rapier, world } = useRapier();
@@ -480,7 +484,7 @@ export function PlayerController() {
     return hasPlayerCameraRollAgainstWorldUp(camera, cameraRollScratch);
   };
 
-  const getPlayerEventEpochMs = () => latestPlayerEpochMsRef.current || Date.now();
+  const getPlayerEventEpochMs = () => getPlayerControllerEventEpochMs(latestPlayerEpochMsRef.current);
 
   const resetLilyCoilCameraState = (yawOverride?: number, pitchOverride?: number) => {
     return resetPlayerLilyCoilCameraState(camera, controllerLookEuler.current, lilyCoilTubeState.current, yawOverride, pitchOverride, cameraLookScratch);
