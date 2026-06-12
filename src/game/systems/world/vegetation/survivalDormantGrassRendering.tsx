@@ -20,7 +20,7 @@ import {
   getQaSurvivalUrlPlayerWorldPosition,
 } from "../survival/survivalPosition";
 import { getSurvivalRestoredMeadowMask } from "../survival/survivalBiome";
-import { clamp01, lerpNumber, smoothstepRange, survivalHash01 } from "../survival/survivalMath";
+import { clamp01, lerpNumber, smoothstepRange } from "../survival/survivalMath";
 import {
   SURVIVAL_LOCAL_GRASS_AIR_RADIUS,
   SURVIVAL_LOCAL_GRASS_CARPET_OPACITY,
@@ -37,7 +37,6 @@ import {
   SURVIVAL_LOCAL_GRASS_INITIAL_CELL_MOUNT_COUNT,
   SURVIVAL_LOCAL_GRASS_MOBILE_CELL_MOUNT_INTERVAL_MS,
   SURVIVAL_LOCAL_GRASS_RADIUS_BUCKET_SIZE,
-  SURVIVAL_LOCAL_GRASS_SHORT_BLADES_PER_TUFT,
   getSurvivalLocalGrassCellCoord,
   getSurvivalLocalGrassHysteresisCell,
   getSurvivalLocalGrassStreamRadius,
@@ -111,6 +110,13 @@ import {
   tintSurvivalLocalGrassMeshMaterial,
 } from "./survivalLocalGrassMaterials";
 import {
+  getSurvivalLocalShortGrassCapacity,
+  getSurvivalLocalTallGrassCapacity,
+  uploadSurvivalLocalGrassGroundPatches,
+  uploadSurvivalLocalShortGrassBlades,
+  uploadSurvivalLocalTallGrassBlades,
+} from "./survivalLocalGrassInstancing";
+import {
   ensureSurvivalInstancedMeshColors,
   finalizeSurvivalInstancedMesh,
   finalizeSurvivalInstancedMeshColors,
@@ -138,8 +144,6 @@ import {
   MOBILE_SURVIVAL_GRASS_FIELD_UPDATE_INTERVAL_SECONDS,
   MOBILE_SURVIVAL_GRASS_WIND_UPDATE_INTERVAL_SECONDS,
   SURVIVAL_GRASS_BLADE_SOURCE_UP,
-  SURVIVAL_GROUND_GRASS_SOURCE_NORMAL,
-  SURVIVAL_WORLD_GRASS_BLADES_PER_TUFT,
 } from "./survivalDormantGrassRenderConstants";
 
 export { SurvivalGrassGroundCover, SurvivalGrassPatches } from "./survivalChunkGrassRendering";
@@ -256,7 +260,6 @@ function SurvivalLocalGrassCellTile({
   const bellFlowers = flowerGroups.bell;
   const puffFlowers = flowerGroups.puff;
 
-  const shortBladesPerTuft = SURVIVAL_LOCAL_GRASS_SHORT_BLADES_PER_TUFT;
   const lastMobileVisualUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
   const cycleScratch = useMemo(createSurvivalDayNightCycle, []);
 
@@ -299,126 +302,22 @@ function SurvivalLocalGrassCellTile({
     const mesh = groundRef.current;
     if (!mesh) return;
 
-    ensureSurvivalInstancedMeshColors(mesh, groundPatches.length);
-    for (let index = 0; index < groundPatches.length; index += 1) {
-      const patch = groundPatches[index];
-      normal.set(patch.normalX, patch.normalY, patch.normalZ).normalize();
-      dummy.position.set(cell.x + patch.x, patch.y, cell.z + patch.z);
-      dummy.quaternion.setFromUnitVectors(SURVIVAL_GROUND_GRASS_SOURCE_NORMAL, normal);
-      dummy.rotateZ(patch.yaw);
-      dummy.scale.set(patch.width, patch.depth, 1);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(index, dummy.matrix);
-      mesh.setColorAt(index, patch.color);
-    }
-
-    mesh.count = groundPatches.length;
-    mesh.instanceMatrix.needsUpdate = true;
-    finalizeSurvivalInstancedMeshColors(mesh);
-    finalizeSurvivalInstancedMesh(
-      mesh,
-      cell.x + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-      cell.z + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-      SURVIVAL_LOCAL_GRASS_CELL_SIZE,
-      32,
-    );
+    uploadSurvivalLocalGrassGroundPatches(mesh, cell, groundPatches, dummy, normal);
   }, [cell.x, cell.z, dummy, groundPatches, normal]);
 
   useEffect(() => {
     const shortMesh = shortGrassRef.current;
     if (!shortMesh) return;
 
-    ensureSurvivalInstancedMeshColors(shortMesh, shortBlades.length * shortBladesPerTuft);
-    let shortInstance = 0;
-    for (let bladeIndex = 0; bladeIndex < shortBlades.length; bladeIndex += 1) {
-      const blade = shortBlades[bladeIndex];
-      for (let tuftIndex = 0; tuftIndex < shortBladesPerTuft; tuftIndex += 1) {
-        const scatterAngle = survivalHash01(cell.cellX + tuftIndex, cell.cellZ - tuftIndex, 17840 + bladeIndex) * Math.PI * 2;
-        const yaw = blade.yaw + scatterAngle * 0.12 + tuftIndex * (Math.PI / shortBladesPerTuft) + (bladeIndex % 6) * 0.07;
-        const spread = shortBladesPerTuft > 1
-          ? survivalHash01(cell.cellX - tuftIndex, cell.cellZ + tuftIndex, 17860 + bladeIndex) * 0.48
-          : 0;
-        const heightJitter = 0.9 + survivalHash01(cell.cellX + tuftIndex, cell.cellZ - tuftIndex, 17800 + bladeIndex) * 0.24;
-        const widthJitter = 0.92 + survivalHash01(cell.cellX - tuftIndex, cell.cellZ + tuftIndex, 17900 + bladeIndex) * 0.34;
-        const bladeHeight = blade.height * heightJitter;
-        normal.set(blade.normalX, blade.normalY, blade.normalZ).normalize();
-        bladeBase.set(
-          cell.x + blade.x + Math.sin(scatterAngle) * spread,
-          blade.y,
-          cell.z + blade.z + Math.cos(scatterAngle) * spread,
-        );
-
-        dummy.position.copy(bladeBase).addScaledVector(normal, bladeHeight * 0.5);
-        dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-        dummy.rotateY(yaw);
-        dummy.rotateX(blade.tilt * 0.5);
-        dummy.rotateZ(Math.sin(yaw + blade.tilt) * 0.18);
-        dummy.scale.set(blade.width * widthJitter, bladeHeight, 1);
-        dummy.updateMatrix();
-        shortMesh.setMatrixAt(shortInstance, dummy.matrix);
-        shortMesh.setColorAt(shortInstance, blade.color);
-        shortInstance += 1;
-      }
-    }
-
-    shortMesh.count = shortInstance;
-    shortMesh.instanceMatrix.needsUpdate = true;
-    finalizeSurvivalInstancedMeshColors(shortMesh);
-    finalizeSurvivalInstancedMesh(
-      shortMesh,
-      cell.x + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-      cell.z + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-      SURVIVAL_LOCAL_GRASS_CELL_SIZE,
-      24,
-    );
-  }, [bladeBase, cell.cellX, cell.cellZ, cell.x, cell.z, dummy, normal, shortBlades, shortBladesPerTuft]);
+    uploadSurvivalLocalShortGrassBlades(shortMesh, cell, shortBlades, dummy, normal, bladeBase);
+  }, [bladeBase, cell, dummy, normal, shortBlades]);
 
   useEffect(() => {
     const tallMesh = tallGrassRef.current;
     if (!tallMesh) return;
 
-    ensureSurvivalInstancedMeshColors(tallMesh, tallBlades.length * SURVIVAL_WORLD_GRASS_BLADES_PER_TUFT);
-    let instance = 0;
-    for (let bladeIndex = 0; bladeIndex < tallBlades.length; bladeIndex += 1) {
-      const blade = tallBlades[bladeIndex];
-      for (let tuftIndex = 0; tuftIndex < SURVIVAL_WORLD_GRASS_BLADES_PER_TUFT; tuftIndex += 1) {
-        const radial = (tuftIndex / SURVIVAL_WORLD_GRASS_BLADES_PER_TUFT) * Math.PI * 2;
-        const yaw = blade.yaw + radial + (bladeIndex % 5) * 0.09;
-        const spread = blade.width * (0.12 + tuftIndex * 0.06);
-        const heightJitter = 0.76 + survivalHash01(cell.cellX + tuftIndex, cell.cellZ - tuftIndex, 16700 + bladeIndex) * 0.38;
-        const widthJitter = 0.88 + survivalHash01(cell.cellX - tuftIndex, cell.cellZ + tuftIndex, 16800 + bladeIndex) * 0.48;
-        const bladeHeight = blade.height * heightJitter;
-        normal.set(blade.normalX, blade.normalY, blade.normalZ).normalize();
-        bladeBase.set(
-          cell.x + blade.x + Math.sin(yaw) * spread,
-          blade.y,
-          cell.z + blade.z + Math.cos(yaw) * spread,
-        );
-
-        dummy.position.copy(bladeBase).addScaledVector(normal, bladeHeight * 0.48);
-        dummy.quaternion.setFromUnitVectors(SURVIVAL_GRASS_BLADE_SOURCE_UP, normal);
-        dummy.rotateY(yaw);
-        dummy.rotateX(blade.tilt * 0.32);
-        dummy.rotateZ(Math.sin(yaw + blade.tilt) * 0.1);
-        dummy.scale.set(blade.width * widthJitter, bladeHeight, 1);
-        dummy.updateMatrix();
-        tallMesh.setMatrixAt(instance, dummy.matrix);
-        tallMesh.setColorAt(instance, blade.color);
-        instance += 1;
-      }
-    }
-
-    tallMesh.count = instance;
-    tallMesh.instanceMatrix.needsUpdate = true;
-    finalizeSurvivalInstancedMeshColors(tallMesh);
-    finalizeSurvivalInstancedMesh(
-      tallMesh,
-      cell.x + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-      cell.z + SURVIVAL_LOCAL_GRASS_CELL_SIZE * 0.5,
-      SURVIVAL_LOCAL_GRASS_CELL_SIZE,
-      28,
-    );
-  }, [bladeBase, cell.cellX, cell.cellZ, cell.x, cell.z, dummy, normal, tallBlades]);
+    uploadSurvivalLocalTallGrassBlades(tallMesh, cell, tallBlades, dummy, normal, bladeBase);
+  }, [bladeBase, cell, dummy, normal, tallBlades]);
 
   useEffect(() => {
     const stemMesh = flowerStemRef.current;
@@ -455,8 +354,8 @@ function SurvivalLocalGrassCellTile({
   if (!solidGrassGeometry && groundPatches.length === 0 && shortBlades.length === 0 && tallBlades.length === 0 && localFlowers.length === 0) return null;
 
   const groundCapacity = Math.max(1, groundPatches.length);
-  const shortCapacity = Math.max(1, shortBlades.length * shortBladesPerTuft);
-  const tallCapacity = Math.max(1, tallBlades.length * SURVIVAL_WORLD_GRASS_BLADES_PER_TUFT);
+  const shortCapacity = getSurvivalLocalShortGrassCapacity(shortBlades.length);
+  const tallCapacity = getSurvivalLocalTallGrassCapacity(tallBlades.length);
   const flowerCapacity = Math.max(1, localFlowers.length);
   const starFlowerCapacity = Math.max(1, starFlowers.length);
   const roundFlowerCapacity = Math.max(1, roundFlowers.length);
