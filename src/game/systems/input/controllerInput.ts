@@ -41,6 +41,19 @@ export const GAMEPAD_STICK_DEADZONE = 0.22;
 export const GAMEPAD_TRIGGER_THRESHOLD = 0.45;
 export const GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS = 120;
 
+export type GamepadStickName = "left" | "right";
+export type GamepadStickAxes = {
+  x: number;
+  y: number;
+};
+
+type GamepadAxisPair = readonly [number, number];
+
+const LEFT_STICK_AXIS_CANDIDATES: readonly GamepadAxisPair[] = [[0, 1]];
+const RIGHT_STICK_AXIS_CANDIDATES: readonly GamepadAxisPair[] = [[2, 3]];
+const GAMEPAD_ACTIVITY_LEFT_STICK_SCRATCH: GamepadStickAxes = { x: 0, y: 0 };
+const GAMEPAD_ACTIVITY_RIGHT_STICK_SCRATCH: GamepadStickAxes = { x: 0, y: 0 };
+
 const NO_GAMEPAD_SCAN_CACHE_MS = GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS;
 const PRIMARY_GAMEPAD_SCAN_CACHE_MS = 8;
 
@@ -89,6 +102,35 @@ function getGamepadActivity(gamepad: Gamepad) {
   }
 
   return axisActivity + buttonActivity;
+}
+
+export function hasGamepadInput(gamepad: Gamepad | null, axisDeadzone = GAMEPAD_STICK_DEADZONE) {
+  if (!gamepad) return false;
+
+  readGamepadStickAxesInto(gamepad, "left", GAMEPAD_ACTIVITY_LEFT_STICK_SCRATCH, axisDeadzone);
+  if (
+    Math.abs(GAMEPAD_ACTIVITY_LEFT_STICK_SCRATCH.x) > 0 ||
+    Math.abs(GAMEPAD_ACTIVITY_LEFT_STICK_SCRATCH.y) > 0
+  ) {
+    return true;
+  }
+
+  readGamepadStickAxesInto(gamepad, "right", GAMEPAD_ACTIVITY_RIGHT_STICK_SCRATCH, axisDeadzone);
+  if (
+    Math.abs(GAMEPAD_ACTIVITY_RIGHT_STICK_SCRATCH.x) > 0 ||
+    Math.abs(GAMEPAD_ACTIVITY_RIGHT_STICK_SCRATCH.y) > 0
+  ) {
+    return true;
+  }
+
+  for (let index = 0; index < gamepad.buttons.length; index += 1) {
+    const button = gamepad.buttons[index];
+    if (button?.pressed || (button?.value ?? 0) >= GAMEPAD_TRIGGER_THRESHOLD) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function getConnectedGamepadByIndex(gamepads: readonly (Gamepad | null)[], gamepadIndex: number) {
@@ -220,6 +262,33 @@ export function applyGamepadDeadzone(value: number, deadzone = GAMEPAD_STICK_DEA
 export function getGamepadAxis(gamepad: Gamepad | null, axisIndex: number, deadzone = GAMEPAD_STICK_DEADZONE) {
   if (!gamepad) return 0;
   return applyGamepadDeadzone(gamepad.axes[axisIndex] ?? 0, deadzone);
+}
+
+export function readGamepadStickAxesInto(
+  gamepad: Gamepad | null,
+  stick: GamepadStickName,
+  target: GamepadStickAxes,
+  deadzone = GAMEPAD_STICK_DEADZONE,
+) {
+  target.x = 0;
+  target.y = 0;
+  if (!gamepad) return target;
+
+  const candidates = stick === "left" ? LEFT_STICK_AXIS_CANDIDATES : RIGHT_STICK_AXIS_CANDIDATES;
+  let bestMagnitude = 0;
+  for (let index = 0; index < candidates.length; index += 1) {
+    const [axisX, axisY] = candidates[index];
+    if (axisX >= gamepad.axes.length || axisY >= gamepad.axes.length) continue;
+    const x = applyGamepadDeadzone(gamepad.axes[axisX] ?? 0, deadzone);
+    const y = applyGamepadDeadzone(gamepad.axes[axisY] ?? 0, deadzone);
+    const magnitude = x * x + y * y;
+    if (magnitude <= bestMagnitude) continue;
+    bestMagnitude = magnitude;
+    target.x = x;
+    target.y = y;
+  }
+
+  return target;
 }
 
 export function getGamepadButtonValue(gamepad: Gamepad | null, button: GamepadButtonName) {

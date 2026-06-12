@@ -1,7 +1,8 @@
 import type { ControllerAction, ControllerButtonName } from "../../../store/gameStore";
 import {
-  getGamepadAxis,
   isGamepadButtonPressed,
+  readGamepadStickAxesInto,
+  type GamepadStickAxes,
 } from "../input/controllerInput";
 import { areControllerGameplayButtonsReleased } from "../input/playerInputState";
 
@@ -35,6 +36,9 @@ export type PlayerControllerGamepadMovementInput = {
   sprintHeld: boolean;
   sprintPressed: boolean;
 };
+
+const lookStickScratch: GamepadStickAxes = { x: 0, y: 0 };
+const moveStickScratch: GamepadStickAxes = { x: 0, y: 0 };
 
 export function createPlayerControllerGamepadLookInput(): PlayerControllerGamepadLookInput {
   return {
@@ -93,8 +97,9 @@ export function readPlayerControllerGamepadLookInput({
   controllerInputActive: boolean;
   target: PlayerControllerGamepadLookInput;
 }) {
-  target.lookX = controllerInputActive ? getGamepadAxis(gamepad, 2) : 0;
-  target.lookY = controllerInputActive ? getGamepadAxis(gamepad, 3) : 0;
+  readGamepadStickAxesInto(controllerInputActive ? gamepad : null, "right", lookStickScratch);
+  target.lookX = lookStickScratch.x;
+  target.lookY = lookStickScratch.y;
   return target;
 }
 
@@ -111,8 +116,9 @@ export function readPlayerControllerGamepadMovementInput({
   refs: PlayerControllerGamepadMovementRefs;
   target: PlayerControllerGamepadMovementInput;
 }) {
-  target.moveX = controllerInputActive ? getGamepadAxis(gamepad, 0) : 0;
-  target.moveZ = controllerInputActive ? getGamepadAxis(gamepad, 1) : 0;
+  readGamepadStickAxesInto(controllerInputActive ? gamepad : null, "left", moveStickScratch);
+  target.moveX = moveStickScratch.x;
+  target.moveZ = moveStickScratch.y;
   target.slideHeld = controllerInputActive && isGamepadButtonPressed(gamepad, controllerBindings.slide);
   target.jumpHeld = controllerInputActive && isGamepadButtonPressed(gamepad, controllerBindings.jump);
   target.jumpPressed = target.jumpHeld && !refs.jumpWasPressed.current;

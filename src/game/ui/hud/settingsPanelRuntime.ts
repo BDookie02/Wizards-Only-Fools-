@@ -33,33 +33,33 @@ export function getSettingsBackIndex(settingsPane: SettingsPane) {
 
 const settingsMenuStyles: Record<SettingsPane, CSSProperties> = {
   video: {
-    width: "min(520px, calc(100cqw - 24px))",
-    maxHeight: "calc(100cqh - 20px)",
-    padding: "clamp(0.35rem, 1.2cqh, 0.9rem)",
+    width: "min(520px, calc(var(--app-vw, 100dvw) - 24px))",
+    maxHeight: "calc(var(--app-vh, 100dvh) - 20px)",
+    padding: "clamp(0.35rem, 1.2dvh, 0.9rem)",
   },
   keybinds: {
-    width: "min(920px, calc(100cqw - 24px))",
-    maxHeight: "calc(100cqh - 20px)",
-    padding: "clamp(0.35rem, 1.2cqh, 0.9rem)",
+    width: "min(920px, calc(var(--app-vw, 100dvw) - 24px))",
+    maxHeight: "calc(var(--app-vh, 100dvh) - 20px)",
+    padding: "clamp(0.35rem, 1.2dvh, 0.9rem)",
   },
   voice: {
-    width: "min(720px, calc(100cqw - 24px))",
-    maxHeight: "calc(100cqh - 20px)",
-    padding: "clamp(0.35rem, 1.2cqh, 0.9rem)",
+    width: "min(720px, calc(var(--app-vw, 100dvw) - 24px))",
+    maxHeight: "calc(var(--app-vh, 100dvh) - 20px)",
+    padding: "clamp(0.35rem, 1.2dvh, 0.9rem)",
   },
   character: {
-    width: "min(920px, calc(100cqw - 24px))",
-    maxHeight: "calc(100cqh - 20px)",
-    padding: "clamp(0.35rem, 1.2cqh, 0.9rem)",
+    width: "min(920px, calc(var(--app-vw, 100dvw) - 24px))",
+    maxHeight: "calc(var(--app-vh, 100dvh) - 20px)",
+    padding: "clamp(0.35rem, 1.2dvh, 0.9rem)",
   },
 };
 
 const defaultSettingsScrollPanelStyle: CSSProperties = {
-  maxHeight: "max(128px, calc(100cqh - 148px))",
+  maxHeight: "max(128px, calc(var(--app-vh, 100dvh) - 168px))",
 };
 
 const characterSettingsScrollPanelStyle: CSSProperties = {
-  maxHeight: "max(128px, calc(100cqh - 150px))",
+  maxHeight: "max(128px, calc(var(--app-vh, 100dvh) - 170px))",
 };
 
 export function getSettingsMenuStyle(settingsPane: SettingsPane): CSSProperties {

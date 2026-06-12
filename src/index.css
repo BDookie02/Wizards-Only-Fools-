@@ -645,7 +645,7 @@ html.wizards-touch-layout .magic-hands-fill-offset {
 
 .settings-panel {
   overflow: hidden;
-  container-type: size;
+  container-type: inline-size;
   --settings-title-font-size: 1.05rem;
   --settings-tab-font-size: 0.72rem;
   --settings-body-font-size: 0.72rem;

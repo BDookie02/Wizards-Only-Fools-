@@ -1,4 +1,9 @@
-import { getGamepadAxis, isGamepadButtonPressed, type GamepadButtonName } from "../../systems/input/controllerInput";
+import {
+  isGamepadButtonPressed,
+  readGamepadStickAxesInto,
+  type GamepadButtonName,
+  type GamepadStickAxes,
+} from "../../systems/input/controllerInput";
 
 type Ref<T> = {
   current: T;
@@ -57,6 +62,9 @@ export type HudControllerInputSnapshot = {
   menuAxisY: number;
   scrollAxisY: number;
 };
+
+const hudLeftStickScratch: GamepadStickAxes = { x: 0, y: 0 };
+const hudRightStickScratch: GamepadStickAxes = { x: 0, y: 0 };
 
 export type InventoryControllerMoveDetail = {
   direction: 1 | -1;
@@ -217,11 +225,14 @@ export function readHudControllerInputSnapshotInto(
   target.dpadRight = isGamepadButtonPressed(gamepad, "dpadRight");
   target.dpadUp = isGamepadButtonPressed(gamepad, "dpadUp");
   target.dpadDown = isGamepadButtonPressed(gamepad, "dpadDown");
-  target.movementAxisX = getGamepadAxis(gamepad, 0, 0.25);
-  target.movementAxisY = getGamepadAxis(gamepad, 1, 0.25);
-  target.menuAxisX = getGamepadAxis(gamepad, 0, 0.55);
-  target.menuAxisY = getGamepadAxis(gamepad, 1, 0.55);
-  target.scrollAxisY = getGamepadAxis(gamepad, 3, 0.25);
+  readGamepadStickAxesInto(gamepad, "left", hudLeftStickScratch, 0.25);
+  target.movementAxisX = hudLeftStickScratch.x;
+  target.movementAxisY = hudLeftStickScratch.y;
+  readGamepadStickAxesInto(gamepad, "left", hudLeftStickScratch, 0.55);
+  target.menuAxisX = hudLeftStickScratch.x;
+  target.menuAxisY = hudLeftStickScratch.y;
+  readGamepadStickAxesInto(gamepad, "right", hudRightStickScratch, 0.25);
+  target.scrollAxisY = hudRightStickScratch.y;
   return target;
 }
 

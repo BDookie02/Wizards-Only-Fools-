@@ -42,6 +42,7 @@ import {
   createControllerPollScheduler,
   GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS,
   getPrimaryGamepad,
+  hasGamepadInput,
   isGamepadButtonPressed,
   type GamepadButtonName,
 } from "./systems/input/controllerInput";
@@ -2444,6 +2445,27 @@ export function HUD() {
       }
       controllerLastSeenAtRef.current = now;
 
+      if (isGameLaunched && localPlayerName && hasGamepadInput(gamepad, 0.26)) {
+        const inputState = useGameStore.getState();
+        if (
+          inputState.isTouchControlsActive ||
+          !inputState.isControllerGameplayActive ||
+          lastGameplayInputModeRef.current !== "controller"
+        ) {
+          setHudMouseGameplayActive(false);
+          setMouseLookFallbackActive(false);
+          if (inputState.isTouchControlsActive) {
+            setTouchControlsActive(false);
+            releaseMobileGameplayInputs();
+          }
+          lastGameplayInputModeRef.current = "controller";
+          if (!inputState.isControllerGameplayActive) {
+            setControllerGameplayActive(true);
+            window.dispatchEvent(new Event("controller-gameplay-started"));
+          }
+        }
+      }
+
       if (remappingAction) {
         if (now >= remapReadyAtRef.current) {
           const backPressedForRemap = isGamepadButtonPressed(gamepad, controllerBindings.menuBack as GamepadButtonName);
@@ -2870,6 +2892,7 @@ export function HUD() {
     isSpellMenuOpen,
     isTouchDevice,
     leftSelectedHotbarIndex,
+    localPlayerName,
     menuSpellIndex,
     movePauseMenuFocus,
     openSpellMenuFromGame,
@@ -2892,8 +2915,10 @@ export function HUD() {
     startControllerGameplay,
     setActiveHand,
     setControllerBinding,
+    setControllerGameplayActive,
     setHotbarSpell,
     setScoreboardSource,
+    setTouchControlsActive,
     showVideoMenu,
     startMenuStage,
     touchGameplayActive,
