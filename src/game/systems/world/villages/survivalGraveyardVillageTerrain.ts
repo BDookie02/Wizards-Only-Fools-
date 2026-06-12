@@ -1,8 +1,8 @@
 import { lerpNumber, clamp01, smoothstepRange } from "../survival/survivalMath";
 
-const GRAVEYARD_VILLAGE_RADIUS = 238;
+export const GRAVEYARD_VILLAGE_RADIUS = 238;
 const GRAVEYARD_PATH_WIDTH = 35;
-const GRAVEYARD_RING_PATH_RADIUS = 88;
+export const GRAVEYARD_RING_PATH_RADIUS = 88;
 const GRAVEYARD_RING_PATH_WIDTH = 20;
 export const GRAVEYARD_FENCE_RADIUS = 246;
 
@@ -18,8 +18,12 @@ const CHAPEL_REAR_EXIT_CENTER_X = 33;
 const CHAPEL_REAR_EXIT_HALF_WIDTH = 8.5;
 const CHAPEL_FOUNDATION_FEATHER = 10;
 
-function getGraveyardLocalRadius(localX: number, localZ: number) {
+export function getGraveyardLocalRadius(localX: number, localZ: number) {
   return Math.sqrt(localX * localX + localZ * localZ);
+}
+
+export function getGraveyardLocalRadiusSq(localX: number, localZ: number) {
+  return localX * localX + localZ * localZ;
 }
 
 function getSoftRectMask(
@@ -72,7 +76,7 @@ export function getGraveyardGateClearingMask(localX: number, localZ: number) {
   return clamp01(Math.max(getGraveyardGateEntryMask(localX, localZ), northSouthShoulder, eastWestShoulder));
 }
 
-function getGraveyardChapelFoundationMask(localX: number, localZ: number) {
+export function getGraveyardChapelFoundationMask(localX: number, localZ: number) {
   return getGraveyardChapelFootprintMask(localX, localZ);
 }
 
