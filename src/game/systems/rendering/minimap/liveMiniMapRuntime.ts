@@ -10,6 +10,15 @@ export type LiveMiniMapRenderCheckpoint = LiveMiniMapPlayerSnapshot & {
   expanded: boolean;
 };
 
+export type LiveMiniMapHudLayout = {
+  expandedMapFrameInnerSize: number;
+  expandedMapFrameOuterSize: number;
+  expandedMapSize: number;
+  miniMapInset: number;
+  miniMapRadius: number;
+  miniMapSize: number;
+};
+
 export type LiveMiniMapHiddenObjectCache = {
   lastRefreshAt: number;
   rootChildCount: number;
@@ -88,6 +97,34 @@ export function getLiveMiniMapTargetSize(mobilePerformanceMode: boolean) {
 
 export function getLiveMiniMapCircleSegments(mobilePerformanceMode: boolean) {
   return mobilePerformanceMode ? 28 : 40;
+}
+
+export function getLiveMiniMapHudLayout(width: number, height: number): LiveMiniMapHudLayout {
+  const minViewportSide = Math.min(width, height);
+  const isUltraShortViewport = height <= 260;
+  const isShortViewport = height <= 390;
+  const isNarrowViewport = width <= 430;
+  const isTallNarrowViewport = isNarrowViewport && height >= 470;
+  const miniMapSize = isUltraShortViewport
+    ? Math.max(56, Math.min(minViewportSide * 0.32, 70))
+    : isTallNarrowViewport
+    ? Math.max(98, Math.min(minViewportSide * 0.25, 132))
+    : (isShortViewport || isNarrowViewport)
+      ? Math.max(84, Math.min(minViewportSide * 0.26, 112))
+      : Math.max(104, Math.min(minViewportSide * 0.22, 212));
+  const miniMapInset = isUltraShortViewport
+    ? Math.max(3, Math.min(minViewportSide * 0.018, 8))
+    : Math.max(8, Math.min(minViewportSide * 0.02, 16));
+  const expandedMapSize = Math.min(width * 0.8, height * 0.8, 800);
+
+  return {
+    expandedMapFrameInnerSize: expandedMapSize + 8,
+    expandedMapFrameOuterSize: expandedMapSize + 16,
+    expandedMapSize,
+    miniMapInset,
+    miniMapRadius: miniMapSize / 2,
+    miniMapSize,
+  };
 }
 
 export function getSurvivalBlockCenter(value: number) {

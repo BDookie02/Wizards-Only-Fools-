@@ -8,6 +8,7 @@ import { useLazyRef } from "./systems/react/useLazyRef";
 import {
   createLiveMiniMapHiddenObjectCache,
   getCachedHiddenMiniMapObjects,
+  getLiveMiniMapHudLayout,
   getLiveMiniMapCameraCenterInto,
   getLiveMiniMapCircleSegments,
   getLiveMiniMapTargetSize,
@@ -68,22 +69,15 @@ export function LiveMiniMap() {
   }, []);
 
   const { size } = useThree();
-  const minViewportSide = Math.min(size.width, size.height);
-  const isUltraShortViewport = size.height <= 260;
-  const isShortViewport = size.height <= 390;
-  const isNarrowViewport = size.width <= 430;
-  const isTallNarrowViewport = isNarrowViewport && size.height >= 470;
-  const miniMapSize = isUltraShortViewport
-    ? Math.max(56, Math.min(minViewportSide * 0.32, 70))
-    : isTallNarrowViewport
-    ? Math.max(98, Math.min(minViewportSide * 0.25, 132))
-    : (isShortViewport || isNarrowViewport)
-      ? Math.max(84, Math.min(minViewportSide * 0.26, 112))
-      : Math.max(104, Math.min(minViewportSide * 0.22, 212));
-  const miniMapRadius = miniMapSize / 2;
-  const miniMapInset = isUltraShortViewport
-    ? Math.max(3, Math.min(minViewportSide * 0.018, 8))
-    : Math.max(8, Math.min(minViewportSide * 0.02, 16));
+  const liveMiniMapLayout = getLiveMiniMapHudLayout(size.width, size.height);
+  const {
+    expandedMapFrameInnerSize,
+    expandedMapFrameOuterSize,
+    expandedMapSize,
+    miniMapInset,
+    miniMapRadius,
+    miniMapSize,
+  } = liveMiniMapLayout;
 
   const playerPos = useLazyRef(() => ({ x: 0, z: 0, angle: 0, offsetX: 0, offsetZ: 0 }));
   const oldClearColorRef = useLazyRef(() => new THREE.Color());
@@ -171,16 +165,16 @@ export function LiveMiniMap() {
       <group position={[0, 0, 0]} visible={isExpanded && expandedMapPage === "live" && !mapUiBlockedByModal}>
           {/* Box background for the square map */}
           <mesh position={[0, 0, -1]}>
-             <planeGeometry args={[Math.min(size.width * 0.8, size.height * 0.8, 800) + 16, Math.min(size.width * 0.8, size.height * 0.8, 800) + 16]} />
+             <planeGeometry args={[expandedMapFrameOuterSize, expandedMapFrameOuterSize]} />
              <meshBasicMaterial color="#5d466e" />
           </mesh>
           <mesh position={[0, 0, -0.5]}>
-             <planeGeometry args={[Math.min(size.width * 0.8, size.height * 0.8, 800) + 8, Math.min(size.width * 0.8, size.height * 0.8, 800) + 8]} />
+             <planeGeometry args={[expandedMapFrameInnerSize, expandedMapFrameInnerSize]} />
              <meshBasicMaterial color="#1c1421" />
           </mesh>
           {/* The Live Map Square */}
           <mesh position={[0, 0, 0]}>
-             <planeGeometry args={[Math.min(size.width * 0.8, size.height * 0.8, 800), Math.min(size.width * 0.8, size.height * 0.8, 800)]} />
+             <planeGeometry args={[expandedMapSize, expandedMapSize]} />
              <meshBasicMaterial map={mapTarget.texture} dispose={null} />
           </mesh>
       </group>
