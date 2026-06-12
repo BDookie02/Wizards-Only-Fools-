@@ -30,7 +30,9 @@ import {
 import {
   makeMountainVillageCabins,
   makeMountainVillageHutInfos,
+  makeMountainVillageWaterfall,
   type MountainVillageCabin,
+  type MountainVillageWaterfall,
 } from "./mountainVillageLayoutRuntime";
 import {
   getMountainMineshaftBanquetColliderDetails,
@@ -169,17 +171,6 @@ type MountainVillageTrailSegment = {
   length: number;
   index: number;
   supports: MountainVillageTrailSupport[];
-};
-
-type MountainVillageWaterfall = {
-  angle: number;
-  topX: number;
-  topZ: number;
-  topY: number;
-  bottomX: number;
-  bottomZ: number;
-  bottomY: number;
-  width: number;
 };
 
 type MountainVillageCliffPatch = {
@@ -862,23 +853,7 @@ function makeMountainVillageLayout(
   const hutInfos = (options.includeVillagerHutInfos ?? true)
     ? makeMountainVillageHutInfos(chunk, summitY, cabins, interiorHuts)
     : EMPTY_MOUNTAIN_HUT_INFOS;
-  const waterfallAngle = -Math.PI * 0.28 + survivalHash01(chunk.cx, chunk.cz, 4700) * 0.52;
-  const topRadius = 112;
-  const bottomRadius = MOUNTAIN_VILLAGE_TRAIL_START_RADIUS + 8;
-  const topX = Math.sin(waterfallAngle) * topRadius;
-  const topZ = Math.cos(waterfallAngle) * topRadius;
-  const bottomX = Math.sin(waterfallAngle) * bottomRadius;
-  const bottomZ = Math.cos(waterfallAngle) * bottomRadius;
-  const waterfall: MountainVillageWaterfall = {
-    angle: waterfallAngle,
-    topX,
-    topZ,
-    topY: getMountainVillageHeight(chunk, topX, topZ, terrainHeightForChunk, baseHeight) + 4.8,
-    bottomX,
-    bottomZ,
-    bottomY: getMountainVillageHeight(chunk, bottomX, bottomZ, terrainHeightForChunk, baseHeight) + 1.25,
-    width: 12 + survivalHash01(chunk.cx, chunk.cz, 4730) * 7,
-  };
+  const waterfall = makeMountainVillageWaterfall(chunk, baseHeight, terrainHeightForChunk);
 
   return {
     baseHeight,

@@ -1,7 +1,13 @@
 import type { HutInfo } from "./baseVillageHutLayout";
 import type { MountainMineshaftHut } from "./mountainVillageMineshaftRuntime";
+import {
+  MOUNTAIN_VILLAGE_TRAIL_START_RADIUS,
+  getMountainVillageHeight,
+} from "./mountainVillageTerrain";
 import { survivalHash01 } from "../survival/survivalMath";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
+
+type MountainVillageTerrainHeightForChunk = (chunk: SurvivalChunkInfo, localX: number, localZ: number) => number;
 
 export type MountainVillageCabin = {
   key: string;
@@ -14,6 +20,17 @@ export type MountainVillageCabin = {
   bodyColor: string;
   roofColor: string;
   accentColor: string;
+};
+
+export type MountainVillageWaterfall = {
+  angle: number;
+  topX: number;
+  topZ: number;
+  topY: number;
+  bottomX: number;
+  bottomZ: number;
+  bottomY: number;
+  width: number;
 };
 
 const MOUNTAIN_CABIN_BODY_COLORS = ["#584633", "#64513d", "#4f4538", "#6b573f"] as const;
@@ -47,6 +64,31 @@ export function makeMountainVillageCabins(chunk: SurvivalChunkInfo): MountainVil
   }
 
   return cabins;
+}
+
+export function makeMountainVillageWaterfall(
+  chunk: SurvivalChunkInfo,
+  baseHeight: number,
+  terrainHeightForChunk: MountainVillageTerrainHeightForChunk,
+): MountainVillageWaterfall {
+  const waterfallAngle = -Math.PI * 0.28 + survivalHash01(chunk.cx, chunk.cz, 4700) * 0.52;
+  const topRadius = 112;
+  const bottomRadius = MOUNTAIN_VILLAGE_TRAIL_START_RADIUS + 8;
+  const topX = Math.sin(waterfallAngle) * topRadius;
+  const topZ = Math.cos(waterfallAngle) * topRadius;
+  const bottomX = Math.sin(waterfallAngle) * bottomRadius;
+  const bottomZ = Math.cos(waterfallAngle) * bottomRadius;
+
+  return {
+    angle: waterfallAngle,
+    topX,
+    topZ,
+    topY: getMountainVillageHeight(chunk, topX, topZ, terrainHeightForChunk, baseHeight) + 4.8,
+    bottomX,
+    bottomZ,
+    bottomY: getMountainVillageHeight(chunk, bottomX, bottomZ, terrainHeightForChunk, baseHeight) + 1.25,
+    width: 12 + survivalHash01(chunk.cx, chunk.cz, 4730) * 7,
+  };
 }
 
 export function makeMountainVillageHutInfos(
