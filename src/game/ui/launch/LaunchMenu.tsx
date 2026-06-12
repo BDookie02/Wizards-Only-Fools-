@@ -10,10 +10,11 @@ import {
 import {
   createControllerPollScheduler,
   GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS,
-  getGamepadAxis,
   getPrimaryGamepad,
   isGamepadButtonPressed,
+  readGamepadStickAxesInto,
   type GamepadButtonName,
+  type GamepadStickAxes,
 } from "../../systems/input/controllerInput";
 import {
   applyInviteRoomCode,
@@ -38,6 +39,7 @@ import {
 } from "./launchMenuConfig";
 
 const LazyLaunchCharacterPreview = lazy(() => import("./LaunchCharacterPreview").then((module) => ({ default: module.LaunchCharacterPreview })));
+const launchMenuStickScratch: GamepadStickAxes = { x: 0, y: 0 };
 
 function getCurrentRoomCode() {
   return getCurrentInviteRoomCode("");
@@ -366,12 +368,11 @@ export function LaunchMenu() {
       const dpadDown = isGamepadButtonPressed(gamepad, "dpadDown");
       const dpadLeft = isGamepadButtonPressed(gamepad, "dpadLeft");
       const dpadRight = isGamepadButtonPressed(gamepad, "dpadRight");
-      const axisY = getGamepadAxis(gamepad, 1, 0.55);
-      const axisX = getGamepadAxis(gamepad, 0, 0.55);
-      const moveUp = consumeRepeat("launchUp", dpadUp || axisY < -0.6, now);
-      const moveDown = consumeRepeat("launchDown", dpadDown || axisY > 0.6, now);
-      const moveLeft = consumeRepeat("launchLeft", dpadLeft || axisX < -0.6, now);
-      const moveRight = consumeRepeat("launchRight", dpadRight || axisX > 0.6, now);
+      readGamepadStickAxesInto(gamepad, "left", launchMenuStickScratch, 0.55);
+      const moveUp = consumeRepeat("launchUp", dpadUp || launchMenuStickScratch.y < -0.6, now);
+      const moveDown = consumeRepeat("launchDown", dpadDown || launchMenuStickScratch.y > 0.6, now);
+      const moveLeft = consumeRepeat("launchLeft", dpadLeft || launchMenuStickScratch.x < -0.6, now);
+      const moveRight = consumeRepeat("launchRight", dpadRight || launchMenuStickScratch.x > 0.6, now);
 
       if (moveUp) {
         moveLaunchMenuFocus("up");

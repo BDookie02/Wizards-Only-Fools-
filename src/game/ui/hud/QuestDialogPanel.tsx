@@ -6,10 +6,11 @@ import { useGameStore, type QuestDialogSession } from "../../../store/gameStore"
 import {
   createControllerPollScheduler,
   GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS,
-  getGamepadAxis,
   getPrimaryGamepad,
   isGamepadButtonPressed,
+  readGamepadStickAxesInto,
   type GamepadButtonName,
+  type GamepadStickAxes,
 } from "../../systems/input/controllerInput";
 import { isEditableTarget } from "../../systems/input/editableTargets";
 import { getNumberSlotFromCode } from "../../systems/input/playerInputState";
@@ -22,6 +23,8 @@ import {
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+const questDialogStickScratch: GamepadStickAxes = { x: 0, y: 0 };
 
 export function QuestDialogPanel() {
   const session = useGameStore(s => s.questDialogSession);
@@ -88,7 +91,7 @@ function ActiveQuestDialogPanel({ session }: { session: QuestDialogSession }) {
         return;
       }
 
-      const axisY = getGamepadAxis(gamepad, 1, 0.55);
+      readGamepadStickAxesInto(gamepad, "left", questDialogStickScratch, 0.55);
       const selectPressed = consumeHudControllerPress(controllerButtonsRef, "questDialogSelect", isGamepadButtonPressed(gamepad, controllerBindings.menuSelect as GamepadButtonName));
       const backPressed = consumeHudControllerPress(controllerButtonsRef, "questDialogBack", isGamepadButtonPressed(gamepad, controllerBindings.menuBack as GamepadButtonName));
       const startPressed = consumeHudControllerPress(controllerButtonsRef, "questDialogStart", isGamepadButtonPressed(gamepad, controllerBindings.pause as GamepadButtonName));
@@ -96,7 +99,7 @@ function ActiveQuestDialogPanel({ session }: { session: QuestDialogSession }) {
         controllerButtonsRef,
         controllerRepeatRef,
         "questDialogNext",
-        isGamepadButtonPressed(gamepad, "dpadDown") || axisY > 0.6,
+        isGamepadButtonPressed(gamepad, "dpadDown") || questDialogStickScratch.y > 0.6,
         now,
         260,
         160,
@@ -105,7 +108,7 @@ function ActiveQuestDialogPanel({ session }: { session: QuestDialogSession }) {
         controllerButtonsRef,
         controllerRepeatRef,
         "questDialogPrev",
-        isGamepadButtonPressed(gamepad, "dpadUp") || axisY < -0.6,
+        isGamepadButtonPressed(gamepad, "dpadUp") || questDialogStickScratch.y < -0.6,
         now,
         260,
         160,

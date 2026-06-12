@@ -1,5 +1,11 @@
 import type { ExpandedMapPage } from "../../../store/gameStore";
-import { getGamepadAxis, getPrimaryGamepad, isGamepadButtonPressed, type GamepadButtonName } from "../../systems/input/controllerInput";
+import {
+  getPrimaryGamepad,
+  isGamepadButtonPressed,
+  readGamepadStickAxesInto,
+  type GamepadButtonName,
+  type GamepadStickAxes,
+} from "../../systems/input/controllerInput";
 import { consumeHudControllerPress, consumeHudControllerRepeat, type HudControllerButtonsRef, type HudControllerRepeatRef } from "./hudControllerRuntime";
 
 export type MapDirection = "up" | "down" | "left" | "right";
@@ -30,6 +36,8 @@ export const MAP_CONTROLLER_AXIS_THRESHOLD = 0.72;
 export const MAP_CONTROLLER_REPEAT_FIRST_DELAY = 320;
 export const MAP_CONTROLLER_REPEAT_DELAY = 180;
 
+const mapControllerStickScratch: GamepadStickAxes = { x: 0, y: 0 };
+
 export function getExpandedMapControllerPollResult({
   buttonDownRef,
   controllerBindings,
@@ -58,12 +66,11 @@ export function getExpandedMapControllerPollResult({
     "mapBack",
     isGamepadButtonPressed(gamepad, controllerBindings.menuBack),
   );
-  const axisX = getGamepadAxis(gamepad, 0, 0.55);
-  const axisY = getGamepadAxis(gamepad, 1, 0.55);
-  const navUpHeld = isGamepadButtonPressed(gamepad, "dpadUp") || axisY < -MAP_CONTROLLER_AXIS_THRESHOLD;
-  const navDownHeld = isGamepadButtonPressed(gamepad, "dpadDown") || axisY > MAP_CONTROLLER_AXIS_THRESHOLD;
-  const navLeftHeld = isGamepadButtonPressed(gamepad, "dpadLeft") || axisX < -MAP_CONTROLLER_AXIS_THRESHOLD;
-  const navRightHeld = isGamepadButtonPressed(gamepad, "dpadRight") || axisX > MAP_CONTROLLER_AXIS_THRESHOLD;
+  readGamepadStickAxesInto(gamepad, "left", mapControllerStickScratch, 0.55);
+  const navUpHeld = isGamepadButtonPressed(gamepad, "dpadUp") || mapControllerStickScratch.y < -MAP_CONTROLLER_AXIS_THRESHOLD;
+  const navDownHeld = isGamepadButtonPressed(gamepad, "dpadDown") || mapControllerStickScratch.y > MAP_CONTROLLER_AXIS_THRESHOLD;
+  const navLeftHeld = isGamepadButtonPressed(gamepad, "dpadLeft") || mapControllerStickScratch.x < -MAP_CONTROLLER_AXIS_THRESHOLD;
+  const navRightHeld = isGamepadButtonPressed(gamepad, "dpadRight") || mapControllerStickScratch.x > MAP_CONTROLLER_AXIS_THRESHOLD;
   const navHeld = navUpHeld || navDownHeld || navLeftHeld || navRightHeld;
   const nextIgnoreNavigationUntilNeutral = ignoreNavigationUntilNeutral && navHeld;
   const canNavigate = !nextIgnoreNavigationUntilNeutral;
