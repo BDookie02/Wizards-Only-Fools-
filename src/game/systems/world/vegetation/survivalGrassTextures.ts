@@ -9,6 +9,7 @@ let cachedSurvivalShortGrassCarpetAlphaTexture: THREE.CanvasTexture | null = nul
 let cachedSurvivalMeadowGrassCarpetTexture: THREE.CanvasTexture | null = null;
 let cachedSurvivalLocalGrassClumpAlphaTexture: THREE.CanvasTexture | null = null;
 let cachedSurvivalBotwGrassTexture: THREE.CanvasTexture | null = null;
+let cachedSurvivalTutorialGrassBladeTexture: THREE.CanvasTexture | null = null;
 
 export function getSurvivalBotwGrassTexture() {
   if (cachedSurvivalBotwGrassTexture) return cachedSurvivalBotwGrassTexture;
@@ -64,6 +65,57 @@ export function getSurvivalBotwGrassTexture() {
   texture.premultiplyAlpha = true;
   texture.needsUpdate = true;
   cachedSurvivalBotwGrassTexture = texture;
+  return texture;
+}
+
+export function getSurvivalTutorialGrassBladeTexture() {
+  if (cachedSurvivalTutorialGrassBladeTexture) return cachedSurvivalTutorialGrassBladeTexture;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 96;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.save();
+    ctx.globalCompositeOperation = "copy";
+    ctx.fillStyle = "rgba(255, 255, 255, 0)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    ctx.imageSmoothingEnabled = true;
+
+    const drawBlade = (
+      baseX: number,
+      baseY: number,
+      tipX: number,
+      tipY: number,
+      width: number,
+      alpha: number,
+    ) => {
+      const midX = (baseX + tipX) * 0.5;
+      const midY = (baseY + tipY) * 0.5;
+      const curve = (tipX - baseX) * 0.22;
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(baseX - width, baseY);
+      ctx.quadraticCurveTo(midX - width * 0.5 - curve, midY, tipX, tipY);
+      ctx.quadraticCurveTo(midX + width * 0.5 - curve * 0.35, midY + 4, baseX + width, baseY);
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    drawBlade(31, 95, 34, 6, 4.2, 0.96);
+    drawBlade(29, 95, 22, 24, 2.1, 0.5);
+    drawBlade(35, 95, 43, 31, 1.8, 0.42);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  cachedSurvivalTutorialGrassBladeTexture = texture;
   return texture;
 }
 
