@@ -4,13 +4,7 @@ import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
-  DARREL_DRAGON_FOUGHT_FLAG,
-  DARREL_DRAGON_NPC_ID,
-  DARREL_DRAGON_PEACEFUL_FLAG,
-  DARREL_DRAGON_WOKEN_FLAG,
-  DARREL_POTION_FLAG,
   SURVIVAL_BLOCK_SIZE,
-  type ControllerButtonName,
   useGameStore,
 } from "../../../../store/gameStore";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
@@ -51,6 +45,19 @@ import {
   getDarrelQuestGateNowMs,
   getDarrelSideStairLayout,
 } from "./darrelGroveRuntime";
+import {
+  canUseDarrelDragonInteraction,
+  getDarrelDragonInteractPrompt,
+  getDarrelDragonLocalPosition,
+  getDarrelDragonQuestState,
+  getNextDarrelDragonMode,
+  isDarrelDragonEditableTarget,
+  isInsideDarrelDragonHouse,
+  isNearDarrelDragon,
+  shouldShowDarrelDragonInteractPrompt,
+  type DarrelDragonMode,
+  type DarrelDragonQuestInteractDetail,
+} from "./darrelDragonRuntime";
 import { SURVIVAL_DARREL_GROVE_HALF_SIZE as DARREL_GROVE_HALF_SIZE } from "./survivalVillageRegistry";
 
 const DARREL_GROVE_GROUND_Y = 18;
@@ -1169,25 +1176,6 @@ function setDarrelDragonScreenPrompt(visible: boolean, promptText: string) {
   }
 }
 
-const DARREL_DRAGON_CONTROLLER_LABELS: Record<ControllerButtonName, string> = {
-  a: "A",
-  b: "B",
-  x: "X",
-  y: "Y",
-  leftBumper: "LB",
-  rightBumper: "RB",
-  leftTrigger: "LT",
-  rightTrigger: "RT",
-  back: "Select",
-  start: "Start",
-  leftStick: "LS",
-  rightStick: "RS",
-  dpadUp: "D-Up",
-  dpadDown: "D-Down",
-  dpadLeft: "D-Left",
-  dpadRight: "D-Right",
-};
-
 type DarrelDragonAnimationManifest = {
   sleep?: string[];
   wake?: string[];
@@ -1209,64 +1197,6 @@ type DarrelDragonAnimationTextures = {
   idleFrameMs: number;
   attackFrameMs: number;
 };
-
-type DarrelDragonMode = "sleep" | "wake" | "idle" | "attack";
-
-type DarrelDragonQuestInteractDetail = {
-  source?: "keyboard" | "controller" | "cast" | string;
-  handled?: boolean;
-};
-
-function isDarrelDragonEditableTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable ||
-    target.tagName === "INPUT" ||
-    target.tagName === "TEXTAREA" ||
-    target.tagName === "SELECT";
-}
-
-function getDarrelDragonLocalPosition(position: THREE.Vector3, worldOrigin: { x: number; z: number }) {
-  return {
-    x: position.x - worldOrigin.x,
-    y: position.y,
-    z: position.z - worldOrigin.z,
-  };
-}
-
-function isInsideDarrelDragonHouse(localPosition: { x: number; y: number; z: number }) {
-  return Math.abs(localPosition.x) <= DARREL_DRAGON_HOUSE_HALF_WIDTH &&
-    Math.abs(localPosition.z) <= DARREL_DRAGON_HOUSE_HALF_DEPTH;
-}
-
-function isNearDarrelDragon(localPosition: { x: number; y: number; z: number }) {
-  const dx = localPosition.x - DARREL_DRAGON_LOCAL_POSITION[0];
-  const dz = localPosition.z - DARREL_DRAGON_LOCAL_POSITION[2];
-  return dx * dx + dz * dz <= DARREL_DRAGON_TALK_RADIUS_SQ;
-}
-
-function getDarrelDragonInteractPrompt(
-  controllerBindings: Record<string, ControllerButtonName>,
-  isControllerGameplayActive: boolean,
-  isTouchControlsActive: boolean,
-) {
-  if (isTouchControlsActive) return "TAP CAST / INTERACT";
-  if (!isControllerGameplayActive) return "F / LMB / RMB";
-
-  const buttons = [
-    controllerBindings.interact,
-    controllerBindings.leftCast,
-    controllerBindings.rightCast,
-  ];
-  const labels: string[] = [];
-  for (let index = 0; index < buttons.length; index += 1) {
-    const button = buttons[index];
-    if (!button) continue;
-    const label = DARREL_DRAGON_CONTROLLER_LABELS[button] ?? button;
-    if (!labels.includes(label)) labels.push(label);
-  }
-
-  return labels.join(" / ") || "INTERACT";
-}
 
 function makeDarrelDragonFallbackTexture() {
   const canvas = document.createElement("canvas");
@@ -1403,11 +1333,6 @@ function useDarrelDragonAnimationTextures(fallbackTexture: THREE.Texture) {
   return textures;
 }
 
-function isDarrelDragonQuestReadyForEncounter(flags: Record<string, unknown>, unlocked: string[]) {
-  return !unlocked.includes("healingcrystals") &&
-    (flags[DARREL_POTION_FLAG] === "drunk" || flags["quest:darrel-grove"] === "started");
-}
-
 function DarrelSpiritDragon({ worldOrigin }: { worldOrigin: { x: number; z: number } }) {
   const questFlags = useGameStore(s => s.questFlags);
   const questUnlockedSpells = useGameStore(s => s.questUnlockedSpells);
@@ -1430,34 +1355,19 @@ function DarrelSpiritDragon({ worldOrigin }: { worldOrigin: { x: number; z: numb
   const [hasPlayerEnteredHouse, setHasPlayerEnteredHouse] = useState(false);
   const [showInteractPrompt, setShowInteractPrompt] = useState(false);
   const interactPromptText = getDarrelDragonInteractPrompt(controllerBindings, isControllerGameplayActive, isTouchControlsActive);
-  const hasPeacefulDragon = questFlags[DARREL_DRAGON_PEACEFUL_FLAG] === true ||
-    questFlags[DARREL_DRAGON_PEACEFUL_FLAG] === "true" ||
-    questUnlockedSpells.includes("healingcrystals");
-  const hasFoughtDragon = (questFlags[DARREL_DRAGON_FOUGHT_FLAG] === true ||
-    questFlags[DARREL_DRAGON_FOUGHT_FLAG] === "true") && !hasPeacefulDragon;
-  const hasWoken = questFlags[DARREL_DRAGON_WOKEN_FLAG] === true ||
-    questFlags[DARREL_DRAGON_WOKEN_FLAG] === "true" ||
-    hasPeacefulDragon ||
-    hasFoughtDragon ||
-    questDialogSession?.npcId === DARREL_DRAGON_NPC_ID ||
-    hasPlayerEnteredHouse;
+  const { hasFoughtDragon, hasWoken } = getDarrelDragonQuestState({
+    questFlags,
+    questUnlockedSpells,
+    questDialogNpcId: questDialogSession?.npcId,
+    hasPlayerEnteredHouse,
+  });
   const { camera } = useThree();
 
   useEffect(() => {
-    const setDragonMode = (nextMode: DarrelDragonMode) => {
-      if (modeRef.current === nextMode) return;
+    const nextMode = getNextDarrelDragonMode(modeRef.current, hasFoughtDragon, hasWoken);
+    if (modeRef.current !== nextMode) {
       modeRef.current = nextMode;
       modeStartedAtRef.current = null;
-    };
-
-    if (hasFoughtDragon) {
-      setDragonMode("attack");
-    } else if (hasWoken && modeRef.current === "sleep") {
-      setDragonMode("wake");
-    } else if (hasWoken && modeRef.current === "attack") {
-      setDragonMode("idle");
-    } else if (!hasWoken) {
-      setDragonMode("sleep");
     }
   }, [hasFoughtDragon, hasWoken]);
 
@@ -1474,21 +1384,15 @@ function DarrelSpiritDragon({ worldOrigin }: { worldOrigin: { x: number; z: numb
     const openDragonDialogIfReady = (detail?: DarrelDragonQuestInteractDetail) => {
       const store = useGameStore.getState();
       if (detail?.handled) return;
+      if (!canUseDarrelDragonInteraction(store)) return false;
+
+      const localPosition = getDarrelDragonLocalPosition(camera.position, worldOrigin);
       if (
-        store.questDialogSession ||
-        store.questNpcEditorTarget ||
-        store.isInventoryOpen ||
-        store.isPauseMenuOpen ||
-        store.isSpellMenuOpen ||
-        store.isMapExpanded ||
-        store.isScoreboardOpen ||
-        store.health <= 0
+        !isInsideDarrelDragonHouse(localPosition, DARREL_DRAGON_HOUSE_HALF_WIDTH, DARREL_DRAGON_HOUSE_HALF_DEPTH) ||
+        !isNearDarrelDragon(localPosition, DARREL_DRAGON_LOCAL_POSITION, DARREL_DRAGON_TALK_RADIUS_SQ)
       ) {
         return false;
       }
-
-      const localPosition = getDarrelDragonLocalPosition(camera.position, worldOrigin);
-      if (!isInsideDarrelDragonHouse(localPosition) || !isNearDarrelDragon(localPosition)) return false;
 
       const now = latestDragonFrameClockMsRef.current;
       if (now - lastDialogAtRef.current < 450) return false;
@@ -1542,23 +1446,26 @@ function DarrelSpiritDragon({ worldOrigin }: { worldOrigin: { x: number; z: numb
 
     const store = useGameStore.getState();
     const localPosition = getDarrelDragonLocalPosition(camera.position, worldOrigin);
-    const playerInsideHouse = isInsideDarrelDragonHouse(localPosition);
+    const playerInsideHouse = isInsideDarrelDragonHouse(
+      localPosition,
+      DARREL_DRAGON_HOUSE_HALF_WIDTH,
+      DARREL_DRAGON_HOUSE_HALF_DEPTH,
+    );
     if (playerInsideHouse && !playerEnteredHouseRef.current) {
       playerEnteredHouseRef.current = true;
       setHasPlayerEnteredHouse(true);
     }
 
-    const shouldShowInteractPrompt =
-      playerInsideHouse &&
-      isNearDarrelDragon(localPosition) &&
-      !store.questDialogSession &&
-      !store.questNpcEditorTarget &&
-      !store.isInventoryOpen &&
-      !store.isPauseMenuOpen &&
-      !store.isSpellMenuOpen &&
-      !store.isMapExpanded &&
-      !store.isScoreboardOpen &&
-      store.health > 0;
+    const playerNearDragon = isNearDarrelDragon(
+      localPosition,
+      DARREL_DRAGON_LOCAL_POSITION,
+      DARREL_DRAGON_TALK_RADIUS_SQ,
+    );
+    const shouldShowInteractPrompt = shouldShowDarrelDragonInteractPrompt({
+      state: store,
+      playerInsideHouse,
+      playerNearDragon,
+    });
     if (showInteractPromptRef.current !== shouldShowInteractPrompt) {
       showInteractPromptRef.current = shouldShowInteractPrompt;
       setShowInteractPrompt(shouldShowInteractPrompt);
