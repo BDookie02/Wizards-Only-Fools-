@@ -31,6 +31,7 @@ import {
   getDarrelHillStairRamp,
   getDarrelHillSteps,
   getDarrelQuestGateNowMs,
+  getDarrelSideStairLayout,
 } from "./darrelGroveRuntime";
 import { SURVIVAL_DARREL_GROVE_HALF_SIZE as DARREL_GROVE_HALF_SIZE } from "./survivalVillageRegistry";
 
@@ -68,15 +69,6 @@ const DARREL_FALLING_PETAL_COUNT = 68;
 const MOBILE_DARREL_WATER_UPDATE_INTERVAL_SECONDS = 1 / 30;
 const MOBILE_DARREL_FALLING_PETAL_UPDATE_INTERVAL_SECONDS = 1 / 24;
 const MOBILE_DARREL_DRAGON_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 24;
-
-type DarrelSideSign = (typeof DARREL_SIDE_SIGNS)[number];
-
-type DarrelSideStairStep = {
-  side: DarrelSideSign;
-  index: number;
-  x: number;
-  stepHeight: number;
-};
 
 type DarrelBlossomSprite = {
   key: number;
@@ -442,28 +434,17 @@ function DarrelChineseHut() {
   const sideStairRun = 17;
   const sideStairDepth = porchDepth - 2.4;
   const sideStairCount = 4;
-  const sideStairStepWidth = sideStairRun / sideStairCount;
-  const sideStairRampAngle = Math.atan2(porchTopY, sideStairRun);
-  const sideStairRampHalfThickness = 0.36;
-  const sideStairRampCenterY = porchTopY / 2 - Math.cos(sideStairRampAngle) * sideStairRampHalfThickness;
-  const sideStairRampLength = Math.sqrt(sideStairRun * sideStairRun + porchTopY * porchTopY);
-  const sideStairSteps = useMemo<DarrelSideStairStep[]>(() => {
-    const steps: DarrelSideStairStep[] = [];
-    for (let sideIndex = 0; sideIndex < DARREL_SIDE_SIGNS.length; sideIndex += 1) {
-      const side = DARREL_SIDE_SIGNS[sideIndex];
-      for (let index = 0; index < sideStairCount; index += 1) {
-        const stepHeight = porchTopY * ((index + 1) / sideStairCount);
-        const innerOffset = index * sideStairStepWidth + sideStairStepWidth / 2;
-        steps.push({
-          side,
-          index,
-          x: side * (porchHalfWidth + sideStairRun - innerOffset),
-          stepHeight,
-        });
-      }
-    }
-    return steps;
-  }, [porchHalfWidth, porchTopY, sideStairCount, sideStairRun, sideStairStepWidth]);
+  const sideStairLayout = useMemo(
+    () =>
+      getDarrelSideStairLayout({
+        porchHalfWidth,
+        porchTopY,
+        porchZ,
+        sideStairRun,
+        sideStairCount,
+      }),
+    [porchHalfWidth, porchTopY, porchZ, sideStairRun, sideStairCount],
+  );
 
   return (
     <group position={[0, DARREL_HUT_BASE_Y, 0]}>
@@ -480,12 +461,12 @@ function DarrelChineseHut() {
         <CuboidCollider args={[(width - doorWidth) / 4, wallHeight / 2, wallThickness / 2]} position={[(doorWidth / 2 + (width - doorWidth) / 4), wallCenterY, -depth / 2]} />
       </RigidBody>
       <RigidBody type="fixed" colliders={false} friction={0.96} restitution={0} name="darrel-hut-side-stair-ramp">
-        {DARREL_SIDE_SIGNS.map((side) => (
+        {sideStairLayout.ramps.map((ramp) => (
           <CuboidCollider
-            key={`hut-side-step-smooth-ramp-${side}`}
-            args={[sideStairRampLength / 2, sideStairRampHalfThickness, sideStairDepth / 2]}
-            position={[side * (porchHalfWidth + sideStairRun / 2 - 0.35), sideStairRampCenterY, porchZ]}
-            rotation={[0, 0, -side * sideStairRampAngle]}
+            key={`hut-side-step-smooth-ramp-${ramp.side}`}
+            args={[sideStairLayout.rampLength / 2, sideStairLayout.rampHalfThickness, sideStairDepth / 2]}
+            position={ramp.position}
+            rotation={ramp.rotation}
           />
         ))}
       </RigidBody>
@@ -519,14 +500,14 @@ function DarrelChineseHut() {
         <boxGeometry args={[46, 2.1, porchDepth]} />
         <meshStandardMaterial map={woodTexture} color="#825433" roughness={0.95} />
       </mesh>
-      {sideStairSteps.map(({ side, index, x, stepHeight }) => (
+      {sideStairLayout.steps.map(({ side, index, x, stepHeight }) => (
         <group key={`hut-side-step-${side}-${index}`} position={[x, stepHeight / 2, porchZ]}>
           <mesh castShadow receiveShadow>
-            <boxGeometry args={[sideStairStepWidth + 0.18, stepHeight, sideStairDepth]} />
+            <boxGeometry args={[sideStairLayout.stepWidth + 0.18, stepHeight, sideStairDepth]} />
             <meshStandardMaterial map={stoneTexture} color={index % 2 === 0 ? "#7f887d" : "#949b90"} roughness={1} />
           </mesh>
           <mesh position={[0, stepHeight / 2 + 0.065, 0]} castShadow receiveShadow>
-            <boxGeometry args={[sideStairStepWidth + 0.44, 0.13, sideStairDepth + 0.42]} />
+            <boxGeometry args={[sideStairLayout.stepWidth + 0.44, 0.13, sideStairDepth + 0.42]} />
             <meshStandardMaterial map={woodTexture} color={index === sideStairCount - 1 ? "#8b5a36" : "#745037"} roughness={0.95} />
           </mesh>
         </group>

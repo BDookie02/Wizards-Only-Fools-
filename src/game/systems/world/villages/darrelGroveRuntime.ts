@@ -21,7 +21,33 @@ export type DarrelHillStep = {
   depth: number;
 };
 
+export type DarrelSideSign = -1 | 1;
+
+export type DarrelSideStairRamp = {
+  side: DarrelSideSign;
+  position: [number, number, number];
+  rotation: [number, number, number];
+};
+
+export type DarrelSideStairStep = {
+  side: DarrelSideSign;
+  index: number;
+  x: number;
+  stepHeight: number;
+};
+
+export type DarrelSideStairLayout = {
+  stepWidth: number;
+  rampAngle: number;
+  rampCenterY: number;
+  rampHalfThickness: number;
+  rampLength: number;
+  ramps: DarrelSideStairRamp[];
+  steps: DarrelSideStairStep[];
+};
+
 const DARREL_BRANCH_UP = new THREE.Vector3(0, 1, 0);
+const DARREL_SIDE_SIGNS: readonly DarrelSideSign[] = [-1, 1];
 
 export function getDarrelQuestGateNowMs() {
   return Date.now();
@@ -73,4 +99,54 @@ export function getDarrelHillSteps(entrySurfaceOffset: number, stepCount: number
     };
   }
   return steps;
+}
+
+export function getDarrelSideStairLayout({
+  porchHalfWidth,
+  porchTopY,
+  porchZ,
+  sideStairRun,
+  sideStairCount,
+  rampHalfThickness = 0.36,
+}: {
+  porchHalfWidth: number;
+  porchTopY: number;
+  porchZ: number;
+  sideStairRun: number;
+  sideStairCount: number;
+  rampHalfThickness?: number;
+}): DarrelSideStairLayout {
+  const safeStairCount = Math.max(1, Math.floor(sideStairCount));
+  const stepWidth = sideStairRun / safeStairCount;
+  const rampAngle = Math.atan2(porchTopY, sideStairRun);
+  const rampCenterY = porchTopY / 2 - Math.cos(rampAngle) * rampHalfThickness;
+  const rampLength = Math.sqrt(sideStairRun * sideStairRun + porchTopY * porchTopY);
+  const ramps = DARREL_SIDE_SIGNS.map((side) => ({
+    side,
+    position: [side * (porchHalfWidth + sideStairRun / 2 - 0.35), rampCenterY, porchZ] as [number, number, number],
+    rotation: [0, 0, -side * rampAngle] as [number, number, number],
+  }));
+  const steps: DarrelSideStairStep[] = [];
+  for (let sideIndex = 0; sideIndex < DARREL_SIDE_SIGNS.length; sideIndex += 1) {
+    const side = DARREL_SIDE_SIGNS[sideIndex];
+    for (let index = 0; index < safeStairCount; index += 1) {
+      const stepHeight = porchTopY * ((index + 1) / safeStairCount);
+      const innerOffset = index * stepWidth + stepWidth / 2;
+      steps.push({
+        side,
+        index,
+        x: side * (porchHalfWidth + sideStairRun - innerOffset),
+        stepHeight,
+      });
+    }
+  }
+  return {
+    stepWidth,
+    rampAngle,
+    rampCenterY,
+    rampHalfThickness,
+    rampLength,
+    ramps,
+    steps,
+  };
 }
