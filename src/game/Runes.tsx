@@ -44,6 +44,10 @@ function findBaseRuneHutPositionById(hutPositions: readonly BaseRuneHutPosition[
   return null;
 }
 
+export function getRunesManaEpochMs(latestEpochMs: number) {
+  return latestEpochMs || Date.now();
+}
+
 export function Runes() {
   const [manaPulses, setManaPulses] = useState<{ id: number; playerId: string }[]>([]);
   const manaPulseIdRef = useRef(0);
@@ -79,7 +83,7 @@ export function Runes() {
   const lastManaSourceReconcileAtRef = useRef(Number.NEGATIVE_INFINITY);
   const previousActiveRunesRef = useLazyRef(() => new Set<string>());
   const lastBaseRuneCycleAtRef = useRef(Number.NEGATIVE_INFINITY);
-  const getLatestManaEpochMs = () => latestManaEpochMsRef.current || Date.now();
+  const getLatestManaEpochMs = () => getRunesManaEpochMs(latestManaEpochMsRef.current);
   const setBaseRuneSourcesVisibility = useCallback((nextVisible: boolean) => {
     if (baseRuneSourcesVisibleRef.current === nextVisible) return;
     baseRuneSourcesVisibleRef.current = nextVisible;
