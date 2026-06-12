@@ -35,6 +35,7 @@ import {
   getMountainMineshaftLadderLandingLocalX,
   getMountainMineshaftPlatformPieces,
   getMountainMineshaftRimBeams,
+  getMountainMineshaftWallDecorDescriptors,
 } from "./mountainVillageMineshaftRuntime";
 import {
   MOUNTAIN_VILLAGE_EDGE_BLEND_START,
@@ -51,7 +52,6 @@ import {
   MOUNTAIN_VILLAGE_MINESHAFT_CATWALK_SEGMENTS,
   MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH,
   MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_Y_OFFSET,
-  MOUNTAIN_VILLAGE_MINESHAFT_GOLDEN_ANGLE,
   MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_HUT_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_LADDER_EXIT_CLEARANCE,
@@ -64,9 +64,6 @@ import {
   MOUNTAIN_VILLAGE_MINESHAFT_RIM_OUTER_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_TERRAIN_CUT_RADIUS,
   MOUNTAIN_VILLAGE_MINESHAFT_THRONE_Z,
-  MOUNTAIN_VILLAGE_MINESHAFT_WALL_FIBONACCI_SEQUENCE,
-  MOUNTAIN_VILLAGE_MINESHAFT_WALL_LANTERN_COUNT,
-  MOUNTAIN_VILLAGE_MINESHAFT_WALL_PAINTING_COUNT,
   MOUNTAIN_VILLAGE_PLATEAU_RADIUS,
   MOUNTAIN_VILLAGE_RADIUS,
   MOUNTAIN_VILLAGE_SUMMIT_COLLIDER_RADIUS,
@@ -1923,20 +1920,18 @@ function MountainMineshaftLightPole({
 }
 
 function MountainMineshaftWallHangingLantern({
-  angle,
-  y,
+  position,
+  rotation,
   index,
   withLight,
 }: {
-  angle: number;
-  y: number;
+  position: [number, number, number];
+  rotation: [number, number, number];
   index: number;
   withLight: boolean;
 }) {
-  const radius = MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS - 0.72;
-
   return (
-    <group position={[Math.sin(angle) * radius, y, Math.cos(angle) * radius]} rotation={[0, angle, 0]}>
+    <group position={position} rotation={rotation}>
       <mesh position={[0, 0.42, -0.08]} castShadow={false}>
         <boxGeometry args={[2.9, 0.68, 0.34]} />
         <meshBasicMaterial color="#1b1009" />
@@ -1969,19 +1964,19 @@ function MountainMineshaftWallLanterns({
 }) {
   if (!showDetails) return null;
 
-  const topY = summitY - 8.2;
-  const lowerY = bottomY + 14.5;
-  const usableHeight = Math.max(36, topY - lowerY);
+  const { lanterns } = getMountainMineshaftWallDecorDescriptors({ bottomY, summitY });
 
   return (
     <group name="mineshaft-wall-hanging-lanterns">
-      {getCachedIndexRange(MOUNTAIN_VILLAGE_MINESHAFT_WALL_LANTERN_COUNT).map((index) => {
-        const t = index / Math.max(1, MOUNTAIN_VILLAGE_MINESHAFT_WALL_LANTERN_COUNT - 1);
-        const y = topY - t * usableHeight;
-        const angle = -0.7 + index * MOUNTAIN_VILLAGE_MINESHAFT_GOLDEN_ANGLE;
-
-        return <MountainMineshaftWallHangingLantern key={`wall-lantern-${index}`} angle={angle} y={y} index={index} withLight={index % 4 === 0} />;
-      })}
+      {lanterns.map((lantern) => (
+        <MountainMineshaftWallHangingLantern
+          key={`wall-lantern-${lantern.index}`}
+          position={lantern.position}
+          rotation={lantern.rotation}
+          index={lantern.index}
+          withLight={lantern.withLight}
+        />
+      ))}
     </group>
   );
 }
@@ -2122,21 +2117,15 @@ function MountainMineshaftWallPaintings({
 }) {
   if (!showDetails) return null;
 
-  const radius = MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS - 0.48;
-  const usableHeight = Math.max(48, summitY - bottomY - 34);
+  const { paintings } = getMountainMineshaftWallDecorDescriptors({ bottomY, summitY });
 
   return (
     <group name="mineshaft-villager-wall-paintings">
-      {getCachedIndexRange(MOUNTAIN_VILLAGE_MINESHAFT_WALL_PAINTING_COUNT).map((index) => {
-        const angle = 0.38 + index * ((Math.PI * 2) / MOUNTAIN_VILLAGE_MINESHAFT_WALL_PAINTING_COUNT);
-        const y = bottomY + 15 + ((index % 4) / 3) * Math.min(usableHeight, 86) + Math.floor(index / 4) * 6;
-
-        return (
-          <group key={`villager-painting-${index}`} position={[Math.sin(angle) * radius, y, Math.cos(angle) * radius]} rotation={[0, angle, 0]}>
-            <MountainMineshaftVillagerPainting variant={index} />
-          </group>
-        );
-      })}
+      {paintings.map((painting) => (
+        <group key={`villager-painting-${painting.index}`} position={painting.position} rotation={painting.rotation}>
+          <MountainMineshaftVillagerPainting variant={painting.variant} />
+        </group>
+      ))}
     </group>
   );
 }
@@ -2152,59 +2141,39 @@ function MountainMineshaftWallRopeLights({
 }) {
   if (!showDetails) return null;
 
-  const radius = MOUNTAIN_VILLAGE_MINESHAFT_HOLE_RADIUS - 0.52;
-  const topY = summitY - 6.2;
-  const lowerY = bottomY + 8.4;
-  const sequenceHeight = Math.max(30, topY - lowerY);
+  const { ropeLights } = getMountainMineshaftWallDecorDescriptors({ bottomY, summitY });
 
   return (
     <group name="mineshaft-wall-rope-lights">
-      {MOUNTAIN_VILLAGE_MINESHAFT_WALL_FIBONACCI_SEQUENCE.map((lightCount, tierIndex) => {
-        const t = tierIndex / Math.max(1, MOUNTAIN_VILLAGE_MINESHAFT_WALL_FIBONACCI_SEQUENCE.length - 1);
-        const y = topY - t * sequenceHeight;
-        const rowAngle = -0.25 + tierIndex * MOUNTAIN_VILLAGE_MINESHAFT_GOLDEN_ANGLE;
-
-        return (
-          <Fragment key={`rope-light-fibonacci-tier-${tierIndex}`}>
-            {getCachedIndexRange(lightCount).map((lightIndex) => {
-              const angle = rowAngle + (lightCount === 1 ? 0 : (Math.PI * 2 * lightIndex) / lightCount);
-              const bulbScale = 1.06 + Math.min(0.38, tierIndex * 0.05);
-              const glowColor = ["#fff0a8", "#ffd56f", "#ffb65b", "#ff8a3a"][lightIndex % 4];
-              const hasLight = tierIndex < 2 && lightIndex === 0;
-
-              return (
-                <group key={`rope-fibonacci-light-${tierIndex}-${lightIndex}`} position={[Math.sin(angle) * radius, y, Math.cos(angle) * radius]} rotation={[0, angle, 0]}>
-                  <mesh position={[0, 0, -0.14]} castShadow={false}>
-                    <boxGeometry args={[2.08 * bulbScale, 0.24 * bulbScale, 0.16]} />
-                    <meshBasicMaterial color="#160d08" />
-                  </mesh>
-                  <mesh position={[-0.66 * bulbScale, 0, -0.18]} castShadow={false}>
-                    <boxGeometry args={[0.22 * bulbScale, 0.36 * bulbScale, 0.18]} />
-                    <meshBasicMaterial color="#4f321f" />
-                  </mesh>
-                  <mesh position={[0.66 * bulbScale, 0, -0.18]} castShadow={false}>
-                    <boxGeometry args={[0.22 * bulbScale, 0.36 * bulbScale, 0.18]} />
-                    <meshBasicMaterial color="#4f321f" />
-                  </mesh>
-                  <mesh position={[0, 0, -0.28]} castShadow={false} renderOrder={9}>
-                    <boxGeometry args={[0.92 * bulbScale, 0.92 * bulbScale, 0.1]} />
-                    <meshBasicMaterial color={glowColor} transparent opacity={0.96} blending={THREE.AdditiveBlending} toneMapped={false} />
-                  </mesh>
-                  <mesh position={[0, 0, -0.36]} castShadow={false} renderOrder={8}>
-                    <boxGeometry args={[2.75 * bulbScale, 2.75 * bulbScale, 0.04]} />
-                    <meshBasicMaterial color={glowColor} transparent opacity={0.28} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
-                  </mesh>
-                  <mesh position={[0, 0, -0.42]} castShadow={false} renderOrder={7}>
-                    <boxGeometry args={[4.1 * bulbScale, 4.1 * bulbScale, 0.035]} />
-                    <meshBasicMaterial color={glowColor} transparent opacity={0.1} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
-                  </mesh>
-                  {hasLight && <pointLight color={glowColor} intensity={3.6} distance={20} decay={2} position={[0, 0, -1.1]} />}
-                </group>
-              );
-            })}
-          </Fragment>
-        );
-      })}
+      {ropeLights.map((light) => (
+        <group key={light.key} position={light.position} rotation={light.rotation}>
+          <mesh position={[0, 0, -0.14]} castShadow={false}>
+            <boxGeometry args={[2.08 * light.bulbScale, 0.24 * light.bulbScale, 0.16]} />
+            <meshBasicMaterial color="#160d08" />
+          </mesh>
+          <mesh position={[-0.66 * light.bulbScale, 0, -0.18]} castShadow={false}>
+            <boxGeometry args={[0.22 * light.bulbScale, 0.36 * light.bulbScale, 0.18]} />
+            <meshBasicMaterial color="#4f321f" />
+          </mesh>
+          <mesh position={[0.66 * light.bulbScale, 0, -0.18]} castShadow={false}>
+            <boxGeometry args={[0.22 * light.bulbScale, 0.36 * light.bulbScale, 0.18]} />
+            <meshBasicMaterial color="#4f321f" />
+          </mesh>
+          <mesh position={[0, 0, -0.28]} castShadow={false} renderOrder={9}>
+            <boxGeometry args={[0.92 * light.bulbScale, 0.92 * light.bulbScale, 0.1]} />
+            <meshBasicMaterial color={light.glowColor} transparent opacity={0.96} blending={THREE.AdditiveBlending} toneMapped={false} />
+          </mesh>
+          <mesh position={[0, 0, -0.36]} castShadow={false} renderOrder={8}>
+            <boxGeometry args={[2.75 * light.bulbScale, 2.75 * light.bulbScale, 0.04]} />
+            <meshBasicMaterial color={light.glowColor} transparent opacity={0.28} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+          </mesh>
+          <mesh position={[0, 0, -0.42]} castShadow={false} renderOrder={7}>
+            <boxGeometry args={[4.1 * light.bulbScale, 4.1 * light.bulbScale, 0.035]} />
+            <meshBasicMaterial color={light.glowColor} transparent opacity={0.1} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+          </mesh>
+          {light.hasLight && <pointLight color={light.glowColor} intensity={3.6} distance={20} decay={2} position={[0, 0, -1.1]} />}
+        </group>
+      ))}
     </group>
   );
 }
