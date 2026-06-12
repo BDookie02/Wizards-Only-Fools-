@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { getCachedIndexRange } from "../../rendering/indexRange";
-import { getMountainMineshaftWallDecorDescriptors } from "./mountainVillageMineshaftRuntime";
+import { getMountainMineshaftWallDecorDescriptors } from "./mountainVillageMineshaftWallDecorRuntime";
 
 const MOUNTAIN_MINESHAFT_PAINTING_PIN_XS = [-2.56, 2.56] as const;
 

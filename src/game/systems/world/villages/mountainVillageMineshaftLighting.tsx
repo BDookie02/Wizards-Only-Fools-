@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { getMountainMineshaftWallDecorDescriptors } from "./mountainVillageMineshaftRuntime";
+import { getMountainMineshaftWallDecorDescriptors } from "./mountainVillageMineshaftWallDecorRuntime";
 
 export function RetroMineshaftLantern({
   position,
