@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { getSeededTextureRandom } from "../../rendering/textures/textureNoise";
 
 const TREE_HOUSE_WOOD_COLOR = "#2a1c12";
 const TREE_HOUSE_LIGHT_WOOD_COLOR = "#4a3221";
@@ -15,13 +16,14 @@ export function getTreeHouseBarkTexture() {
   const ctx = canvas.getContext("2d")!;
   ctx.fillStyle = TREE_HOUSE_WOOD_COLOR;
   ctx.fillRect(0, 0, 64, 64);
+  const random = getSeededTextureRandom("tree-house-bark");
 
   for (let i = 0; i < 200; i += 1) {
-    ctx.fillStyle = Math.random() > 0.5 ? "rgba(20, 10, 5, 0.5)" : "rgba(80, 50, 20, 0.3)";
-    const x = Math.floor(Math.random() * 64);
-    const y = Math.floor(Math.random() * 64);
-    const w = Math.floor(1 + Math.random() * 2);
-    const h = Math.floor(4 + Math.random() * 16);
+    ctx.fillStyle = random() > 0.5 ? "rgba(20, 10, 5, 0.5)" : "rgba(80, 50, 20, 0.3)";
+    const x = Math.floor(random() * 64);
+    const y = Math.floor(random() * 64);
+    const w = Math.floor(1 + random() * 2);
+    const h = Math.floor(4 + random() * 16);
     ctx.fillRect(x, y, w, h);
   }
 
@@ -56,9 +58,10 @@ export function getTreeHousePlankTexture() {
     ctx.fillRect(offsetX, y, 2, 16);
   }
 
+  const random = getSeededTextureRandom("tree-house-plank");
   for (let i = 0; i < 200; i += 1) {
     ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
-    ctx.fillRect(Math.floor(Math.random() * 64), Math.floor(Math.random() * 64), 4, 1);
+    ctx.fillRect(Math.floor(random() * 64), Math.floor(random() * 64), 4, 1);
   }
 
   const texture = new THREE.CanvasTexture(canvas);
