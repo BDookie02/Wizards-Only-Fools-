@@ -89,6 +89,10 @@ export function getSpellDummyDamage(type: SpellType) {
   return SPELL_DUMMY_DAMAGE[type] ?? 0;
 }
 
+export function getSpellDummyHitNowMs() {
+  return Date.now();
+}
+
 export function dispatchQaSpellDummySpawn(detail: QaSpellDummySpawnRequest) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("wof-spawn-spell-dummies", { detail }));
@@ -108,7 +112,7 @@ export function publishSpellDummyHit(dummyId: string, projectile: Projectile, da
       projectileId: projectile.id,
       spell: projectile.type,
       damage,
-      at: Date.now(),
+      at: getSpellDummyHitNowMs(),
     },
   }));
   return true;
