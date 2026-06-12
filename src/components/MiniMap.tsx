@@ -334,7 +334,7 @@ export function MiniMap() {
                 transformOrigin: '50% 50%',
                 transform: `translate(-50%, -50%)`
              }}>
-             <svg width="100%" height="100%" viewBox="0 0 16 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+             <svg className="minimap-player-arrow" width="100%" height="100%" viewBox="0 0 16 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
                <path d="M8 2L14 20L8 16L2 20L8 2Z" fill="#ffeb3b" stroke="black" strokeWidth="2" strokeLinejoin="round"/>
              </svg>
            </div>
@@ -557,7 +557,7 @@ export function MiniMap() {
                       transform: `translate(-50%, -50%)`
                    }}
                  >
-                   <svg width="100%" height="100%" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+                   <svg className="minimap-player-arrow" width="100%" height="100%" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
                      <path d="M20 3L34 35L20 27L6 35L20 3Z" fill="#00e5ff" stroke="black" strokeWidth="3" strokeLinejoin="round"/>
                      <path d="M20 8L25 25L20 22L15 25L20 8Z" fill="#fff7a8" />
                    </svg>

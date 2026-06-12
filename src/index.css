@@ -379,10 +379,20 @@ html.wizards-touch-layout .magic-hands-fill-offset {
   scale: 1;
   --magic-hands-left-x-nudge: 0%;
   --magic-hands-right-x-nudge: 0%;
+  --magic-hands-hud-anchor: clamp(24px, var(--hud-status-height, 86px), 76px);
+  --magic-hands-bottom-overscan: clamp(4px, 2vh, 14px);
+  bottom: calc(0px - var(--magic-hands-bottom-overscan)) !important;
+  height: calc(100% + var(--magic-hands-hud-anchor)) !important;
+  top: auto !important;
 }
 
 .magic-hand-mask {
   --magic-hand-mask-bleed: clamp(12px, 2.8cqw, 42px);
+  --magic-hand-mask-hud-anchor: clamp(14px, var(--hud-status-height, 86px), 28px);
+  --magic-hand-mask-bottom-overscan: clamp(1px, 0.4vh, 3px);
+  bottom: calc(0px - var(--magic-hand-mask-bottom-overscan)) !important;
+  height: calc(100% + var(--magic-hand-mask-hud-anchor)) !important;
+  top: auto !important;
   width: calc(50% + var(--magic-hand-mask-bleed)) !important;
   contain: layout paint;
 }
@@ -461,6 +471,8 @@ html.wizards-touch-layout .magic-hands-fill-offset {
 
 .minimap-label {
   container-type: size;
+  --minimap-compass-edge: clamp(3px, 4.5cqw, 8px);
+  border-radius: 9999px;
 }
 
 .minimap-compass-label {
@@ -475,24 +487,33 @@ html.wizards-touch-layout .magic-hands-fill-offset {
 }
 
 .minimap-compass-label-n {
-  top: clamp(3px, 4cqw, 7px) !important;
+  top: var(--minimap-compass-edge) !important;
 }
 
 .minimap-compass-label-s {
-  bottom: clamp(3px, 4cqw, 7px) !important;
+  bottom: var(--minimap-compass-edge) !important;
 }
 
 .minimap-compass-label-e {
-  right: clamp(3px, 4cqw, 7px) !important;
+  right: var(--minimap-compass-edge) !important;
 }
 
 .minimap-compass-label-w {
-  left: clamp(3px, 4cqw, 7px) !important;
+  left: var(--minimap-compass-edge) !important;
 }
 
 .minimap-player-icon {
+  --minimap-player-angle: 0rad;
   width: clamp(10px, 18cqw, 16px);
   height: clamp(16px, 27cqw, 24px);
+  transform: translate(-50%, -50%) !important;
+  transform-origin: 50% 50%;
+}
+
+.minimap-player-arrow {
+  transform: rotate(var(--minimap-player-angle, 0rad));
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
 }
 
 .settings-panel,
@@ -2441,6 +2462,8 @@ html:not(.wizards-touch-layout) .minimap-label {
 .minimap-label {
   width: var(--live-minimap-size, clamp(104px, 22vmin, 212px)) !important;
   height: var(--live-minimap-size, clamp(104px, 22vmin, 212px)) !important;
+  top: var(--live-minimap-inset, clamp(8px, 2vmin, 16px)) !important;
+  right: var(--live-minimap-inset, clamp(8px, 2vmin, 16px)) !important;
 }
 
 html:not(.wizards-touch-layout) .minimap-coords {
@@ -2464,11 +2487,15 @@ html.wizards-touch-layout .magic-hands-frame,
 .game-frame[data-aspect-ratio="Fill"] .magic-hands-frame {
   --magic-hands-left-x-nudge: 4%;
   --magic-hands-right-x-nudge: -4%;
+  --magic-hands-hud-anchor: clamp(28px, var(--hud-status-height, 86px), 88px);
+  --magic-hands-bottom-overscan: clamp(6px, 2.5vh, 18px);
 }
 
 html.wizards-touch-layout .game-frame[data-aspect-ratio="4/3"] .magic-hands-frame {
   --magic-hands-left-x-nudge: 5.5%;
   --magic-hands-right-x-nudge: -5.5%;
+  --magic-hands-hud-anchor: clamp(30px, var(--hud-status-height, 86px), 96px);
+  --magic-hands-bottom-overscan: clamp(8px, 3vh, 22px);
 }
 
 @container (max-width: 760px) or (max-height: 460px) {

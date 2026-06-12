@@ -1046,6 +1046,68 @@ export function HUD() {
     return true;
   };
 
+  useEffect(() => {
+    if (!isTouchDevice || !isGameLaunched || !localPlayerName) return;
+
+    let lastTouchTakeoverAt = 0;
+    const shouldBlockTouchTakeover = () => {
+      const state = useGameStore.getState();
+      return (
+        !state.isGameLaunched ||
+        !state.localPlayerName ||
+        state.health <= 0 ||
+        state.isSpellMenuOpen ||
+        state.isInventoryOpen ||
+        state.isMapExpanded ||
+        state.isScoreboardOpen ||
+        Boolean(state.questNpcEditorTarget) ||
+        Boolean(state.questDialogSession) ||
+        isCommandConsoleOpen ||
+        isDevFastTravelOpen ||
+        isEngineMenuOpen ||
+        isPauseMenuVisible ||
+        isReturningToGame ||
+        showVideoMenu ||
+        remappingAction !== null ||
+        remappingVoiceKey
+      );
+    };
+
+    const handleTouchGameplayTakeover = (event: PointerEvent | TouchEvent) => {
+      if ("pointerType" in event && event.pointerType !== "touch") return;
+      if (isEditableTarget(event.target)) return;
+      if (shouldBlockTouchTakeover()) return;
+
+      const state = useGameStore.getState();
+      if (state.isTouchControlsActive && lastGameplayInputModeRef.current === "touch") return;
+
+      const now = window.performance.now();
+      if (now - lastTouchTakeoverAt < 48) return;
+      lastTouchTakeoverAt = now;
+      startTouchGameplay();
+    };
+
+    window.addEventListener("pointerdown", handleTouchGameplayTakeover, { capture: true, passive: true });
+    window.addEventListener("touchstart", handleTouchGameplayTakeover, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", handleTouchGameplayTakeover, { capture: true });
+      window.removeEventListener("touchstart", handleTouchGameplayTakeover, { capture: true });
+    };
+  }, [
+    isCommandConsoleOpen,
+    isDevFastTravelOpen,
+    isEngineMenuOpen,
+    isGameLaunched,
+    isPauseMenuVisible,
+    isReturningToGame,
+    isTouchDevice,
+    localPlayerName,
+    remappingAction,
+    remappingVoiceKey,
+    showVideoMenu,
+    startTouchGameplay,
+  ]);
+
   const pauseControllerGameplay = () => {
     openPauseMenuFromGameplay("controller");
   };

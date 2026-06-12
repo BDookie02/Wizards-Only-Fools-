@@ -26,7 +26,7 @@ function sameLiveMapPosition(a: LiveMapPosition, b: LiveMapPosition) {
 
 function applyPlayerIconRotation(node: HTMLDivElement | null, angle: number) {
   if (!node) return;
-  node.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+  node.style.setProperty("--minimap-player-angle", `${angle}rad`);
 }
 
 function syncMiniMapPositionFromPublishedState(target: LiveMapPosition) {
