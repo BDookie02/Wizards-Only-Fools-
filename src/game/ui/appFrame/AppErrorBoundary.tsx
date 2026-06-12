@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import { getAppErrorBoundaryNowMs } from "./appErrorBoundaryRuntime";
 
 type AppErrorBoundaryState = {
   error: Error | null;
@@ -7,10 +8,6 @@ type AppErrorBoundaryState = {
 
 let rapierTeardownWindowStartedAt = 0;
 let rapierTeardownErrorsInWindow = 0;
-
-export function getAppErrorBoundaryNowMs() {
-  return Date.now();
-}
 
 function isKnownRapierTeardownError(error: unknown) {
   const text = String(error instanceof Error ? error.stack || error.message : error);

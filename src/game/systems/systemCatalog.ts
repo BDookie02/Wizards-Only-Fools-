@@ -130,8 +130,8 @@ export const GAME_SYSTEM_CATALOG: GameSystemDescriptor[] = [
     name: "App Frame",
     category: "ui",
     owner: "Interface",
-    responsibility: "Top-level app shell, lazy gameplay/HUD/launch/minimap/QA perf module registry, single-snapshot route flags for voice/QA/survival observer mounting, voice-enabled/voice-QA gated lazy voice runtime mounting, single-pass route-gated dynamic survival QA bootstrap, lean game-world shell composition with survival/base resolver ownership and spell-dummy QA mount timing pushed behind lazy/tool boundaries, idle gameplay preloading, app error boundary with known Rapier teardown crash guarding, static app-frame aspect layout, shared viewport-size sampling through the input layout runtime, and route-gated dynamic QA frame metric hookup.",
-    currentEntrypoints: ["App.tsx", "AppErrorBoundary.tsx", "appFrameLayout.ts", "appFrameRouteFlags.ts", "gameplayPreload.ts", "lazyAppModules.ts", "appFrameQaMetrics.ts", "QaPerfStatsProbe.tsx", "survivalQaObserver.ts"],
+    responsibility: "Top-level app shell, lazy gameplay/HUD/launch/minimap/QA perf module registry, single-snapshot route flags for voice/QA/survival observer mounting, voice-enabled/voice-QA gated lazy voice runtime mounting, single-pass route-gated dynamic survival QA bootstrap, lean game-world shell composition with survival/base resolver ownership and spell-dummy QA mount timing pushed behind lazy/tool boundaries, idle gameplay preloading, app error boundary with runtime-owned known Rapier teardown crash guard timing, static app-frame aspect layout, shared viewport-size sampling through the input layout runtime, and route-gated dynamic QA frame metric hookup.",
+    currentEntrypoints: ["App.tsx", "AppErrorBoundary.tsx", "appErrorBoundaryRuntime.ts", "appFrameLayout.ts", "appFrameRouteFlags.ts", "gameplayPreload.ts", "lazyAppModules.ts", "appFrameQaMetrics.ts", "QaPerfStatsProbe.tsx", "survivalQaObserver.ts"],
     extractionTarget: "src/game/ui/appFrame",
   },
   {
