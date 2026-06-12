@@ -38,6 +38,51 @@ export type MountainMineshaftExitBridgeFrame = {
   z: number;
 };
 
+export type MountainMineshaftExitBridgeEdgeShadow = {
+  side: -1 | 1;
+  position: [number, number, number];
+};
+
+export type MountainMineshaftExitBridgeGap = {
+  index: number;
+  z: number;
+};
+
+export type MountainMineshaftExitBridgePlank = {
+  index: number;
+  z: number;
+  color: string;
+};
+
+export type MountainMineshaftExitBridgePost = {
+  index: number;
+  side: -1 | 1;
+  position: [number, number, number];
+  color: string;
+};
+
+export type MountainMineshaftExitBridgeSideRail = {
+  side: -1 | 1;
+  position: [number, number, number];
+  posts: MountainMineshaftExitBridgePost[];
+};
+
+export type MountainMineshaftExitBridgeSupport = {
+  key: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+};
+
+export type MountainMineshaftExitBridgeDetails = {
+  supportLength: number;
+  edgeShadows: MountainMineshaftExitBridgeEdgeShadow[];
+  darkGaps: MountainMineshaftExitBridgeGap[];
+  planks: MountainMineshaftExitBridgePlank[];
+  sideRails: MountainMineshaftExitBridgeSideRail[];
+  supports: MountainMineshaftExitBridgeSupport[];
+  lanternPosition: [number, number, number];
+};
+
 export type MountainMineshaftCatwalkRingPoint = {
   index: number;
   angle: number;
@@ -184,11 +229,13 @@ export type MountainMineshaftCatwalkDescriptors = {
 
 const catwalkDescriptorCache = new Map<string, MountainMineshaftCatwalkDescriptors>();
 const catwalkLightPoleCache = new Map<string, MountainMineshaftCatwalkLightPole[]>();
+const exitBridgeDetailCache = new Map<string, MountainMineshaftExitBridgeDetails>();
 const rimBeamCache = new Map<string, MountainMineshaftRimBeam[]>();
 const bottomRockCache = new Map<string, MountainMineshaftBottomRock[]>();
 const wallDecorCache = new Map<string, MountainMineshaftWallDecorDescriptors>();
 let royalBanquetDescriptorCache: MountainMineshaftRoyalBanquetDescriptors | null = null;
 
+const MOUNTAIN_MINESHAFT_BRIDGE_SIDES = [-1, 1] as const;
 const MOUNTAIN_MINESHAFT_BOTTOM_ROCK_COLORS = ["#4b4237", "#2f2b27", "#66533c"];
 const MOUNTAIN_MINESHAFT_ROPE_LIGHT_GLOW_COLORS = ["#fff0a8", "#ffd56f", "#ffb65b", "#ff8a3a"];
 const MOUNTAIN_MINESHAFT_BANQUET_BREAD_POSITIONS = [
@@ -280,6 +327,70 @@ export function getMountainMineshaftExitBridgeFrame(ladder: { angle: number }): 
     x: Math.sin(ladder.angle) * centerRadius,
     z: Math.cos(ladder.angle) * centerRadius,
   };
+}
+
+export function getMountainMineshaftExitBridgeDetails({
+  length,
+  width,
+  plankCount = 9,
+}: {
+  length: number;
+  width: number;
+  plankCount?: number;
+}): MountainMineshaftExitBridgeDetails {
+  const safePlankCount = Math.max(1, Math.floor(plankCount));
+  const cacheKey = `${length}:${width}:${safePlankCount}`;
+  const cached = exitBridgeDetailCache.get(cacheKey);
+  if (cached) return cached;
+
+  const supportLength = width * 0.76;
+  const edgeShadows = MOUNTAIN_MINESHAFT_BRIDGE_SIDES.map((side) => ({
+    side,
+    position: [side * (width / 2 - 0.34), 0.72, 0] as [number, number, number],
+  }));
+  const darkGaps = new Array<MountainMineshaftExitBridgeGap>(6);
+  for (let index = 0; index < darkGaps.length; index += 1) {
+    darkGaps[index] = {
+      index,
+      z: -length * 0.42 + index * ((length * 0.84) / Math.max(1, darkGaps.length - 1)),
+    };
+  }
+
+  const planks = new Array<MountainMineshaftExitBridgePlank>(safePlankCount);
+  for (let index = 0; index < safePlankCount; index += 1) {
+    planks[index] = {
+      index,
+      z: -length / 2 + (index + 0.5) * (length / safePlankCount),
+      color: index % 2 === 0 ? "#9b7448" : "#6e4b2e",
+    };
+  }
+
+  const sideRails = MOUNTAIN_MINESHAFT_BRIDGE_SIDES.map((side) => ({
+    side,
+    position: [side * (width / 2 + 0.36), 1.38, 0] as [number, number, number],
+    posts: Array.from({ length: 5 }, (_, index) => ({
+      index,
+      side,
+      position: [side * (width / 2 + 0.36), 0.88, -length * 0.38 + index * ((length * 0.76) / 4)] as [number, number, number],
+      color: index % 2 === 0 ? "#362315" : "#4e321d",
+    })),
+  }));
+
+  const supports: MountainMineshaftExitBridgeSupport[] = [
+    { key: "front", position: [0, -1.12, -length * 0.26], rotation: [0, 0, 0.22] },
+    { key: "back", position: [0, -1.12, length * 0.26], rotation: [0, 0, -0.22] },
+  ];
+  const details = {
+    supportLength,
+    edgeShadows,
+    darkGaps,
+    planks,
+    sideRails,
+    supports,
+    lanternPosition: [0, 1.4, length / 2 - 3.0] as [number, number, number],
+  };
+  exitBridgeDetailCache.set(cacheKey, details);
+  return details;
 }
 
 export function getMountainMineshaftCatwalkDescriptors({

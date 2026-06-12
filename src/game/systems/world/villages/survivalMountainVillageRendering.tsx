@@ -31,6 +31,7 @@ import {
   getMountainMineshaftBottomRocks,
   getMountainMineshaftCatwalkDescriptors,
   getMountainMineshaftCatwalkLightPoles,
+  getMountainMineshaftExitBridgeDetails,
   getMountainMineshaftExitBridgeFrame,
   getMountainMineshaftLadderLandingLocalX,
   getMountainMineshaftPlatformPieces,
@@ -2811,8 +2812,11 @@ function MountainMineshaftInterior({ layout, showDetails }: { layout: MountainVi
 
 function MountainMineshaftTopExitBridge({ ladder, summitY, showDetails }: { ladder: MountainMineshaftLadder; summitY: number; showDetails: boolean }) {
   const bridge = getMountainMineshaftExitBridgeFrame(ladder);
+  const exitDetails = getMountainMineshaftExitBridgeDetails({
+    length: bridge.length,
+    width: MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH,
+  });
   const y = summitY + MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_Y_OFFSET;
-  const plankCount = 9;
 
   return (
     <group name="mountain-village-mineshaft-top-exit" position={[bridge.x, y, bridge.z]} rotation={[0, bridge.angle, 0]}>
@@ -2826,67 +2830,52 @@ function MountainMineshaftTopExitBridge({ ladder, summitY, showDetails }: { ladd
       </mesh>
       {showDetails && (
         <>
-          {MOUNTAIN_RENDER_SIDES.map((side) => (
-            <mesh key={`exit-bridge-edge-shadow-${side}`} position={[side * (MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH / 2 - 0.34), 0.72, 0]} castShadow={false}>
+          {exitDetails.edgeShadows.map((edge) => (
+            <mesh key={`exit-bridge-edge-shadow-${edge.side}`} position={edge.position} castShadow={false}>
               <boxGeometry args={[0.24, 0.12, bridge.length * 0.98]} />
               <meshBasicMaterial color="#080504" transparent opacity={0.72} />
             </mesh>
           ))}
-          {getCachedIndexRange(6).map((index) => {
-            const z = -bridge.length * 0.42 + index * ((bridge.length * 0.84) / 5);
-
-            return (
-              <mesh key={`exit-bridge-dark-gap-${index}`} position={[0, 0.8, z]} castShadow={false}>
-                <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.84, 0.08, 0.14]} />
-                <meshBasicMaterial color="#090604" transparent opacity={0.56} />
-              </mesh>
-            );
-          })}
+          {exitDetails.darkGaps.map((gap) => (
+            <mesh key={`exit-bridge-dark-gap-${gap.index}`} position={[0, 0.8, gap.z]} castShadow={false}>
+              <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.84, 0.08, 0.14]} />
+              <meshBasicMaterial color="#090604" transparent opacity={0.56} />
+            </mesh>
+          ))}
         </>
       )}
-      {showDetails && getCachedIndexRange(plankCount).map((index) => {
-        const z = -bridge.length / 2 + (index + 0.5) * (bridge.length / plankCount);
-        return (
-          <mesh key={`exit-plank-${index}`} position={[0, 0.64, z]} castShadow={false}>
-            <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH + 0.8, 0.16, 1.45]} />
-            <meshBasicMaterial color={index % 2 === 0 ? "#9b7448" : "#6e4b2e"} />
-          </mesh>
-        );
-      })}
-      {MOUNTAIN_RENDER_SIDES.map((side) => (
-        <Fragment key={`exit-side-${side}`}>
-          <mesh position={[side * (MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH / 2 + 0.36), 1.38, 0]} castShadow={false}>
+      {showDetails && exitDetails.planks.map((plank) => (
+        <mesh key={`exit-plank-${plank.index}`} position={[0, 0.64, plank.z]} castShadow={false}>
+          <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH + 0.8, 0.16, 1.45]} />
+          <meshBasicMaterial color={plank.color} />
+        </mesh>
+      ))}
+      {exitDetails.sideRails.map((rail) => (
+        <Fragment key={`exit-side-${rail.side}`}>
+          <mesh position={rail.position} castShadow={false}>
             <boxGeometry args={[0.36, 0.36, bridge.length * 0.92]} />
             <meshBasicMaterial color="#2b1c12" />
           </mesh>
-          {showDetails && getCachedIndexRange(5).map((index) => {
-            const z = -bridge.length * 0.38 + index * ((bridge.length * 0.76) / 4);
-            return (
-              <mesh key={`exit-post-${index}`} position={[side * (MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH / 2 + 0.36), 0.88, z]} castShadow={false}>
-                <boxGeometry args={[0.46, 1.34, 0.46]} />
-                <meshBasicMaterial color={index % 2 === 0 ? "#362315" : "#4e321d"} />
-              </mesh>
-            );
-          })}
+          {showDetails && rail.posts.map((post) => (
+            <mesh key={`exit-post-${post.side}-${post.index}`} position={post.position} castShadow={false}>
+              <boxGeometry args={[0.46, 1.34, 0.46]} />
+              <meshBasicMaterial color={post.color} />
+            </mesh>
+          ))}
         </Fragment>
       ))}
       {showDetails && (
         <>
-          <group position={[0, -1.12, -bridge.length * 0.26]} rotation={[0, 0, 0.22]}>
-            <mesh castShadow={false}>
-              <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76, 0.42, 0.6]} />
-              <meshBasicMaterial color="#3a2719" />
-            </mesh>
-            <RetroHorizontalTimberDetails length={MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76} height={0.42} depth={0.6} bandColor="#8a5b34" />
-          </group>
-          <group position={[0, -1.12, bridge.length * 0.26]} rotation={[0, 0, -0.22]}>
-            <mesh castShadow={false}>
-              <boxGeometry args={[MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76, 0.42, 0.6]} />
-              <meshBasicMaterial color="#3a2719" />
-            </mesh>
-            <RetroHorizontalTimberDetails length={MOUNTAIN_VILLAGE_MINESHAFT_EXIT_BRIDGE_WIDTH * 0.76} height={0.42} depth={0.6} bandColor="#8a5b34" />
-          </group>
-          <RetroMineshaftLantern position={[0, 1.4, bridge.length / 2 - 3.0]} scale={0.7} withLight />
+          {exitDetails.supports.map((support) => (
+            <group key={`exit-support-${support.key}`} position={support.position} rotation={support.rotation}>
+              <mesh castShadow={false}>
+                <boxGeometry args={[exitDetails.supportLength, 0.42, 0.6]} />
+                <meshBasicMaterial color="#3a2719" />
+              </mesh>
+              <RetroHorizontalTimberDetails length={exitDetails.supportLength} height={0.42} depth={0.6} bandColor="#8a5b34" />
+            </group>
+          ))}
+          <RetroMineshaftLantern position={exitDetails.lanternPosition} scale={0.7} withLight />
         </>
       )}
     </group>
