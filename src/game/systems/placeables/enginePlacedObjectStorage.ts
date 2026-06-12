@@ -1,4 +1,5 @@
 import { getPlaceableDefinition } from "./placeableCatalog";
+import { getEnginePlacedObjectSlotSavedAtMs } from "./enginePlacedObjectStorageRuntime";
 
 export const ENGINE_PLACED_OBJECTS_STORAGE_KEY = "wof-engine-placed-objects-v1";
 export const ENGINE_PLACED_OBJECTS_SLOT_META_KEY = "wof-engine-placed-object-slots-v1";
@@ -30,10 +31,6 @@ type EnginePlacementStorageLike = {
 };
 
 const slotSummarySeenScratch = new Set<string>();
-
-export function getEnginePlacedObjectSlotSavedAtMs() {
-  return Date.now();
-}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
