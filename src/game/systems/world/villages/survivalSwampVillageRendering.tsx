@@ -19,6 +19,11 @@ import { survivalHash01 } from "../survival/survivalMath";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
 import { useSurvivalFeatureCount } from "../../../tools/qa/survivalFeatureCounters";
 import { SWAMP_VILLAGE_RADIUS } from "./survivalSwampVillageTerrain";
+import {
+  getSwampVillageRopeLightBulbs,
+  getSwampVillageRopeLightSegments,
+  type SwampVillageRope,
+} from "./survivalSwampVillageRuntime";
 
 const MOBILE_SWAMP_TOAD_UPDATE_INTERVAL_SECONDS = 1 / 24;
 
@@ -87,15 +92,6 @@ type SwampVillageReedPatch = {
   scale: number;
 };
 
-type SwampVillageRope = {
-  key: string;
-  start: [number, number, number];
-  end: [number, number, number];
-  sag: number;
-  lightCount: number;
-  lightHue: number;
-};
-
 type SwampVillageLayout = {
   huts: SwampVillageHut[];
   hutInfos: HutInfo[];
@@ -116,7 +112,6 @@ const SWAMP_LILY_COLORS = ["#6ea43e", "#7db34d", "#4e8735", "#89bd5a"];
 const SWAMP_MOSS_COLORS = ["#5d7d34", "#425f27", "#728644", "#30491f"];
 const SWAMP_DARK_WOOD = "#21150c";
 const SWAMP_WET_WOOD = "#2b1c12";
-const SWAMP_ROPE_LIGHT_COLORS = ["#fde68a", "#fbbf24", "#bbf7d0", "#86efac"];
 const SWAMP_SIDE_SIGNS = [-1, 1] as const;
 const SWAMP_HUT_STILT_CORNERS = [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const;
 const SWAMP_DOCK_DIRECTIONS = [
@@ -186,16 +181,6 @@ function getSwampHutRopeAnchor(hut: SwampVillageHut, target: SwampVillageHut): [
     hut.platformY + hut.height + 1.55 + (hut.variant - 0.5) * 0.55,
     hut.localZ + nz * anchorRadius,
   ];
-}
-
-function setSaggingRopePoint(target: THREE.Vector3, rope: SwampVillageRope, t: number) {
-  const invT = 1 - t;
-  target.set(
-    rope.start[0] * invT + rope.end[0] * t,
-    rope.start[1] * invT + rope.end[1] * t - Math.sin(Math.PI * t) * rope.sag,
-    rope.start[2] * invT + rope.end[2] * t,
-  );
-  return target;
 }
 
 const SWAMP_TOAD_MANIFEST_SRC = "/sprites/swamp/toad/manifest.json";
@@ -799,69 +784,12 @@ function SwampVillageReedPatch({ reed, waterY }: { reed: SwampVillageReedPatch; 
 function SwampVillageRopeLights({ layout, showDetails }: { layout: SwampVillageLayout; showDetails: boolean }) {
   const ropeSegments = useMemo(() => {
     if (!showDetails) return [];
-    const up = new THREE.Vector3(0, 1, 0);
-    const start = new THREE.Vector3();
-    const end = new THREE.Vector3();
-    const direction = new THREE.Vector3();
-    const midpoint = new THREE.Vector3();
-    const segmentCount = 7;
-    const segments: {
-      key: string;
-      position: [number, number, number];
-      quaternion: THREE.Quaternion;
-      length: number;
-    }[] = [];
-    for (let ropeIndex = 0; ropeIndex < layout.ropes.length; ropeIndex += 1) {
-      const rope = layout.ropes[ropeIndex];
-      for (let index = 0; index < segmentCount; index += 1) {
-        setSaggingRopePoint(start, rope, index / segmentCount);
-        setSaggingRopePoint(end, rope, (index + 1) / segmentCount);
-        direction.subVectors(end, start);
-        const length = Math.max(0.01, direction.length());
-        midpoint.addVectors(start, end).multiplyScalar(0.5);
-        const quaternion = new THREE.Quaternion().setFromUnitVectors(up, direction.normalize());
-        segments.push({
-          key: `${rope.key}-segment-${index}`,
-          position: [midpoint.x, midpoint.y, midpoint.z],
-          quaternion,
-          length,
-        });
-      }
-    }
-    return segments;
+    return getSwampVillageRopeLightSegments(layout.ropes);
   }, [layout.ropes, showDetails]);
 
   const ropeBulbs = useMemo(() => {
     if (!showDetails) return [];
-    const bulbs: {
-      key: string;
-      position: [number, number, number];
-      cordPosition: [number, number, number];
-      cordLength: number;
-      color: string;
-      hasPointLight: boolean;
-    }[] = [];
-    for (let ropeIndex = 0; ropeIndex < layout.ropes.length; ropeIndex += 1) {
-      const rope = layout.ropes[ropeIndex];
-      const lightColor = SWAMP_ROPE_LIGHT_COLORS[Math.floor(rope.lightHue * SWAMP_ROPE_LIGHT_COLORS.length) % SWAMP_ROPE_LIGHT_COLORS.length];
-      for (let index = 0; index < rope.lightCount; index += 1) {
-        const t = (index + 1) / (rope.lightCount + 1);
-        const invT = 1 - t;
-        const pointX = rope.start[0] * invT + rope.end[0] * t;
-        const pointY = rope.start[1] * invT + rope.end[1] * t - Math.sin(Math.PI * t) * rope.sag;
-        const pointZ = rope.start[2] * invT + rope.end[2] * t;
-        const cordLength = 1.25 + ((ropeIndex + index) % 3) * 0.32;
-        bulbs.push({
-          key: `${rope.key}-light-${index}`,
-          position: [pointX, pointY - cordLength, pointZ],
-          cordPosition: [pointX, pointY - cordLength / 2, pointZ],
-          cordLength,
-          color: lightColor,
-          hasPointLight: ropeIndex < 3 && index === Math.floor(rope.lightCount / 2),
-        });
-      }
-    }
-    return bulbs;
+    return getSwampVillageRopeLightBulbs(layout.ropes);
   }, [layout.ropes, showDetails]);
 
   if (!showDetails || layout.ropes.length === 0) return null;
