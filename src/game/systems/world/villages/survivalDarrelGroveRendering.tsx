@@ -54,7 +54,10 @@ import {
   isDarrelDragonEditableTarget,
   isInsideDarrelDragonHouse,
   isNearDarrelDragon,
+  resolveDarrelDragonAnimationFrame,
+  resolveDarrelDragonSpriteVisuals,
   shouldShowDarrelDragonInteractPrompt,
+  type DarrelDragonAnimationTiming,
   type DarrelDragonMode,
   type DarrelDragonQuestInteractDetail,
 } from "./darrelDragonRuntime";
@@ -1481,46 +1484,43 @@ function DarrelSpiritDragon({ worldOrigin }: { worldOrigin: { x: number; z: numb
 
     const material = materialRef.current;
     if (!material) return;
-    const mode = modeRef.current;
-    const getFrameMs = (dragonMode: DarrelDragonMode) => {
-      if (dragonMode === "sleep") return textures.sleepFrameMs;
-      if (dragonMode === "wake") return textures.wakeFrameMs;
-      if (dragonMode === "attack") return textures.attackFrameMs;
-      return textures.idleFrameMs;
+    const dragonTiming: DarrelDragonAnimationTiming = {
+      sleepFrameMs: textures.sleepFrameMs,
+      wakeFrameMs: textures.wakeFrameMs,
+      idleFrameMs: textures.idleFrameMs,
+      attackFrameMs: textures.attackFrameMs,
+      sleepFrameCount: textures.sleep.length,
+      wakeFrameCount: textures.wake.length,
+      idleFrameCount: textures.idle.length,
+      attackFrameCount: textures.attack.length,
     };
-    const frameMs = getFrameMs(mode);
-    const modeStartedAt = modeStartedAtRef.current;
-    const elapsed = Math.max(0, now - modeStartedAt);
-    const wakeFinished = mode === "wake" && elapsed >= textures.wake.length * frameMs;
-    if (wakeFinished) {
-      modeRef.current = "idle";
-      modeStartedAtRef.current = now;
+    const frame = resolveDarrelDragonAnimationFrame({
+      mode: modeRef.current,
+      modeStartedAt: modeStartedAtRef.current ?? now,
+      now,
+      timing: dragonTiming,
+    });
+    if (modeRef.current !== frame.activeMode) {
+      modeRef.current = frame.activeMode;
+      modeStartedAtRef.current = frame.activeModeStartedAt;
     }
-    const activeMode = modeRef.current;
+    const activeMode = frame.activeMode;
     const activeFrames = textures[activeMode];
-    const activeFrameMs = getFrameMs(activeMode);
-    const activeModeStartedAt = modeStartedAtRef.current ?? now;
-    const frameIndex = activeMode === "wake"
-      ? Math.min(activeFrames.length - 1, Math.floor((now - activeModeStartedAt) / activeFrameMs))
-      : Math.floor((now - activeModeStartedAt) / activeFrameMs) % activeFrames.length;
-    const texture = activeFrames[frameIndex] ?? fallbackTexture;
+    const texture = activeFrames[frame.frameIndex] ?? fallbackTexture;
     if (material.map !== texture) {
       material.map = texture;
       material.needsUpdate = true;
     }
 
     if (spriteRef.current) {
-      const breath = 1 + Math.sin(now / 620) * (activeMode === "sleep" ? 0.018 : activeMode === "attack" ? 0.055 : 0.035);
-      const wakeProgress = activeMode === "sleep"
-        ? 0
-        : activeMode === "wake"
-          ? THREE.MathUtils.clamp((now - activeModeStartedAt) / Math.max(1, textures.wake.length * textures.wakeFrameMs), 0, 1)
-          : 1;
-      const width = activeMode === "attack" ? 49 : THREE.MathUtils.lerp(43, 38, wakeProgress);
-      const height = activeMode === "attack" ? 34 : THREE.MathUtils.lerp(27, 31, wakeProgress);
-      const attentionLift = activeMode === "attack" ? 4.2 : THREE.MathUtils.lerp(0, 2.7, wakeProgress);
-      spriteRef.current.position.y = attentionLift + Math.sin(now / 700) * (activeMode === "attack" ? 0.34 : 0.18) * wakeProgress;
-      spriteRef.current.scale.set(width * breath, height * breath, 1);
+      const visuals = resolveDarrelDragonSpriteVisuals({
+        activeMode,
+        activeModeStartedAt: frame.activeModeStartedAt,
+        now,
+        timing: dragonTiming,
+      });
+      spriteRef.current.position.y = visuals.positionY;
+      spriteRef.current.scale.set(visuals.scaleX, visuals.scaleY, 1);
     }
   });
 
