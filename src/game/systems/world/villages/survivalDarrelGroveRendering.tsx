@@ -46,6 +46,11 @@ const DARREL_HUT_FOUNDATION_FRONT_STONE_X = [-42, -28, 28, 42] as const;
 const DARREL_HUT_FRONT_POST_X = [-34, -14, 14, 34] as const;
 const DARREL_WATERFALL_CASCADE_INDICES = [0, 1, 2] as const;
 const DARREL_MOAT_STONE_RADII = [84, 116] as const;
+const DARREL_MOAT_BRIDGE_RAIL_SIDE_SIGNS = [-1, 1] as const;
+const DARREL_MOAT_BRIDGES = [
+  { key: "front", z: -101, width: 38, depth: 58, railZ: [-76] as const, deckColor: "#7a4a2b" },
+  { key: "back", z: 101, width: 26, depth: 52, railZ: [78, 124] as const, deckColor: "#6b4228" },
+] as const;
 const DARREL_HILL_SIDE_STONE_X = [-54, 54] as const;
 const DARREL_BACKYARD_RIVER_STONE_X = [-170, -128, -88, -48, -8, 34, 78, 122, 166] as const;
 const DARREL_BACKYARD_BRIDGE_RAIL_X = [-25, 25] as const;
@@ -542,12 +547,26 @@ function DarrelChineseHut() {
           </mesh>
         </group>
       ))}
-      {[[-width / 2, wallCenterY, 0], [width / 2, wallCenterY, 0], [0, wallCenterY, depth / 2], [-(doorWidth / 2 + 14), wallCenterY, -depth / 2], [(doorWidth / 2 + 14), wallCenterY, -depth / 2]].map((position, index) => (
-        <mesh key={`hut-wall-${index}`} position={position as [number, number, number]} castShadow receiveShadow>
-          <boxGeometry args={index < 2 ? [2.2, wallHeight, depth] : index === 2 ? [width, wallHeight, 2.2] : [28, wallHeight, 2.2]} />
-          <meshStandardMaterial map={wallTexture} color="#d9b77f" roughness={1} />
-        </mesh>
-      ))}
+      <mesh position={[-width / 2, wallCenterY, 0]} castShadow receiveShadow>
+        <boxGeometry args={[2.2, wallHeight, depth]} />
+        <meshStandardMaterial map={wallTexture} color="#d9b77f" roughness={1} />
+      </mesh>
+      <mesh position={[width / 2, wallCenterY, 0]} castShadow receiveShadow>
+        <boxGeometry args={[2.2, wallHeight, depth]} />
+        <meshStandardMaterial map={wallTexture} color="#d9b77f" roughness={1} />
+      </mesh>
+      <mesh position={[0, wallCenterY, depth / 2]} castShadow receiveShadow>
+        <boxGeometry args={[width, wallHeight, 2.2]} />
+        <meshStandardMaterial map={wallTexture} color="#d9b77f" roughness={1} />
+      </mesh>
+      <mesh position={[-(doorWidth / 2 + 14), wallCenterY, -depth / 2]} castShadow receiveShadow>
+        <boxGeometry args={[28, wallHeight, 2.2]} />
+        <meshStandardMaterial map={wallTexture} color="#d9b77f" roughness={1} />
+      </mesh>
+      <mesh position={[(doorWidth / 2 + 14), wallCenterY, -depth / 2]} castShadow receiveShadow>
+        <boxGeometry args={[28, wallHeight, 2.2]} />
+        <meshStandardMaterial map={wallTexture} color="#d9b77f" roughness={1} />
+      </mesh>
       {DARREL_HUT_FRONT_POST_X.map((x) => (
         <mesh key={`front-post-${x}`} position={[x, 15.5, -35.2]} castShadow>
           <cylinderGeometry args={[1.7, 2, 31, 8]} />
@@ -567,12 +586,22 @@ function DarrelChineseHut() {
         <boxGeometry args={[42, 3.4, 28]} />
         <meshStandardMaterial map={roofTexture} color="#5c1117" roughness={0.9} />
       </mesh>
-      {[[-49, 19.4 + roofLift, 0], [49, 19.4 + roofLift, 0], [0, 19.4 + roofLift, -41], [0, 19.4 + roofLift, 41]].map((position, index) => (
-        <mesh key={`eave-${index}`} position={position as [number, number, number]} rotation={[0, index < 2 ? 0 : Math.PI / 2, index === 0 || index === 2 ? -0.17 : 0.17]} castShadow>
-          <boxGeometry args={[4, 3.2, 80]} />
-          <meshStandardMaterial map={roofTexture} color="#3f1115" roughness={0.9} />
-        </mesh>
-      ))}
+      <mesh position={[-49, 19.4 + roofLift, 0]} rotation={[0, 0, -0.17]} castShadow>
+        <boxGeometry args={[4, 3.2, 80]} />
+        <meshStandardMaterial map={roofTexture} color="#3f1115" roughness={0.9} />
+      </mesh>
+      <mesh position={[49, 19.4 + roofLift, 0]} rotation={[0, 0, 0.17]} castShadow>
+        <boxGeometry args={[4, 3.2, 80]} />
+        <meshStandardMaterial map={roofTexture} color="#3f1115" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 19.4 + roofLift, -41]} rotation={[0, Math.PI / 2, -0.17]} castShadow>
+        <boxGeometry args={[4, 3.2, 80]} />
+        <meshStandardMaterial map={roofTexture} color="#3f1115" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 19.4 + roofLift, 41]} rotation={[0, Math.PI / 2, 0.17]} castShadow>
+        <boxGeometry args={[4, 3.2, 80]} />
+        <meshStandardMaterial map={roofTexture} color="#3f1115" roughness={0.9} />
+      </mesh>
     </group>
   );
 }
@@ -656,23 +685,20 @@ function DarrelHouseHillAndMoat() {
           <meshStandardMaterial map={stoneTexture} color={index === 0 ? "#8f958d" : "#6f776f"} roughness={1} />
         </mesh>
       ))}
-      {[
-        { z: -101, width: 38, depth: 58, railZ: [-76] },
-        { z: 101, width: 26, depth: 52, railZ: [78, 124] },
-      ].map((bridge, index) => (
-        <group key={`moat-bridge-${index}`}>
+      {DARREL_MOAT_BRIDGES.map((bridge) => (
+        <group key={`moat-bridge-${bridge.key}`}>
           <mesh position={[0, 1.04, bridge.z]} castShadow receiveShadow>
             <boxGeometry args={[bridge.width, 1.4, bridge.depth]} />
-            <meshStandardMaterial map={woodTexture} color={index === 0 ? "#7a4a2b" : "#6b4228"} roughness={0.92} />
+            <meshStandardMaterial map={woodTexture} color={bridge.deckColor} roughness={0.92} />
           </mesh>
-          {[-bridge.width / 2 + 3, bridge.width / 2 - 3].map((x) => (
-            <mesh key={`moat-bridge-rail-${index}-${x}`} position={[x, 3.2, bridge.z]} castShadow>
+          {DARREL_MOAT_BRIDGE_RAIL_SIDE_SIGNS.map((side) => (
+            <mesh key={`moat-bridge-rail-${bridge.key}-${side}`} position={[side * (bridge.width / 2 - 3), 3.2, bridge.z]} castShadow>
               <boxGeometry args={[2.2, 4.2, bridge.depth]} />
               <meshStandardMaterial map={woodTexture} color="#4b2e1c" roughness={0.95} />
             </mesh>
           ))}
           {bridge.railZ.map((z) => (
-            <mesh key={`moat-bridge-end-${index}-${z}`} position={[0, 2.25, z]} castShadow>
+            <mesh key={`moat-bridge-end-${bridge.key}-${z}`} position={[0, 2.25, z]} castShadow>
               <boxGeometry args={[bridge.width + 4, 2.1, 2.2]} />
               <meshStandardMaterial map={woodTexture} color="#5b341e" roughness={0.95} />
             </mesh>
