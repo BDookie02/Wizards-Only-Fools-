@@ -194,6 +194,10 @@ import {
   QA_LILY_COIL_TUBE_STRAFE,
 } from "./systems/player/playerLilyCoilTubeRuntime";
 import {
+  canUsePlayerControllerMode,
+  canUsePlayerGameplayInput,
+} from "./systems/player/playerGameplayInputGate";
+import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
   dispatchPlayerState,
@@ -508,15 +512,10 @@ export function PlayerController() {
     const canUseGameplayInput = () => {
       const state = useGameStore.getState();
       const controllerGameplayReady = state.isControllerGameplayActive && controllerGameplayArmed.current;
-      return Boolean(isMouseGameplayInputActive() || state.isTouchControlsActive || controllerGameplayReady) &&
-        !state.isPauseMenuOpen &&
-        !state.isMapExpanded &&
-        !state.isScoreboardOpen &&
-        !state.questNpcEditorTarget &&
-        !state.questDialogSession &&
-        !state.isInventoryOpen &&
-        !state.isAstralMeditating &&
-        state.health > 0;
+      return canUsePlayerGameplayInput(state, {
+        mouseGameplayActive: isMouseGameplayInputActive(),
+        controllerGameplayReady,
+      });
     };
 
     const getSpellForHand = (hand: HandType) => {
@@ -1136,18 +1135,11 @@ export function PlayerController() {
     }
     const mouseGameplayRequested = isMouseGameplayInputActive();
     const controllerGameplayRequested = storeState.isControllerGameplayActive || mouseGameplayRequested;
-    const controllerModeReady = Boolean(
-      gamepad &&
-      controllerGameplayRequested &&
-      !storeState.isPauseMenuOpen &&
-      !storeState.isSpellMenuOpen &&
-      !storeState.questDialogSession &&
-      !storeState.isInventoryOpen &&
-      !storeState.isMapExpanded &&
-      !storeState.isScoreboardOpen &&
-      !astralActive &&
-      storeState.health > 0
-    );
+    const controllerModeReady = canUsePlayerControllerMode(storeState, {
+      gamepadConnected: Boolean(gamepad),
+      controllerGameplayRequested,
+      astralActive,
+    });
     const controllerInputActive = updatePlayerControllerGamepadArming({
       gamepad,
       controllerGameplayRequested,
