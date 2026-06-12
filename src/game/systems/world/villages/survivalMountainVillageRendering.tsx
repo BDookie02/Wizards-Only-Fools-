@@ -35,6 +35,7 @@ import {
   getMountainMineshaftExitBridgeFrame,
   getMountainMineshaftLadderLandingLocalX,
   getMountainMineshaftLadderDetails,
+  getMountainMineshaftPlatformDetails,
   getMountainMineshaftPlatformPieces,
   getMountainMineshaftRimBeams,
   getMountainMineshaftRoyalBanquetDescriptors,
@@ -2424,7 +2425,14 @@ function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainM
     MOUNTAIN_VILLAGE_MINESHAFT_LADDER_PLATFORM_GAP
   );
   const poleSide: -1 | 1 = ladderGapCenterX !== null && ladderGapCenterX > 0 ? -1 : 1;
-  const platformPlankCount = 5;
+  const platformDetails = getMountainMineshaftPlatformDetails({
+    platformPieces,
+    platformZ,
+    platformDepth: hut.platformDepth,
+    platformWidth: hut.platformWidth,
+    poleSide,
+    plankCount: 5,
+  });
 
   return (
     <group position={[hut.localX, hut.y, hut.localZ]} rotation={[0, hut.rotation, 0]}>
@@ -2440,41 +2448,38 @@ function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainM
           <meshBasicMaterial color="#6d4a2e" />
         </mesh>
       ))}
-      {showDetails && platformPieces.map((piece) => (
-        <Fragment key={`platform-detail-${piece.key}`}>
-          {MOUNTAIN_RENDER_SIDES.map((side) => (
-            <mesh key={`platform-side-shadow-${side}`} position={[piece.centerX + side * piece.width * 0.47, 0.88, platformZ]} castShadow={false}>
+      {showDetails && platformDetails.pieces.map((pieceDetails) => (
+        <Fragment key={`platform-detail-${pieceDetails.key}`}>
+          {pieceDetails.sideShadows.map((shadow) => (
+            <mesh key={`platform-side-shadow-${shadow.side}`} position={shadow.position} castShadow={false}>
               <boxGeometry args={[0.2, 0.12, hut.platformDepth * 0.92]} />
               <meshBasicMaterial color="#080504" transparent opacity={0.74} />
             </mesh>
           ))}
-          {getCachedIndexRange(platformPlankCount).map((plankIndex) => {
-            const z = platformZ - hut.platformDepth * 0.35 + plankIndex * ((hut.platformDepth * 0.7) / Math.max(1, platformPlankCount - 1));
-            return (
-              <mesh key={`plank-groove-${plankIndex}`} position={[piece.centerX, 0.73, z]} castShadow={false}>
-                <boxGeometry args={[piece.width * 0.88, 0.07, 0.09]} />
-                <meshBasicMaterial color={plankIndex % 2 === 0 ? "#2c1d13" : "#8a613b"} />
-              </mesh>
-            );
-          })}
-          <mesh position={[piece.centerX, 0.82, platformZ + hut.platformDepth * 0.46]} castShadow={false}>
-            <boxGeometry args={[piece.width * 0.94, 0.22, 0.32]} />
+          {pieceDetails.plankGrooves.map((groove) => (
+            <mesh key={`plank-groove-${groove.index}`} position={groove.position} castShadow={false}>
+              <boxGeometry args={[groove.width, 0.07, 0.09]} />
+              <meshBasicMaterial color={groove.color} />
+            </mesh>
+          ))}
+          <mesh position={pieceDetails.frontRail.position} castShadow={false}>
+            <boxGeometry args={[pieceDetails.frontRail.width, 0.22, 0.32]} />
             <meshBasicMaterial color="#8b6239" />
           </mesh>
-          <mesh position={[piece.centerX, 0.8, platformZ - hut.platformDepth * 0.46]} castShadow={false}>
-            <boxGeometry args={[piece.width * 0.94, 0.18, 0.24]} />
+          <mesh position={pieceDetails.backRail.position} castShadow={false}>
+            <boxGeometry args={[pieceDetails.backRail.width, 0.18, 0.24]} />
             <meshBasicMaterial color="#2c1d13" />
           </mesh>
-          {MOUNTAIN_RENDER_SIDES.map((side) => (
-            <mesh key={`bolt-${side}`} position={[piece.centerX + side * piece.width * 0.34, 0.94, platformZ + hut.platformDepth * 0.38]} castShadow={false}>
+          {pieceDetails.bolts.map((bolt) => (
+            <mesh key={`bolt-${bolt.side}`} position={bolt.position} castShadow={false}>
               <boxGeometry args={[0.28, 0.1, 0.28]} />
               <meshBasicMaterial color="#d0a05d" />
             </mesh>
           ))}
         </Fragment>
       ))}
-      {MOUNTAIN_RENDER_SIDES.map((side) => (
-        <group key={`platform-support-${side}`} position={[side * hut.platformWidth * 0.38, -2.0, platformZ - hut.platformDepth * 0.1]} rotation={[0, 0, side * 0.28]}>
+      {platformDetails.supports.map((support) => (
+        <group key={`platform-support-${support.side}`} position={support.position} rotation={support.rotation}>
           <mesh castShadow={false}>
             <boxGeometry args={[0.58, 4.8, 0.58]} />
             <meshBasicMaterial color="#2d1e14" />
@@ -2485,8 +2490,8 @@ function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainM
       {showDetails && (
         <>
           <MountainMineshaftLightPole
-            position={[poleSide * hut.platformWidth * 0.33, 0.78, platformZ + hut.platformDepth * 0.26]}
-            direction={poleSide}
+            position={platformDetails.lightPole.position}
+            direction={platformDetails.lightPole.direction}
           />
           <RetroMineshaftLantern position={[doorWidth / 2 + 1.35, 3.55 + floorY, frontZ + 0.34]} scale={0.62} withLight={false} />
         </>

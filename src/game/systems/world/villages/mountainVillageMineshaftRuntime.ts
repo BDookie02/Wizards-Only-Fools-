@@ -32,6 +32,55 @@ export type MountainMineshaftPlatformPiece = {
   width: number;
 };
 
+export type MountainMineshaftPlatformSideShadow = {
+  side: -1 | 1;
+  position: [number, number, number];
+};
+
+export type MountainMineshaftPlatformPlankGroove = {
+  index: number;
+  position: [number, number, number];
+  width: number;
+  color: string;
+};
+
+export type MountainMineshaftPlatformRail = {
+  key: "front" | "back";
+  position: [number, number, number];
+  width: number;
+};
+
+export type MountainMineshaftPlatformBolt = {
+  side: -1 | 1;
+  position: [number, number, number];
+};
+
+export type MountainMineshaftPlatformPieceDetails = {
+  key: string;
+  sideShadows: MountainMineshaftPlatformSideShadow[];
+  plankGrooves: MountainMineshaftPlatformPlankGroove[];
+  frontRail: MountainMineshaftPlatformRail;
+  backRail: MountainMineshaftPlatformRail;
+  bolts: MountainMineshaftPlatformBolt[];
+};
+
+export type MountainMineshaftPlatformSupport = {
+  side: -1 | 1;
+  position: [number, number, number];
+  rotation: [number, number, number];
+};
+
+export type MountainMineshaftPlatformLightPole = {
+  direction: -1 | 1;
+  position: [number, number, number];
+};
+
+export type MountainMineshaftPlatformDetails = {
+  pieces: MountainMineshaftPlatformPieceDetails[];
+  supports: MountainMineshaftPlatformSupport[];
+  lightPole: MountainMineshaftPlatformLightPole;
+};
+
 export type MountainMineshaftExitBridgeFrame = {
   angle: number;
   length: number;
@@ -286,6 +335,7 @@ export type MountainMineshaftSupportFrame = {
 
 const catwalkDescriptorCache = new Map<string, MountainMineshaftCatwalkDescriptors>();
 const catwalkLightPoleCache = new Map<string, MountainMineshaftCatwalkLightPole[]>();
+const platformDetailCache = new Map<string, MountainMineshaftPlatformDetails>();
 const exitBridgeDetailCache = new Map<string, MountainMineshaftExitBridgeDetails>();
 const ladderDetailCache = new Map<string, MountainMineshaftLadderDetails>();
 const summitSnowDriftCache = new Map<string, MountainMineshaftSummitSnowDrift[]>();
@@ -374,6 +424,75 @@ export function getMountainMineshaftPlatformPieces(
   }
 
   return pieces.length > 0 ? pieces : [{ key: "full", centerX: 0, width }];
+}
+
+export function getMountainMineshaftPlatformDetails({
+  platformPieces,
+  platformZ,
+  platformDepth,
+  platformWidth,
+  poleSide,
+  plankCount = 5,
+}: {
+  platformPieces: MountainMineshaftPlatformPiece[];
+  platformZ: number;
+  platformDepth: number;
+  platformWidth: number;
+  poleSide: -1 | 1;
+  plankCount?: number;
+}): MountainMineshaftPlatformDetails {
+  const safePlankCount = Math.max(1, Math.floor(plankCount));
+  const pieceKey = platformPieces.map((piece) => `${piece.key}:${piece.centerX}:${piece.width}`).join("|");
+  const cacheKey = `${pieceKey}:${platformZ}:${platformDepth}:${platformWidth}:${poleSide}:${safePlankCount}`;
+  const cached = platformDetailCache.get(cacheKey);
+  if (cached) return cached;
+
+  const pieces = platformPieces.map((piece) => ({
+    key: piece.key,
+    sideShadows: MOUNTAIN_MINESHAFT_SUPPORT_SIDES.map((side) => ({
+      side,
+      position: [piece.centerX + side * piece.width * 0.47, 0.88, platformZ] as [number, number, number],
+    })),
+    plankGrooves: Array.from({ length: safePlankCount }, (_, index) => {
+      const z = platformZ - platformDepth * 0.35 + index * ((platformDepth * 0.7) / Math.max(1, safePlankCount - 1));
+      return {
+        index,
+        position: [piece.centerX, 0.73, z] as [number, number, number],
+        width: piece.width * 0.88,
+        color: index % 2 === 0 ? "#2c1d13" : "#8a613b",
+      };
+    }),
+    frontRail: {
+      key: "front",
+      position: [piece.centerX, 0.82, platformZ + platformDepth * 0.46] as [number, number, number],
+      width: piece.width * 0.94,
+    } as MountainMineshaftPlatformRail,
+    backRail: {
+      key: "back",
+      position: [piece.centerX, 0.8, platformZ - platformDepth * 0.46] as [number, number, number],
+      width: piece.width * 0.94,
+    } as MountainMineshaftPlatformRail,
+    bolts: MOUNTAIN_MINESHAFT_SUPPORT_SIDES.map((side) => ({
+      side,
+      position: [piece.centerX + side * piece.width * 0.34, 0.94, platformZ + platformDepth * 0.38] as [number, number, number],
+    })),
+  }));
+
+  const details = {
+    pieces,
+    supports: MOUNTAIN_MINESHAFT_SUPPORT_SIDES.map((side) => ({
+      side,
+      position: [side * platformWidth * 0.38, -2.0, platformZ - platformDepth * 0.1] as [number, number, number],
+      rotation: [0, 0, side * 0.28] as [number, number, number],
+    })),
+    lightPole: {
+      direction: poleSide,
+      position: [poleSide * platformWidth * 0.33, 0.78, platformZ + platformDepth * 0.26] as [number, number, number],
+    },
+  };
+
+  platformDetailCache.set(cacheKey, details);
+  return details;
 }
 
 export function getMountainMineshaftExitBridgeFrame(ladder: { angle: number }): MountainMineshaftExitBridgeFrame {
