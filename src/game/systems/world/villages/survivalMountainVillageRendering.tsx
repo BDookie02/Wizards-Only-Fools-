@@ -1440,18 +1440,26 @@ function MountainHutWallDetails({
           })}
         </Fragment>
       ))}
-      {[lowerBandY, upperBandY].map((y, index) => (
-        <Fragment key={`wall-band-${index}`}>
-          <mesh position={[0, y, frontZ + 0.24]} castShadow={false}>
-            <boxGeometry args={[width + 0.58, 0.32, 0.2]} />
-            <meshBasicMaterial color={index === 0 ? "#2b1c12" : "#805832"} />
-          </mesh>
-          <mesh position={[0, y, backZ - 0.18]} castShadow={false}>
-            <boxGeometry args={[width + 0.28, 0.24, 0.18]} />
-            <meshBasicMaterial color="#2b1c12" />
-          </mesh>
-        </Fragment>
-      ))}
+      <Fragment>
+        <mesh position={[0, lowerBandY, frontZ + 0.24]} castShadow={false}>
+          <boxGeometry args={[width + 0.58, 0.32, 0.2]} />
+          <meshBasicMaterial color="#2b1c12" />
+        </mesh>
+        <mesh position={[0, lowerBandY, backZ - 0.18]} castShadow={false}>
+          <boxGeometry args={[width + 0.28, 0.24, 0.18]} />
+          <meshBasicMaterial color="#2b1c12" />
+        </mesh>
+      </Fragment>
+      <Fragment>
+        <mesh position={[0, upperBandY, frontZ + 0.24]} castShadow={false}>
+          <boxGeometry args={[width + 0.58, 0.32, 0.2]} />
+          <meshBasicMaterial color="#805832" />
+        </mesh>
+        <mesh position={[0, upperBandY, backZ - 0.18]} castShadow={false}>
+          <boxGeometry args={[width + 0.28, 0.24, 0.18]} />
+          <meshBasicMaterial color="#2b1c12" />
+        </mesh>
+      </Fragment>
       {MOUNTAIN_RENDER_SIDES.map((side) => (
         <Fragment key={`hut-corner-shadow-${side}`}>
           <mesh position={[side * (width / 2 + 0.18), floorY + height / 2, frontZ + 0.18]} castShadow={false}>
