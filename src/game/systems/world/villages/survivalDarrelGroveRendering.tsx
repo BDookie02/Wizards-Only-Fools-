@@ -38,6 +38,7 @@ import {
   type DarrelFallenPetal,
   type DarrelFallingPetal,
   getDarrelBranchTransform,
+  getDarrelBlossomSprites,
   getDarrelFallenPetals,
   getDarrelFallingPetals,
   getDarrelHillStairRamp,
@@ -80,14 +81,6 @@ const MOBILE_DARREL_WATER_UPDATE_INTERVAL_SECONDS = 1 / 30;
 const MOBILE_DARREL_FALLING_PETAL_UPDATE_INTERVAL_SECONDS = 1 / 24;
 const MOBILE_DARREL_DRAGON_VISUAL_UPDATE_INTERVAL_SECONDS = 1 / 24;
 
-type DarrelBlossomSprite = {
-  key: number;
-  x: number;
-  y: number;
-  z: number;
-  scale: number;
-};
-
 function DarrelBranch({
   start,
   end,
@@ -119,20 +112,7 @@ function DarrelBlossomCluster({
   count?: number;
 }) {
   const blossomTexture = useMemo(() => getDarrelBlossomTexture(), []);
-  const blossoms = useMemo(() => {
-    const generated: DarrelBlossomSprite[] = [];
-    for (let index = 0; index < count; index += 1) {
-      const angle = index * 2.399;
-      generated.push({
-        key: index,
-        x: Math.cos(angle) * (1.2 + (index % 3) * 0.8),
-        y: ((index % 4) - 1.5) * 1.15,
-        z: Math.sin(angle) * (1.2 + (index % 2) * 0.7),
-        scale: size * (0.72 + (index % 3) * 0.13),
-      });
-    }
-    return generated;
-  }, [count, size]);
+  const blossoms = useMemo(() => getDarrelBlossomSprites(size, count), [count, size]);
 
   return (
     <group position={position} userData={HIDE_FROM_MINIMAP}>

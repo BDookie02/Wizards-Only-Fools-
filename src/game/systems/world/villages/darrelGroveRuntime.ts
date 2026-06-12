@@ -135,9 +135,18 @@ export type DarrelFallingPetal = {
   spin: number;
 };
 
+export type DarrelBlossomSprite = {
+  key: number;
+  x: number;
+  y: number;
+  z: number;
+  scale: number;
+};
+
 const DARREL_BRANCH_UP = new THREE.Vector3(0, 1, 0);
 const DARREL_SIDE_SIGNS: readonly DarrelSideSign[] = [-1, 1];
 const DARREL_BACKYARD_RIVER_STONE_X = [-170, -128, -88, -48, -8, 34, 78, 122, 166] as const;
+const darrelBlossomSpriteCache = new Map<string, readonly DarrelBlossomSprite[]>();
 
 export const DARREL_BACKYARD_RIVER_SEGMENTS: readonly DarrelBackyardRiverSegment[] = [
   { x: -110, z: 104, width: 112, depth: 34, rotation: -0.18 },
@@ -211,6 +220,28 @@ export const DARREL_PETAL_DRIFT_PATCHES: readonly DarrelPetalDriftPatch[] = [
 
 export function getDarrelQuestGateNowMs() {
   return Date.now();
+}
+
+export function getDarrelBlossomSprites(size: number, count: number) {
+  const safeSize = Number.isFinite(size) ? size : 5;
+  const safeCount = Math.max(0, Math.floor(count));
+  const cacheKey = `${safeSize}:${safeCount}`;
+  const cached = darrelBlossomSpriteCache.get(cacheKey);
+  if (cached) return cached;
+
+  const generated: DarrelBlossomSprite[] = [];
+  for (let index = 0; index < safeCount; index += 1) {
+    const angle = index * 2.399;
+    generated.push({
+      key: index,
+      x: Math.cos(angle) * (1.2 + (index % 3) * 0.8),
+      y: ((index % 4) - 1.5) * 1.15,
+      z: Math.sin(angle) * (1.2 + (index % 2) * 0.7),
+      scale: safeSize * (0.72 + (index % 3) * 0.13),
+    });
+  }
+  darrelBlossomSpriteCache.set(cacheKey, generated);
+  return generated;
 }
 
 export function getDarrelBranchTransform(
