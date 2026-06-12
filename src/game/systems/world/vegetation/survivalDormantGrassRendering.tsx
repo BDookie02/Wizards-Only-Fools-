@@ -109,6 +109,7 @@ import {
   getSurvivalLocalGrassMaterialColors,
   tintSurvivalLocalGrassMeshMaterial,
 } from "./survivalLocalGrassMaterials";
+import { SurvivalFlowerInstancedMeshes } from "./survivalFlowerInstancedMeshes";
 import {
   getSurvivalLocalShortGrassCapacity,
   getSurvivalLocalTallGrassCapacity,
@@ -459,92 +460,21 @@ function SurvivalLocalGrassCellTile({
         </instancedMesh>
       )}
       {localFlowers.length > 0 && (
-        <>
-          <instancedMesh ref={flowerStemRef} args={[undefined, undefined, flowerCapacity]} renderOrder={4.2} frustumCulled>
-            <cylinderGeometry args={[1, 1, 1, 4]} />
-            <meshBasicMaterial
-              color="#3f7d2e"
-              transparent
-              opacity={0.92}
-              depthWrite={false}
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerStarBloomRef} args={[undefined, undefined, starFlowerCapacity]} renderOrder={4.35} frustumCulled>
-            <primitive object={flowerStarGeometry} attach="geometry" />
-            <meshBasicMaterial
-              color="#ffffff"
-              side={THREE.DoubleSide}
-              transparent
-              opacity={0.98}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerRoundBloomRef} args={[undefined, undefined, roundFlowerCapacity]} renderOrder={4.35} frustumCulled>
-            <octahedronGeometry args={[0.5, 0]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.98}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerBellBloomRef} args={[undefined, undefined, bellFlowerCapacity]} renderOrder={4.35} frustumCulled>
-            <coneGeometry args={[0.5, 1, 6]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.98}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerPuffBloomRef} args={[undefined, undefined, puffFlowerCapacity]} renderOrder={4.35} frustumCulled>
-            <sphereGeometry args={[0.5, 6, 5]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.96}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerCenterRef} args={[undefined, undefined, flowerCapacity]} renderOrder={4.45} frustumCulled>
-            <sphereGeometry args={[0.5, 5, 4]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.94}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-        </>
+        <SurvivalFlowerInstancedMeshes
+          stemRef={flowerStemRef}
+          starBloomRef={flowerStarBloomRef}
+          roundBloomRef={flowerRoundBloomRef}
+          bellBloomRef={flowerBellBloomRef}
+          puffBloomRef={flowerPuffBloomRef}
+          centerRef={flowerCenterRef}
+          flowerCapacity={flowerCapacity}
+          starFlowerCapacity={starFlowerCapacity}
+          roundFlowerCapacity={roundFlowerCapacity}
+          bellFlowerCapacity={bellFlowerCapacity}
+          puffFlowerCapacity={puffFlowerCapacity}
+          flowerStarGeometry={flowerStarGeometry}
+          fadeUniforms={fadeUniforms}
+        />
       )}
       {tallBlades.length > 0 && (
         <instancedMesh ref={tallGrassRef} args={[undefined, undefined, tallCapacity]} renderOrder={5} frustumCulled={false}>
@@ -718,92 +648,22 @@ function SurvivalTutorialGrassBatchTile({
         </mesh>
       )}
       {localFlowers.length > 0 && (
-        <>
-          <instancedMesh ref={flowerStemRef} args={[undefined, undefined, flowerCapacity]} renderOrder={4.2} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <cylinderGeometry args={[1, 1, 1, 4]} />
-            <meshBasicMaterial
-              color="#3f7d2e"
-              transparent
-              opacity={0.92}
-              depthWrite={false}
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerStarBloomRef} args={[undefined, undefined, starFlowerCapacity]} renderOrder={4.35} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <primitive object={flowerStarGeometry} attach="geometry" />
-            <meshBasicMaterial
-              color="#ffffff"
-              side={THREE.DoubleSide}
-              transparent
-              opacity={0.98}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerRoundBloomRef} args={[undefined, undefined, roundFlowerCapacity]} renderOrder={4.35} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <octahedronGeometry args={[0.5, 0]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.98}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerBellBloomRef} args={[undefined, undefined, bellFlowerCapacity]} renderOrder={4.35} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <coneGeometry args={[0.5, 1, 6]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.98}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerPuffBloomRef} args={[undefined, undefined, puffFlowerCapacity]} renderOrder={4.35} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <sphereGeometry args={[0.5, 6, 5]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.96}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerCenterRef} args={[undefined, undefined, flowerCapacity]} renderOrder={4.45} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <sphereGeometry args={[0.5, 5, 4]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.94}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-        </>
+        <SurvivalFlowerInstancedMeshes
+          stemRef={flowerStemRef}
+          starBloomRef={flowerStarBloomRef}
+          roundBloomRef={flowerRoundBloomRef}
+          bellBloomRef={flowerBellBloomRef}
+          puffBloomRef={flowerPuffBloomRef}
+          centerRef={flowerCenterRef}
+          flowerCapacity={flowerCapacity}
+          starFlowerCapacity={starFlowerCapacity}
+          roundFlowerCapacity={roundFlowerCapacity}
+          bellFlowerCapacity={bellFlowerCapacity}
+          puffFlowerCapacity={puffFlowerCapacity}
+          flowerStarGeometry={flowerStarGeometry}
+          fadeUniforms={fadeUniforms}
+          hideFromMinimap
+        />
       )}
     </group>
   );
@@ -946,92 +806,22 @@ function SurvivalTutorialGrassCellTile({
         </instancedMesh>
       )}
       {localFlowers.length > 0 && (
-        <>
-          <instancedMesh ref={flowerStemRef} args={[undefined, undefined, flowerCapacity]} renderOrder={4.2} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <cylinderGeometry args={[1, 1, 1, 4]} />
-            <meshBasicMaterial
-              color="#3f7d2e"
-              transparent
-              opacity={0.92}
-              depthWrite={false}
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerStarBloomRef} args={[undefined, undefined, starFlowerCapacity]} renderOrder={4.35} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <primitive object={flowerStarGeometry} attach="geometry" />
-            <meshBasicMaterial
-              color="#ffffff"
-              side={THREE.DoubleSide}
-              transparent
-              opacity={0.98}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerRoundBloomRef} args={[undefined, undefined, roundFlowerCapacity]} renderOrder={4.35} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <octahedronGeometry args={[0.5, 0]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.98}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerBellBloomRef} args={[undefined, undefined, bellFlowerCapacity]} renderOrder={4.35} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <coneGeometry args={[0.5, 1, 6]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.98}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerPuffBloomRef} args={[undefined, undefined, puffFlowerCapacity]} renderOrder={4.35} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <sphereGeometry args={[0.5, 6, 5]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.96}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-          <instancedMesh ref={flowerCenterRef} args={[undefined, undefined, flowerCapacity]} renderOrder={4.45} frustumCulled userData={HIDE_FROM_MINIMAP}>
-            <sphereGeometry args={[0.5, 5, 4]} />
-            <meshBasicMaterial
-              color="#ffffff"
-              transparent
-              opacity={0.94}
-              depthWrite={false}
-              depthTest
-              toneMapped={false}
-              onBeforeCompile={(shader) => {
-                applySurvivalLocalGrassShader(shader, fadeUniforms, "", 2, 12);
-              }}
-            />
-          </instancedMesh>
-        </>
+        <SurvivalFlowerInstancedMeshes
+          stemRef={flowerStemRef}
+          starBloomRef={flowerStarBloomRef}
+          roundBloomRef={flowerRoundBloomRef}
+          bellBloomRef={flowerBellBloomRef}
+          puffBloomRef={flowerPuffBloomRef}
+          centerRef={flowerCenterRef}
+          flowerCapacity={flowerCapacity}
+          starFlowerCapacity={starFlowerCapacity}
+          roundFlowerCapacity={roundFlowerCapacity}
+          bellFlowerCapacity={bellFlowerCapacity}
+          puffFlowerCapacity={puffFlowerCapacity}
+          flowerStarGeometry={flowerStarGeometry}
+          fadeUniforms={fadeUniforms}
+          hideFromMinimap
+        />
       )}
     </group>
   );
