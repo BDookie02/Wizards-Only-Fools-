@@ -22,6 +22,7 @@ import {
   getMobileInviteUrl,
   type LanInfoResponse,
 } from "../../network/inviteRoom";
+import { getRandomBase36Suffix } from "../../systems/random/runtimeRandom";
 import {
   clampLaunchMenuIndex,
   cycleLaunchOption,
@@ -47,11 +48,11 @@ function applyRoomCode(value: string) {
 }
 
 function makeDefaultWizardName() {
-  return `Wizard ${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  return `Wizard ${getRandomBase36Suffix(4).toUpperCase()}`;
 }
 
 function makeDefaultRoomCode() {
-  return `wof-${Math.random().toString(36).slice(2, 7)}`;
+  return `wof-${getRandomBase36Suffix(5)}`;
 }
 
 export function LaunchMenu() {

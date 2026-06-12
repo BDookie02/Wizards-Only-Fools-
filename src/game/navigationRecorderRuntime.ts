@@ -1,4 +1,5 @@
 import { SURVIVAL_BLOCK_SIZE, type GameMode } from "../store/gameStore";
+import { makeRuntimeRandomId } from "./systems/random/runtimeRandom";
 
 export const NAV_RECORDING_VERSION = 1;
 export const NAV_SAMPLE_INTERVAL_MS = 125;
@@ -63,7 +64,7 @@ export interface NavigationRecorderResult {
 let activeRecording: ActiveNavigationRecording | null = null;
 
 function makeRecordingId() {
-  return `nav-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return makeRuntimeRandomId("nav", 6);
 }
 
 function roundNumber(value: number, places = 3) {

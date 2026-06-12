@@ -6,6 +6,7 @@ import {
   getLilyCoilQuestSpawn,
   useGameStore,
 } from "../../../../store/gameStore";
+import { getRuntimeRandomUnit } from "../../random/runtimeRandom";
 import { readManualFastTravelSpawn } from "../../../tools/manualFastTravelSpawn";
 import { getBaseVillageTerrainHeight } from "../terrain/BaseVillageTerrain";
 import { QA_AUTHORED_VILLAGE_SAFE_LOCAL_Z, parseSurvivalChunkCoordsParam } from "./survivalPosition";
@@ -233,13 +234,7 @@ function isSurvivalGameMode(gameMode: string) {
 }
 
 function getRandomUnit() {
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    const values = new Uint32Array(1);
-    crypto.getRandomValues(values);
-    return values[0] / 0xffffffff;
-  }
-
-  return Math.random();
+  return getRuntimeRandomUnit();
 }
 
 function getRandomInteger(min: number, max: number) {

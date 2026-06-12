@@ -10,6 +10,7 @@ import {
   getLastKnownLocalPlayerPosition,
   getPublishedLastPlayerYaw,
 } from "../player/playerEventBridge";
+import { makeRuntimeRandomId } from "../random/runtimeRandom";
 import { getBaseVillageTerrainHeight } from "../world/terrain/BaseVillageTerrain";
 import { getSurvivalGrassSurfaceHeightAtWorld } from "../world/survival/survivalGrassSurface";
 import { dispatchEnginePlaceableEvent, subscribeEnginePlaceableEvent } from "./enginePlaceableEvents";
@@ -463,7 +464,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       }
 
       const object: EnginePlacedObject = {
-        instanceId: detail?.replaceInstanceId || `engine-${placeable.id}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        instanceId: detail?.replaceInstanceId || makeRuntimeRandomId(`engine-${placeable.id}`, 5),
         placeableId: placeable.id,
         label: placeable.name,
         x: placementPlan.x,

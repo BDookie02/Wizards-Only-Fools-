@@ -13,6 +13,7 @@ import { isMobilePerformanceMode } from "../systems/input/performanceMode";
 import { MULTIPLAYER_JOIN_REJECTION_REASONS } from "./multiplayerSessionConfig";
 import { useRemoteStatusClock } from "./remotePlayerRuntime";
 import { useLazyRef } from "../systems/react/useLazyRef";
+import { getRandomBase36Suffix } from "../systems/random/runtimeRandom";
 import {
   sanitizeEnginePlaceableDeletePayload,
   sanitizeEnginePlaceableSnapshotPayload,
@@ -603,7 +604,7 @@ export function NetworkManager() {
 
       const projectileId = spell.type === "grab" && spell.grabPhase === "cast" && spell.grabId
         ? spell.grabId
-        : Math.random().toString(36).substring(7);
+        : getRandomBase36Suffix(6);
 
       useGameStore.getState().addProjectile({
         id: projectileId,
