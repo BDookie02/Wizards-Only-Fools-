@@ -182,8 +182,10 @@ import {
 } from "./systems/player/playerScreenShakeRuntime";
 import { updatePlayerToxicDamageFrame } from "./systems/player/playerToxicDamageRuntime";
 import {
+  createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
   dispatchPlayerState,
+  dispatchPlayerStateIfChanged,
   dispatchDirectStatusCast,
   dispatchQuestVillagerInteraction,
   dispatchReleaseGrabPlayer,
@@ -192,7 +194,6 @@ import {
   publishLastTeleportPosition,
   publishLocalPlayerRigidBody,
   publishLocalPlayerPosition,
-  type PlayerStateEventDetail,
 } from "./systems/player/playerEventBridge";
 import {
   applyFlamethrowerSpreadInto,
@@ -269,49 +270,6 @@ const QA_LILY_COIL_TUBE_STRAFE = 0.24;
 const QA_LILY_COIL_TUBE_LOOK_AHEAD_T = 0.048;
 const QA_LILY_COIL_TUBE_REVERSE_EDGE_T = 0.94;
 const QA_LILY_COIL_TUBE_RESTART_EDGE_T = 0.045;
-
-type PlayerStateDispatchSnapshot = PlayerStateEventDetail & {
-  initialized: boolean;
-};
-
-function dispatchPlayerStateIfChanged(
-  snapshot: PlayerStateDispatchSnapshot,
-  isMoving: boolean,
-  isSprinting: boolean,
-  isSliding: boolean,
-  isCrouching: boolean,
-  isGrounded: boolean,
-  isMeditating: boolean,
-) {
-  if (
-    snapshot.initialized &&
-    snapshot.isMoving === isMoving &&
-    snapshot.isSprinting === isSprinting &&
-    snapshot.isSliding === isSliding &&
-    snapshot.isCrouching === isCrouching &&
-    snapshot.isGrounded === isGrounded &&
-    snapshot.isMeditating === isMeditating
-  ) {
-    return;
-  }
-
-  snapshot.initialized = true;
-  snapshot.isMoving = isMoving;
-  snapshot.isSprinting = isSprinting;
-  snapshot.isSliding = isSliding;
-  snapshot.isCrouching = isCrouching;
-  snapshot.isGrounded = isGrounded;
-  snapshot.isMeditating = isMeditating;
-
-  dispatchPlayerState({
-    isMoving,
-    isSprinting,
-    isSliding,
-    isCrouching,
-    isGrounded,
-    isMeditating,
-  });
-}
 
 export function PlayerController() {
   const rigidBody = useRef<RapierRigidBody>(null);
@@ -455,15 +413,7 @@ export function PlayerController() {
   const [isCrouching, setIsCrouching] = useState(false);
   const playerFrameEpochOffsetRef = useRef<number | null>(null);
   const latestPlayerEpochMsRef = useRef(0);
-  const lastDispatchedPlayerStateRef = useRef<PlayerStateDispatchSnapshot>({
-    initialized: false,
-    isMoving: false,
-    isSprinting: false,
-    isSliding: false,
-    isCrouching: false,
-    isGrounded: true,
-    isMeditating: false,
-  });
+  const lastDispatchedPlayerStateRef = useRef(createPlayerStateDispatchSnapshot({ isGrounded: true }));
   const cameraRollScratch = useMemo(createPlayerCameraRollScratch, []);
   const cameraAntiClipScratch = useMemo(createPlayerCameraAntiClipScratch, []);
   const cameraLookScratch = useMemo(createPlayerCameraLookScratch, []);

@@ -9,6 +9,10 @@ export type PlayerStateEventDetail = {
   isMeditating: boolean;
 };
 
+export type PlayerStateDispatchSnapshot = PlayerStateEventDetail & {
+  initialized: boolean;
+};
+
 export type PlayerMovedEventDetail = {
   x: number;
   y: number;
@@ -77,6 +81,58 @@ function isPlayerPositionLike(position: unknown): position is PlayerPositionLike
 export function dispatchPlayerState(detail: PlayerStateEventDetail) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("player-state", { detail }));
+}
+
+export function createPlayerStateDispatchSnapshot(initial: Partial<PlayerStateEventDetail> = {}): PlayerStateDispatchSnapshot {
+  return {
+    initialized: false,
+    isMoving: initial.isMoving ?? false,
+    isSprinting: initial.isSprinting ?? false,
+    isSliding: initial.isSliding ?? false,
+    isCrouching: initial.isCrouching ?? false,
+    isGrounded: initial.isGrounded ?? false,
+    isMeditating: initial.isMeditating ?? false,
+  };
+}
+
+export function dispatchPlayerStateIfChanged(
+  snapshot: PlayerStateDispatchSnapshot,
+  isMoving: boolean,
+  isSprinting: boolean,
+  isSliding: boolean,
+  isCrouching: boolean,
+  isGrounded: boolean,
+  isMeditating: boolean,
+) {
+  if (
+    snapshot.initialized &&
+    snapshot.isMoving === isMoving &&
+    snapshot.isSprinting === isSprinting &&
+    snapshot.isSliding === isSliding &&
+    snapshot.isCrouching === isCrouching &&
+    snapshot.isGrounded === isGrounded &&
+    snapshot.isMeditating === isMeditating
+  ) {
+    return false;
+  }
+
+  snapshot.initialized = true;
+  snapshot.isMoving = isMoving;
+  snapshot.isSprinting = isSprinting;
+  snapshot.isSliding = isSliding;
+  snapshot.isCrouching = isCrouching;
+  snapshot.isGrounded = isGrounded;
+  snapshot.isMeditating = isMeditating;
+
+  dispatchPlayerState({
+    isMoving,
+    isSprinting,
+    isSliding,
+    isCrouching,
+    isGrounded,
+    isMeditating,
+  });
+  return true;
 }
 
 export function dispatchPlayerMoved(detail: PlayerMovedEventDetail) {
