@@ -34,6 +34,7 @@ import {
   getMountainMineshaftExitBridgeDetails,
   getMountainMineshaftExitBridgeFrame,
   getMountainMineshaftLadderLandingLocalX,
+  getMountainMineshaftLadderDetails,
   getMountainMineshaftPlatformPieces,
   getMountainMineshaftRimBeams,
   getMountainMineshaftRoyalBanquetDescriptors,
@@ -2574,8 +2575,7 @@ function MountainMineshaftMiniHut({ hut, ladder, showDetails }: { hut: MountainM
 
 function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMineshaftLadder; showDetails: boolean }) {
   const height = Math.max(4, ladder.endY - ladder.startY);
-  const rungCount = Math.max(8, Math.min(48, Math.floor(height / 3.6)));
-  const wrapCount = Math.max(3, Math.min(14, Math.floor(height / 7.5)));
+  const ladderDetails = getMountainMineshaftLadderDetails({ height, width: ladder.width });
 
   return (
     <group position={[ladder.localX, ladder.startY, ladder.localZ]} rotation={[0, ladder.rotation, 0]}>
@@ -2587,10 +2587,10 @@ function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMine
         <boxGeometry args={[0.34, height, 0.28]} />
         <meshBasicMaterial color="#26180f" />
       </mesh>
-      {getCachedIndexRange(rungCount).map((index) => (
-        <mesh key={`rung-${index}`} position={[0, 1.2 + index * ((height - 2.4) / Math.max(1, rungCount - 1)), 0.14]} castShadow={false}>
+      {ladderDetails.rungs.map((rung) => (
+        <mesh key={`rung-${rung.index}`} position={rung.position} castShadow={false}>
           <boxGeometry args={[ladder.width + 0.55, 0.24, 0.32]} />
-          <meshBasicMaterial color={index % 2 === 0 ? "#4b3120" : "#5d4028"} />
+          <meshBasicMaterial color={rung.color} />
         </mesh>
       ))}
       {showDetails && (
@@ -2605,41 +2605,30 @@ function MountainMineshaftLadder({ ladder, showDetails }: { ladder: MountainMine
               <meshBasicMaterial color="#8a5b34" />
             </mesh>
           ))}
-          {getCachedIndexRange(wrapCount).map((index) => {
-            const y = 2 + index * ((height - 4) / Math.max(1, wrapCount - 1));
-            return (
-              <Fragment key={`ladder-wrap-${index}`}>
-                <mesh position={[-ladder.width / 2, y, 0.05]} castShadow={false}>
-                  <boxGeometry args={[0.64, 0.3, 0.42]} />
-                  <meshBasicMaterial color={index % 2 === 0 ? "#a07743" : "#c09351"} />
-                </mesh>
-                <mesh position={[ladder.width / 2, y, 0.05]} castShadow={false}>
-                  <boxGeometry args={[0.64, 0.3, 0.42]} />
-                  <meshBasicMaterial color={index % 2 === 0 ? "#a07743" : "#c09351"} />
-                </mesh>
-              </Fragment>
-            );
-          })}
-          {getCachedIndexRange(Math.min(10, Math.floor(rungCount / 2))).map((index) => {
-            const rungIndex = index * 2;
-            const y = 1.2 + rungIndex * ((height - 2.4) / Math.max(1, rungCount - 1));
-            return (
-              <mesh key={`rung-bright-edge-${index}`} position={[0, y + 0.12, 0.36]} castShadow={false}>
-                <boxGeometry args={[ladder.width + 0.18, 0.07, 0.1]} />
-                <meshBasicMaterial color="#b27a42" />
+          {ladderDetails.wraps.map((wrap) => (
+            <Fragment key={`ladder-wrap-${wrap.index}`}>
+              <mesh position={wrap.leftPosition} castShadow={false}>
+                <boxGeometry args={[0.64, 0.3, 0.42]} />
+                <meshBasicMaterial color={wrap.color} />
               </mesh>
-            );
-          })}
-          {getCachedIndexRange(Math.min(12, Math.floor(rungCount / 2))).map((index) => {
-            const rungIndex = index * 2 + 1;
-            const y = 1.2 + rungIndex * ((height - 2.4) / Math.max(1, rungCount - 1));
-            return (
-              <mesh key={`rung-dark-edge-${index}`} position={[0, y - 0.12, 0.38]} castShadow={false}>
-                <boxGeometry args={[ladder.width + 0.42, 0.08, 0.12]} />
-                <meshBasicMaterial color="#090604" transparent opacity={0.72} />
+              <mesh position={wrap.rightPosition} castShadow={false}>
+                <boxGeometry args={[0.64, 0.3, 0.42]} />
+                <meshBasicMaterial color={wrap.color} />
               </mesh>
-            );
-          })}
+            </Fragment>
+          ))}
+          {ladderDetails.brightEdges.map((edge) => (
+            <mesh key={`rung-bright-edge-${edge.index}`} position={edge.position} castShadow={false}>
+              <boxGeometry args={[ladder.width + 0.18, 0.07, 0.1]} />
+              <meshBasicMaterial color="#b27a42" />
+            </mesh>
+          ))}
+          {ladderDetails.darkEdges.map((edge) => (
+            <mesh key={`rung-dark-edge-${edge.index}`} position={edge.position} castShadow={false}>
+              <boxGeometry args={[ladder.width + 0.42, 0.08, 0.12]} />
+              <meshBasicMaterial color="#090604" transparent opacity={0.72} />
+            </mesh>
+          ))}
           <mesh position={[0, height + 0.34, 0]} castShadow={false}>
             <boxGeometry args={[ladder.width + 1.2, 0.46, 0.46]} />
             <meshBasicMaterial color="#6f5131" />

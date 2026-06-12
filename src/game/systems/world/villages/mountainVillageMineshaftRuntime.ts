@@ -83,6 +83,33 @@ export type MountainMineshaftExitBridgeDetails = {
   lanternPosition: [number, number, number];
 };
 
+export type MountainMineshaftLadderRung = {
+  index: number;
+  position: [number, number, number];
+  color: string;
+};
+
+export type MountainMineshaftLadderWrap = {
+  index: number;
+  leftPosition: [number, number, number];
+  rightPosition: [number, number, number];
+  color: string;
+};
+
+export type MountainMineshaftLadderEdge = {
+  index: number;
+  position: [number, number, number];
+};
+
+export type MountainMineshaftLadderDetails = {
+  rungCount: number;
+  wrapCount: number;
+  rungs: MountainMineshaftLadderRung[];
+  wraps: MountainMineshaftLadderWrap[];
+  brightEdges: MountainMineshaftLadderEdge[];
+  darkEdges: MountainMineshaftLadderEdge[];
+};
+
 export type MountainMineshaftCatwalkRingPoint = {
   index: number;
   angle: number;
@@ -230,6 +257,7 @@ export type MountainMineshaftCatwalkDescriptors = {
 const catwalkDescriptorCache = new Map<string, MountainMineshaftCatwalkDescriptors>();
 const catwalkLightPoleCache = new Map<string, MountainMineshaftCatwalkLightPole[]>();
 const exitBridgeDetailCache = new Map<string, MountainMineshaftExitBridgeDetails>();
+const ladderDetailCache = new Map<string, MountainMineshaftLadderDetails>();
 const rimBeamCache = new Map<string, MountainMineshaftRimBeam[]>();
 const bottomRockCache = new Map<string, MountainMineshaftBottomRock[]>();
 const wallDecorCache = new Map<string, MountainMineshaftWallDecorDescriptors>();
@@ -390,6 +418,74 @@ export function getMountainMineshaftExitBridgeDetails({
     lanternPosition: [0, 1.4, length / 2 - 3.0] as [number, number, number],
   };
   exitBridgeDetailCache.set(cacheKey, details);
+  return details;
+}
+
+export function getMountainMineshaftLadderDetails({
+  height,
+  width,
+}: {
+  height: number;
+  width: number;
+}): MountainMineshaftLadderDetails {
+  const safeHeight = Math.max(4, height);
+  const safeWidth = Math.max(0.1, width);
+  const cacheKey = `${safeHeight}:${safeWidth}`;
+  const cached = ladderDetailCache.get(cacheKey);
+  if (cached) return cached;
+
+  const rungCount = Math.max(8, Math.min(48, Math.floor(safeHeight / 3.6)));
+  const wrapCount = Math.max(3, Math.min(14, Math.floor(safeHeight / 7.5)));
+  const rungs = new Array<MountainMineshaftLadderRung>(rungCount);
+
+  for (let index = 0; index < rungCount; index += 1) {
+    rungs[index] = {
+      index,
+      position: [0, 1.2 + index * ((safeHeight - 2.4) / Math.max(1, rungCount - 1)), 0.14],
+      color: index % 2 === 0 ? "#4b3120" : "#5d4028",
+    };
+  }
+
+  const wraps = new Array<MountainMineshaftLadderWrap>(wrapCount);
+  for (let index = 0; index < wrapCount; index += 1) {
+    const y = 2 + index * ((safeHeight - 4) / Math.max(1, wrapCount - 1));
+    wraps[index] = {
+      index,
+      leftPosition: [-safeWidth / 2, y, 0.05],
+      rightPosition: [safeWidth / 2, y, 0.05],
+      color: index % 2 === 0 ? "#a07743" : "#c09351",
+    };
+  }
+
+  const brightEdgeCount = Math.min(10, Math.floor(rungCount / 2));
+  const brightEdges = new Array<MountainMineshaftLadderEdge>(brightEdgeCount);
+  for (let index = 0; index < brightEdgeCount; index += 1) {
+    const rungIndex = index * 2;
+    brightEdges[index] = {
+      index,
+      position: [0, 1.2 + rungIndex * ((safeHeight - 2.4) / Math.max(1, rungCount - 1)) + 0.12, 0.36],
+    };
+  }
+
+  const darkEdgeCount = Math.min(12, Math.floor(rungCount / 2));
+  const darkEdges = new Array<MountainMineshaftLadderEdge>(darkEdgeCount);
+  for (let index = 0; index < darkEdgeCount; index += 1) {
+    const rungIndex = index * 2 + 1;
+    darkEdges[index] = {
+      index,
+      position: [0, 1.2 + rungIndex * ((safeHeight - 2.4) / Math.max(1, rungCount - 1)) - 0.12, 0.38],
+    };
+  }
+
+  const details = {
+    rungCount,
+    wrapCount,
+    rungs,
+    wraps,
+    brightEdges,
+    darkEdges,
+  };
+  ladderDetailCache.set(cacheKey, details);
   return details;
 }
 
