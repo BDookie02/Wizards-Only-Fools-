@@ -1,17 +1,10 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import {
-  shouldMountCanvasRuntimeProbeFromSearch,
   shouldMountCurrentCanvasRuntimeProbe,
 } from "./canvasQaTelemetryRoute";
-
-export function shouldPublishCanvasRuntimeFrameTelemetryFromSearch(search: string) {
-  return shouldMountCanvasRuntimeProbeFromSearch(search);
-}
-
-export function getCanvasRuntimeFrameNowMs() {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
-}
+import { getCanvasRuntimeFrameNowMs } from "./canvasRuntimeTelemetry";
+export { shouldPublishCanvasRuntimeFrameTelemetryFromSearch } from "./canvasRuntimeTelemetry";
 
 export function CanvasRuntimeProbe() {
   const publishFrameTelemetry = useMemo(shouldMountCurrentCanvasRuntimeProbe, []);
