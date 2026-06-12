@@ -70,6 +70,12 @@ export type InventoryControllerMoveDetail = {
   direction: 1 | -1;
 };
 
+export type SpellMenuControllerDirection = "up" | "down" | "left" | "right";
+
+export type SpellMenuControllerNavigateDetail = {
+  direction: SpellMenuControllerDirection;
+};
+
 export type HudControllerGameplaySignalOptions = {
   isLocked: boolean;
   pointerLockActive: boolean;
@@ -284,6 +290,16 @@ export function dispatchInventoryControllerBack() {
 
 export function dispatchSpellMenuControllerScroll(delta: number) {
   return dispatchHudControllerEvent(createHudControllerCustomEvent("spell-menu-controller-scroll", delta));
+}
+
+export function dispatchSpellMenuControllerNavigate(direction: SpellMenuControllerDirection) {
+  return dispatchHudControllerEvent(
+    createHudControllerCustomEvent<SpellMenuControllerNavigateDetail>("spell-menu-controller-navigate", { direction }),
+  );
+}
+
+export function dispatchSpellMenuControllerSelect() {
+  return dispatchHudControllerEvent(new Event("spell-menu-controller-select"));
 }
 
 export function hasHudControllerGameplaySignal({

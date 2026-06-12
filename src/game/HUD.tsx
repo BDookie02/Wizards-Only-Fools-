@@ -128,7 +128,9 @@ import {
   dispatchInventoryControllerBack,
   dispatchInventoryControllerMove,
   dispatchInventoryControllerSelect,
+  dispatchSpellMenuControllerNavigate,
   dispatchSpellMenuControllerScroll,
+  dispatchSpellMenuControllerSelect,
   hasHudControllerGameplaySignal,
   isStandingStillForControllerInventory,
   createHudControllerInputSnapshot,
@@ -2369,22 +2371,31 @@ export function HUD() {
 
         if (e.code === "Enter") {
           e.preventDefault();
-          const spell = ALL_SPELLS[menuSpellIndex];
-          const selectedIndex = hand === "right" ? rightSelectedHotbarIndex : leftSelectedHotbarIndex;
-          setHotbarSpell(selectedIndex, spell, hand);
-          selectHotbarSlot(selectedIndex, hand);
+          dispatchSpellMenuControllerSelect();
           return;
         }
 
-        if (e.code === "ArrowRight" || e.code === "ArrowDown") {
+        if (e.code === "ArrowRight") {
           e.preventDefault();
-          setMenuSpellIndex(prev => (prev + 1) % ALL_SPELLS.length);
+          dispatchSpellMenuControllerNavigate("right");
           return;
         }
 
-        if (e.code === "ArrowLeft" || e.code === "ArrowUp") {
+        if (e.code === "ArrowLeft") {
           e.preventDefault();
-          setMenuSpellIndex(prev => (prev - 1 + ALL_SPELLS.length) % ALL_SPELLS.length);
+          dispatchSpellMenuControllerNavigate("left");
+          return;
+        }
+
+        if (e.code === "ArrowDown") {
+          e.preventDefault();
+          dispatchSpellMenuControllerNavigate("down");
+          return;
+        }
+
+        if (e.code === "ArrowUp") {
+          e.preventDefault();
+          dispatchSpellMenuControllerNavigate("up");
         }
         return;
       }
@@ -2660,10 +2671,10 @@ export function HUD() {
         dispatchSpellMenuControllerScroll(scrollAxisY * 18);
       }
 
-      const menuNextSpellPressed = consumeRepeat("controllerMenuNextSpell", isSpellMenuOpen && (dpadRight || menuAxisX > 0.6), now);
-      const menuPrevSpellPressed = consumeRepeat("controllerMenuPrevSpell", isSpellMenuOpen && (dpadLeft || menuAxisX < -0.6), now);
-      const menuNextSlotPressed = consumeRepeat("controllerMenuNextSlot", isSpellMenuOpen && (dpadDown || menuAxisY > 0.6), now);
-      const menuPrevSlotPressed = consumeRepeat("controllerMenuPrevSlot", isSpellMenuOpen && (dpadUp || menuAxisY < -0.6), now);
+      const spellMenuRightPressed = consumeRepeat("controllerSpellMenuRight", isSpellMenuOpen && (dpadRight || menuAxisX > 0.6), now);
+      const spellMenuLeftPressed = consumeRepeat("controllerSpellMenuLeft", isSpellMenuOpen && (dpadLeft || menuAxisX < -0.6), now);
+      const spellMenuDownPressed = consumeRepeat("controllerSpellMenuDown", isSpellMenuOpen && (dpadDown || menuAxisY > 0.6), now);
+      const spellMenuUpPressed = consumeRepeat("controllerSpellMenuUp", isSpellMenuOpen && (dpadUp || menuAxisY < -0.6), now);
       const pauseNextPressed = consumeRepeat("controllerPauseNext", pauseMenuOpen && (dpadDown || menuAxisY > 0.6), now);
       const pausePrevPressed = consumeRepeat("controllerPausePrev", pauseMenuOpen && (dpadUp || menuAxisY < -0.6), now);
       const pauseRightPressed = consumeRepeat("controllerPauseRight", pauseMenuOpen && (dpadRight || menuAxisX > 0.6), now);
@@ -2681,24 +2692,18 @@ export function HUD() {
           return;
         }
 
-        if (menuNextSpellPressed) {
-          setMenuSpellIndex(prev => (prev + 1) % ALL_SPELLS.length);
-        } else if (menuPrevSpellPressed) {
-          setMenuSpellIndex(prev => (prev - 1 + ALL_SPELLS.length) % ALL_SPELLS.length);
-        }
-
-        if (menuNextSlotPressed || menuPrevSlotPressed) {
-          const bindingHand = rightBumperHeld ? "right" : leftBumperHeld ? "left" : activeBindingHand;
-          const selectedIndex = bindingHand === "right" ? rightSelectedHotbarIndex : leftSelectedHotbarIndex;
-          selectHotbarSlot(selectedIndex + (menuNextSlotPressed ? 1 : -1), bindingHand);
+        if (spellMenuUpPressed) {
+          dispatchSpellMenuControllerNavigate("up");
+        } else if (spellMenuDownPressed) {
+          dispatchSpellMenuControllerNavigate("down");
+        } else if (spellMenuLeftPressed) {
+          dispatchSpellMenuControllerNavigate("left");
+        } else if (spellMenuRightPressed) {
+          dispatchSpellMenuControllerNavigate("right");
         }
 
         if (aPressed) {
-          const bindingHand = rightBumperHeld ? "right" : leftBumperHeld ? "left" : activeBindingHand;
-          const spell = ALL_SPELLS[menuSpellIndex];
-          const selectedIndex = bindingHand === "right" ? rightSelectedHotbarIndex : leftSelectedHotbarIndex;
-          setHotbarSpell(selectedIndex, spell, bindingHand);
-          selectHotbarSlot(selectedIndex, bindingHand);
+          dispatchSpellMenuControllerSelect();
         }
 
         controllerPollScheduler.schedule(0);

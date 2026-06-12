@@ -125,6 +125,23 @@ function getDirectionalScore(
   return primaryDistance * 10000 + perpendicularDistance + indexDistance * 0.01 + candidate.domOrder * 0.001;
 }
 
+function getLooseDirectionalScore(
+  candidate: MenuNavigationCandidate,
+  current: MenuNavigationCandidate,
+  direction: MenuDirection,
+) {
+  const vertical = isVerticalDirection(direction);
+  const primaryDistance = getPrimaryDistance(candidate, current, direction);
+  if (primaryDistance <= MENU_DIRECTION_EPSILON_PX) return Number.POSITIVE_INFINITY;
+
+  const perpendicularDistance = vertical
+    ? Math.abs(candidate.centerX - current.centerX)
+    : Math.abs(candidate.centerY - current.centerY);
+  const indexDistance = Math.abs(candidate.index - current.index);
+
+  return primaryDistance * 10000 + perpendicularDistance * 24 + indexDistance * 0.01 + candidate.domOrder * 0.001;
+}
+
 export function findDirectionalMenuIndex(
   selector: string,
   attribute: string,
@@ -151,6 +168,19 @@ export function findDirectionalMenuIndex(
     if (candidate.index === currentIndex) continue;
 
     const score = getDirectionalScore(candidate, currentCandidate, direction);
+    if (score < bestScore) {
+      bestScore = score;
+      bestIndex = candidate.index;
+    }
+  }
+
+  if (Number.isFinite(bestScore)) return bestIndex;
+
+  for (let candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
+    const candidate = candidates[candidateIndex];
+    if (candidate.index === currentIndex) continue;
+
+    const score = getLooseDirectionalScore(candidate, currentCandidate, direction);
     if (score < bestScore) {
       bestScore = score;
       bestIndex = candidate.index;

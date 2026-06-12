@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { ALL_SPELLS, type HandType, type SpellType, useGameStore } from "../../../store/gameStore";
@@ -19,9 +19,60 @@ import {
   spellFamilyLabels,
   type SpellFamilyFilter,
 } from "./spellMenuRuntime";
+import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+const SPELL_MENU_NAV_CLOSE_INDEX = 0;
+const SPELL_MENU_NAV_FAMILY_BASE = 20;
+const SPELL_MENU_NAV_LEFT_HOTBAR_BASE = 100;
+const SPELL_MENU_NAV_SPELL_BASE = 200;
+const SPELL_MENU_NAV_RIGHT_HOTBAR_BASE = 500;
+const SPELL_MENU_NAV_COUNT = 620;
+const SPELL_MENU_NAV_SELECTOR = "[data-spell-menu-nav-index]";
+const SPELL_MENU_NAV_ATTRIBUTE = "data-spell-menu-nav-index";
+
+type SpellMenuNavTarget =
+  | { type: "close" }
+  | { type: "family"; family: SpellFamilyFilter }
+  | { type: "hotbar"; hand: HandType; slotIndex: number }
+  | { type: "spell"; spell: SpellType; spellIndex: number };
+
+function getSpellMenuFamilyNavIndex(family: SpellFamilyFilter) {
+  return SPELL_MENU_NAV_FAMILY_BASE + Math.max(0, spellFamilyFilters.indexOf(family));
+}
+
+function getSpellMenuHotbarNavIndex(hand: HandType, slotIndex: number) {
+  return (hand === "right" ? SPELL_MENU_NAV_RIGHT_HOTBAR_BASE : SPELL_MENU_NAV_LEFT_HOTBAR_BASE) + slotIndex;
+}
+
+function getSpellMenuSpellNavIndex(spellIndex: number) {
+  return SPELL_MENU_NAV_SPELL_BASE + spellIndex;
+}
+
+function getSpellMenuNavTarget(navIndex: number): SpellMenuNavTarget | null {
+  if (navIndex === SPELL_MENU_NAV_CLOSE_INDEX) return { type: "close" };
+
+  if (navIndex >= SPELL_MENU_NAV_FAMILY_BASE && navIndex < SPELL_MENU_NAV_FAMILY_BASE + spellFamilyFilters.length) {
+    return { type: "family", family: spellFamilyFilters[navIndex - SPELL_MENU_NAV_FAMILY_BASE] };
+  }
+
+  if (navIndex >= SPELL_MENU_NAV_LEFT_HOTBAR_BASE && navIndex < SPELL_MENU_NAV_LEFT_HOTBAR_BASE + hotkeyLabels.length) {
+    return { type: "hotbar", hand: "left", slotIndex: navIndex - SPELL_MENU_NAV_LEFT_HOTBAR_BASE };
+  }
+
+  if (navIndex >= SPELL_MENU_NAV_SPELL_BASE && navIndex < SPELL_MENU_NAV_SPELL_BASE + ALL_SPELLS.length) {
+    const spellIndex = navIndex - SPELL_MENU_NAV_SPELL_BASE;
+    return { type: "spell", spell: ALL_SPELLS[spellIndex], spellIndex };
+  }
+
+  if (navIndex >= SPELL_MENU_NAV_RIGHT_HOTBAR_BASE && navIndex < SPELL_MENU_NAV_RIGHT_HOTBAR_BASE + hotkeyLabels.length) {
+    return { type: "hotbar", hand: "right", slotIndex: navIndex - SPELL_MENU_NAV_RIGHT_HOTBAR_BASE };
+  }
+
+  return null;
 }
 
 type SpellThumbnailBlock = [number, number, number, number, string, number?];
@@ -785,6 +836,7 @@ export const SpellMenu = memo(function SpellMenu({
   const selectHotbarSlot = useGameStore(s => s.selectHotbarSlot);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [activeFamily, setActiveFamily] = useState<SpellFamilyFilter>("all");
+  const [controllerFocusIndex, setControllerFocusIndex] = useState(() => getSpellMenuSpellNavIndex(menuSpellIndex));
 
   const highlightedSpell = ALL_SPELLS[menuSpellIndex];
   const bindingSelectedIndex = bindingHand === "right" ? rightSelectedHotbarIndex : leftSelectedHotbarIndex;
@@ -803,6 +855,21 @@ export const SpellMenu = memo(function SpellMenu({
   );
   const bindingHotbarSlotLookup = bindingHand === "right" ? rightHotbarSlotLookup : leftHotbarSlotLookup;
 
+  const applyControllerFocus = useCallback((navIndex: number) => {
+    const target = getSpellMenuNavTarget(navIndex);
+    if (!target) return;
+
+    setControllerFocusIndex(navIndex);
+    if (target.type === "spell") {
+      setMenuSpellIndex(target.spellIndex);
+      return;
+    }
+    if (target.type === "hotbar") {
+      setMenuBindingHand(target.hand);
+      selectHotbarSlot(target.slotIndex, target.hand);
+    }
+  }, [selectHotbarSlot, setMenuBindingHand, setMenuSpellIndex]);
+
   useEffect(() => {
     if (activeFamily === "all") return;
     if (getSpellMenuFamilyForSpell(highlightedSpell) === activeFamily) return;
@@ -810,9 +877,27 @@ export const SpellMenu = memo(function SpellMenu({
   }, [activeFamily, highlightedSpell]);
 
   useEffect(() => {
-    const focusedCard = scrollRef.current?.querySelector<HTMLElement>(`[data-spell-index="${menuSpellIndex}"]`);
-    focusedCard?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [menuSpellIndex]);
+    const root = scrollRef.current;
+    if (!root) return;
+
+    const focusedElement = root.querySelector<HTMLElement>(
+      `[${SPELL_MENU_NAV_ATTRIBUTE}="${controllerFocusIndex}"]`,
+    );
+    if (focusedElement) {
+      focusedElement.scrollIntoView({ block: "nearest", inline: "nearest" });
+      return;
+    }
+
+    const fallbackSpell = visibleSpells.includes(highlightedSpell) ? highlightedSpell : visibleSpells[0];
+    if (!fallbackSpell) {
+      setControllerFocusIndex(getSpellMenuFamilyNavIndex("all"));
+      return;
+    }
+
+    const nextSpellIndex = getSpellMenuIndex(fallbackSpell);
+    setControllerFocusIndex(getSpellMenuSpellNavIndex(nextSpellIndex));
+    setMenuSpellIndex(nextSpellIndex);
+  }, [controllerFocusIndex, highlightedSpell, menuSpellIndex, setMenuSpellIndex, visibleSpells]);
 
   useEffect(() => {
     const handleControllerScroll = (event: Event) => {
@@ -825,20 +910,76 @@ export const SpellMenu = memo(function SpellMenu({
     return () => window.removeEventListener("spell-menu-controller-scroll", handleControllerScroll);
   }, []);
 
-  const assignSpellToSlot = (slotIndex: number, spell: SpellType, hand: HandType = bindingHand) => {
+  const assignSpellToSlot = useCallback((slotIndex: number, spell: SpellType, hand: HandType = bindingHand) => {
     setMenuBindingHand(hand);
     setHotbarSpell(slotIndex, spell, hand);
     selectHotbarSlot(slotIndex, hand);
-  };
+  }, [bindingHand, selectHotbarSlot, setHotbarSpell, setMenuBindingHand]);
 
-  const selectFamily = (family: SpellFamilyFilter) => {
+  const selectFamily = useCallback((family: SpellFamilyFilter) => {
     setActiveFamily(family);
     const nextSpell = family === "all"
       ? highlightedSpell
       : getFirstSpellInFamily(family);
     const nextIndex = nextSpell ? getSpellMenuIndex(nextSpell) : 0;
     if (nextIndex >= 0) setMenuSpellIndex(nextIndex);
-  };
+  }, [highlightedSpell, setMenuSpellIndex]);
+
+  const activateControllerFocus = useCallback(() => {
+    const target = getSpellMenuNavTarget(controllerFocusIndex);
+    if (!target) return;
+
+    if (target.type === "close") {
+      onClose();
+      return;
+    }
+
+    if (target.type === "family") {
+      const nextSpell = target.family === "all"
+        ? highlightedSpell
+        : getFirstSpellInFamily(target.family);
+      selectFamily(target.family);
+      if (nextSpell) {
+        const nextIndex = getSpellMenuIndex(nextSpell);
+        setControllerFocusIndex(getSpellMenuSpellNavIndex(nextIndex));
+      }
+      return;
+    }
+
+    if (target.type === "hotbar") {
+      setMenuBindingHand(target.hand);
+      selectHotbarSlot(target.slotIndex, target.hand);
+      return;
+    }
+
+    assignSpellToSlot(bindingSelectedIndex, target.spell);
+  }, [assignSpellToSlot, bindingSelectedIndex, controllerFocusIndex, highlightedSpell, onClose, selectFamily, selectHotbarSlot, setMenuBindingHand]);
+
+  useEffect(() => {
+    const handleControllerNavigate = (event: Event) => {
+      const direction = (event as CustomEvent<{ direction?: MenuDirection }>).detail?.direction;
+      if (direction !== "up" && direction !== "down" && direction !== "left" && direction !== "right") return;
+      const nextIndex = findDirectionalMenuIndex(
+        SPELL_MENU_NAV_SELECTOR,
+        SPELL_MENU_NAV_ATTRIBUTE,
+        controllerFocusIndex,
+        direction,
+        SPELL_MENU_NAV_COUNT,
+      );
+      applyControllerFocus(nextIndex);
+    };
+
+    const handleControllerSelect = () => {
+      activateControllerFocus();
+    };
+
+    window.addEventListener("spell-menu-controller-navigate", handleControllerNavigate);
+    window.addEventListener("spell-menu-controller-select", handleControllerSelect);
+    return () => {
+      window.removeEventListener("spell-menu-controller-navigate", handleControllerNavigate);
+      window.removeEventListener("spell-menu-controller-select", handleControllerSelect);
+    };
+  }, [activateControllerFocus, applyControllerFocus, controllerFocusIndex]);
 
   const renderHotbarColumn = (hand: HandType, spells: SpellType[], selectedIndex: number) => (
     <div
@@ -857,29 +998,36 @@ export const SpellMenu = memo(function SpellMenu({
         {hand === "left" ? "LEFT" : "RIGHT"}
       </div>
       <div className="mt-1.5 flex flex-col gap-1">
-        {spells.map((spell, index) => (
-          <button
-            key={`${hand}-${spell}-${index}`}
-            className={cn(
-              "spell-menu-hotbar-slot grid h-8 min-w-0 grid-cols-[16px_1fr] items-center gap-1 border bg-black/45 px-1 text-left transition-all",
-              selectedIndex === index
-                ? hand === "right"
-                  ? "border-fuchsia-200 bg-fuchsia-300/20 text-fuchsia-50 shadow-[0_0_14px_rgba(217,70,239,0.65)]"
-                  : "border-yellow-200 bg-yellow-200/20 text-yellow-50 shadow-[0_0_14px_rgba(253,224,71,0.55)]"
-                : hand === "right"
-                  ? "border-fuchsia-300/25 text-fuchsia-100/75 hover:border-fuchsia-200/80"
-                  : "border-yellow-200/25 text-yellow-100/75 hover:border-yellow-100/80",
-              bindingHand === hand ? "brightness-125" : ""
-            )}
-            onClick={() => {
-              setMenuBindingHand(hand);
-              selectHotbarSlot(index, hand);
-            }}
-          >
-            <div className="text-center text-[9px] text-white/80">{hotkeyLabels[index]}</div>
-            <div className="truncate text-[7px] leading-3">{spellNames[spell]}</div>
-          </button>
-        ))}
+        {spells.map((spell, index) => {
+          const navIndex = getSpellMenuHotbarNavIndex(hand, index);
+          const isControllerFocused = controllerFocusIndex === navIndex;
+          return (
+            <button
+              key={`${hand}-${spell}-${index}`}
+              data-spell-menu-nav-index={navIndex}
+              className={cn(
+                "spell-menu-hotbar-slot grid h-8 min-w-0 grid-cols-[16px_1fr] items-center gap-1 border bg-black/45 px-1 text-left transition-all",
+                selectedIndex === index
+                  ? hand === "right"
+                    ? "border-fuchsia-200 bg-fuchsia-300/20 text-fuchsia-50 shadow-[0_0_14px_rgba(217,70,239,0.65)]"
+                    : "border-yellow-200 bg-yellow-200/20 text-yellow-50 shadow-[0_0_14px_rgba(253,224,71,0.55)]"
+                  : hand === "right"
+                    ? "border-fuchsia-300/25 text-fuchsia-100/75 hover:border-fuchsia-200/80"
+                    : "border-yellow-200/25 text-yellow-100/75 hover:border-yellow-100/80",
+                bindingHand === hand ? "brightness-125" : "",
+                isControllerFocused ? "ring-2 ring-white shadow-[0_0_16px_rgba(255,255,255,0.65)]" : ""
+              )}
+              onMouseEnter={() => applyControllerFocus(navIndex)}
+              onFocus={() => applyControllerFocus(navIndex)}
+              onClick={() => {
+                applyControllerFocus(navIndex);
+              }}
+            >
+              <div className="text-center text-[9px] text-white/80">{hotkeyLabels[index]}</div>
+              <div className="truncate text-[7px] leading-3">{spellNames[spell]}</div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -905,7 +1053,13 @@ export const SpellMenu = memo(function SpellMenu({
           </div>
           <button
             data-testid="spell-menu-close"
-            className="spell-menu-close-button border border-cyan-300/70 bg-cyan-300/10 px-3 py-2 text-[10px] tracking-widest text-cyan-100 hover:bg-cyan-200/20"
+            data-spell-menu-nav-index={SPELL_MENU_NAV_CLOSE_INDEX}
+            className={cn(
+              "spell-menu-close-button border border-cyan-300/70 bg-cyan-300/10 px-3 py-2 text-[10px] tracking-widest text-cyan-100 hover:bg-cyan-200/20",
+              controllerFocusIndex === SPELL_MENU_NAV_CLOSE_INDEX ? "ring-2 ring-white shadow-[0_0_16px_rgba(255,255,255,0.65)]" : ""
+            )}
+            onFocus={() => setControllerFocusIndex(SPELL_MENU_NAV_CLOSE_INDEX)}
+            onMouseEnter={() => setControllerFocusIndex(SPELL_MENU_NAV_CLOSE_INDEX)}
             onClick={onClose}
           >
             E CLOSE
@@ -935,24 +1089,35 @@ export const SpellMenu = memo(function SpellMenu({
               className="spell-menu-family-filters mb-2 grid grid-cols-4 gap-1.5 md:grid-cols-[repeat(8,minmax(0,1fr))]"
               data-testid="spell-menu-family-filters"
             >
-              {spellFamilyFilters.map((family) => (
-                <button
-                  key={family}
-                  type="button"
-                  data-testid={`spell-family-${family}`}
-                  aria-pressed={activeFamily === family}
-                  className={cn(
-                    "spell-menu-family-filter min-w-0 border px-2 py-1 text-[8px] tracking-widest transition-all",
-                    activeFamily === family
-                      ? "border-yellow-200 bg-yellow-200/15 text-yellow-50 shadow-[0_0_12px_rgba(250,204,21,0.28)]"
-                      : "border-cyan-300/25 bg-cyan-300/5 text-cyan-100/75 hover:border-cyan-200/70 hover:text-cyan-50"
-                  )}
-                  onClick={() => selectFamily(family)}
-                >
-                  <span>{spellFamilyLabels[family]}</span>
-                  <span className="spell-menu-family-count ml-1 text-cyan-100/45">{familyCounts[family]}</span>
-                </button>
-              ))}
+              {spellFamilyFilters.map((family) => {
+                const navIndex = getSpellMenuFamilyNavIndex(family);
+                const isControllerFocused = controllerFocusIndex === navIndex;
+                return (
+                  <button
+                    key={family}
+                    type="button"
+                    data-testid={`spell-family-${family}`}
+                    data-spell-menu-nav-index={navIndex}
+                    aria-pressed={activeFamily === family}
+                    className={cn(
+                      "spell-menu-family-filter min-w-0 border px-2 py-1 text-[8px] tracking-widest transition-all",
+                      activeFamily === family
+                        ? "border-yellow-200 bg-yellow-200/15 text-yellow-50 shadow-[0_0_12px_rgba(250,204,21,0.28)]"
+                        : "border-cyan-300/25 bg-cyan-300/5 text-cyan-100/75 hover:border-cyan-200/70 hover:text-cyan-50",
+                      isControllerFocused ? "ring-2 ring-white shadow-[0_0_16px_rgba(255,255,255,0.65)]" : ""
+                    )}
+                    onFocus={() => setControllerFocusIndex(navIndex)}
+                    onMouseEnter={() => setControllerFocusIndex(navIndex)}
+                    onClick={() => {
+                      setControllerFocusIndex(navIndex);
+                      selectFamily(family);
+                    }}
+                  >
+                    <span>{spellFamilyLabels[family]}</span>
+                    <span className="spell-menu-family-count ml-1 text-cyan-100/45">{familyCounts[family]}</span>
+                  </button>
+                );
+              })}
               <div
                 data-testid="spell-menu-visible-count"
                 className="spell-menu-visible-count border border-cyan-300/20 bg-black/20 px-2 py-1 text-center text-[8px] tracking-widest text-cyan-100/60"
@@ -964,7 +1129,9 @@ export const SpellMenu = memo(function SpellMenu({
             <div className="spell-menu-grid grid grid-cols-3 gap-2 md:grid-cols-5">
               {visibleSpells.map((spell) => {
                 const index = getSpellMenuIndex(spell);
+                const navIndex = getSpellMenuSpellNavIndex(index);
                 const isHighlighted = index === menuSpellIndex;
+                const isControllerFocused = controllerFocusIndex === navIndex;
                 const leftAssignedSlot = getSpellMenuAssignedSlot(leftHotbarSlotLookup, spell);
                 const rightAssignedSlot = getSpellMenuAssignedSlot(rightHotbarSlotLookup, spell);
                 const assignedSlot = getSpellMenuAssignedSlot(bindingHotbarSlotLookup, spell);
@@ -975,16 +1142,21 @@ export const SpellMenu = memo(function SpellMenu({
                   <button
                     key={spell}
                     data-spell-index={index}
+                    data-spell-menu-nav-index={navIndex}
                     className={cn(
                       "spell-menu-card group relative min-h-[84px] min-w-0 border p-1.5 text-left transition-all",
                       isHighlighted
                         ? "border-yellow-200 bg-yellow-200/10 text-yellow-100 shadow-[0_0_20px_rgba(250,204,21,0.45)]"
                         : "border-cyan-300/30 bg-cyan-400/5 text-cyan-100 hover:border-cyan-200/80 hover:bg-cyan-300/10",
-                      isCurrent ? "ring-1 ring-white/70" : ""
+                      isCurrent ? "ring-1 ring-white/70" : "",
+                      isControllerFocused ? "ring-2 ring-white shadow-[0_0_18px_rgba(255,255,255,0.7)]" : ""
                     )}
-                    onMouseEnter={() => setMenuSpellIndex(index)}
-                    onFocus={() => setMenuSpellIndex(index)}
-                    onClick={() => assignSpellToSlot(bindingSelectedIndex, spell)}
+                    onMouseEnter={() => applyControllerFocus(navIndex)}
+                    onFocus={() => applyControllerFocus(navIndex)}
+                    onClick={() => {
+                      applyControllerFocus(navIndex);
+                      assignSpellToSlot(bindingSelectedIndex, spell);
+                    }}
                   >
                     <div className="spell-menu-card-badges mb-1 flex min-w-0 items-center justify-between gap-1 text-[6px] tracking-widest">
                       <span className="truncate text-cyan-100/45">{familyLabel}</span>
