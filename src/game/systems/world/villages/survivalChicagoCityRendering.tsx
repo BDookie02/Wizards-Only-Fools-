@@ -98,6 +98,8 @@ const CHICAGO_SIDE_SIGNS = [-1, 1] as const;
 const CHICAGO_CROSSWALK_BAR_OFFSETS = [-9, -5.4, -1.8, 1.8, 5.4, 9] as const;
 const CHICAGO_PARKING_LINE_INDICES = [0, 1, 2, 3, 4, 5, 6, 7] as const;
 const CHICAGO_CAR_WHEEL_SIDES = [-1, 1] as const;
+const CHICAGO_BENCH_LEG_X = [-2.2, 2.2] as const;
+const CHICAGO_BEAN_BOLLARD_X = [-18, -6, 6, 18] as const;
 
 let cachedChicagoWindowTexture: THREE.Texture | null = null;
 let cachedChicagoFacadeTextures: THREE.Texture[] | null = null;
@@ -989,7 +991,7 @@ function ChicagoBuildings({
           )}
           {building.landmark === "hancock" && (
             <>
-              {[-1, 1].map((side) => (
+              {CHICAGO_SIDE_SIGNS.map((side) => (
                 <mesh key={`x-brace-${side}`} position={[0, building.height * 0.56, side * (building.depth / 2 + 0.14)]} rotation={[0, 0, side * 0.74]} castShadow={false}>
                   <boxGeometry args={[building.width * 1.18, 1.25, 0.42]} />
                   <meshBasicMaterial color="#334155" />
@@ -1022,7 +1024,7 @@ function ChicagoBuildings({
                 <cylinderGeometry args={[0.72, 1.1, 38, 6]} />
                 <meshBasicMaterial color="#e5e7eb" />
               </mesh>
-              {[-1, 1].map((side) => (
+              {CHICAGO_SIDE_SIGNS.map((side) => (
                 <Fragment key={`skyscraper-light-bars-${side}`}>
                   <mesh position={[side * (building.width / 2 + 0.24), building.height * 0.52, 0]} castShadow={false}>
                     <boxGeometry args={[0.42, building.height * 0.84, 1.2]} />
@@ -1091,7 +1093,7 @@ function ChicagoBuildingDetails({
               <planeGeometry args={[Math.min(building.width * 0.72, 24), 5.2]} />
               <meshBasicMaterial map={signTexture} transparent alphaTest={0.04} side={THREE.DoubleSide} />
             </mesh>
-            {[-1, 1].map((side) => (
+            {CHICAGO_SIDE_SIGNS.map((side) => (
               <mesh key={`${building.key}-store-window-${side}`} position={[side * storefrontWidth * 0.28, 4.4, building.depth / 2 + 0.42]} castShadow={false}>
                 <boxGeometry args={[4.1, 4.7, 0.38]} />
                 <meshBasicMaterial color="#bae6fd" transparent opacity={0.62} />
@@ -1174,7 +1176,7 @@ function ChicagoBuildingInteriors({
               <boxGeometry args={[Math.min(roomWidth - 2, 13.4), 0.42, 2.5]} />
               <meshBasicMaterial color="#a16207" />
             </mesh>
-            {[-1, 1].map((side) => (
+            {CHICAGO_SIDE_SIGNS.map((side) => (
               <mesh key={`${building.key}-interior-shelf-${side}`} position={[side * (roomWidth / 2 - 1.3), 2.2, roomCenterZ - 0.8]} castShadow={false}>
                 <boxGeometry args={[1.1, 3.8, roomDepth * 0.52]} />
               <meshBasicMaterial color="#5b3a25" />
@@ -1653,7 +1655,7 @@ function ChicagoStreetDetails({ baseHeight }: { baseHeight: number }) {
             <boxGeometry args={[5.7, 1.1, 0.32]} />
             <meshBasicMaterial color="#5c331f" />
           </mesh>
-          {[-2.2, 2.2].map((x) => (
+          {CHICAGO_BENCH_LEG_X.map((x) => (
             <mesh key={`bench-leg-${x}`} position={[x, 0.52, 0]} castShadow={false}>
               <boxGeometry args={[0.32, 1.0, 0.32]} />
               <meshBasicMaterial color="#1f2937" />
@@ -1683,7 +1685,7 @@ function ChicagoBeanPark({ baseHeight }: { baseHeight: number }) {
         <circleGeometry args={[15.5, 42]} />
         <meshBasicMaterial color="#94a3b8" transparent opacity={0.12} depthWrite={false} />
       </mesh>
-      {([-1, 1] as const).map((side) => (
+      {CHICAGO_SIDE_SIGNS.map((side) => (
         <mesh
           key={`bean-lobe-${side}`}
           position={[side * 5.8, 8.55, side * 0.25]}
@@ -1695,7 +1697,7 @@ function ChicagoBeanPark({ baseHeight }: { baseHeight: number }) {
           <meshBasicMaterial color="#dce8f3" />
         </mesh>
       ))}
-      {([-1, 1] as const).map((side) => (
+      {CHICAGO_SIDE_SIGNS.map((side) => (
         <mesh
           key={`bean-inner-shadow-${side}`}
           position={[side * 2.15, 8.35, side * 0.05]}
@@ -1707,7 +1709,7 @@ function ChicagoBeanPark({ baseHeight }: { baseHeight: number }) {
           <meshBasicMaterial color="#8ea0b4" transparent opacity={0.28} depthWrite={false} />
         </mesh>
       ))}
-      {([-1, 1] as const).map((side) => (
+      {CHICAGO_SIDE_SIGNS.map((side) => (
         <mesh
           key={`bean-lower-shadow-${side}`}
           position={[side * 5.65, 5.72, side * 0.22]}
@@ -1719,7 +1721,7 @@ function ChicagoBeanPark({ baseHeight }: { baseHeight: number }) {
           <meshBasicMaterial color="#74879d" transparent opacity={0.22} depthWrite={false} />
         </mesh>
       ))}
-      {([-1, 1] as const).map((side) => (
+      {CHICAGO_SIDE_SIGNS.map((side) => (
         <mesh
           key={`bean-cleft-rim-highlight-${side}`}
           position={[side * 1.08, 8.85, side * 0.06]}
@@ -1751,9 +1753,9 @@ function ChicagoBeanPark({ baseHeight }: { baseHeight: number }) {
         <sphereGeometry args={[1, 24, 12]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.24} depthWrite={false} />
       </mesh>
-      {[-1, 1].map((side) => (
+      {CHICAGO_SIDE_SIGNS.map((side) => (
         <group key={`bean-park-bollards-${side}`} rotation={[0, side * 0.68, 0]}>
-          {[-18, -6, 6, 18].map((x) => (
+          {CHICAGO_BEAN_BOLLARD_X.map((x) => (
             <mesh key={`bollard-${side}-${x}`} position={[x, 0.98, 31.5]} castShadow={false}>
               <cylinderGeometry args={[0.42, 0.5, 1.9, 8]} />
               <meshBasicMaterial color="#e5e7eb" />
@@ -2303,7 +2305,7 @@ function ChicagoCityColliders({
                 position={placeWall(0, -building.depth / 2 + wallThickness / 2)}
                 rotation={[0, building.rotation, 0]}
               />
-              {[-1, 1].map((side) => (
+              {CHICAGO_SIDE_SIGNS.map((side) => (
                 <CuboidCollider
                   key={`${building.key}-side-wall-${side}`}
                   args={[wallThickness / 2, building.height / 2, building.depth / 2]}
@@ -2311,7 +2313,7 @@ function ChicagoCityColliders({
                   rotation={[0, building.rotation, 0]}
                 />
               ))}
-              {[-1, 1].map((side) => (
+              {CHICAGO_SIDE_SIGNS.map((side) => (
                 <CuboidCollider
                   key={`${building.key}-front-wall-${side}`}
                   args={[frontSegmentWidth / 2, building.height / 2, wallThickness / 2]}
