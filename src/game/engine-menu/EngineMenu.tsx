@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
 import {
   PLACEABLE_CATALOG,
-  PLACEABLE_CATEGORIES,
-  PLACEABLE_CATEGORY_LABELS,
   type PlaceableCategory,
   type PlaceableDefinition,
 } from "../systems/placeables/placeableCatalog";
@@ -26,16 +22,12 @@ import {
   type EnginePlacedObjectSlotSummary,
   type EnginePlacedObjectSummary,
 } from "./engineMenuRuntime";
-import { EngineMenuPlaceableCard } from "./EngineMenuPlaceableCard";
+import { EngineMenuCatalogPanel } from "./EngineMenuCatalogPanel";
+import { EngineMenuCategorySidebar } from "./EngineMenuCategorySidebar";
 import { EngineMenuPlacedObjectsPanel } from "./EngineMenuPlacedObjectsPanel";
+import { EngineMenuPlacementPanel } from "./EngineMenuPlacementPanel";
 import { EngineMenuSaveSlotsPanel } from "./EngineMenuSaveSlotsPanel";
 import { EngineMenuSystemsPanel } from "./EngineMenuSystemsPanel";
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-const ENGINE_GRID_SIZE_OPTIONS = [1, 2, 4, 8] as const;
 
 export function EngineMenu({
   open,
@@ -232,167 +224,33 @@ export function EngineMenu({
         </div>
 
         <div className="grid min-h-0 min-w-0 grid-cols-[160px_minmax(0,1fr)_220px] gap-3 overflow-hidden p-3">
-          <div className="flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto pr-1">
-            {PLACEABLE_CATEGORIES.map((category) => (
-              <button
-                key={category}
-                type="button"
-                className={cn(
-                  "border px-3 py-2 text-left text-[10px] tracking-widest transition",
-                  activeCategory === category
-                    ? "border-yellow-200 bg-yellow-200/12 text-yellow-50"
-                    : "border-cyan-100/25 bg-black/25 text-cyan-50/75 hover:border-cyan-100/55"
-                )}
-                onClick={() => setActiveCategory(category)}
-              >
-                <span className="flex items-center justify-between gap-2">
-                  <span>{PLACEABLE_CATEGORY_LABELS[category]}</span>
-                  <span className="text-[8px] text-cyan-100/45">{categoryCounts[category]}</span>
-                </span>
-              </button>
-            ))}
-          </div>
+          <EngineMenuCategorySidebar
+            activeCategory={activeCategory}
+            categoryCounts={categoryCounts}
+            onSelectCategory={setActiveCategory}
+          />
 
-          <div className="flex min-h-0 min-w-0 flex-col overflow-hidden pr-1">
-            <div className="mb-2 grid gap-2 border border-cyan-100/15 bg-black/24 p-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-[9px] tracking-[0.22em] text-cyan-100/70">Catalog</div>
-                <div data-testid="engine-placeable-count" className="text-[8px] tracking-[0.16em] text-cyan-100/40">
-                  {filteredPlaceables.length} shown
-                </div>
-              </div>
-              <div className="flex min-w-0 items-center gap-2">
-                <input
-                  data-testid="engine-placeable-search"
-                  className="min-w-0 flex-1 border border-cyan-100/20 bg-black/35 px-2 py-2 text-[9px] tracking-[0.14em] text-cyan-50 outline-none placeholder:text-cyan-100/25"
-                  value={searchQuery}
-                  placeholder="Search name, tag, id"
-                  maxLength={40}
-                  onChange={(event) => setSearchQuery(event.currentTarget.value)}
-                />
-                <button
-                  type="button"
-                  className="border border-cyan-100/25 bg-black/30 px-2 py-2 text-[8px] tracking-widest text-cyan-50/70 disabled:text-cyan-100/20"
-                  disabled={!searchQuery}
-                  onClick={() => setSearchQuery("")}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-            <div className="min-h-0 min-w-0 overflow-y-auto">
-            <div className="engine-placeable-grid grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-2">
-              {filteredPlaceables.map((placeable) => (
-                <EngineMenuPlaceableCard
-                  key={placeable.id}
-                  placeable={placeable}
-                  selected={selectedId === placeable.id}
-                  onPreviewPlaceable={previewPlaceable}
-                />
-              ))}
-              {filteredPlaceables.length === 0 && (
-                <div className="col-span-full border border-cyan-100/15 bg-black/24 px-3 py-5 text-center text-[9px] tracking-[0.16em] text-cyan-100/45 normal-case">
-                  No placeables match this category and search.
-                </div>
-              )}
-            </div>
-            </div>
-          </div>
+          <EngineMenuCatalogPanel
+            filteredPlaceables={filteredPlaceables}
+            selectedId={selectedId}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            onClearSearchQuery={() => setSearchQuery("")}
+            onPreviewPlaceable={previewPlaceable}
+          />
 
           <div className="hidden min-h-0 min-w-0 max-w-full grid-rows-[minmax(0,1.45fr)_minmax(0,1fr)] gap-2 overflow-hidden border border-cyan-100/20 bg-black/24 p-2 lg:grid">
-            <div className="min-h-0 min-w-0 overflow-y-auto border border-yellow-100/25 bg-yellow-200/8 p-2">
-              <div className="text-[10px] tracking-[0.24em] text-yellow-100">Placement</div>
-              <div className="mt-2 min-h-[36px] text-[8px] leading-4 tracking-[0.13em] text-cyan-50/70 normal-case">
-                {selectedPlaceable ? selectedPlaceable.name : "Select an object to preview it on the grid."}
-              </div>
-              {selectedPlaceable && (
-                <div
-                  data-testid="engine-selected-placeable-meta"
-                  className="mt-2 grid gap-1 border border-cyan-100/15 bg-black/22 p-2 text-[7px] leading-4 tracking-[0.12em] text-cyan-100/50 normal-case"
-                >
-                  <div className="truncate uppercase tracking-[0.16em] text-cyan-100/65">{selectedPlaceable.id}</div>
-                  <div>Footprint {selectedPlaceable.footprintRadius} / slope {selectedPlaceable.maxSlopeDelta} / yaw {selectedPlaceable.yawMode}</div>
-                  <div className="truncate">Tags: {selectedPlaceable.tags.join(", ")}</div>
-                </div>
-              )}
-              <div
-                data-testid="engine-placement-status"
-                className={cn(
-                  "mt-2 min-h-[28px] border px-2 py-1.5 text-[7px] leading-4 tracking-[0.12em] normal-case",
-                  placementStatus.toLowerCase().startsWith("blocked")
-                    ? "border-red-200/30 bg-red-500/8 text-red-100/80"
-                    : "border-cyan-100/15 bg-black/20 text-cyan-100/55"
-                )}
-              >
-                {placementStatus || "Ready"}
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {ENGINE_GRID_SIZE_OPTIONS.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    className={cn(
-                      "border px-2 py-2 text-[8px] tracking-widest",
-                      gridSize === size
-                        ? "border-yellow-200 bg-yellow-200/18 text-yellow-50"
-                        : "border-cyan-100/25 bg-black/30 text-cyan-50/70"
-                    )}
-                    onClick={() => selectGridSize(size)}
-                  >
-                    Grid {size}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  className="border border-cyan-100/25 bg-black/30 px-2 py-2 text-[8px] tracking-widest text-cyan-50/75"
-                  onClick={() => rotateSelected(-Math.PI / 8)}
-                >
-                  Rotate -
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    "border px-2 py-2 text-[8px] tracking-widest",
-                    snapToGrid
-                      ? "border-emerald-200 bg-emerald-200/12 text-emerald-50"
-                      : "border-cyan-100/25 bg-black/30 text-cyan-50/75"
-                  )}
-                  onClick={toggleSnapToGrid}
-                >
-                  Snap {snapToGrid ? "On" : "Off"}
-                </button>
-                <button
-                  type="button"
-                  className="border border-cyan-100/25 bg-black/30 px-2 py-2 text-[8px] tracking-widest text-cyan-50/75"
-                  onClick={() => rotateSelected(Math.PI / 8)}
-                >
-                  Rotate +
-                </button>
-              </div>
-              <button
-                type="button"
-                data-testid="engine-place-selected"
-                className={cn(
-                  "mt-3 w-full border px-3 py-2 text-[9px] tracking-[0.18em]",
-                  selectedPlaceable
-                    ? "border-yellow-200 bg-yellow-200/18 text-yellow-50 hover:bg-yellow-200/25"
-                    : "border-cyan-100/15 bg-black/20 text-cyan-100/30"
-                )}
-                disabled={!selectedPlaceable}
-                onClick={() => selectedPlaceable && onSelectPlaceable(selectedPlaceable, makePlacementOptions())}
-              >
-                Place Selected
-              </button>
-              <button
-                type="button"
-                data-testid="engine-clear-placed-objects"
-                className="mt-2 w-full border border-red-200/30 bg-red-500/8 px-3 py-2 text-[8px] tracking-[0.18em] text-red-100/80 hover:bg-red-500/14"
-                onClick={onClearPlaceables}
-              >
-                Clear Placed
-              </button>
+            <EngineMenuPlacementPanel
+              selectedPlaceable={selectedPlaceable}
+              placementStatus={placementStatus}
+              gridSize={gridSize}
+              snapToGrid={snapToGrid}
+              onSelectGridSize={selectGridSize}
+              onRotateSelected={rotateSelected}
+              onToggleSnapToGrid={toggleSnapToGrid}
+              onPlaceSelected={() => selectedPlaceable && onSelectPlaceable(selectedPlaceable, makePlacementOptions())}
+              onClearPlaceables={onClearPlaceables}
+            >
               <EngineMenuPlacedObjectsPanel
                 placedObjects={placedObjects}
                 selectedPlacedObject={selectedPlacedObject}
@@ -415,7 +273,7 @@ export function EngineMenu({
                 onLoadSlot={requestSlotLoad}
                 onDeleteSlot={requestSlotDelete}
               />
-            </div>
+            </EngineMenuPlacementPanel>
 
             <EngineMenuSystemsPanel />
           </div>
