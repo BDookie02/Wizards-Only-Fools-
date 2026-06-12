@@ -84,10 +84,14 @@ export function scheduleSurvivalBackgroundTask(callback: () => void, timeout = 9
 
 let survivalDecorationHeavyStageNextAt = 0;
 
-function reserveSurvivalDecorationHeavyStageDelay(stage: number) {
-  if (stage < 3 || typeof performance === "undefined") return 0;
+function getSurvivalLoadStageNowMs() {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
 
-  const now = performance.now();
+function reserveSurvivalDecorationHeavyStageDelay(stage: number) {
+  if (stage < 3) return 0;
+
+  const now = getSurvivalLoadStageNowMs();
   const spacing = stage >= 5
     ? 520
     : stage >= 4
