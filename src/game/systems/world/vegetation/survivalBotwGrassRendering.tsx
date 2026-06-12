@@ -146,6 +146,11 @@ import {
   rememberSurvivalBotwGrassBuild,
   type SurvivalBotwGrassBuildResult,
 } from "./survivalBotwGrassBuildCache";
+import {
+  getSurvivalBotwGrassElapsedMs,
+  getSurvivalBotwGrassNowMs,
+  shouldContinueSurvivalBotwGrassSlice,
+} from "./survivalBotwGrassRuntime";
 import { SURVIVAL_GRASS_SYSTEM_ENABLED } from "./survivalGrassSystemConfig";
 import { HIDE_FROM_MINIMAP } from "./SurvivalFoliagePrimitives";
 
@@ -385,21 +390,6 @@ function makeSurvivalBotwGrassCarpetGeometry(centerX: number, centerZ: number, m
 
 function getSurvivalBotwGrassBuildKey(center: SurvivalBotwGrassCenter, mobilePerformanceMode: boolean) {
   return `${center.x}:${center.z}:${mobilePerformanceMode ? "m" : "d"}`;
-}
-
-const SURVIVAL_BOTW_GRASS_SLICE_CLOCK_CHECK_INTERVAL = 16;
-
-function getSurvivalBotwGrassNowMs() {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
-}
-
-function shouldContinueSurvivalBotwGrassSlice(workCount: number, sliceStartedAt: number, sliceBudgetMs: number) {
-  if (workCount === 0 || workCount % SURVIVAL_BOTW_GRASS_SLICE_CLOCK_CHECK_INTERVAL !== 0) return true;
-  return getSurvivalBotwGrassNowMs() - sliceStartedAt < sliceBudgetMs;
-}
-
-function getSurvivalBotwGrassElapsedMs(startedAt: number) {
-  return getSurvivalBotwGrassNowMs() - startedAt;
 }
 
 function publishSurvivalBotwGrassPendingPrewarmCount() {
