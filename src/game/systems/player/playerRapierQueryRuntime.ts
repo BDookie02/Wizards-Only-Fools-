@@ -15,12 +15,16 @@ const RAPIER_QUERY_WARNING_INTERVAL_MS = 2500;
 
 let lastRapierQueryWarningAt = 0;
 
+export function getPlayerRapierQueryWarningNowMs() {
+  return Date.now();
+}
+
 export function getExcludeSensorsQueryFlags(rapier: { QueryFilterFlags?: { EXCLUDE_SENSORS?: number } }) {
   return rapier.QueryFilterFlags?.EXCLUDE_SENSORS ?? EXCLUDE_SENSORS_FALLBACK;
 }
 
 function warnRapierQueryFailure(operation: string, error: unknown) {
-  const now = Date.now();
+  const now = getPlayerRapierQueryWarningNowMs();
   if (now - lastRapierQueryWarningAt < RAPIER_QUERY_WARNING_INTERVAL_MS) return;
   lastRapierQueryWarningAt = now;
   console.warn(`[WOF] Skipped unsafe Rapier ${operation} query this frame`, error);
