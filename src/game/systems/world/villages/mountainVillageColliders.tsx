@@ -4,8 +4,8 @@ import * as THREE from "three";
 import { shouldBuildSurvivalChunkColliders } from "../survival/survivalChunks";
 import type { SurvivalChunkInfo } from "../survival/survivalWorldConfig";
 import { getMountainCabinDoorMetrics } from "./mountainVillageLayoutRuntime";
+import { getMountainMineshaftBanquetColliderDetails } from "./mountainVillageMineshaftBanquetRuntime";
 import {
-  getMountainMineshaftBanquetColliderDetails,
   getMountainMineshaftCatwalkColliderDetails,
   getMountainMineshaftExitBridgeFrame,
   getMountainMineshaftLadderLandingLocalX,

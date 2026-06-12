@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import * as THREE from "three";
 import { MOUNTAIN_VILLAGE_MINESHAFT_BOTTOM_RADIUS, MOUNTAIN_VILLAGE_MINESHAFT_THRONE_Z } from "./mountainVillageTerrain";
-import { getMountainMineshaftRoyalBanquetDescriptors } from "./mountainVillageMineshaftRuntime";
+import { getMountainMineshaftRoyalBanquetDescriptors } from "./mountainVillageMineshaftBanquetRuntime";
 import { RetroMineshaftLantern } from "./mountainVillageMineshaftLighting";
 
 const MOUNTAIN_MINESHAFT_CHAIR_LEG_OFFSETS = [
