@@ -28,6 +28,11 @@ import {
   useMountainVillageDetailPhase,
 } from "./mountainVillageDetailPhase";
 import {
+  makeMountainVillageCabins,
+  makeMountainVillageHutInfos,
+  type MountainVillageCabin,
+} from "./mountainVillageLayoutRuntime";
+import {
   getMountainMineshaftBanquetColliderDetails,
   getMountainMineshaftBottomRocks,
   getMountainMineshaftCatwalkDescriptors,
@@ -166,19 +171,6 @@ type MountainVillageTrailSegment = {
   supports: MountainVillageTrailSupport[];
 };
 
-type MountainVillageCabin = {
-  key: string;
-  localX: number;
-  localZ: number;
-  rotation: number;
-  width: number;
-  depth: number;
-  height: number;
-  bodyColor: string;
-  roofColor: string;
-  accentColor: string;
-};
-
 type MountainVillageWaterfall = {
   angle: number;
   topX: number;
@@ -227,9 +219,6 @@ const EMPTY_MOUNTAIN_MINESHAFT_LADDERS: MountainMineshaftLadder[] = [];
 const EMPTY_MOUNTAIN_HUT_INFOS: HutInfo[] = [];
 const MOUNTAIN_CLIFF_STONE_COLORS = ["#3f474a", "#545d60", "#6f7a7d", "#838f94", "#2f3638"] as const;
 const MOUNTAIN_CLIFF_SNOW_COLORS = ["#d9eef7", "#eef9ff", "#bcdce9"] as const;
-const MOUNTAIN_CABIN_BODY_COLORS = ["#584633", "#64513d", "#4f4538", "#6b573f"] as const;
-const MOUNTAIN_CABIN_ROOF_COLORS = ["#dceefa", "#cfe4f3", "#edf7ff", "#b9d3e8"] as const;
-const MOUNTAIN_CABIN_ACCENT_COLORS = ["#82d8ff", "#f5d28a", "#bce7ff", "#d6f4ff"] as const;
 
 type MountainVillageLayoutOptions = {
   includeMineshaftLayout?: boolean;
@@ -852,63 +841,6 @@ function makeMountainVillageSummitColliderGeometry(summitY: number) {
   return geometry;
 }
 
-function makeMountainVillageHutInfos(
-  chunk: SurvivalChunkInfo,
-  summitY: number,
-  cabins: MountainVillageCabin[],
-  interiorHuts: MountainMineshaftHut[],
-) {
-  const hutInfos = new Array<HutInfo>(cabins.length + interiorHuts.length);
-
-  for (let index = 0; index < cabins.length; index += 1) {
-    const cabin = cabins[index];
-    hutInfos[index] = {
-      id: `${chunk.key}-mountain-hut-${index}`,
-      x: chunk.x + cabin.localX,
-      y: summitY,
-      z: chunk.z + cabin.localZ,
-      hutType: 2,
-      colorIndex: index % 4,
-      rotation: cabin.rotation,
-      hasPath: true,
-      pathRot: cabin.rotation,
-      isMushroom: false,
-      interiorWidth: cabin.width,
-      interiorDepth: cabin.depth,
-      interiorHeight: cabin.height,
-      villagerBackOffset: Math.max(2.5, cabin.depth / 2 - 2.45),
-      villagerSideOffset: (index % 2 === 0 ? -1 : 1) * Math.min(0.9, cabin.width * 0.05),
-      villagerYOffset: 0.95,
-      villagerTheme: "village",
-    };
-  }
-
-  for (let index = 0; index < interiorHuts.length; index += 1) {
-    const hut = interiorHuts[index];
-    hutInfos[cabins.length + index] = {
-      id: `${chunk.key}-mountain-interior-hut-${index}`,
-      x: chunk.x + hut.localX,
-      y: hut.y + 0.48,
-      z: chunk.z + hut.localZ,
-      hutType: 2,
-      colorIndex: (index + 1) % 4,
-      rotation: hut.rotation,
-      hasPath: true,
-      pathRot: hut.rotation,
-      isMushroom: false,
-      interiorWidth: hut.width,
-      interiorDepth: hut.depth,
-      interiorHeight: hut.height,
-      villagerBackOffset: Math.max(2.2, hut.depth / 2 + 1.4),
-      villagerSideOffset: (index % 2 === 0 ? -1 : 1) * 0.55,
-      villagerYOffset: 0.95,
-      villagerTheme: "village",
-    };
-  }
-
-  return hutInfos;
-}
-
 function makeMountainVillageLayout(
   chunk: SurvivalChunkInfo,
   baseHeight: number,
@@ -919,30 +851,7 @@ function makeMountainVillageLayout(
   const trailPoints = makeMountainVillageTrailPoints(chunk, baseHeight, terrainHeightForChunk);
   const trailSegments = makeMountainVillageTrailSegments(chunk, baseHeight, trailPoints, terrainHeightForChunk);
   const cliffPatches = makeMountainVillageCliffPatches(chunk, baseHeight, terrainHeightForChunk);
-  const cabinCount = chunk.lod === "near" ? 8 : 5;
-  const cabins = new Array<MountainVillageCabin>(cabinCount);
-  const roofColorOffset = Math.floor(survivalHash01(chunk.cx, chunk.cz, 4610) * MOUNTAIN_CABIN_ROOF_COLORS.length);
-
-  for (let index = 0; index < cabinCount; index += 1) {
-    const angle = (Math.PI * 2 * index) / cabinCount + 0.28 + survivalHash01(chunk.cx, chunk.cz, 4480) * 0.2;
-    const ring = 59 + (index % 2) * 12 + survivalHash01(chunk.cx, chunk.cz, 4510 + index) * 7;
-    const width = 17 + survivalHash01(chunk.cx, chunk.cz, 4540 + index) * 7;
-    const depth = 15 + survivalHash01(chunk.cx, chunk.cz, 4570 + index) * 6;
-    const height = 9 + survivalHash01(chunk.cx, chunk.cz, 4600 + index) * 4;
-
-    cabins[index] = {
-      key: `${chunk.key}-mountain-cabin-${index}`,
-      localX: Math.sin(angle) * ring,
-      localZ: Math.cos(angle) * ring,
-      rotation: angle + Math.PI,
-      width,
-      depth,
-      height,
-      bodyColor: MOUNTAIN_CABIN_BODY_COLORS[index % MOUNTAIN_CABIN_BODY_COLORS.length],
-      roofColor: MOUNTAIN_CABIN_ROOF_COLORS[(index + roofColorOffset) % MOUNTAIN_CABIN_ROOF_COLORS.length],
-      accentColor: MOUNTAIN_CABIN_ACCENT_COLORS[index % MOUNTAIN_CABIN_ACCENT_COLORS.length],
-    };
-  }
+  const cabins = makeMountainVillageCabins(chunk);
   const includeMineshaftLayout = options.includeMineshaftLayout ?? true;
   const interiorHuts = includeMineshaftLayout
     ? makeMountainMineshaftHuts(chunk, baseHeight, summitY)
