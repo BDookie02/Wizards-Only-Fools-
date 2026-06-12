@@ -6,7 +6,7 @@ import {
   getLilyCoilQuestSpawn,
   useGameStore,
 } from "../../../../store/gameStore";
-import { getRuntimeRandomUnit } from "../../random/runtimeRandom";
+import { getRuntimeRandomUnit, makeRuntimeRandomId } from "../../random/runtimeRandom";
 import { readManualFastTravelSpawn } from "../../../tools/manualFastTravelSpawn";
 import { getBaseVillageTerrainHeight } from "../terrain/BaseVillageTerrain";
 import { QA_AUTHORED_VILLAGE_SAFE_LOCAL_Z, parseSurvivalChunkCoordsParam } from "./survivalPosition";
@@ -286,7 +286,7 @@ function getRandomSurvivalWorldSpawn(): QaSurvivalSpawn | null {
   const { cx, cz } = getRandomSurvivalSpawnChunk();
   const localX = getRandomSignedLocalSpawnOffset();
   const localZ = getRandomSignedLocalSpawnOffset();
-  const rollKey = `${Date.now().toString(36)}-${Math.floor(getRandomUnit() * 0xffffff).toString(36)}`;
+  const rollKey = makeRuntimeRandomId("roll", 6);
   randomSurvivalSpawn = getSurvivalChunkSpawn(cx, cz, `random-survival:${gameMode}:${rollKey}`, {
     y: RANDOM_SURVIVAL_SPAWN_Y,
     localX,
