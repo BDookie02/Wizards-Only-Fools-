@@ -57,7 +57,7 @@ import { isQuestNpcEditorTarget } from "./ui/hud/questNpcEditorGuard";
 import { dispatchEnginePlaceableSignal, subscribeEnginePlaceableEvent } from "./systems/placeables/enginePlaceableEvents";
 import { cycleOption, formatCharacterOption, wrapIndex } from "./ui/hud/hudSettingsUtils";
 import { useHudLobbyMessageCleanup } from "./ui/hud/useHudLobbyMessageCleanup";
-import { clampMenuIndex, findDirectionalMenuIndex, type MenuDirection } from "./ui/hud/hudMenuNavigation";
+import { clampMenuIndex, findDirectionalMenuIndex, getHudMenuNowMs, type MenuDirection } from "./ui/hud/hudMenuNavigation";
 import {
   clearHudEnginePlaceables,
   deleteHudEnginePlacedObject,
@@ -147,10 +147,6 @@ import { getDecayedRunePower, RUNE_POWER_DECAY_INTERVAL_MS } from "./systems/spe
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
-}
-
-export function getHudMenuNowMs() {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
 let hudCommandConsoleModulePromise: Promise<typeof import("./ui/hud/hudCommandConsole")> | null = null;
