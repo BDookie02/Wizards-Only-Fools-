@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useMemo } from "react";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
-import type { CharacterCustomization } from "../../../../store/gameStore";
 import { AvatarBillboard, AvatarWorldFacingPlane, NPC_AVATAR_GROUND_LIFT, NPC_AVATAR_SCALE } from "../../../PixelAvatar";
 import { getCachedIndexRange } from "../../rendering/indexRange";
 import { getSurvivalTerrainDetailTexture } from "../terrain/survivalTerrainTextures";
@@ -28,6 +27,11 @@ import {
   getChapelSideWingPewLayout,
   getYawForPewFacingTarget,
 } from "./survivalGraveyardChapelLayout";
+import {
+  CHAPEL_NPC_CHARACTERS,
+  CHAPEL_POPE_CHARACTER,
+  type ChapelCharacterCustomization,
+} from "./survivalGraveyardChapelCharacters";
 import { ChapelCrack, ChapelGiantGothicWindow, createChapelStoneBrickTexture } from "./survivalGraveyardChapelDetails";
 import { GraveyardPathStones, GraveyardSpikedFence } from "./survivalGraveyardVillageGroundProps";
 import { GraveyardTombs } from "./survivalGraveyardVillageTombs";
@@ -397,134 +401,11 @@ function clampChapelNpcSeatPosition(x: number, z: number): [number, number] {
   ];
 }
 
-const CHAPEL_NPC_CHARACTERS: CharacterCustomization[] = [
-  {
-    skinColor: "#c68a5c",
-    topColor: "#5b2f2a",
-    pantsColor: "#242126",
-    shoesColor: "#2c2116",
-    hatColor: "#5b2f2a",
-    hairColor: "#2b160d",
-    facialHairColor: "#2b160d",
-    topStyle: "tunic",
-    pantsStyle: "pants",
-    shoesStyle: "boots",
-    hatStyle: "none",
-    hairStyle: "short",
-    facialHairStyle: "none",
-    eyeStyle: "calm",
-    mouthStyle: "neutral",
-  },
-  {
-    skinColor: "#8f5f3f",
-    topColor: "#2e4a63",
-    pantsColor: "#334155",
-    shoesColor: "#1f2937",
-    hatColor: "#2e4a63",
-    hairColor: "#1b130d",
-    facialHairColor: "#1b130d",
-    topStyle: "vest",
-    pantsStyle: "skirt",
-    shoesStyle: "shoes",
-    hatStyle: "none",
-    hairStyle: "bob",
-    facialHairStyle: "none",
-    eyeStyle: "content",
-    mouthStyle: "smile",
-  },
-  {
-    skinColor: "#d39a6b",
-    topColor: "#4f5830",
-    pantsColor: "#3f3f2b",
-    shoesColor: "#2a1f16",
-    hatColor: "#4f5830",
-    hairColor: "#4a2b18",
-    facialHairColor: "#4a2b18",
-    topStyle: "simple",
-    pantsStyle: "pants",
-    shoesStyle: "boots",
-    hatStyle: "none",
-    hairStyle: "long",
-    facialHairStyle: "mustache",
-    eyeStyle: "dull",
-    mouthStyle: "neutral",
-  },
-  {
-    skinColor: "#b97850",
-    topColor: "#51365f",
-    pantsColor: "#312e42",
-    shoesColor: "#27212f",
-    hatColor: "#51365f",
-    hairColor: "#24160f",
-    facialHairColor: "#24160f",
-    topStyle: "tunic",
-    pantsStyle: "robe",
-    shoesStyle: "sandals",
-    hatStyle: "none",
-    hairStyle: "spikes",
-    facialHairStyle: "goatee",
-    eyeStyle: "sus",
-    mouthStyle: "frown",
-  },
-  {
-    skinColor: "#e0aa79",
-    topColor: "#6a4a30",
-    pantsColor: "#4b3b24",
-    shoesColor: "#2c2116",
-    hatColor: "#6a4a30",
-    hairColor: "#5d351e",
-    facialHairColor: "#5d351e",
-    topStyle: "vest",
-    pantsStyle: "shorts",
-    shoesStyle: "boots",
-    hatStyle: "none",
-    hairStyle: "short",
-    facialHairStyle: "beard",
-    eyeStyle: "happy",
-    mouthStyle: "smile",
-  },
-  {
-    skinColor: "#9f6d4b",
-    topColor: "#273f35",
-    pantsColor: "#1f2f25",
-    shoesColor: "#161d18",
-    hatColor: "#273f35",
-    hairColor: "#19110b",
-    facialHairColor: "#19110b",
-    topStyle: "simple",
-    pantsStyle: "skirt",
-    shoesStyle: "barefoot",
-    hatStyle: "none",
-    hairStyle: "bob",
-    facialHairStyle: "none",
-    eyeStyle: "nervous",
-    mouthStyle: "neutral",
-  },
-];
-
-const CHAPEL_POPE_CHARACTER: CharacterCustomization = {
-  skinColor: "#f5d0a8",
-  topColor: "#fff8e7",
-  pantsColor: "#f5f0dc",
-  shoesColor: "#d4af37",
-  hatColor: "#f4f1e8",
-  hairColor: "#f8fafc",
-  facialHairColor: "#f8fafc",
-  topStyle: "robe",
-  pantsStyle: "robe",
-  shoesStyle: "shoes",
-  hatStyle: "none",
-  hairStyle: "short",
-  facialHairStyle: "none",
-  eyeStyle: "calm",
-  mouthStyle: "neutral",
-};
-
 type ChapelNpcPlacement = {
   key: string;
   position: [number, number, number];
   yaw: number;
-  character: CharacterCustomization;
+  character: ChapelCharacterCustomization;
 };
 
 const CHAPEL_CENTER_NPC_SEAT_Y = 2.98 + NPC_AVATAR_GROUND_LIFT;
@@ -581,7 +462,7 @@ function ChapelSeatedNpc({
 }: {
   position: [number, number, number];
   yaw: number;
-  character: CharacterCustomization;
+  character: ChapelCharacterCustomization;
 }) {
   return (
     <group position={position} scale={[NPC_AVATAR_SCALE, NPC_AVATAR_SCALE, NPC_AVATAR_SCALE]} name="chapel-pew-npc">
