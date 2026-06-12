@@ -2,9 +2,12 @@ import { useCallback, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLazyRef } from "../../systems/react/useLazyRef";
 import {
+  QA_SURVIVAL_ROUTE_REACH_DISTANCE,
+  QA_SURVIVAL_ROUTE_WAYPOINT_SECONDS,
   getQaSurvivalWalkStartDelaySeconds,
   isQaSurvivalWalkEnabled,
   type QaSurvivalIntent,
+  type QaSurvivalRouteWaypoint,
   type QaSurvivalWalkInputState,
 } from "./survivalWalkQa";
 
@@ -17,6 +20,48 @@ const DEFAULT_QA_WALK_INPUT: QaSurvivalWalkInputState = {
   sprint: false,
   mode: "travel",
 };
+
+export function resolveQaWalkRouteWaypoint({
+  active,
+  elapsedSeconds,
+  position,
+  routeIndex,
+  waypoints,
+  reachDistance = QA_SURVIVAL_ROUTE_REACH_DISTANCE,
+  waypointSeconds = QA_SURVIVAL_ROUTE_WAYPOINT_SECONDS,
+}: {
+  active: boolean;
+  elapsedSeconds: number;
+  position: { x: number; z: number };
+  routeIndex: number;
+  waypoints: QaSurvivalRouteWaypoint[];
+  reachDistance?: number;
+  waypointSeconds?: number;
+}) {
+  if (!active || waypoints.length <= 0) return null;
+
+  let nextRouteIndex = routeIndex;
+  let target = waypoints[nextRouteIndex % waypoints.length];
+  let guard = 0;
+  const routeReachDistanceSq = reachDistance * reachDistance;
+  while (
+    guard < waypoints.length &&
+    (target.x - position.x) * (target.x - position.x) + (target.z - position.z) * (target.z - position.z) < routeReachDistanceSq
+  ) {
+    nextRouteIndex = (nextRouteIndex + 1) % waypoints.length;
+    target = waypoints[nextRouteIndex % waypoints.length];
+    guard += 1;
+  }
+
+  return {
+    routeIndex: nextRouteIndex,
+    waypoint: {
+      x: target.x,
+      z: target.z,
+      expiresAt: elapsedSeconds + waypointSeconds,
+    },
+  };
+}
 
 function useLazyVector3Ref(): LazyVector3Ref {
   const vectorRef = useRef<THREE.Vector3 | null>(null);

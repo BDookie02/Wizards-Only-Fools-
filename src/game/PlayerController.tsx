@@ -86,7 +86,6 @@ import {
   QA_SURVIVAL_RECOVERY_TURN_RATE,
   QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
-  QA_SURVIVAL_ROUTE_WAYPOINT_SECONDS,
   QA_SURVIVAL_ROUTE_YAW_SMOOTH_RATE,
   QA_SURVIVAL_ROUTE_YAW_SNAP_DELTA,
   QA_SURVIVAL_STUCK_CHECK_SECONDS,
@@ -127,7 +126,7 @@ import {
   type QaSurvivalIntentKind,
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
-import { useQaSurvivalWalkRuntimeState } from "./tools/qa/survivalWalkQaRuntime";
+import { resolveQaWalkRouteWaypoint, useQaSurvivalWalkRuntimeState } from "./tools/qa/survivalWalkQaRuntime";
 import {
   clearSurvivalWalkRouteTelemetry,
   getSurvivalWalkSpellDummyHitCount,
@@ -1552,28 +1551,19 @@ export function PlayerController() {
         };
       };
       const setRouteWaypoint = () => {
-        if (!qaRouteActive) return false;
+        const routeSelection = resolveQaWalkRouteWaypoint({
+          active: qaRouteActive,
+          elapsedSeconds: elapsed,
+          position: pos,
+          routeIndex: qaWalkRouteIndex.current,
+          waypoints: qaRouteWaypoints,
+        });
+        if (!routeSelection) return false;
         qaWalkIntent.current = null;
         qaWalkInspectUntil.current = 0;
         qaWalkNextInspectAt.current = elapsed + 999;
-
-        let target = qaRouteWaypoints[qaWalkRouteIndex.current % qaRouteWaypoints.length];
-        let guard = 0;
-        const routeReachDistanceSq = QA_SURVIVAL_ROUTE_REACH_DISTANCE * QA_SURVIVAL_ROUTE_REACH_DISTANCE;
-        while (
-          guard < qaRouteWaypoints.length &&
-          (target.x - pos.x) * (target.x - pos.x) + (target.z - pos.z) * (target.z - pos.z) < routeReachDistanceSq
-        ) {
-          qaWalkRouteIndex.current = (qaWalkRouteIndex.current + 1) % qaRouteWaypoints.length;
-          target = qaRouteWaypoints[qaWalkRouteIndex.current % qaRouteWaypoints.length];
-          guard += 1;
-        }
-
-        qaWalkWaypoint.current = {
-          x: target.x,
-          z: target.z,
-          expiresAt: elapsed + QA_SURVIVAL_ROUTE_WAYPOINT_SECONDS,
-        };
+        qaWalkRouteIndex.current = routeSelection.routeIndex;
+        qaWalkWaypoint.current = routeSelection.waypoint;
         return true;
       };
       const intentDistance = (intent: QaSurvivalIntent | null) => intent
