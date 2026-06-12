@@ -3,6 +3,7 @@ import {
   MULTIPLAYER_DEFAULT_CUSTOM_LOBBY_MAX_PLAYERS,
   MULTIPLAYER_DEFAULT_SURVIVAL_MAX_PLAYERS,
 } from '../game/network/multiplayerSessionConfig';
+import { getRuntimeRandomUnit } from '../game/systems/random/runtimeRandom';
 
 export type SpellType = 'fireball' | 'iceshard' | 'arcanebeam' | 'healspell' | 'icespell' | 'ringsofpower' | 'lightning' | 'smokebomb' | 'portal' | 'blink' | 'grab' | 'tornado' | 'meteorshower' | 'flamethrower' | 'discshield' | 'orbshield' | 'kunai' | 'healingcrystals' | 'magicarmor' | 'jumpboost' | 'speedboost' | 'tungstonballsack' | 'sleep' | 'poison' | 'acid' | 'magicglassorb';
 export type HandType = 'left' | 'right';
@@ -915,9 +916,22 @@ function getInitialAspectRatio() {
   }
 }
 
+export function getGameStoreRandomUnit() {
+  return getRuntimeRandomUnit();
+}
+
+export function getGameStoreRandomIndex(length: number) {
+  if (!Number.isFinite(length) || length <= 0) return -1;
+  return Math.floor(getGameStoreRandomUnit() * Math.floor(length));
+}
+
+function getGameStoreRandomBase36Suffix() {
+  return getGameStoreRandomUnit().toString(36).slice(2, 8);
+}
+
 function makeLobbyMessage(text: string, tone: LobbyMessageTone = 'system'): LobbyMessage {
   return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: `${Date.now()}-${getGameStoreRandomBase36Suffix()}`,
     text,
     tone,
     createdAt: Date.now(),
@@ -928,7 +942,7 @@ function makeQuestId(prefix: string) {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
   }
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${prefix}-${Date.now().toString(36)}-${getGameStoreRandomBase36Suffix()}`;
 }
 
 export function makeQuestScriptPointId() {
@@ -1601,7 +1615,7 @@ function pickAvailableSpellQuest(
   }
 
   const pool = unassignedLocked.length > 0 ? unassignedLocked : locked;
-  const selected = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : null;
+  const selected = pool.length > 0 ? pool[getGameStoreRandomIndex(pool.length)] : null;
   unlockedSpells.clear();
   activeAssignments.clear();
   unassignedLocked.length = 0;
@@ -3337,7 +3351,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           messages.push('No locked spells remain');
           continue;
         }
-        const spell = lockedSpells[Math.floor(Math.random() * lockedSpells.length)];
+        const spell = lockedSpells[getGameStoreRandomIndex(lockedSpells.length)];
         questUnlockedSpells = [...questUnlockedSpells, spell];
         spellQuestAssignments = completeAssignmentsForSpell(spellQuestAssignments, spell);
         messages.push(`Gamble unlocked ${spell}`);
