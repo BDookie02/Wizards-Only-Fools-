@@ -13,7 +13,6 @@ import {
   useMountainVillageDetailPhase,
 } from "./mountainVillageDetailPhase";
 import { MountainCabinView } from "./mountainVillageCabinView";
-import type { MountainVillageCliffPatch } from "./mountainVillageLayoutRuntime";
 import { MountainMineshaftCatwalkRingView } from "./mountainVillageMineshaftCatwalk";
 import { MountainMineshaftMiniHutView } from "./mountainVillageMineshaftHut";
 import { MountainMineshaftLadderView } from "./mountainVillageMineshaftLadder";
@@ -25,31 +24,11 @@ import { MountainSnowCapView } from "./mountainVillageSnowCap";
 import { MountainSlopeGrassView } from "./mountainVillageSlopeGrassView";
 import { makeMountainVillageLayout, type MountainVillageLayout } from "./mountainVillageSceneLayout";
 import { MountainVillageColliders } from "./mountainVillageColliders";
+import { MountainCliffBreakupView } from "./mountainVillageCliffBreakup";
 
 type SurvivalTerrainHeightForChunk = (chunk: SurvivalChunkInfo, localX: number, localZ: number) => number;
 type SurvivalTerrainColorAtWorld = (worldX: number, worldZ: number, height: number) => THREE.Color;
 type SurvivalVillageBaseHeightForChunk = (chunk: SurvivalChunkInfo) => number;
-
-function MountainCliffBreakup({ patches, showDetails }: { patches: MountainVillageCliffPatch[]; showDetails: boolean }) {
-  if (!showDetails) return null;
-
-  return (
-    <group name="mountain-village-cliff-breakup">
-      {patches.map((patch) => (
-        <mesh
-          key={patch.key}
-          position={[patch.localX, patch.y, patch.localZ]}
-          rotation={[0, patch.yaw, patch.roll]}
-          castShadow={false}
-          receiveShadow={showDetails}
-        >
-          <boxGeometry args={[patch.width, patch.thickness, patch.depth]} />
-          <meshStandardMaterial color={patch.color} roughness={1} metalness={0} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
 
 function MountainMineshaftInterior({ layout, showDetails }: { layout: MountainVillageLayout; showDetails: boolean }) {
   return (
@@ -130,7 +109,7 @@ export function SurvivalMountainVillage({
         <MountainSlopeGrassView chunk={chunk} baseHeight={baseHeight} active={showDetails} terrainHeightForChunk={terrainHeightForChunk} terrainColorAtWorld={terrainColorAtWorld} />
         {layout && (
           <>
-            <MountainCliffBreakup patches={layout.cliffPatches} showDetails={showTrailAndCabinDetails} />
+            <MountainCliffBreakupView patches={layout.cliffPatches} showDetails={showTrailAndCabinDetails} />
             <MountainSnowCapView summitY={layout.summitY} showDetails={showTrailAndCabinDetails} />
             <MountainVillageTrailView
               trailSegments={layout.trailSegments}
