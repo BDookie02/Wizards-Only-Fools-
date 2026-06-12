@@ -1,13 +1,10 @@
 import { useEffect } from "react";
 import {
   getExpiredLobbyMessageIds,
+  getHudLobbyMessageCleanupNowMs,
   getLobbyMessageCleanupDelay,
   type HudLobbyMessageLifetime,
 } from "./hudLobbyMessageRuntime";
-
-export function getHudLobbyMessageCleanupNowMs() {
-  return Date.now();
-}
 
 export function useHudLobbyMessageCleanup(
   messages: readonly HudLobbyMessageLifetime[],

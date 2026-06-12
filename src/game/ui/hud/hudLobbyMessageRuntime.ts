@@ -5,6 +5,10 @@ export type HudLobbyMessageLifetime = Readonly<{
   createdAt: number;
 }>;
 
+export function getHudLobbyMessageCleanupNowMs() {
+  return Date.now();
+}
+
 export function getExpiredLobbyMessageIds(
   messages: readonly HudLobbyMessageLifetime[],
   now: number,
