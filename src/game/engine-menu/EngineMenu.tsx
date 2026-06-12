@@ -11,12 +11,9 @@ import {
 } from "../systems/placeables/placeableCatalog";
 import { getDefaultPlaceableGridSize } from "../systems/placeables/placementRules";
 import { dispatchEnginePlaceableEvent, subscribeEnginePlaceableEvent } from "../systems/placeables/enginePlaceableEvents";
-import { GAME_SYSTEM_CATALOG } from "../systems/systemCatalog";
 import {
   createEngineMenuPlacementOptions,
   createEngineMenuSlotLookup,
-  ENGINE_MENU_SLOT_IDS,
-  formatEngineMenuSlotTime,
   getEngineMenuSlotLabel,
   getEnginePlaceableCategoryCounts,
   getFilteredEnginePlaceables,
@@ -30,6 +27,9 @@ import {
   type EnginePlacedObjectSummary,
 } from "./engineMenuRuntime";
 import { EngineMenuPlaceableCard } from "./EngineMenuPlaceableCard";
+import { EngineMenuPlacedObjectsPanel } from "./EngineMenuPlacedObjectsPanel";
+import { EngineMenuSaveSlotsPanel } from "./EngineMenuSaveSlotsPanel";
+import { EngineMenuSystemsPanel } from "./EngineMenuSystemsPanel";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -393,189 +393,31 @@ export function EngineMenu({
               >
                 Clear Placed
               </button>
-              <div className="mt-3 border-t border-cyan-100/15 pt-2">
-                <div className="text-[8px] tracking-[0.22em] text-cyan-100/70">Placed Objects</div>
-                <div className="mt-2 flex max-h-28 flex-col gap-1 overflow-y-auto pr-1">
-                  {placedObjects.length === 0 ? (
-                    <div className="border border-cyan-100/10 bg-black/20 px-2 py-2 text-[7px] leading-4 tracking-[0.12em] text-cyan-100/35 normal-case">
-                      No editor objects placed.
-                    </div>
-                  ) : placedObjects.map((object, index) => {
-                    const selectedObject = selectedPlacedObjectId === object.instanceId;
-                    return (
-                      <button
-                        key={object.instanceId}
-                        type="button"
-                        data-testid={`engine-placed-object-${index}`}
-                        className={cn(
-                          "border px-2 py-2 text-left text-[7px] leading-4 tracking-[0.12em]",
-                          selectedObject
-                            ? "border-yellow-200 bg-yellow-200/14 text-yellow-50"
-                            : "border-cyan-100/15 bg-black/24 text-cyan-50/60 hover:border-cyan-100/40"
-                        )}
-                        onClick={() => setSelectedPlacedObjectId(object.instanceId)}
-                      >
-                        <span className="block truncate text-[8px] tracking-widest">{object.label}</span>
-                        <span className="block text-cyan-100/42">
-                          X {Math.round(object.x)} Z {Math.round(object.z)}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-2 grid grid-cols-3 gap-1">
-                  <button
-                    type="button"
-                    data-testid="engine-preview-placed-object"
-                    className={cn(
-                      "border px-1.5 py-2 text-[7px] tracking-widest",
-                      selectedPlacedObject
-                        ? "border-cyan-100/35 bg-black/30 text-cyan-50/75"
-                        : "border-cyan-100/10 bg-black/20 text-cyan-100/25"
-                    )}
-                    disabled={!selectedPlacedObject}
-                    onClick={() => selectedPlacedObject && onPreviewPlacedObject(selectedPlacedObject, makePlacementOptions({
-                      x: selectedPlacedObject.x,
-                      y: selectedPlacedObject.y,
-                      z: selectedPlacedObject.z,
-                      yaw: selectedPlacedObject.yaw,
-                      replaceInstanceId: selectedPlacedObject.instanceId,
-                    }))}
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="engine-move-placed-object"
-                    className={cn(
-                      "border px-1.5 py-2 text-[7px] tracking-widest",
-                      selectedPlacedObject
-                        ? "border-yellow-200/60 bg-yellow-200/12 text-yellow-50"
-                        : "border-cyan-100/10 bg-black/20 text-cyan-100/25"
-                    )}
-                    disabled={!selectedPlacedObject}
-                    onClick={() => selectedPlacedObject && onMovePlacedObject(selectedPlacedObject, makePlacementOptions({
-                      replaceInstanceId: selectedPlacedObject.instanceId,
-                    }))}
-                  >
-                    Move
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="engine-delete-placed-object"
-                    className={cn(
-                      "border px-1.5 py-2 text-[7px] tracking-widest",
-                      selectedPlacedObject
-                        ? "border-red-200/40 bg-red-500/10 text-red-100/80"
-                        : "border-cyan-100/10 bg-black/20 text-cyan-100/25"
-                    )}
-                    disabled={!selectedPlacedObject}
-                    onClick={() => selectedPlacedObject && onDeletePlacedObject(selectedPlacedObject.instanceId)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-              <div className="mt-3 border-t border-cyan-100/15 pt-2">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-[8px] tracking-[0.22em] text-cyan-100/70">Save Slots</div>
-                  <div className="text-[7px] tracking-[0.16em] text-cyan-100/35">
-                    {slotSummaries.length}/{ENGINE_MENU_SLOT_IDS.length}
-                  </div>
-                </div>
-                <div className="mt-2 grid grid-cols-3 gap-1">
-                  {ENGINE_MENU_SLOT_IDS.map((slotId) => {
-                    const summary = getSelectedEngineSlot(slotLookup, slotId);
-                    const selectedSlotButton = selectedSlotId === slotId;
-                    return (
-                      <button
-                        key={slotId}
-                        type="button"
-                        data-testid={`engine-slot-${slotId}`}
-                        className={cn(
-                          "min-h-[44px] border px-1.5 py-1.5 text-left tracking-[0.12em]",
-                          selectedSlotButton
-                            ? "border-yellow-200 bg-yellow-200/14 text-yellow-50"
-                            : "border-cyan-100/15 bg-black/24 text-cyan-50/60 hover:border-cyan-100/40"
-                        )}
-                        onClick={() => selectSlot(slotId)}
-                      >
-                        <span className="block truncate text-[7px] tracking-widest">{summary?.label ?? getEngineMenuSlotLabel(slotId)}</span>
-                        <span className="block text-[6px] text-cyan-100/42">
-                          {summary ? `${summary.count} saved` : "Empty"}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <input
-                  data-testid="engine-slot-label"
-                  className="mt-2 w-full border border-cyan-100/20 bg-black/35 px-2 py-2 text-[8px] tracking-[0.14em] text-cyan-50 outline-none placeholder:text-cyan-100/25"
-                  value={slotLabel}
-                  maxLength={36}
-                  placeholder="Slot label"
-                  onChange={(event) => setSlotLabel(event.target.value)}
-                />
-                <div className="mt-2 grid grid-cols-3 gap-1">
-                  <button
-                    type="button"
-                    data-testid="engine-save-slot"
-                    className="border border-emerald-200/40 bg-emerald-400/10 px-1.5 py-2 text-[7px] tracking-widest text-emerald-50/85 hover:bg-emerald-300/16"
-                    onClick={requestSlotSave}
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="engine-load-slot"
-                    className={cn(
-                      "border px-1.5 py-2 text-[7px] tracking-widest",
-                      selectedSlot
-                        ? "border-cyan-100/35 bg-cyan-300/10 text-cyan-50/85 hover:bg-cyan-300/16"
-                        : "border-cyan-100/10 bg-black/20 text-cyan-100/25"
-                    )}
-                    disabled={!selectedSlot}
-                    onClick={requestSlotLoad}
-                  >
-                    Load
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="engine-delete-slot"
-                    className={cn(
-                      "border px-1.5 py-2 text-[7px] tracking-widest",
-                      selectedSlot
-                        ? "border-red-200/40 bg-red-500/10 text-red-100/80 hover:bg-red-500/16"
-                        : "border-cyan-100/10 bg-black/20 text-cyan-100/25"
-                    )}
-                    disabled={!selectedSlot}
-                    onClick={requestSlotDelete}
-                  >
-                    Delete
-                  </button>
-                </div>
-                <div className="mt-1 truncate text-[6px] tracking-[0.12em] text-cyan-100/35 normal-case">
-                  {selectedSlot ? `Saved ${formatEngineMenuSlotTime(selectedSlot.savedAt)}` : "Empty slot selected"}
-                </div>
-              </div>
+              <EngineMenuPlacedObjectsPanel
+                placedObjects={placedObjects}
+                selectedPlacedObject={selectedPlacedObject}
+                selectedPlacedObjectId={selectedPlacedObjectId}
+                onSelectPlacedObjectId={setSelectedPlacedObjectId}
+                onPreviewPlacedObject={onPreviewPlacedObject}
+                onMovePlacedObject={onMovePlacedObject}
+                onDeletePlacedObject={onDeletePlacedObject}
+                makePlacementOptions={makePlacementOptions}
+              />
+              <EngineMenuSaveSlotsPanel
+                slotSummaries={slotSummaries}
+                slotLookup={slotLookup}
+                selectedSlot={selectedSlot}
+                selectedSlotId={selectedSlotId}
+                slotLabel={slotLabel}
+                onSelectSlot={selectSlot}
+                onSlotLabelChange={setSlotLabel}
+                onSaveSlot={requestSlotSave}
+                onLoadSlot={requestSlotLoad}
+                onDeleteSlot={requestSlotDelete}
+              />
             </div>
 
-            <div className="min-h-0 min-w-0 overflow-hidden">
-              <div className="mb-2 text-[10px] tracking-[0.24em] text-cyan-100">Systems</div>
-              <div className="flex max-h-full flex-col gap-2 overflow-y-auto pr-1">
-              {GAME_SYSTEM_CATALOG.map((system) => (
-                <div key={system.id} className="border border-cyan-100/15 bg-cyan-200/5 p-2">
-                  <div className="text-[9px] tracking-widest text-yellow-100">{system.name}</div>
-                  <div className="mt-1 break-words text-[7px] leading-4 tracking-[0.12em] text-cyan-100/55 normal-case">
-                    {system.responsibility}
-                  </div>
-                  <div className="mt-1 truncate text-[7px] tracking-[0.14em] text-cyan-100/35">
-                    {system.extractionTarget}
-                  </div>
-                </div>
-              ))}
-              </div>
-            </div>
+            <EngineMenuSystemsPanel />
           </div>
         </div>
 
