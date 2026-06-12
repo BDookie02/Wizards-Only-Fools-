@@ -34,7 +34,7 @@ import {
   getCachedSpellProjectileTextures,
   preloadSpellProjectileTextures,
 } from "./spellProjectileAssets";
-import { getProjectileHand } from "./spellProjectileMath";
+import { getProjectileHand, getSeededRandom } from "./spellProjectileMath";
 import { useProjectileLifetime } from "./spellProjectileLifetime";
 import {
   isLocalNetworkPlayerId,
@@ -851,17 +851,18 @@ export function Kunai({ projectile }: { projectile: Projectile }) {
   );
 }
 
-function LightningArc({ offset }: { offset: number }) {
+function LightningArc({ offset, seed }: { offset: number; seed: string }) {
   const points = useMemo(() => {
+    const random = getSeededRandom(`${seed}:${offset}`);
     const pts = [];
     let startY = 50;
-    while(startY > -2) {
-      pts.push(new THREE.Vector3((Math.random() - 0.5) * 4 + offset * 2, startY, (Math.random() - 0.5) * 4));
-      startY -= Math.random() * 8 + 4;
+    while (startY > -2) {
+      pts.push(new THREE.Vector3((random() - 0.5) * 4 + offset * 2, startY, (random() - 0.5) * 4));
+      startY -= random() * 8 + 4;
     }
     pts.push(new THREE.Vector3(offset * 2, -2, 0));
     return pts;
-  }, [offset]);
+  }, [offset, seed]);
 
   const curve = useMemo(() => new THREE.CatmullRomCurve3(points), [points]);
 
@@ -880,6 +881,7 @@ export function Lightning({ projectile }: { projectile: Projectile }) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const textureUniforms = useProjectileTextureUniform(textures[0]);
   useAnimatedProjectileTexture(materialRef, textures, 12.5);
+  const arcSeed = `${projectile.id}:${projectile.createdAt ?? 0}`;
 
   useEffect(() => {
     if (isLocalProjectileCreator(projectile)) {
@@ -895,9 +897,9 @@ export function Lightning({ projectile }: { projectile: Projectile }) {
 
   return (
     <group position={[projectile.pos.x, projectile.pos.y, projectile.pos.z]}>
-      <LightningArc offset={0} />
-      <LightningArc offset={1} />
-      <LightningArc offset={-1} />
+      <LightningArc offset={0} seed={arcSeed} />
+      <LightningArc offset={1} seed={arcSeed} />
+      <LightningArc offset={-1} seed={arcSeed} />
       <Billboard>
         <mesh position={[0, -1, 0]}>
           <planeGeometry args={[15, 15]} />
