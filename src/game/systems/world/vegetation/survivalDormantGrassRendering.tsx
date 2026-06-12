@@ -1,7 +1,7 @@
 ﻿import { useFrame } from "@react-three/fiber";
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { SURVIVAL_BLOCK_SIZE, useGameStore, type SurvivalBiome } from "../../../../store/gameStore";
+import { SURVIVAL_BLOCK_SIZE, useGameStore } from "../../../../store/gameStore";
 import { isSurvivalGrassInspectionView } from "../../../tools/qa/survivalGrassDebug";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
 import {
@@ -103,7 +103,6 @@ import {
   splitSurvivalFlowersByBloomType,
   type SurvivalFlowerBloomType,
 } from "./survivalFlowerGrouping";
-import { getDormantSurvivalGrassResolvers } from "./survivalDormantGrassResolvers";
 import {
   ensureSurvivalInstancedMeshColors,
   finalizeSurvivalInstancedMesh,
@@ -122,6 +121,23 @@ import {
   publishSurvivalTutorialGrassDebugSummary,
   publishSurvivalTutorialGrassTelemetry,
 } from "./survivalDormantGrassTelemetry";
+import {
+  getSurvivalBotwGrassFootprintStats,
+  getSurvivalChunkGrassSurfaceBiome,
+  getSurvivalChunkInfoAtWorld,
+  getSurvivalGrassBladeColor,
+  getSurvivalGrassDebugRejectionSummary,
+  getSurvivalGrassSurfaceBiome,
+  getSurvivalGrassSurfaceHeightAtWorld,
+  getSurvivalGrassSurfaceHeightForChunk,
+  getSurvivalGrassSurfaceNormalForChunk,
+  getSurvivalIntegratedGrassBladeColor,
+  getSurvivalLocalGrassPlacement,
+  getSurvivalSmoothedTerrainColor,
+  getSurvivalTerrainHeightForChunk,
+  isSurvivalGrassAllowedAtChunkPoint,
+  isSurvivalGrassSubmergedAtWorldPoint,
+} from "./survivalDormantGrassSurface";
 
 export {
   configureDormantSurvivalGrassResolvers,
@@ -156,86 +172,6 @@ const SURVIVAL_TUTORIAL_GRASS_CARPET_MEADOW_LIGHT_COLOR = new THREE.Color("#a9e8
 const SURVIVAL_TUTORIAL_GRASS_STRAND_MEADOW_BASE_COLOR = new THREE.Color("#479c31");
 const SURVIVAL_TUTORIAL_GRASS_STRAND_MEADOW_TIP_COLOR = new THREE.Color("#84cf42");
 const SURVIVAL_TUTORIAL_GRASS_STRAND_MEADOW_SHADOW_TIP_COLOR = new THREE.Color("#56aa34");
-
-function getSurvivalChunkInfoAtWorld(worldX: number, worldZ: number) {
-  return getDormantSurvivalGrassResolvers().getChunkInfoAtWorld(worldX, worldZ);
-}
-
-function getSurvivalTerrainHeightForChunk(chunk: SurvivalChunkInfo, localX: number, localZ: number) {
-  return getDormantSurvivalGrassResolvers().getTerrainHeightForChunk(chunk, localX, localZ);
-}
-
-function getSurvivalGrassSurfaceHeightForChunk(chunk: SurvivalChunkInfo, localX: number, localZ: number) {
-  return getDormantSurvivalGrassResolvers().getGrassSurfaceHeightForChunk(chunk, localX, localZ);
-}
-
-function getSurvivalGrassSurfaceNormalForChunk(chunk: SurvivalChunkInfo, localX: number, localZ: number, sampleDistance?: number) {
-  return getDormantSurvivalGrassResolvers().getGrassSurfaceNormalForChunk(chunk, localX, localZ, sampleDistance);
-}
-
-function getSurvivalGrassSurfaceHeightAtWorld(worldX: number, worldZ: number) {
-  return getDormantSurvivalGrassResolvers().getGrassSurfaceHeightAtWorld(worldX, worldZ);
-}
-
-function getSurvivalChunkGrassSurfaceBiome(chunk: SurvivalChunkInfo) {
-  return getDormantSurvivalGrassResolvers().getChunkGrassSurfaceBiome(chunk);
-}
-
-function getSurvivalGrassSurfaceBiome(baseBiome: SurvivalBiome, worldX: number, worldZ: number, height: number) {
-  return getDormantSurvivalGrassResolvers().getGrassSurfaceBiome(baseBiome, worldX, worldZ, height);
-}
-
-function getSurvivalSmoothedTerrainColor(worldX: number, worldZ: number, height: number) {
-  return getDormantSurvivalGrassResolvers().getSmoothedTerrainColor(worldX, worldZ, height);
-}
-
-function getSurvivalGrassBladeColor(biome: SurvivalBiome, worldX: number, worldZ: number, height: number, variant: number) {
-  return getDormantSurvivalGrassResolvers().getGrassBladeColor(biome, worldX, worldZ, height, variant);
-}
-
-function getSurvivalIntegratedGrassBladeColor(
-  biome: SurvivalBiome,
-  worldX: number,
-  worldZ: number,
-  height: number,
-  variant: number,
-  terrainMix: number,
-) {
-  return getDormantSurvivalGrassResolvers().getIntegratedGrassBladeColor(biome, worldX, worldZ, height, variant, terrainMix);
-}
-
-function isSurvivalGrassAllowedAtChunkPoint(chunk: SurvivalChunkInfo, localX: number, localZ: number) {
-  return getDormantSurvivalGrassResolvers().isGrassAllowedAtChunkPoint(chunk, localX, localZ);
-}
-
-function isSurvivalGrassSubmergedAtWorldPoint(
-  chunk: SurvivalChunkInfo,
-  worldX: number,
-  worldZ: number,
-  terrainY: number,
-  shorelinePadding?: number,
-  footprintRadius?: number,
-) {
-  return getDormantSurvivalGrassResolvers().isGrassSubmergedAtWorldPoint(chunk, worldX, worldZ, terrainY, shorelinePadding, footprintRadius);
-}
-
-function getSurvivalBotwGrassFootprintStats(worldX: number, worldZ: number, radius: number) {
-  return getDormantSurvivalGrassResolvers().getBotwGrassFootprintStats(worldX, worldZ, radius);
-}
-
-function getSurvivalLocalGrassPlacement(
-  worldX: number,
-  worldZ: number,
-  submergeMargin: number,
-  footprintRadius = 0,
-  minNormalY = 0.58,
-) {
-  return getDormantSurvivalGrassResolvers().getLocalGrassPlacement(worldX, worldZ, submergeMargin, footprintRadius, minNormalY);
-}
-
-function getSurvivalGrassDebugRejectionSummary(worldX: number, worldZ: number) {
-  return getDormantSurvivalGrassResolvers().getGrassDebugRejectionSummary(worldX, worldZ);
-}
 
 type SurvivalGrassBlade = {
   key: string;
