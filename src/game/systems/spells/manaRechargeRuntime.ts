@@ -30,6 +30,10 @@ let manaRenderClockEpochOffsetMs: number | null = null;
 let cachedManaQaSearch = "";
 let cachedHideManaFlowersForQa = false;
 
+export function getManaRenderClockEpochNowMs() {
+  return Date.now();
+}
+
 export type BaseVillageRuneSourceVisibilityInput = {
   isSurvivalMode: boolean;
   playerX?: number;
@@ -105,10 +109,11 @@ export function getDecayedRunePower(state: RunePowerState): RunePowerDecayResult
 
 export function getEpochMsFromManaRenderClock(elapsedSeconds: number, sampledEpochNow?: number) {
   const elapsedMs = elapsedSeconds * 1000;
-  if (!Number.isFinite(elapsedMs)) return sampledEpochNow ?? Date.now();
+  const epochNowMs = sampledEpochNow ?? getManaRenderClockEpochNowMs();
+  if (!Number.isFinite(elapsedMs)) return epochNowMs;
 
   if (manaRenderClockEpochOffsetMs === null) {
-    manaRenderClockEpochOffsetMs = (sampledEpochNow ?? Date.now()) - elapsedMs;
+    manaRenderClockEpochOffsetMs = epochNowMs - elapsedMs;
   }
 
   return manaRenderClockEpochOffsetMs + elapsedMs;
