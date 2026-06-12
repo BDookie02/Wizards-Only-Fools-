@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { isMobilePerformanceMode } from "../../input/performanceMode";
 import type { SurvivalChunkInfo } from "./survivalWorldConfig";
+import { getSurvivalLoadStageNowMs } from "./survivalLoadStageRuntime";
 
 export type SurvivalScheduledBackgroundTask = {
   cancel: () => void;
@@ -83,10 +84,6 @@ export function scheduleSurvivalBackgroundTask(callback: () => void, timeout = 9
 }
 
 let survivalDecorationHeavyStageNextAt = 0;
-
-function getSurvivalLoadStageNowMs() {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
-}
 
 function reserveSurvivalDecorationHeavyStageDelay(stage: number) {
   if (stage < 3) return 0;
