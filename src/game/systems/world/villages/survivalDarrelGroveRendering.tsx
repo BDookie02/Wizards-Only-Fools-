@@ -28,6 +28,11 @@ import {
 import {
   DARREL_BACKYARD_RIVER_SEGMENTS,
   DARREL_BACKYARD_RIVER_STONES,
+  DARREL_BONSAI_BLOSSOM_CLUSTERS,
+  DARREL_BONSAI_BRANCHES,
+  DARREL_BONSAI_CANOPY_PADS,
+  DARREL_LEGACY_BONSAI_BLOSSOM_CLUSTERS,
+  DARREL_LEGACY_BONSAI_BRANCHES,
   DARREL_WATERFALL_HILL_STONES,
   DARREL_WATERFALL_MOSS_PADS,
   DARREL_WATERFALL_RIVER_FEED_CHANNELS,
@@ -161,67 +166,29 @@ function DarrelBonsaiTree({
 }) {
   const barkTexture = useMemo(() => getDarrelTexture("bark"), []);
   const leafTexture = useMemo(() => getDarrelTexture("leaf"), []);
-  const branches = [
-    [[0, 0, 0], [5, 8, -6], 5.2],
-    [[5, 8, -6], [2, 17, -18], 4.5],
-    [[2, 17, -18], [-4, 26, -33], 3.7],
-    [[-4, 26, -33], [1, 34, -52], 2.9],
-    [[1, 34, -52], [0, 40, -78], 2.25],
-    [[-1, 29, -40], [-24, 34, -55], 1.9],
-    [[2, 30, -42], [26, 34, -58], 1.85],
-    [[0, 36, -62], [-36, 39, -82], 1.45],
-    [[0, 36, -62], [36, 39, -84], 1.45],
-    [[0, 39, -76], [-28, 41, -102], 1.15],
-    [[0, 39, -76], [28, 41, -102], 1.15],
-    [[0, 40, -78], [0, 41, -116], 1.1],
-    [[2, 18, -20], [18, 22, -34], 1.7],
-    [[-2, 20, -22], [-20, 25, -36], 1.65],
-  ] as const;
-  const canopyPads = [
-    [-23, 39, -78, 27, 6.5, 18, -0.16],
-    [22, 39.5, -80, 29, 6.2, 19, 0.14],
-    [0, 41.5, -94, 36, 7.2, 22, 0],
-    [-18, 43, -108, 26, 5.5, 16, 0.22],
-    [18, 43, -110, 26, 5.5, 16, -0.22],
-    [0, 40, -126, 28, 4.8, 15, 0],
-    [-37, 36.5, -62, 19, 4.7, 13, -0.32],
-    [37, 36.5, -64, 19, 4.7, 13, 0.32],
-  ] as const;
-  const clusters = [
-    [-24, 43, -78, 9.6],
-    [22, 43, -80, 9.8],
-    [0, 46, -94, 11.4],
-    [-18, 47, -108, 9.2],
-    [18, 47, -110, 9.2],
-    [0, 44, -126, 10.6],
-    [-37, 40, -62, 8.2],
-    [37, 40, -64, 8.2],
-    [-12, 37, -42, 7.4],
-    [14, 38, -46, 7.4],
-  ] as const;
 
   return (
     <group position={position} rotation={[0, rotation, 0]} scale={scale}>
-      {branches.map(([start, end, radius], index) => (
+      {DARREL_BONSAI_BRANCHES.map((branch, index) => (
         <DarrelBranch
           key={index}
-          start={start as [number, number, number]}
-          end={end as [number, number, number]}
-          radius={radius}
+          start={branch.start}
+          end={branch.end}
+          radius={branch.radius}
           texture={barkTexture}
         />
       ))}
-      {canopyPads.map(([x, y, z, sx, sy, sz, padRotation], index) => (
+      {DARREL_BONSAI_CANOPY_PADS.map((canopyPad, index) => (
         <DarrelCanopyPad
           key={`canopy-${index}`}
-          position={[x, y, z]}
-          scale={[sx, sy, sz]}
-          rotation={padRotation}
+          position={canopyPad.position}
+          scale={canopyPad.scale}
+          rotation={canopyPad.rotation}
           texture={leafTexture}
         />
       ))}
-      {clusters.map(([x, y, z, size], index) => (
-        <DarrelBlossomCluster key={index} position={[x, y, z]} size={size} count={index % 2 === 0 ? 11 : 9} />
+      {DARREL_BONSAI_BLOSSOM_CLUSTERS.map((cluster, index) => (
+        <DarrelBlossomCluster key={index} position={cluster.position} size={cluster.size} count={cluster.count} />
       ))}
       <mesh position={[0, 0.8, 0]} receiveShadow>
         <cylinderGeometry args={[8, 10, 1.6, 8]} />
@@ -241,51 +208,20 @@ function DarrelLegacyBonsaiTree({
   scale?: number;
 }) {
   const barkTexture = useMemo(() => getDarrelTexture("bark"), []);
-  const branches = [
-    [[0, 0, 0], [2, 18, -1], 4.8],
-    [[2, 16, -1], [-7, 34, 4], 3.8],
-    [[-5, 31, 3], [-22, 43, -4], 2.6],
-    [[-8, 34, 4], [-14, 54, 10], 2.2],
-    [[2, 18, -1], [13, 34, -8], 3.2],
-    [[12, 33, -8], [32, 43, -18], 2.4],
-    [[14, 34, -8], [18, 56, -5], 2.1],
-    [[0, 10, 0], [-18, 22, -15], 2.7],
-    [[-17, 21, -14], [-32, 28, -26], 1.7],
-    [[1, 24, -1], [4, 47, 12], 2.9],
-    [[4, 45, 12], [18, 62, 18], 1.8],
-    [[2, 42, 0], [44, 70, 26], 2.1],
-    [[-2, 45, 0], [-44, 72, -18], 2],
-    [[0, 48, 0], [0, 82, 48], 1.8],
-    [[0, 50, 0], [38, 78, -38], 1.6],
-  ] as const;
-  const clusters = [
-    [-23, 43, -4, 10.2],
-    [-14, 55, 10, 9],
-    [32, 43, -18, 10],
-    [18, 56, -5, 8.8],
-    [-32, 28, -26, 8.4],
-    [18, 62, 18, 9.2],
-    [-7, 34, 4, 8],
-    [12, 33, -8, 7.8],
-    [44, 70, 26, 13.4],
-    [-44, 72, -18, 13],
-    [0, 82, 48, 12.6],
-    [38, 78, -38, 12.2],
-  ] as const;
 
   return (
     <group position={position} rotation={[0, rotation, 0]} scale={scale}>
-      {branches.map(([start, end, radius], index) => (
+      {DARREL_LEGACY_BONSAI_BRANCHES.map((branch, index) => (
         <DarrelBranch
           key={index}
-          start={start as [number, number, number]}
-          end={end as [number, number, number]}
-          radius={radius}
+          start={branch.start}
+          end={branch.end}
+          radius={branch.radius}
           texture={barkTexture}
         />
       ))}
-      {clusters.map(([x, y, z, size], index) => (
-        <DarrelBlossomCluster key={index} position={[x, y, z]} size={size} count={index % 2 === 0 ? 11 : 9} />
+      {DARREL_LEGACY_BONSAI_BLOSSOM_CLUSTERS.map((cluster, index) => (
+        <DarrelBlossomCluster key={index} position={cluster.position} size={cluster.size} count={cluster.count} />
       ))}
       <mesh position={[0, 0.8, 0]} receiveShadow>
         <cylinderGeometry args={[8, 10, 1.6, 8]} />

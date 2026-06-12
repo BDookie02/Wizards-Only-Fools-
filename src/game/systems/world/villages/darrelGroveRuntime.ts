@@ -143,6 +143,24 @@ export type DarrelBlossomSprite = {
   scale: number;
 };
 
+export type DarrelTreeBranchDescriptor = {
+  start: [number, number, number];
+  end: [number, number, number];
+  radius: number;
+};
+
+export type DarrelCanopyPadDescriptor = {
+  position: [number, number, number];
+  scale: [number, number, number];
+  rotation: number;
+};
+
+export type DarrelBlossomClusterDescriptor = {
+  position: [number, number, number];
+  size: number;
+  count: number;
+};
+
 const DARREL_BRANCH_UP = new THREE.Vector3(0, 1, 0);
 const DARREL_SIDE_SIGNS: readonly DarrelSideSign[] = [-1, 1];
 const DARREL_BACKYARD_RIVER_STONE_X = [-170, -128, -88, -48, -8, 34, 78, 122, 166] as const;
@@ -216,6 +234,80 @@ export const DARREL_PETAL_DRIFT_PATCHES: readonly DarrelPetalDriftPatch[] = [
   { x: 0, z: 186, width: 180, depth: 52, yaw: -0.08 },
   { x: -190, z: 0, width: 58, depth: 168, yaw: 0.08 },
   { x: 190, z: 0, width: 60, depth: 168, yaw: -0.1 },
+];
+
+export const DARREL_BONSAI_BRANCHES: readonly DarrelTreeBranchDescriptor[] = [
+  { start: [0, 0, 0], end: [5, 8, -6], radius: 5.2 },
+  { start: [5, 8, -6], end: [2, 17, -18], radius: 4.5 },
+  { start: [2, 17, -18], end: [-4, 26, -33], radius: 3.7 },
+  { start: [-4, 26, -33], end: [1, 34, -52], radius: 2.9 },
+  { start: [1, 34, -52], end: [0, 40, -78], radius: 2.25 },
+  { start: [-1, 29, -40], end: [-24, 34, -55], radius: 1.9 },
+  { start: [2, 30, -42], end: [26, 34, -58], radius: 1.85 },
+  { start: [0, 36, -62], end: [-36, 39, -82], radius: 1.45 },
+  { start: [0, 36, -62], end: [36, 39, -84], radius: 1.45 },
+  { start: [0, 39, -76], end: [-28, 41, -102], radius: 1.15 },
+  { start: [0, 39, -76], end: [28, 41, -102], radius: 1.15 },
+  { start: [0, 40, -78], end: [0, 41, -116], radius: 1.1 },
+  { start: [2, 18, -20], end: [18, 22, -34], radius: 1.7 },
+  { start: [-2, 20, -22], end: [-20, 25, -36], radius: 1.65 },
+];
+
+export const DARREL_BONSAI_CANOPY_PADS: readonly DarrelCanopyPadDescriptor[] = [
+  { position: [-23, 39, -78], scale: [27, 6.5, 18], rotation: -0.16 },
+  { position: [22, 39.5, -80], scale: [29, 6.2, 19], rotation: 0.14 },
+  { position: [0, 41.5, -94], scale: [36, 7.2, 22], rotation: 0 },
+  { position: [-18, 43, -108], scale: [26, 5.5, 16], rotation: 0.22 },
+  { position: [18, 43, -110], scale: [26, 5.5, 16], rotation: -0.22 },
+  { position: [0, 40, -126], scale: [28, 4.8, 15], rotation: 0 },
+  { position: [-37, 36.5, -62], scale: [19, 4.7, 13], rotation: -0.32 },
+  { position: [37, 36.5, -64], scale: [19, 4.7, 13], rotation: 0.32 },
+];
+
+export const DARREL_BONSAI_BLOSSOM_CLUSTERS: readonly DarrelBlossomClusterDescriptor[] = [
+  { position: [-24, 43, -78], size: 9.6, count: 11 },
+  { position: [22, 43, -80], size: 9.8, count: 9 },
+  { position: [0, 46, -94], size: 11.4, count: 11 },
+  { position: [-18, 47, -108], size: 9.2, count: 9 },
+  { position: [18, 47, -110], size: 9.2, count: 11 },
+  { position: [0, 44, -126], size: 10.6, count: 9 },
+  { position: [-37, 40, -62], size: 8.2, count: 11 },
+  { position: [37, 40, -64], size: 8.2, count: 9 },
+  { position: [-12, 37, -42], size: 7.4, count: 11 },
+  { position: [14, 38, -46], size: 7.4, count: 9 },
+];
+
+export const DARREL_LEGACY_BONSAI_BRANCHES: readonly DarrelTreeBranchDescriptor[] = [
+  { start: [0, 0, 0], end: [2, 18, -1], radius: 4.8 },
+  { start: [2, 16, -1], end: [-7, 34, 4], radius: 3.8 },
+  { start: [-5, 31, 3], end: [-22, 43, -4], radius: 2.6 },
+  { start: [-8, 34, 4], end: [-14, 54, 10], radius: 2.2 },
+  { start: [2, 18, -1], end: [13, 34, -8], radius: 3.2 },
+  { start: [12, 33, -8], end: [32, 43, -18], radius: 2.4 },
+  { start: [14, 34, -8], end: [18, 56, -5], radius: 2.1 },
+  { start: [0, 10, 0], end: [-18, 22, -15], radius: 2.7 },
+  { start: [-17, 21, -14], end: [-32, 28, -26], radius: 1.7 },
+  { start: [1, 24, -1], end: [4, 47, 12], radius: 2.9 },
+  { start: [4, 45, 12], end: [18, 62, 18], radius: 1.8 },
+  { start: [2, 42, 0], end: [44, 70, 26], radius: 2.1 },
+  { start: [-2, 45, 0], end: [-44, 72, -18], radius: 2 },
+  { start: [0, 48, 0], end: [0, 82, 48], radius: 1.8 },
+  { start: [0, 50, 0], end: [38, 78, -38], radius: 1.6 },
+];
+
+export const DARREL_LEGACY_BONSAI_BLOSSOM_CLUSTERS: readonly DarrelBlossomClusterDescriptor[] = [
+  { position: [-23, 43, -4], size: 10.2, count: 11 },
+  { position: [-14, 55, 10], size: 9, count: 9 },
+  { position: [32, 43, -18], size: 10, count: 11 },
+  { position: [18, 56, -5], size: 8.8, count: 9 },
+  { position: [-32, 28, -26], size: 8.4, count: 11 },
+  { position: [18, 62, 18], size: 9.2, count: 9 },
+  { position: [-7, 34, 4], size: 8, count: 11 },
+  { position: [12, 33, -8], size: 7.8, count: 9 },
+  { position: [44, 70, 26], size: 13.4, count: 11 },
+  { position: [-44, 72, -18], size: 13, count: 9 },
+  { position: [0, 82, 48], size: 12.6, count: 11 },
+  { position: [38, 78, -38], size: 12.2, count: 9 },
 ];
 
 export function getDarrelQuestGateNowMs() {
