@@ -111,21 +111,19 @@ import {
   finalizeSurvivalInstancedMeshColors,
 } from "./survivalInstancing";
 import { HIDE_FROM_MINIMAP } from "./SurvivalFoliagePrimitives";
+import {
+  clampDormantGrassColor,
+  copyInitialVisibleGrassCells,
+  getDormantGrassVectorLength2D,
+  getDormantGrassVectorLength3D,
+  getSurvivalLocalGrassViewerPositionInto,
+} from "./survivalDormantGrassRuntime";
 
 export {
   configureDormantSurvivalGrassResolvers,
   type DormantSurvivalGrassResolvers,
   type SurvivalLocalGrassPlacement,
 } from "./survivalDormantGrassResolvers";
-
-function copyInitialVisibleGrassCells<T>(cells: readonly T[], maxCount: number) {
-  const count = Math.min(cells.length, maxCount);
-  const visibleCells = new Array<T>(count);
-  for (let index = 0; index < count; index += 1) {
-    visibleCells[index] = cells[index];
-  }
-  return visibleCells;
-}
 
 const SURVIVAL_WORLD_GRASS_BLADES_PER_TUFT = 4;
 const SURVIVAL_WORLD_SHORT_GRASS_BLADES_PER_TUFT = 2;
@@ -154,20 +152,6 @@ const SURVIVAL_TUTORIAL_GRASS_CARPET_MEADOW_LIGHT_COLOR = new THREE.Color("#a9e8
 const SURVIVAL_TUTORIAL_GRASS_STRAND_MEADOW_BASE_COLOR = new THREE.Color("#479c31");
 const SURVIVAL_TUTORIAL_GRASS_STRAND_MEADOW_TIP_COLOR = new THREE.Color("#84cf42");
 const SURVIVAL_TUTORIAL_GRASS_STRAND_MEADOW_SHADOW_TIP_COLOR = new THREE.Color("#56aa34");
-
-function getDormantGrassVectorLength2D(x: number, z: number) {
-  return Math.sqrt(x * x + z * z);
-}
-
-function getDormantGrassVectorLength3D(x: number, y: number, z: number) {
-  return Math.sqrt(x * x + y * y + z * z);
-}
-
-function clampDormantGrassColor(color: THREE.Color) {
-  color.r = clamp01(color.r);
-  color.g = clamp01(color.g);
-  color.b = clamp01(color.b);
-}
 
 function getSurvivalChunkInfoAtWorld(worldX: number, worldZ: number) {
   return getDormantSurvivalGrassResolvers().getChunkInfoAtWorld(worldX, worldZ);
@@ -253,18 +237,6 @@ function shouldPublishSurvivalLocalGrassTelemetry() {
   return shouldPublishCurrentSurvivalWorldTelemetry();
 }
 
-function getSurvivalLocalGrassViewerPosition(camera: THREE.Camera) {
-  const localPlayer = getBrowserLocalPlayerPosition();
-  if (localPlayer) {
-    return {
-      x: localPlayer.x,
-      y: typeof localPlayer.y === "number" ? localPlayer.y : camera.position.y,
-      z: localPlayer.z,
-    };
-  }
-
-  return { x: camera.position.x, y: camera.position.y, z: camera.position.z };
-}
 type SurvivalGrassBlade = {
   key: string;
   x: number;
@@ -3825,6 +3797,11 @@ function ActiveSurvivalTutorialGrassField() {
   const grassDebugViewEnabled = useMemo(() => isSurvivalGrassInspectionView(), []);
   const lastMobileFieldUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
   const debugSampleSecondRef = useRef(-1);
+  const viewerPositionRef = useRef({
+    x: initialCenter.x,
+    y: "y" in initialCenter && typeof initialCenter.y === "number" ? initialCenter.y : 12,
+    z: initialCenter.z,
+  });
 
   useFrame(({ camera, clock }) => {
     const elapsed = clock.elapsedTime;
@@ -3835,7 +3812,7 @@ function ActiveSurvivalTutorialGrassField() {
     lastMobileFieldUpdateAtRef.current = elapsed;
 
     windUniform.value = elapsed;
-    const viewerPosition = getSurvivalLocalGrassViewerPosition(camera);
+    const viewerPosition = getSurvivalLocalGrassViewerPositionInto(camera, viewerPositionRef.current);
     const worldX = viewerPosition.x;
     const worldZ = viewerPosition.z;
     const nextCell = getSurvivalTutorialGrassHysteresisCell(centerCellRef.current, worldX, worldZ);
@@ -3985,6 +3962,11 @@ function ActiveSurvivalLocalGrassField() {
   const [cellStreamRadius, setCellStreamRadius] = useState(initialStreamRadius);
   const centerCellRef = useRef(centerCell);
   const cellStreamRadiusRef = useRef(initialStreamRadius);
+  const viewerPositionRef = useRef({
+    x: initialCenter.x,
+    y: "y" in initialCenter && typeof initialCenter.y === "number" ? initialCenter.y : 12,
+    z: initialCenter.z,
+  });
   const fadeUniforms = useMemo<SurvivalLocalGrassFadeUniforms>(() => ({
     viewerXZ: { value: new THREE.Vector2(initialCenter.x, initialCenter.z) },
     viewerY: { value: "y" in initialCenter && typeof initialCenter.y === "number" ? initialCenter.y : 12 },
@@ -3996,7 +3978,7 @@ function ActiveSurvivalLocalGrassField() {
   }), [initialCenter.x, initialCenter.z]);
 
   useFrame(({ camera }) => {
-    const viewerPosition = getSurvivalLocalGrassViewerPosition(camera);
+    const viewerPosition = getSurvivalLocalGrassViewerPositionInto(camera, viewerPositionRef.current);
     const worldX = viewerPosition.x;
     const worldZ = viewerPosition.z;
     const nextCell = getSurvivalLocalGrassHysteresisCell(centerCellRef.current, worldX, worldZ);
