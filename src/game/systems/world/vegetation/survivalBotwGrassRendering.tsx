@@ -42,7 +42,6 @@ import {
   SURVIVAL_BOTW_GRASS_MAX_BACKGROUND_PENDING_PREWARMS,
   SURVIVAL_BOTW_GRASS_MAX_DIRECTIONAL_PENDING_PREWARMS,
   SURVIVAL_BOTW_GRASS_MAX_LEAD_DISTANCE,
-  SURVIVAL_BOTW_GRASS_MAX_PENDING_PREWARMS,
   SURVIVAL_BOTW_GRASS_MIN_CENTER_TRAVEL_ALIGNMENT,
   SURVIVAL_BOTW_GRASS_MIN_LEAD_DISTANCE,
   SURVIVAL_BOTW_GRASS_MOBILE_COUNT,
@@ -118,9 +117,6 @@ import {
   publishSurvivalBotwGrassBuildState,
   publishSurvivalBotwGrassDebugLine,
   publishSurvivalBotwGrassFlowerCounts,
-  publishSurvivalBotwGrassPendingPrewarms,
-  publishSurvivalBotwGrassPrewarmBuilding,
-  publishSurvivalBotwGrassPrewarmReady,
   publishSurvivalBotwGrassRuntimeMetrics,
   publishSurvivalBotwGrassUploadComplete,
   publishSurvivalBotwGrassUploadSnapshot,
@@ -131,12 +127,9 @@ import {
   getSurvivalGrassSurfaceHeightAtWorld,
 } from "./survivalBotwGrassResolvers";
 import {
-  finishPendingSurvivalBotwGrassBuild,
   getCachedSurvivalBotwGrassBuild,
   getPendingSurvivalBotwGrassBuildCount,
   hasCachedSurvivalBotwGrassBuild,
-  hasPendingSurvivalBotwGrassBuild,
-  markPendingSurvivalBotwGrassBuild,
   rememberSurvivalBotwGrassBuild,
   type SurvivalBotwGrassBuildResult,
 } from "./survivalBotwGrassBuildCache";
@@ -145,6 +138,10 @@ import {
   getSurvivalBotwGrassNowMs,
   shouldContinueSurvivalBotwGrassSlice,
 } from "./survivalBotwGrassRuntime";
+import {
+  getSurvivalBotwGrassBuildKey,
+  prewarmSurvivalBotwGrassBuild,
+} from "./survivalBotwGrassPrewarm";
 import { SURVIVAL_GRASS_SYSTEM_ENABLED } from "./survivalGrassSystemConfig";
 import { HIDE_FROM_MINIMAP } from "./SurvivalFoliagePrimitives";
 
@@ -248,89 +245,6 @@ function getSurvivalBotwGrassSnappedCenter(worldX: number, worldY: number, world
     y: worldY,
     z: Math.round(worldZ / SURVIVAL_BOTW_GRASS_CENTER_STEP) * SURVIVAL_BOTW_GRASS_CENTER_STEP,
   };
-}
-
-function getSurvivalBotwGrassBuildKey(center: SurvivalBotwGrassCenter, mobilePerformanceMode: boolean) {
-  return `${center.x}:${center.z}:${mobilePerformanceMode ? "m" : "d"}`;
-}
-
-function publishSurvivalBotwGrassPendingPrewarmCount() {
-  publishSurvivalBotwGrassPendingPrewarms(getPendingSurvivalBotwGrassBuildCount());
-}
-
-function prewarmSurvivalBotwGrassBuild(
-  center: SurvivalBotwGrassCenter,
-  mobilePerformanceMode: boolean,
-  maxPendingPrewarms = SURVIVAL_BOTW_GRASS_MAX_PENDING_PREWARMS,
-) {
-  if (typeof window === "undefined") return;
-  const buildKey = getSurvivalBotwGrassBuildKey(center, mobilePerformanceMode);
-  if (hasCachedSurvivalBotwGrassBuild(buildKey) || hasPendingSurvivalBotwGrassBuild(buildKey)) return;
-  if (!markPendingSurvivalBotwGrassBuild(buildKey, maxPendingPrewarms)) return;
-
-  publishSurvivalBotwGrassPendingPrewarmCount();
-  const bladeContext = getSurvivalBotwGrassBuildContext(center.x, center.y, center.z, mobilePerformanceMode);
-  const flowerContext = getSurvivalBotwFlowerBuildContext(center.x, center.y, center.z, mobilePerformanceMode);
-  const bladeInstances: SurvivalBotwGrassBladeInstance[] = [];
-  const flowerInstances: SurvivalBotwFlowerInstance[] = [];
-  const candidateSliceLimit = mobilePerformanceMode
-    ? SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_CANDIDATES
-    : SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_CANDIDATES;
-  const sliceBudgetMs = mobilePerformanceMode
-    ? SURVIVAL_BOTW_GRASS_BUILD_MOBILE_SLICE_MS
-    : SURVIVAL_BOTW_GRASS_BUILD_DESKTOP_SLICE_MS;
-  const startedAt = getSurvivalBotwGrassNowMs();
-  let bladeCandidate = 0;
-  let flowerCandidate = 0;
-
-  const runSlice = () => {
-    const sliceStartedAt = getSurvivalBotwGrassNowMs();
-    let workCount = 0;
-    while (
-      bladeCandidate < bladeContext.candidateCount &&
-      bladeInstances.length < bladeContext.maxInstances &&
-      workCount < candidateSliceLimit &&
-      shouldContinueSurvivalBotwGrassSlice(workCount, sliceStartedAt, sliceBudgetMs)
-    ) {
-      const instance = makeSurvivalBotwGrassBladeCandidate(bladeContext, bladeCandidate);
-      if (instance) bladeInstances.push(instance);
-      bladeCandidate += 1;
-      workCount += 1;
-    }
-
-    while (
-      flowerCandidate < flowerContext.candidateCount &&
-      flowerInstances.length < flowerContext.maxFlowers &&
-      workCount < candidateSliceLimit &&
-      shouldContinueSurvivalBotwGrassSlice(workCount, sliceStartedAt, sliceBudgetMs)
-    ) {
-      const instance = makeSurvivalBotwFlowerCandidate(flowerContext, flowerCandidate);
-      if (instance) flowerInstances.push(instance);
-      flowerCandidate += 1;
-      workCount += 1;
-    }
-
-    const doneBlades = bladeCandidate >= bladeContext.candidateCount || bladeInstances.length >= bladeContext.maxInstances;
-    const doneFlowers = flowerCandidate >= flowerContext.candidateCount || flowerInstances.length >= flowerContext.maxFlowers;
-    if (doneBlades && doneFlowers) {
-      appendSurvivalBotwTallFeatureFlowers(flowerInstances, flowerContext);
-      finishPendingSurvivalBotwGrassBuild(buildKey);
-      publishSurvivalBotwGrassPendingPrewarmCount();
-      const buildMs = getSurvivalBotwGrassElapsedMs(startedAt);
-      rememberSurvivalBotwGrassBuild(buildKey, {
-        bladeInstances,
-        flowerInstances,
-        buildMs,
-      });
-      publishSurvivalBotwGrassPrewarmReady(buildKey, buildMs);
-      return;
-    }
-
-    window.setTimeout(runSlice, SURVIVAL_BOTW_GRASS_BUILD_SLICE_DELAY_MS);
-  };
-
-  publishSurvivalBotwGrassPrewarmBuilding(buildKey);
-  window.setTimeout(runSlice, SURVIVAL_BOTW_GRASS_BUILD_SLICE_DELAY_MS);
 }
 
 function ActiveSurvivalBotwGrassField() {
