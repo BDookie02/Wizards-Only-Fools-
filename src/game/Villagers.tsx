@@ -2,9 +2,10 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
-import { CharacterCustomization, createDefaultQuestNpcProgram, type QuestFlagValue, type QuestNpcAssignment, type QuestNpcDescriptor, type QuestNpcEditorTarget, type QuestNpcProgram, type QuestNpcRole, useGameStore } from "../store/gameStore";
+import { CharacterCustomization, createDefaultQuestNpcProgram, type QuestNpcDescriptor, type QuestNpcRole, useGameStore } from "../store/gameStore";
 import { getHutList, type HutInfo } from "./systems/world/villages/baseVillageHutLayout";
-import { DARREL_CHARACTER, hashValue, makeVillager, makeVillagerCharacter, type VillagerInfo } from "./systems/world/villages/villagerCharacterRuntime";
+import { DARREL_CHARACTER, hashValue, makeVillager, type VillagerInfo } from "./systems/world/villages/villagerCharacterRuntime";
+import { anchorQuestNpcProgram, getQuestTownId, getQuestVillagerDisplayName, hasQuestNpcAnchor, isDarrelName, isDarrelQuestAssignment, isDarrelVillagerIdentity, makePersistentQuestNpcVillager, makeQuestNpcEditorTarget } from "./systems/world/villages/villagerQuestRuntime";
 import { AvatarBillboard, NPC_AVATAR_GROUND_LIFT, NPC_AVATAR_SCALE } from "./PixelAvatar";
 import { isMobilePerformanceMode } from "./systems/input/performanceMode";
 import { absoluteAngleDeltaRadians } from "./systems/math/angleMath";
@@ -12,10 +13,6 @@ import { getPublishedLocalPlayerPosition } from "./systems/player/playerEventBri
 import { useLazyRef } from "./systems/react/useLazyRef";
 import { getEpochMsFromRenderClock } from "./systems/rendering/renderClockEpoch";
 import { getVillagerRuntimeNowMs } from "./systems/world/villages/villagerRuntime";
-
-type AnchoredQuestNpcProgram = QuestNpcProgram & {
-  position: [number, number, number];
-};
 
 interface ReactionState {
   startedAt: number;
@@ -37,8 +34,6 @@ const VILLAGER_RUNTIME_TICK_INTERVAL_MS = 50;
 const DEV_NPC_INTERACTION_RANGE = 9.5;
 const DEV_NPC_CLOSE_RANGE = 3.75;
 const DEV_NPC_AIM_RADIUS = 1.75;
-const DARREL_REWARD_SPELL = "healingcrystals";
-const DARREL_ACCEPTED_FLAG = "darrel:healingcrystals:accepted";
 let villagerAudioContext: AudioContext | null = null;
 const devNpcRayOrigin = new THREE.Vector3();
 const devNpcRayDirection = new THREE.Vector3();
@@ -50,78 +45,6 @@ function isEditableDomTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   const tagName = target.tagName.toLowerCase();
   return tagName === "input" || tagName === "textarea" || tagName === "select" || target.isContentEditable;
-}
-
-function getDefaultVillagerName(hut: HutInfo, index: number) {
-  const townPrefix = hut.villagerTheme === "egyptian"
-    ? "Dune"
-    : hut.villagerTheme === "swamp"
-      ? "Marsh"
-      : "Town";
-  return `${townPrefix} Villager ${index + 1}`;
-}
-
-function isDarrelName(value?: string | null) {
-  if (!value) return false;
-  const normalized = value.toLowerCase().replace(/[^a-z0-9]/g, "");
-  return normalized === "darrel" || normalized === "darrell" || normalized.includes("darrel") || normalized.includes("darrell");
-}
-
-function isQuestFlagTruthy(value: QuestFlagValue | undefined) {
-  return value === true || value === "true" || value === "completed" || value === "ready" || value === "1";
-}
-
-function isDarrelQuestAssignment(
-  assignment: QuestNpcAssignment | undefined,
-  questFlags: Record<string, QuestFlagValue>,
-) {
-  if (!assignment || assignment.spell !== DARREL_REWARD_SPELL) return false;
-  return isDarrelName(assignment.npcId) ||
-    isDarrelName(assignment.displayName) ||
-    isQuestFlagTruthy(questFlags[DARREL_ACCEPTED_FLAG]);
-}
-
-function isDarrelVillagerIdentity({
-  name,
-  hut,
-  programName,
-  assignment,
-  questFlags,
-  fallbackDarrelId,
-}: {
-  name: string;
-  hut: HutInfo;
-  programName?: string;
-  assignment?: QuestNpcAssignment;
-  questFlags: Record<string, QuestFlagValue>;
-  fallbackDarrelId?: string | null;
-}) {
-  return hut.id === fallbackDarrelId ||
-    isDarrelName(programName) ||
-    isDarrelName(assignment?.displayName) ||
-    isDarrelName(name) ||
-    isDarrelName(hut.id) ||
-    isDarrelQuestAssignment(assignment, questFlags);
-}
-
-function getQuestVillagerDisplayName(
-  name: string,
-  hut: HutInfo,
-  index: number,
-  programName?: string,
-  assignment?: QuestNpcAssignment,
-  questFlags: Record<string, QuestFlagValue> = {},
-  fallbackDarrelId?: string | null,
-) {
-  if (isDarrelVillagerIdentity({ name, hut, programName, assignment, questFlags, fallbackDarrelId })) {
-    return "Darrel";
-  }
-  return programName ?? assignment?.displayName ?? getDefaultVillagerName(hut, index);
-}
-
-function getQuestTownId(name: string, hut: HutInfo) {
-  if (name && name !== "villagers") return name;
-  return hut.villagerTheme ? `${hut.villagerTheme}-town` : "base-village";
 }
 
 function getTargetedVillager(camera: THREE.Camera, villagerCells: Map<string, VillagerInfo[]>) {
@@ -154,83 +77,6 @@ function getTargetedVillager(camera: THREE.Camera, villagerCells: Map<string, Vi
   });
 
   return bestVillager;
-}
-
-function hasQuestNpcAnchor(program: QuestNpcProgram | undefined): program is AnchoredQuestNpcProgram {
-  return Array.isArray(program?.position) &&
-    program.position.length === 3 &&
-    program.position.every((coordinate) => typeof coordinate === "number" && Number.isFinite(coordinate));
-}
-
-function normalizeQuestNpcTheme(theme?: string): HutInfo["villagerTheme"] {
-  if (theme === "egyptian" || theme === "swamp") return theme;
-  return "village";
-}
-
-function makeQuestNpcEditorTarget(
-  name: string,
-  villager: VillagerInfo,
-  defaultName: string,
-): QuestNpcEditorTarget {
-  return {
-    npcId: villager.id,
-    townId: getQuestTownId(name, villager.hut),
-    hutId: villager.hut.id,
-    defaultName,
-    theme: villager.hut.villagerTheme ?? "village",
-    position: [villager.x, villager.y, villager.z],
-  };
-}
-
-function anchorQuestNpcProgram(
-  existingProgram: QuestNpcProgram | undefined,
-  target: QuestNpcEditorTarget,
-) {
-  const baseProgram = existingProgram ?? createDefaultQuestNpcProgram(target);
-  return {
-    ...baseProgram,
-    npcId: target.npcId,
-    townId: target.townId,
-    hutId: target.hutId,
-    theme: target.theme,
-    position: target.position,
-    updatedAt: getVillagerRuntimeNowMs(),
-  };
-}
-
-function makePersistentQuestNpcHut(program: AnchoredQuestNpcProgram): HutInfo {
-  const [x, y, z] = program.position;
-  return {
-    id: program.hutId ?? program.npcId,
-    x,
-    y: y - 0.95,
-    z,
-    hutType: 90,
-    colorIndex: 0,
-    rotation: 0,
-    hasPath: false,
-    pathRot: 0,
-    isMushroom: false,
-    interiorWidth: 9,
-    interiorDepth: 9,
-    interiorHeight: 8,
-    villagerYOffset: 0.95,
-    villagerTheme: normalizeQuestNpcTheme(program.theme),
-  };
-}
-
-function makePersistentQuestNpcVillager(program: AnchoredQuestNpcProgram, index: number): VillagerInfo {
-  const [x, y, z] = program.position;
-  const hut = makePersistentQuestNpcHut(program);
-  return {
-    id: program.npcId,
-    hut,
-    character: makeVillagerCharacter(hut, index),
-    x,
-    y,
-    z,
-    baseYaw: hut.rotation,
-  };
 }
 
 function sameSet(a: Set<string>, b: Set<string>) {
