@@ -168,6 +168,22 @@ export function shouldReanchorQaWalkSpellDummy({
   return needsFreshDummy && (nearestBeyondAnchorDistance || activeDummyTooFar || recoveryAllowsReanchor);
 }
 
+export function shouldBrakeQaWalkSpellDummyRunMotion({
+  activeIntentKind,
+  horizontalSpeedSq,
+  qaSpellDummyRunActive,
+  brakeSpeed = 0.35,
+}: {
+  activeIntentKind: QaSurvivalIntent["kind"] | null;
+  horizontalSpeedSq: number;
+  qaSpellDummyRunActive: boolean;
+  brakeSpeed?: number;
+}) {
+  return qaSpellDummyRunActive &&
+    activeIntentKind === "spell-dummy" &&
+    horizontalSpeedSq > brakeSpeed * brakeSpeed;
+}
+
 export function getQaWalkSpellDummyReanchorSpawnOffset(mode: QaSurvivalWalkMode) {
   return mode === "recover" || mode === "avoid"
     ? QA_WALK_SPELL_DUMMY_REANCHOR_RECOVERY_SPAWN_OFFSET
