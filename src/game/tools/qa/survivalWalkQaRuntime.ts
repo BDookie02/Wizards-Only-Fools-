@@ -10,6 +10,8 @@ import {
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
   QA_BASE_VILLAGE_ROAD_HALF_WIDTH,
   QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT,
+  QA_DARREL_GROVE_CLEARING_LOCAL_X,
+  QA_DARREL_GROVE_CLEARING_LOCAL_Z,
   QA_DARREL_GROVE_DRAGON_DOOR_Z,
   QA_DARREL_GROVE_DRAGON_INTERACT_DISTANCE,
   QA_DARREL_GROVE_DRAGON_INTENT_SECONDS,
@@ -19,6 +21,7 @@ import {
   QA_DARREL_GROVE_DRAGON_SIDE_STAIR_X,
   QA_DARREL_GROVE_DRAGON_SIDE_STAIR_Z,
   QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE,
+  QA_DARREL_GROVE_RESCUE_Y,
   QA_INTENT_DUMMY_CLOSE_DISTANCE,
   QA_INTENT_DUMMY_KEEP_DISTANCE,
   QA_INTENT_DUMMY_RANGE,
@@ -75,6 +78,10 @@ import {
   type QaSurvivalWalkInputState,
   type QaSurvivalWalkMode,
 } from "./survivalWalkQa";
+import {
+  DARREL_QUEST_CHUNK,
+  SURVIVAL_BLOCK_SIZE,
+} from "../../../store/gameStore";
 
 type QaWalkPosition = { x: number; y: number; z: number };
 type QaWalkQuestIntentTarget = { id: string; label: string; x: number; y: number; z: number };
@@ -1168,6 +1175,136 @@ export function resolveQaWalkForwardWaypoint({
     z: position.z - Math.cos(yaw) * distance,
     expiresAt: elapsedSeconds + 5.8,
   };
+}
+
+export function isQaWalkDarrelGroveArea({
+  chunkCenterX,
+  chunkCenterZ,
+  questChunkCenterX = DARREL_QUEST_CHUNK.cx * SURVIVAL_BLOCK_SIZE,
+  questChunkCenterZ = DARREL_QUEST_CHUNK.cz * SURVIVAL_BLOCK_SIZE,
+}: {
+  chunkCenterX: number;
+  chunkCenterZ: number;
+  questChunkCenterX?: number;
+  questChunkCenterZ?: number;
+}) {
+  return Math.abs(chunkCenterX - questChunkCenterX) < 1 &&
+    Math.abs(chunkCenterZ - questChunkCenterZ) < 1;
+}
+
+export function resolveQaWalkDarrelGroveWaypoint({
+  active,
+  chunkCenterX,
+  chunkCenterZ,
+  elapsedSeconds,
+  position,
+}: {
+  active: boolean;
+  chunkCenterX: number;
+  chunkCenterZ: number;
+  elapsedSeconds: number;
+  position: QaWalkPosition;
+}) {
+  if (!active) return null;
+
+  const noiseA = survivalishTurnNoise(position.x + 73, position.z - 29, elapsedSeconds * 0.31);
+  const noiseB = survivalishTurnNoise(position.x - 111, position.z + 53, elapsedSeconds * 0.27);
+  const orbit = noiseA * Math.PI * 2;
+  const radiusX = randomRangeFromNoise(noiseB, 26, 72);
+  const radiusZ = randomRangeFromNoise(noiseA, 14, 42);
+  const localTargetX = clampNumber(
+    QA_DARREL_GROVE_CLEARING_LOCAL_X + Math.cos(orbit) * radiusX,
+    -118,
+    146,
+  );
+  const localTargetZ = clampNumber(
+    QA_DARREL_GROVE_CLEARING_LOCAL_Z + Math.sin(orbit) * radiusZ,
+    152,
+    218,
+  );
+
+  return {
+    x: chunkCenterX + localTargetX,
+    z: chunkCenterZ + localTargetZ,
+    expiresAt: elapsedSeconds + randomRangeFromNoise(noiseB, 4.6, 7.4),
+  };
+}
+
+export function resolveQaWalkDarrelGroveRescuePosition({
+  active,
+  chunkCenterX,
+  chunkCenterZ,
+  currentIntent,
+  localX,
+  localZ,
+  position,
+}: {
+  active: boolean;
+  chunkCenterX: number;
+  chunkCenterZ: number;
+  currentIntent: QaSurvivalIntent | null;
+  localX: number;
+  localZ: number;
+  position: QaWalkPosition;
+}) {
+  if (!active) return null;
+  const followingDarrelDragonRoute = currentIntent?.kind === "darrel-dragon";
+  const inRiverBridgePocket =
+    localZ > 72 &&
+    localZ < 148 &&
+    Math.abs(localX) < 142;
+  const underHouseOrRoof =
+    localZ > -64 &&
+    localZ < 72 &&
+    Math.abs(localX) < 96;
+  const belowClearWalkingSurface = position.y < 12;
+  if (followingDarrelDragonRoute && !belowClearWalkingSurface) return null;
+  if (!inRiverBridgePocket && !underHouseOrRoof && !belowClearWalkingSurface) return null;
+  return {
+    x: chunkCenterX + QA_DARREL_GROVE_CLEARING_LOCAL_X,
+    y: QA_DARREL_GROVE_RESCUE_Y,
+    z: chunkCenterZ + QA_DARREL_GROVE_CLEARING_LOCAL_Z,
+  };
+}
+
+export function resolveQaWalkDarrelDragonRouteAssistPosition({
+  active,
+  chunkCenterX,
+  chunkCenterZ,
+  currentIntent,
+  localX,
+  localZ,
+  position,
+}: {
+  active: boolean;
+  chunkCenterX: number;
+  chunkCenterZ: number;
+  currentIntent: QaSurvivalIntent | null;
+  localX: number;
+  localZ: number;
+  position: QaWalkPosition;
+}) {
+  if (!active || currentIntent?.kind !== "darrel-dragon") return null;
+  const inSideSnagPocket =
+    Math.abs(localX) > 58 &&
+    Math.abs(localX) < 112 &&
+    localZ > 36 &&
+    localZ < 82 &&
+    position.y > 12;
+  const inPorchSnagPocket =
+    Math.abs(localX) > 18 &&
+    Math.abs(localX) < 48 &&
+    localZ > -62 &&
+    localZ < -34 &&
+    position.y > 24;
+  if (inPorchSnagPocket || inSideSnagPocket) {
+    return {
+      x: chunkCenterX,
+      y: QA_DARREL_GROVE_RESCUE_Y,
+      z: chunkCenterZ + QA_DARREL_GROVE_DRAGON_DOOR_Z,
+    };
+  }
+  return null;
 }
 
 export function isQaWalkBaseVillageArea({
