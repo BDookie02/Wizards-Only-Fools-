@@ -1,5 +1,8 @@
 export const HUD_MOUSE_GAMEPLAY_ACTIVE_CLASS = "wizards-mouse-gameplay-active";
 export const HUD_POINTER_LOCK_RESUME_GRACE_MS = 1800;
+export const HUD_MOUSE_GAMEPLAY_RESUME_POLL_MS = 120;
+
+export type HudMouseGameplayResumeTimerId = number;
 
 export function setHudMouseGameplayActive(active: boolean) {
   if (typeof document === "undefined") return;
@@ -52,4 +55,67 @@ export function shouldTreatPointerLockLossAsResumeGrace(options: {
   resumeGraceUntilMs: number;
 }) {
   return !options.pauseRequested && options.nowMs < options.resumeGraceUntilMs;
+}
+
+export function shouldPollHudMouseGameplayResume({
+  controllerGameplayActive,
+  isLocked,
+  isPauseOverlayOpen,
+  isReturningToGame,
+  pointerLockActive,
+  showVideoMenu,
+  touchGameplayActive,
+}: {
+  controllerGameplayActive: boolean;
+  isLocked: boolean;
+  isPauseOverlayOpen: boolean;
+  isReturningToGame: boolean;
+  pointerLockActive: boolean;
+  showVideoMenu: boolean;
+  touchGameplayActive: boolean;
+}) {
+  return pointerLockActive && (
+    !isLocked ||
+    isPauseOverlayOpen ||
+    isReturningToGame ||
+    showVideoMenu ||
+    controllerGameplayActive ||
+    touchGameplayActive
+  );
+}
+
+export function installHudMouseGameplayResumeLoop({
+  clearTimer,
+  intervalMs = HUD_MOUSE_GAMEPLAY_RESUME_POLL_MS,
+  reconcile,
+  setTimer,
+  shouldPoll,
+}: {
+  clearTimer: (timerId: HudMouseGameplayResumeTimerId) => void;
+  intervalMs?: number;
+  reconcile: () => void;
+  setTimer: (callback: () => void, delayMs: number) => HudMouseGameplayResumeTimerId;
+  shouldPoll: () => boolean;
+}) {
+  let cancelled = false;
+  let resumeTimer: HudMouseGameplayResumeTimerId | null = null;
+
+  const scheduleMouseGameplayResumeCheck = () => {
+    if (cancelled) return;
+    resumeTimer = setTimer(() => {
+      if (cancelled) return;
+      reconcile();
+      if (shouldPoll()) scheduleMouseGameplayResumeCheck();
+    }, intervalMs);
+  };
+
+  scheduleMouseGameplayResumeCheck();
+
+  return () => {
+    cancelled = true;
+    if (resumeTimer !== null) {
+      clearTimer(resumeTimer);
+      resumeTimer = null;
+    }
+  };
 }

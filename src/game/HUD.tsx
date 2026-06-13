@@ -135,9 +135,11 @@ import {
   getHudPointerLockRequester,
   getHudPointerLockResumeGraceUntil,
   getHudPointerLockTarget,
+  installHudMouseGameplayResumeLoop,
   isHudMouseLookFallbackActive,
   isPointerLockActive,
   setHudMouseGameplayActive,
+  shouldPollHudMouseGameplayResume,
   shouldTreatPointerLockLossAsResumeGrace,
 } from "./ui/hud/hudMouseGameplayRuntime";
 import {
@@ -928,34 +930,25 @@ export function HUD() {
       setScoreboardSource("controller", false);
     };
 
-    const shouldPollMouseGameplayResume = () => isPointerLockActive() && (
-      !isLocked ||
-      isPauseOverlayOpen ||
-      isReturningToGame ||
-      showVideoMenu ||
-      controllerGameplayActive ||
-      touchGameplayActive
-    );
+    const shouldPollMouseGameplayResume = () => shouldPollHudMouseGameplayResume({
+      controllerGameplayActive,
+      isLocked,
+      isPauseOverlayOpen,
+      isReturningToGame,
+      pointerLockActive: isPointerLockActive(),
+      showVideoMenu,
+      touchGameplayActive,
+    });
 
     reconcileMouseGameplayResume();
     if (!shouldPollMouseGameplayResume()) return;
 
-    let cancelled = false;
-    let resumeTimeout: number | null = null;
-    const scheduleMouseGameplayResumeCheck = () => {
-      if (cancelled) return;
-      resumeTimeout = window.setTimeout(() => {
-        if (cancelled) return;
-        reconcileMouseGameplayResume();
-        if (shouldPollMouseGameplayResume()) scheduleMouseGameplayResumeCheck();
-      }, 120);
-    };
-
-    scheduleMouseGameplayResumeCheck();
-    return () => {
-      cancelled = true;
-      if (resumeTimeout !== null) window.clearTimeout(resumeTimeout);
-    };
+    return installHudMouseGameplayResumeLoop({
+      reconcile: reconcileMouseGameplayResume,
+      shouldPoll: shouldPollMouseGameplayResume,
+      setTimer: (callback, delayMs) => window.setTimeout(callback, delayMs),
+      clearTimer: (timerId) => window.clearTimeout(timerId),
+    });
   }, [
     controllerGameplayActive,
     isGameLaunched,
