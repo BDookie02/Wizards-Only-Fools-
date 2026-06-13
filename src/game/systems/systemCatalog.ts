@@ -139,8 +139,8 @@ export const GAME_SYSTEM_CATALOG: GameSystemDescriptor[] = [
     name: "Launch Menu",
     category: "ui",
     owner: "Interface",
-    responsibility: "Press/start flow, save/new/multiplayer launch stages, launch controller focus, launch character customization metadata, lazy launch menu mounting, and lazy launch avatar preview rendering.",
-    currentEntrypoints: ["App.tsx", "LaunchMenu.tsx", "launchMenuConfig.ts", "LaunchCharacterPreview.tsx"],
+    responsibility: "Press/start flow, save/new/multiplayer launch stages, isolated launch controller press/repeat navigation runtime, launch controller focus, launch character customization metadata, lazy launch menu mounting, and lazy launch avatar preview rendering.",
+    currentEntrypoints: ["App.tsx", "LaunchMenu.tsx", "launchMenuConfig.ts", "launchMenuControllerRuntime.ts", "LaunchCharacterPreview.tsx"],
     extractionTarget: "src/game/ui/launch",
   },
   {

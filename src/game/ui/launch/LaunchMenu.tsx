@@ -37,6 +37,11 @@ import {
   type LaunchMenuStage,
   type MenuDirection,
 } from "./launchMenuConfig";
+import {
+  consumeLaunchControllerPress,
+  resetLaunchControllerTracking,
+  resolveLaunchControllerMoveDirection,
+} from "./launchMenuControllerRuntime";
 
 const LazyLaunchCharacterPreview = lazy(() => import("./LaunchCharacterPreview").then((module) => ({ default: module.LaunchCharacterPreview })));
 const launchMenuStickScratch: GamepadStickAxes = { x: 0, y: 0 };
@@ -327,61 +332,37 @@ export function LaunchMenu() {
   };
 
   useEffect(() => {
-    const consumePress = (key: string, pressed: boolean) => {
-      const wasPressed = controllerButtonsRef.current[key] ?? false;
-      controllerButtonsRef.current[key] = pressed;
-      return pressed && !wasPressed;
-    };
-
-    const consumeRepeat = (key: string, pressed: boolean, now: number, firstDelay = 260, repeatDelay = 130) => {
-      const wasPressed = controllerButtonsRef.current[key] ?? false;
-      controllerButtonsRef.current[key] = pressed;
-      if (!pressed) {
-        delete controllerRepeatRef.current[key];
-        return false;
-      }
-      if (!wasPressed) {
-        controllerRepeatRef.current[key] = now + firstDelay;
-        return true;
-      }
-      if (now >= (controllerRepeatRef.current[key] ?? 0)) {
-        controllerRepeatRef.current[key] = now + repeatDelay;
-        return true;
-      }
-      return false;
-    };
-
     let controllerPollScheduler: ReturnType<typeof createControllerPollScheduler>;
     const pollController = (now: number) => {
       const gamepad = getPrimaryGamepad();
       if (!gamepad) {
-        controllerButtonsRef.current = {};
-        controllerRepeatRef.current = {};
+        resetLaunchControllerTracking(controllerButtonsRef.current, controllerRepeatRef.current);
         controllerPollScheduler.schedule(GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS);
         return;
       }
 
-      const selectPressed = consumePress("launchSelect", isGamepadButtonPressed(gamepad, controllerBindings.menuSelect as GamepadButtonName));
-      const backPressed = consumePress("launchBack", isGamepadButtonPressed(gamepad, controllerBindings.menuBack as GamepadButtonName));
-      const startPressed = consumePress("launchStart", isGamepadButtonPressed(gamepad, controllerBindings.pause as GamepadButtonName));
+      const selectPressed = consumeLaunchControllerPress(controllerButtonsRef.current, "launchSelect", isGamepadButtonPressed(gamepad, controllerBindings.menuSelect as GamepadButtonName));
+      const backPressed = consumeLaunchControllerPress(controllerButtonsRef.current, "launchBack", isGamepadButtonPressed(gamepad, controllerBindings.menuBack as GamepadButtonName));
+      const startPressed = consumeLaunchControllerPress(controllerButtonsRef.current, "launchStart", isGamepadButtonPressed(gamepad, controllerBindings.pause as GamepadButtonName));
       const dpadUp = isGamepadButtonPressed(gamepad, "dpadUp");
       const dpadDown = isGamepadButtonPressed(gamepad, "dpadDown");
       const dpadLeft = isGamepadButtonPressed(gamepad, "dpadLeft");
       const dpadRight = isGamepadButtonPressed(gamepad, "dpadRight");
       readGamepadStickAxesInto(gamepad, "left", launchMenuStickScratch, 0.55);
-      const moveUp = consumeRepeat("launchUp", dpadUp || launchMenuStickScratch.y < -0.6, now);
-      const moveDown = consumeRepeat("launchDown", dpadDown || launchMenuStickScratch.y > 0.6, now);
-      const moveLeft = consumeRepeat("launchLeft", dpadLeft || launchMenuStickScratch.x < -0.6, now);
-      const moveRight = consumeRepeat("launchRight", dpadRight || launchMenuStickScratch.x > 0.6, now);
+      const moveDirection = resolveLaunchControllerMoveDirection({
+        buttonState: controllerButtonsRef.current,
+        repeatState: controllerRepeatRef.current,
+        now,
+        dpadUp,
+        dpadDown,
+        dpadLeft,
+        dpadRight,
+        stickX: launchMenuStickScratch.x,
+        stickY: launchMenuStickScratch.y,
+      });
 
-      if (moveUp) {
-        moveLaunchMenuFocus("up");
-      } else if (moveDown) {
-        moveLaunchMenuFocus("down");
-      } else if (moveLeft) {
-        moveLaunchMenuFocus("left");
-      } else if (moveRight) {
-        moveLaunchMenuFocus("right");
+      if (moveDirection) {
+        moveLaunchMenuFocus(moveDirection);
       }
 
       if (backPressed) {
