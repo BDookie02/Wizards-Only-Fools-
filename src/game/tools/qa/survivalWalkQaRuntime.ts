@@ -541,6 +541,56 @@ export function resolveQaWalkTubeMovementFrame({
   };
 }
 
+export function resolveQaWalkBlockedRecoveryTrigger({
+  elapsedSeconds,
+  forwardClearance,
+  lilyCoilTubeQaActive,
+  overheadClearance,
+  qaRouteActive,
+  recoveryUntil,
+  routeBlockDwelled,
+  routeHardBlocked,
+  viewClearance,
+  blockedClearance = QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
+  overheadBlockedClearance = QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
+  viewBlockedClearance = QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
+}: {
+  elapsedSeconds: number;
+  forwardClearance: number;
+  lilyCoilTubeQaActive: boolean;
+  overheadClearance: number;
+  qaRouteActive: boolean;
+  recoveryUntil: number;
+  routeBlockDwelled: boolean;
+  routeHardBlocked: boolean;
+  viewClearance: number;
+  blockedClearance?: number;
+  overheadBlockedClearance?: number;
+  viewBlockedClearance?: number;
+}): {
+  aggressive: boolean;
+  recoveryReason: string;
+} | null {
+  if (lilyCoilTubeQaActive) return null;
+  const blocked = forwardClearance < blockedClearance ||
+    viewClearance < viewBlockedClearance ||
+    overheadClearance < overheadBlockedClearance;
+  if (!blocked) return null;
+  if (qaRouteActive && (!routeHardBlocked || !routeBlockDwelled)) return null;
+  if (elapsedSeconds < recoveryUntil - 0.08) return null;
+
+  return {
+    aggressive: forwardClearance < 2.4 ||
+      viewClearance < 2.2 ||
+      overheadClearance < overheadBlockedClearance,
+    recoveryReason: overheadClearance < overheadBlockedClearance
+      ? "overhead"
+      : viewClearance < viewBlockedClearance
+        ? "view-blocked"
+        : "clearance",
+  };
+}
+
 export function resolveQaWalkLookInputFrame({
   currentYaw,
   deltaSeconds,

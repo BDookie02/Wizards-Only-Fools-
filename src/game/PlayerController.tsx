@@ -111,6 +111,7 @@ import {
 import {
   isQaWalkMovingInOpenLane,
   resolveQaWalkAvoidMovement,
+  resolveQaWalkBlockedRecoveryTrigger,
   resolveQaWalkClearanceThrottle,
   resolveQaWalkCombatFocusMovement,
   resolveQaWalkInspectMovement,
@@ -2128,22 +2129,20 @@ export function PlayerController() {
         );
       }
 
-      if (
-        !lilyCoilTubeQaActive &&
-        (
-          forwardClearance < QA_SURVIVAL_WALK_BLOCKED_CLEARANCE ||
-          viewClearance < QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE ||
-          overheadClearance < QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE
-        ) &&
-        (!qaRouteActive || (routeHardBlocked && routeBlockDwelled)) &&
-        elapsed >= qaWalkRecoveryUntil.current - 0.08
-      ) {
-        recoveryReason = overheadClearance < QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE
-          ? "overhead"
-          : viewClearance < QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE
-            ? "view-blocked"
-            : "clearance";
-        beginQaWalkRecovery(forwardClearance < 2.4 || viewClearance < 2.2 || overheadClearance < QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE);
+      const blockedRecoveryTrigger = resolveQaWalkBlockedRecoveryTrigger({
+        elapsedSeconds: elapsed,
+        forwardClearance,
+        lilyCoilTubeQaActive,
+        overheadClearance,
+        qaRouteActive,
+        recoveryUntil: qaWalkRecoveryUntil.current,
+        routeBlockDwelled,
+        routeHardBlocked,
+        viewClearance,
+      });
+      if (blockedRecoveryTrigger) {
+        recoveryReason = blockedRecoveryTrigger.recoveryReason;
+        beginQaWalkRecovery(blockedRecoveryTrigger.aggressive);
       }
 
       let avoidMovement: ReturnType<typeof resolveQaWalkAvoidMovement> | null = null;
