@@ -70,13 +70,16 @@ import {
   QA_SURVIVAL_WAYPOINT_MIN_DISTANCE,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
   QA_SURVIVAL_WALK_DECISION_MAX_SECONDS,
+  QA_SURVIVAL_WALK_DECISION_MIN_SECONDS,
   QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
   QA_SURVIVAL_WALK_MIN_PROGRESS,
   QA_SURVIVAL_WALK_MIN_TOWARD_PROGRESS,
   QA_SURVIVAL_WALK_PROBE_DISTANCE,
+  QA_SURVIVAL_WALK_SIDE_PROBE_DISTANCE,
   QA_SURVIVAL_WALK_SOFT_CLEARANCE,
   QA_SURVIVAL_WALK_SOFT_LOOKAHEAD,
   QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR,
+  QA_SURVIVAL_WALK_TURN_OPTIONS,
   angleDeltaRadians,
   getQaSurvivalWalkStartDelaySeconds,
   isQaSurvivalWalkEnabled,
@@ -727,6 +730,88 @@ export function shouldResolveQaWalkSteeringDecision({
     overheadClearance < overheadSoftClearance ||
     elapsedSeconds >= nextDecisionAt ||
     elapsedSeconds - lastDecisionAt > decisionMaxSeconds;
+}
+
+export type QaWalkClearanceProbe = (yaw: number, distance: number) => number;
+
+export function resolveQaWalkSteeringDecisionFrame({
+  desiredYaw,
+  elapsedSeconds,
+  initialStrafeAmount,
+  positionX,
+  positionZ,
+  probeClearance,
+  qaRouteActive,
+  targetYaw,
+  decisionMaxSeconds = QA_SURVIVAL_WALK_DECISION_MAX_SECONDS,
+  decisionMinSeconds = QA_SURVIVAL_WALK_DECISION_MIN_SECONDS,
+  lookAheadDistance = QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
+  probeDistance = QA_SURVIVAL_WALK_PROBE_DISTANCE,
+  sideProbeDistance = QA_SURVIVAL_WALK_SIDE_PROBE_DISTANCE,
+  turnOptions = QA_SURVIVAL_WALK_TURN_OPTIONS,
+}: {
+  desiredYaw: number;
+  elapsedSeconds: number;
+  initialStrafeAmount: number;
+  positionX: number;
+  positionZ: number;
+  probeClearance: QaWalkClearanceProbe;
+  qaRouteActive: boolean;
+  targetYaw: number;
+  decisionMaxSeconds?: number;
+  decisionMinSeconds?: number;
+  lookAheadDistance?: number;
+  probeDistance?: number;
+  sideProbeDistance?: number;
+  turnOptions?: readonly number[];
+}) {
+  const scoreCandidateYaw = (candidateYaw: number, turn: number) => {
+    const center = probeClearance(candidateYaw, probeDistance);
+    const left = probeClearance(candidateYaw + 0.34, sideProbeDistance);
+    const right = probeClearance(candidateYaw - 0.34, sideProbeDistance);
+    const lookAhead = probeClearance(candidateYaw, lookAheadDistance);
+    const directionAgreement = Math.cos(candidateYaw - desiredYaw) * 3.15;
+    const turnPenalty = Math.abs(turn) * 0.85;
+    const deadEndPenalty = lookAhead < lookAheadDistance * 0.42 ? 16 : 0;
+    return {
+      yaw: candidateYaw,
+      center,
+      left,
+      right,
+      lookAhead,
+      score: center * 1.15 +
+        Math.min(left, right) * 0.72 +
+        Math.min(lookAhead, 32) * 0.58 +
+        directionAgreement -
+        turnPenalty -
+        deadEndPenalty,
+    };
+  };
+
+  let best = scoreCandidateYaw(targetYaw, 0);
+
+  for (let index = 0; index < turnOptions.length; index += 1) {
+    const turn = turnOptions[index];
+    const candidateYaw = desiredYaw + turn + (index === 0 ? Math.sin(elapsedSeconds * 0.37) * 0.22 : 0);
+    const candidate = scoreCandidateYaw(candidateYaw, turn);
+    if (candidate.score > best.score) {
+      best = candidate;
+    }
+  }
+
+  return {
+    best,
+    lastDecisionAt: elapsedSeconds,
+    nextDecisionAt: elapsedSeconds + randomRangeFromNoise(
+      survivalishTurnNoise(positionX - 3.5, positionZ + 8.25, elapsedSeconds),
+      decisionMinSeconds,
+      decisionMaxSeconds,
+    ),
+    strafeAmount: qaRouteActive
+      ? 0
+      : clampNumber((best.right - best.left) * 0.09, -0.62, 0.62) + initialStrafeAmount * 0.35,
+    targetYaw: best.yaw,
+  };
 }
 
 export function getQaWalkIntentDistance(intent: QaSurvivalIntent | null, position: { x: number; z: number }) {

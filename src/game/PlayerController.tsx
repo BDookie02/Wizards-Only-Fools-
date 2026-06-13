@@ -36,8 +36,6 @@ import {
   QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
   QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
-  QA_SURVIVAL_WALK_DECISION_MAX_SECONDS,
-  QA_SURVIVAL_WALK_DECISION_MIN_SECONDS,
   QA_SURVIVAL_WALK_ESCAPE_TURNS,
   QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
   QA_SURVIVAL_WALK_PROBE_DISTANCE,
@@ -96,6 +94,7 @@ import {
   resolveQaWalkRecoveryJumpHoldUntil,
   resolveQaWalkRecoveryRescuePlan,
   resolveQaWalkRecoveryStartPlan,
+  resolveQaWalkSteeringDecisionFrame,
   resolveQaWalkTelemetryAbnormality,
   resolveQaWalkTelemetryMovement,
   resolveQaWalkRouteSteeringState,
@@ -1644,24 +1643,6 @@ export function PlayerController() {
         return hit ? hit.timeOfImpact : QA_SURVIVAL_OVERHEAD_PROBE_DISTANCE;
       };
 
-      const scoreCandidateYaw = (candidateYaw: number, turn: number) => {
-        const center = probeClearance(candidateYaw, QA_SURVIVAL_WALK_PROBE_DISTANCE);
-        const left = probeClearance(candidateYaw + 0.34, QA_SURVIVAL_WALK_SIDE_PROBE_DISTANCE);
-        const right = probeClearance(candidateYaw - 0.34, QA_SURVIVAL_WALK_SIDE_PROBE_DISTANCE);
-        const lookAhead = probeClearance(candidateYaw, QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE);
-        const directionAgreement = Math.cos(candidateYaw - desiredYaw) * 3.15;
-        const turnPenalty = Math.abs(turn) * 0.85;
-        const deadEndPenalty = lookAhead < QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE * 0.42 ? 16 : 0;
-        return {
-          yaw: candidateYaw,
-          center,
-          left,
-          right,
-          lookAhead,
-          score: center * 1.15 + Math.min(left, right) * 0.72 + Math.min(lookAhead, 32) * 0.58 + directionAgreement - turnPenalty - deadEndPenalty,
-        };
-      };
-
       const findEscapeYaw = (baseYaw: number, preferYaw: number) => {
         let best = {
           yaw: baseYaw + Math.PI,
@@ -1803,27 +1784,20 @@ export function PlayerController() {
       });
 
       if (needsDecision) {
-        let best = scoreCandidateYaw(targetYaw, 0);
-
-        for (let index = 0; index < QA_SURVIVAL_WALK_TURN_OPTIONS.length; index += 1) {
-          const turn = QA_SURVIVAL_WALK_TURN_OPTIONS[index];
-          const candidateYaw = desiredYaw + turn + (index === 0 ? Math.sin(elapsed * 0.37) * 0.22 : 0);
-          const candidate = scoreCandidateYaw(candidateYaw, turn);
-          if (candidate.score > best.score) {
-            best = candidate;
-          }
-        }
-
-        targetYaw = best.yaw;
-        strafeAmount = qaRouteActive
-          ? 0
-          : THREE.MathUtils.clamp((best.right - best.left) * 0.09, -0.62, 0.62) + strafeAmount * 0.35;
-        qaWalkLastDecisionAt.current = elapsed;
-        qaWalkNextDecisionAt.current = elapsed + randomRangeFromNoise(
-          survivalishTurnNoise(pos.x - 3.5, pos.z + 8.25, elapsed),
-          QA_SURVIVAL_WALK_DECISION_MIN_SECONDS,
-          QA_SURVIVAL_WALK_DECISION_MAX_SECONDS,
-        );
+        const steeringDecisionFrame = resolveQaWalkSteeringDecisionFrame({
+          desiredYaw,
+          elapsedSeconds: elapsed,
+          initialStrafeAmount: strafeAmount,
+          positionX: pos.x,
+          positionZ: pos.z,
+          probeClearance,
+          qaRouteActive,
+          targetYaw,
+        });
+        targetYaw = steeringDecisionFrame.targetYaw;
+        strafeAmount = steeringDecisionFrame.strafeAmount;
+        qaWalkLastDecisionAt.current = steeringDecisionFrame.lastDecisionAt;
+        qaWalkNextDecisionAt.current = steeringDecisionFrame.nextDecisionAt;
       }
 
       const blockedRecoveryTrigger = resolveQaWalkBlockedRecoveryTrigger({
