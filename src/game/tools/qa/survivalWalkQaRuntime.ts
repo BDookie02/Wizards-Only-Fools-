@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { useLazyRef } from "../../systems/react/useLazyRef";
 import {
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
+  QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
   QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE,
   QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
@@ -23,6 +24,7 @@ import {
   QA_SURVIVAL_WALK_PROBE_DISTANCE,
   QA_SURVIVAL_WALK_SOFT_CLEARANCE,
   QA_SURVIVAL_WALK_SOFT_LOOKAHEAD,
+  QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR,
   angleDeltaRadians,
   getQaSurvivalWalkStartDelaySeconds,
   isQaSurvivalWalkEnabled,
@@ -372,6 +374,72 @@ export function resolveQaWalkIntentJumpHoldUntil({
   if (nowSeconds <= previousJumpHeldUntil + cooldownSeconds) return null;
   if (planarSpeedSq >= lowSpeedThreshold * lowSpeedThreshold && intentMoveDistance >= 34) return null;
   return nowSeconds + holdSeconds;
+}
+
+export function resolveQaWalkAvoidMovement({
+  currentYaw,
+  elapsedSeconds,
+  forwardClearance,
+  overheadClearance,
+  positionX,
+  qaRouteActive,
+  strafeAmount,
+  targetYaw,
+  viewClearance,
+  overheadSoftClearance = QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
+  probeDistance = QA_SURVIVAL_WALK_PROBE_DISTANCE,
+  turnInPlaceError = QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR,
+  viewSoftClearance = QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
+}: {
+  currentYaw: number;
+  elapsedSeconds: number;
+  forwardClearance: number;
+  overheadClearance: number;
+  positionX: number;
+  qaRouteActive: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+  viewClearance: number;
+  overheadSoftClearance?: number;
+  probeDistance?: number;
+  turnInPlaceError?: number;
+  viewSoftClearance?: number;
+}): {
+  forwardAmount: number;
+  mode: QaSurvivalWalkMode;
+  sprint: boolean;
+  strafeAmount: number;
+} | null {
+  if (qaRouteActive) return null;
+  if (
+    forwardClearance >= probeDistance * 0.72 &&
+    viewClearance >= viewSoftClearance * 0.72 &&
+    overheadClearance >= overheadSoftClearance
+  ) {
+    return null;
+  }
+
+  const avoidYawError = Math.abs(angleDeltaRadians(currentYaw, targetYaw));
+  if (avoidYawError > turnInPlaceError) {
+    return {
+      forwardAmount: 0,
+      mode: "avoid",
+      sprint: false,
+      strafeAmount: 0,
+    };
+  }
+
+  const baseForwardAmount = viewClearance < viewSoftClearance * 0.58 ? 0.18 : 0.38;
+  return {
+    forwardAmount: overheadClearance < overheadSoftClearance ? Math.min(baseForwardAmount, 0.22) : baseForwardAmount,
+    mode: "avoid",
+    sprint: false,
+    strafeAmount: clampNumber(
+      strafeAmount + Math.sign(Math.sin(elapsedSeconds * 1.7 + positionX * 0.01)) * 0.18,
+      -0.58,
+      0.58,
+    ),
+  };
 }
 
 export function resolveQaWalkLookInputFrame({

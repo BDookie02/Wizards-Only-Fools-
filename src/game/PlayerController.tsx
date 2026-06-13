@@ -110,6 +110,7 @@ import {
 } from "./tools/qa/survivalWalkQa";
 import {
   isQaWalkMovingInOpenLane,
+  resolveQaWalkAvoidMovement,
   resolveQaWalkClearanceThrottle,
   resolveQaWalkCombatFocusMovement,
   resolveQaWalkIntentJumpHoldUntil,
@@ -2133,6 +2134,7 @@ export function PlayerController() {
         beginQaWalkRecovery(forwardClearance < 2.4 || viewClearance < 2.2 || overheadClearance < QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE);
       }
 
+      let avoidMovement: ReturnType<typeof resolveQaWalkAvoidMovement> | null = null;
       if (elapsed < qaWalkInspectUntil.current) {
         mode = "inspect";
         targetYaw = qaWalkInspectYaw.current + Math.sin(elapsed * 1.35) * 0.18;
@@ -2281,26 +2283,22 @@ export function PlayerController() {
           qaWalkJumpHeldUntil.current = recoveryJumpHoldUntil;
         }
       } else if (
-        !qaRouteActive &&
-        (
-          forwardClearance < QA_SURVIVAL_WALK_PROBE_DISTANCE * 0.72 ||
-          viewClearance < QA_SURVIVAL_VIEW_SOFT_CLEARANCE * 0.72 ||
-          overheadClearance < QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE
-        )
+        (avoidMovement = resolveQaWalkAvoidMovement({
+          currentYaw: qaWalkYaw.current ?? currentYaw,
+          elapsedSeconds: elapsed,
+          forwardClearance,
+          overheadClearance,
+          positionX: pos.x,
+          qaRouteActive,
+          strafeAmount,
+          targetYaw,
+          viewClearance,
+        })) !== null
       ) {
-        mode = "avoid";
-        const avoidYawError = Math.abs(angleDeltaRadians(qaWalkYaw.current ?? currentYaw, targetYaw));
-        if (avoidYawError > QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR) {
-          forwardAmount = 0;
-          strafeAmount = 0;
-        } else {
-          forwardAmount = viewClearance < QA_SURVIVAL_VIEW_SOFT_CLEARANCE * 0.58 ? 0.18 : 0.38;
-          if (overheadClearance < QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE) {
-            forwardAmount = Math.min(forwardAmount, 0.22);
-          }
-          strafeAmount = THREE.MathUtils.clamp(strafeAmount + Math.sign(Math.sin(elapsed * 1.7 + pos.x * 0.01)) * 0.18, -0.58, 0.58);
-        }
-        sprint = false;
+        mode = avoidMovement.mode;
+        forwardAmount = avoidMovement.forwardAmount;
+        strafeAmount = avoidMovement.strafeAmount;
+        sprint = avoidMovement.sprint;
       }
 
       if (activeIntent && mode === "travel") {
