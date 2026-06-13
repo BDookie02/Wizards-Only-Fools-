@@ -62,7 +62,6 @@ import {
   QA_SURVIVAL_INSPECTION_MIN_SECONDS,
   QA_SURVIVAL_LOOK_TURN_RATE,
   QA_SURVIVAL_LOW_SPEED_THRESHOLD,
-  QA_SURVIVAL_LOW_SPEED_TRIGGER_SECONDS,
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
   QA_SURVIVAL_OVERHEAD_PROBE_DISTANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
@@ -79,7 +78,6 @@ import {
   QA_SURVIVAL_RECOVERY_REVERSE_STUCK_SECONDS,
   QA_SURVIVAL_RECOVERY_TURN_RATE,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
-  QA_SURVIVAL_STUCK_CHECK_SECONDS,
   QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
   QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
@@ -87,8 +85,6 @@ import {
   QA_SURVIVAL_WALK_DECISION_MIN_SECONDS,
   QA_SURVIVAL_WALK_ESCAPE_TURNS,
   QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
-  QA_SURVIVAL_WALK_MIN_PROGRESS,
-  QA_SURVIVAL_WALK_MIN_TOWARD_PROGRESS,
   QA_SURVIVAL_WALK_PROBE_DISTANCE,
   QA_SURVIVAL_WALK_PROBE_HEIGHTS,
   QA_SURVIVAL_WALK_SIDE_PROBE_DISTANCE,
@@ -117,7 +113,13 @@ import {
   type QaSurvivalIntentKind,
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
-import { resolveQaWalkRouteSteeringState, resolveQaWalkRouteWaypoint, useQaSurvivalWalkRuntimeState } from "./tools/qa/survivalWalkQaRuntime";
+import {
+  resolveQaWalkLowSpeedRecovery,
+  resolveQaWalkProgressRecovery,
+  resolveQaWalkRouteSteeringState,
+  resolveQaWalkRouteWaypoint,
+  useQaSurvivalWalkRuntimeState,
+} from "./tools/qa/survivalWalkQaRuntime";
 import {
   clearSurvivalWalkRouteTelemetry,
   getSurvivalWalkSpellDummyHitCount,
@@ -2557,53 +2559,55 @@ export function PlayerController() {
 
       const planarSpeedSq = velocity.x * velocity.x + velocity.z * velocity.z;
       const planarSpeed = Math.sqrt(planarSpeedSq);
-      const expectingMovement = mode !== "inspect" && forwardAmount > 0.18;
-      if (!lilyCoilTubeQaActive && expectingMovement && planarSpeedSq < QA_SURVIVAL_LOW_SPEED_THRESHOLD * QA_SURVIVAL_LOW_SPEED_THRESHOLD) {
-        if (qaWalkLowSpeedStartedAt.current <= 0) {
-          qaWalkLowSpeedStartedAt.current = elapsed;
-        } else if (elapsed - qaWalkLowSpeedStartedAt.current > QA_SURVIVAL_LOW_SPEED_TRIGGER_SECONDS) {
-          qaWalkStuckStrikes.current = Math.min(qaWalkStuckStrikes.current + 1, 6);
-          mode = "recover";
-          recoveryReason = "low-speed";
-          beginQaWalkRecovery(true);
-          targetYaw = qaWalkRecoveryYaw.current;
-          strafeAmount = 0;
-          forwardAmount = -0.24;
-          sprint = false;
-          qaWalkLowSpeedStartedAt.current = elapsed;
-        }
-      } else {
-        qaWalkLowSpeedStartedAt.current = 0;
+      const lowSpeedRecovery = resolveQaWalkLowSpeedRecovery({
+        elapsedSeconds: elapsed,
+        forwardAmount,
+        lilyCoilTubeQaActive,
+        lowSpeedStartedAt: qaWalkLowSpeedStartedAt.current,
+        mode,
+        planarSpeedSq,
+        stuckStrikes: qaWalkStuckStrikes.current,
+      });
+      const expectingMovement = lowSpeedRecovery.expectingMovement;
+      qaWalkLowSpeedStartedAt.current = lowSpeedRecovery.lowSpeedStartedAt;
+      if (lowSpeedRecovery.shouldRecover) {
+        qaWalkStuckStrikes.current = lowSpeedRecovery.stuckStrikes;
+        mode = "recover";
+        recoveryReason = "low-speed";
+        beginQaWalkRecovery(true);
+        targetYaw = qaWalkRecoveryYaw.current;
+        strafeAmount = 0;
+        forwardAmount = -0.24;
+        sprint = false;
       }
 
-      if (!lilyCoilTubeQaActive && mode !== "inspect" && mode !== "act" && elapsed - qaWalkLastProgressAt.current > QA_SURVIVAL_STUCK_CHECK_SECONDS) {
-        const progressDistanceX = pos.x - qaWalkLastProgressPos.current.x;
-        const progressDistanceZ = pos.z - qaWalkLastProgressPos.current.z;
-        const progressDistanceSq = progressDistanceX * progressDistanceX + progressDistanceZ * progressDistanceZ;
-        const previousWaypointDistanceX = qaWalkWaypoint.current.x - qaWalkLastProgressPos.current.x;
-        const previousWaypointDistanceZ = qaWalkWaypoint.current.z - qaWalkLastProgressPos.current.z;
-        const previousWaypointDistance = Math.sqrt(
-          previousWaypointDistanceX * previousWaypointDistanceX +
-          previousWaypointDistanceZ * previousWaypointDistanceZ,
-        );
-        const towardProgress = previousWaypointDistance - waypointDistance;
-        const clearLane = forwardClearance > QA_SURVIVAL_WALK_PROBE_DISTANCE * 0.88;
-        const movingClearly = planarSpeedSq > (QA_SURVIVAL_LOW_SPEED_THRESHOLD * 1.35) * (QA_SURVIVAL_LOW_SPEED_THRESHOLD * 1.35);
-        if (
-          progressDistanceSq < QA_SURVIVAL_WALK_MIN_PROGRESS * QA_SURVIVAL_WALK_MIN_PROGRESS ||
-          (!clearLane && towardProgress < QA_SURVIVAL_WALK_MIN_TOWARD_PROGRESS)
-        ) {
-          qaWalkStuckStrikes.current = Math.min(qaWalkStuckStrikes.current + 1, 6);
+      const progressRecovery = resolveQaWalkProgressRecovery({
+        elapsedSeconds: elapsed,
+        forwardClearance,
+        lastProgressAt: qaWalkLastProgressAt.current,
+        lastProgressPosition: qaWalkLastProgressPos.current,
+        lilyCoilTubeQaActive,
+        mode,
+        planarSpeedSq,
+        position: pos,
+        qaRouteActive,
+        stuckStrikes: qaWalkStuckStrikes.current,
+        waypoint: qaWalkWaypoint.current,
+        waypointDistance,
+      });
+      if (progressRecovery.shouldCheck) {
+        if (progressRecovery.action === "recover") {
+          qaWalkStuckStrikes.current = progressRecovery.stuckStrikes;
           mode = "recover";
-          recoveryReason = progressDistanceSq < QA_SURVIVAL_WALK_MIN_PROGRESS * QA_SURVIVAL_WALK_MIN_PROGRESS ? "progress" : "blocked-progress";
+          recoveryReason = progressRecovery.recoveryReason;
           beginQaWalkRecovery(true);
           targetYaw = qaWalkRecoveryYaw.current;
           strafeAmount = 0;
-          forwardAmount = qaWalkStuckStrikes.current > 1 ? -0.24 : 0;
+          forwardAmount = progressRecovery.forwardAmount;
           sprint = false;
-        } else if (!qaRouteActive && clearLane && movingClearly && towardProgress < -QA_SURVIVAL_WALK_MIN_TOWARD_PROGRESS) {
+        } else if (progressRecovery.action === "set-forward-waypoint") {
           setForwardQaWaypoint(qaWalkYaw.current ?? currentYaw);
-        } else if (progressDistanceSq > (QA_SURVIVAL_WALK_MIN_PROGRESS * 1.55) * (QA_SURVIVAL_WALK_MIN_PROGRESS * 1.55)) {
+        } else if (progressRecovery.action === "clear-stuck") {
           qaWalkStuckStrikes.current = 0;
         }
         qaWalkLastProgressAt.current = elapsed;

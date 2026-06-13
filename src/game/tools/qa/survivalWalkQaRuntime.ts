@@ -10,7 +10,13 @@ import {
   QA_SURVIVAL_ROUTE_YAW_SNAP_DELTA,
   QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
   QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
+  QA_SURVIVAL_LOW_SPEED_THRESHOLD,
+  QA_SURVIVAL_LOW_SPEED_TRIGGER_SECONDS,
+  QA_SURVIVAL_STUCK_CHECK_SECONDS,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
+  QA_SURVIVAL_WALK_MIN_PROGRESS,
+  QA_SURVIVAL_WALK_MIN_TOWARD_PROGRESS,
+  QA_SURVIVAL_WALK_PROBE_DISTANCE,
   QA_SURVIVAL_WALK_SOFT_CLEARANCE,
   QA_SURVIVAL_WALK_SOFT_LOOKAHEAD,
   angleDeltaRadians,
@@ -20,6 +26,7 @@ import {
   type QaSurvivalIntent,
   type QaSurvivalRouteWaypoint,
   type QaSurvivalWalkInputState,
+  type QaSurvivalWalkMode,
 } from "./survivalWalkQa";
 
 type QaWalkPosition = { x: number; y: number; z: number };
@@ -31,6 +38,16 @@ const DEFAULT_QA_WALK_INPUT: QaSurvivalWalkInputState = {
   sprint: false,
   mode: "travel",
 };
+
+const QA_WALK_MAX_STUCK_STRIKES = 6;
+
+export type QaWalkProgressRecoveryReason = "progress" | "blocked-progress";
+
+export type QaWalkProgressRecoveryAction =
+  | "none"
+  | "recover"
+  | "set-forward-waypoint"
+  | "clear-stuck";
 
 export function resolveQaWalkRouteWaypoint({
   active,
@@ -172,6 +189,199 @@ export function resolveQaWalkRouteSteeringState({
         viewClearance > viewBlockedClearance * 1.35 &&
         overheadClearance > overheadBlockedClearance,
     },
+  };
+}
+
+export function resolveQaWalkLowSpeedRecovery({
+  elapsedSeconds,
+  forwardAmount,
+  lilyCoilTubeQaActive,
+  lowSpeedStartedAt,
+  mode,
+  planarSpeedSq,
+  stuckStrikes,
+  lowSpeedThreshold = QA_SURVIVAL_LOW_SPEED_THRESHOLD,
+  lowSpeedTriggerSeconds = QA_SURVIVAL_LOW_SPEED_TRIGGER_SECONDS,
+}: {
+  elapsedSeconds: number;
+  forwardAmount: number;
+  lilyCoilTubeQaActive: boolean;
+  lowSpeedStartedAt: number;
+  mode: QaSurvivalWalkMode;
+  planarSpeedSq: number;
+  stuckStrikes: number;
+  lowSpeedThreshold?: number;
+  lowSpeedTriggerSeconds?: number;
+}) {
+  const expectingMovement = mode !== "inspect" && forwardAmount > 0.18;
+  if (!lilyCoilTubeQaActive && expectingMovement && planarSpeedSq < lowSpeedThreshold * lowSpeedThreshold) {
+    if (lowSpeedStartedAt <= 0) {
+      return {
+        expectingMovement,
+        lowSpeedStartedAt: elapsedSeconds,
+        shouldRecover: false,
+        stuckStrikes,
+      };
+    }
+
+    if (elapsedSeconds - lowSpeedStartedAt > lowSpeedTriggerSeconds) {
+      return {
+        expectingMovement,
+        lowSpeedStartedAt: elapsedSeconds,
+        shouldRecover: true,
+        stuckStrikes: Math.min(stuckStrikes + 1, QA_WALK_MAX_STUCK_STRIKES),
+      };
+    }
+
+    return {
+      expectingMovement,
+      lowSpeedStartedAt,
+      shouldRecover: false,
+      stuckStrikes,
+    };
+  }
+
+  return {
+    expectingMovement,
+    lowSpeedStartedAt: 0,
+    shouldRecover: false,
+    stuckStrikes,
+  };
+}
+
+export function resolveQaWalkProgressRecovery({
+  elapsedSeconds,
+  forwardClearance,
+  lastProgressAt,
+  lastProgressPosition,
+  lilyCoilTubeQaActive,
+  mode,
+  planarSpeedSq,
+  position,
+  qaRouteActive,
+  stuckStrikes,
+  waypoint,
+  waypointDistance,
+  lowSpeedThreshold = QA_SURVIVAL_LOW_SPEED_THRESHOLD,
+  minProgress = QA_SURVIVAL_WALK_MIN_PROGRESS,
+  minTowardProgress = QA_SURVIVAL_WALK_MIN_TOWARD_PROGRESS,
+  probeDistance = QA_SURVIVAL_WALK_PROBE_DISTANCE,
+  stuckCheckSeconds = QA_SURVIVAL_STUCK_CHECK_SECONDS,
+}: {
+  elapsedSeconds: number;
+  forwardClearance: number;
+  lastProgressAt: number;
+  lastProgressPosition: { x: number; z: number };
+  lilyCoilTubeQaActive: boolean;
+  mode: QaSurvivalWalkMode;
+  planarSpeedSq: number;
+  position: { x: number; z: number };
+  qaRouteActive: boolean;
+  stuckStrikes: number;
+  waypoint: { x: number; z: number };
+  waypointDistance: number;
+  lowSpeedThreshold?: number;
+  minProgress?: number;
+  minTowardProgress?: number;
+  probeDistance?: number;
+  stuckCheckSeconds?: number;
+}): {
+  action: QaWalkProgressRecoveryAction;
+  clearLane: boolean;
+  forwardAmount: number;
+  movingClearly: boolean;
+  progressDistanceSq: number;
+  recoveryReason: QaWalkProgressRecoveryReason | null;
+  shouldCheck: boolean;
+  stuckStrikes: number;
+  towardProgress: number;
+} {
+  const shouldCheck = !lilyCoilTubeQaActive &&
+    mode !== "inspect" &&
+    mode !== "act" &&
+    elapsedSeconds - lastProgressAt > stuckCheckSeconds;
+
+  if (!shouldCheck) {
+    return {
+      action: "none",
+      clearLane: false,
+      forwardAmount: 0,
+      movingClearly: false,
+      progressDistanceSq: 0,
+      recoveryReason: null,
+      shouldCheck,
+      stuckStrikes,
+      towardProgress: 0,
+    };
+  }
+
+  const progressDistanceX = position.x - lastProgressPosition.x;
+  const progressDistanceZ = position.z - lastProgressPosition.z;
+  const progressDistanceSq = progressDistanceX * progressDistanceX + progressDistanceZ * progressDistanceZ;
+  const previousWaypointDistanceX = waypoint.x - lastProgressPosition.x;
+  const previousWaypointDistanceZ = waypoint.z - lastProgressPosition.z;
+  const previousWaypointDistance = Math.sqrt(
+    previousWaypointDistanceX * previousWaypointDistanceX +
+    previousWaypointDistanceZ * previousWaypointDistanceZ,
+  );
+  const towardProgress = previousWaypointDistance - waypointDistance;
+  const clearLane = forwardClearance > probeDistance * 0.88;
+  const movingClearly = planarSpeedSq > (lowSpeedThreshold * 1.35) * (lowSpeedThreshold * 1.35);
+  const minProgressSq = minProgress * minProgress;
+
+  if (progressDistanceSq < minProgressSq || (!clearLane && towardProgress < minTowardProgress)) {
+    const nextStuckStrikes = Math.min(stuckStrikes + 1, QA_WALK_MAX_STUCK_STRIKES);
+    return {
+      action: "recover",
+      clearLane,
+      forwardAmount: nextStuckStrikes > 1 ? -0.24 : 0,
+      movingClearly,
+      progressDistanceSq,
+      recoveryReason: progressDistanceSq < minProgressSq ? "progress" : "blocked-progress",
+      shouldCheck,
+      stuckStrikes: nextStuckStrikes,
+      towardProgress,
+    };
+  }
+
+  if (!qaRouteActive && clearLane && movingClearly && towardProgress < -minTowardProgress) {
+    return {
+      action: "set-forward-waypoint",
+      clearLane,
+      forwardAmount: 0,
+      movingClearly,
+      progressDistanceSq,
+      recoveryReason: null,
+      shouldCheck,
+      stuckStrikes,
+      towardProgress,
+    };
+  }
+
+  if (progressDistanceSq > (minProgress * 1.55) * (minProgress * 1.55)) {
+    return {
+      action: "clear-stuck",
+      clearLane,
+      forwardAmount: 0,
+      movingClearly,
+      progressDistanceSq,
+      recoveryReason: null,
+      shouldCheck,
+      stuckStrikes: 0,
+      towardProgress,
+    };
+  }
+
+  return {
+    action: "none",
+    clearLane,
+    forwardAmount: 0,
+    movingClearly,
+    progressDistanceSq,
+    recoveryReason: null,
+    shouldCheck,
+    stuckStrikes,
+    towardProgress,
   };
 }
 
