@@ -258,6 +258,21 @@ export type HudControllerPauseMenuActionOptions = Pick<
   startPressed: boolean;
 };
 
+export type HudControllerGameplayStartAction =
+  | { type: "none" }
+  | { type: "pause" }
+  | { type: "start"; shouldReturn: boolean };
+
+export type HudControllerGameplayStartActionOptions = {
+  startPressed: boolean;
+  aPressed: boolean;
+  isLocked: boolean;
+  controllerGameplayActive: boolean;
+  isReturningToGame: boolean;
+  touchGameplayActive: boolean;
+  canPauseActiveGameplay: boolean;
+};
+
 const HUD_CONTROLLER_MENU_AXIS_THRESHOLD = 0.6;
 const HUD_CONTROLLER_DEV_FAST_TRAVEL_NAVIGATION_DELAY_MS = 220;
 
@@ -714,6 +729,28 @@ export function getHudControllerPauseMenuAction({
   const submit = bPressed ? "close" : aPressed ? "run" : startPressed ? "startGameplay" : null;
 
   return { moveFocus, horizontalDirection, submit };
+}
+
+export function getHudControllerGameplayStartAction({
+  startPressed,
+  aPressed,
+  isLocked,
+  controllerGameplayActive,
+  isReturningToGame,
+  touchGameplayActive,
+  canPauseActiveGameplay,
+}: HudControllerGameplayStartActionOptions): HudControllerGameplayStartAction {
+  if (startPressed) {
+    return touchGameplayActive || canPauseActiveGameplay
+      ? { type: "pause" }
+      : { type: "start", shouldReturn: true };
+  }
+
+  if (aPressed && !isLocked && !controllerGameplayActive && !isReturningToGame) {
+    return { type: "start", shouldReturn: false };
+  }
+
+  return { type: "none" };
 }
 
 export function updateHudControllerInventoryHold({

@@ -156,6 +156,7 @@ import {
   dispatchSpellMenuControllerScroll,
   dispatchSpellMenuControllerSelect,
   getHudControllerDevFastTravelAction,
+  getHudControllerGameplayStartAction,
   getHudControllerInventoryPanelAction,
   getHudControllerPauseMenuAction,
   getHudControllerSpellMenuAction,
@@ -2730,27 +2731,36 @@ export function HUD() {
         return;
       }
 
-      if (startPressed) {
-        const controllerCanPauseActiveGameplay = hasHudControllerGameplaySignal({
-          isLocked,
-          pointerLockActive,
-          touchGameplayActive,
-          controllerGameplayActive,
-          mouseLookFallbackActive: isHudMouseLookFallbackActive(),
-        });
+      const controllerGameplayStartAction = getHudControllerGameplayStartAction({
+        startPressed,
+        aPressed,
+        isLocked,
+        controllerGameplayActive,
+        isReturningToGame,
+        touchGameplayActive,
+        canPauseActiveGameplay: startPressed
+          ? hasHudControllerGameplaySignal({
+            isLocked,
+            pointerLockActive,
+            touchGameplayActive,
+            controllerGameplayActive,
+            mouseLookFallbackActive: isHudMouseLookFallbackActive(),
+          })
+          : false,
+      });
 
-        if (touchGameplayActive) {
-          pauseGameplayFromController();
-        } else if (controllerCanPauseActiveGameplay) {
-          pauseGameplayFromController();
-        } else {
-          startControllerGameplay();
-        }
+      if (controllerGameplayStartAction.type === "pause") {
+        pauseGameplayFromController();
         controllerPollScheduler.schedule(0);
         return;
       }
 
-      if ((aPressed || startPressed) && !isLocked && !controllerGameplayActive && !isReturningToGame) {
+      if (controllerGameplayStartAction.type === "start") {
+        if (controllerGameplayStartAction.shouldReturn) {
+          startControllerGameplay();
+          controllerPollScheduler.schedule(0);
+          return;
+        }
         startControllerGameplay();
       }
 
