@@ -155,9 +155,11 @@ import {
   dispatchSpellMenuControllerNavigate,
   dispatchSpellMenuControllerScroll,
   dispatchSpellMenuControllerSelect,
+  getHudControllerSpellMenuAction,
   hasHudControllerGameplaySignal,
   isStandingStillForControllerInventory,
   createHudControllerInputSnapshot,
+  readHudControllerOverlayRepeats,
   readHudControllerInputSnapshotInto,
   resetHudControllerMagicHoldState,
   resetHudControllerTransientState,
@@ -2576,38 +2578,57 @@ export function HUD() {
         dispatchSpellMenuControllerScroll(scrollAxisY * 18);
       }
 
-      const spellMenuRightPressed = consumeRepeat("controllerSpellMenuRight", isSpellMenuOpen && (dpadRight || menuAxisX > 0.6), now);
-      const spellMenuLeftPressed = consumeRepeat("controllerSpellMenuLeft", isSpellMenuOpen && (dpadLeft || menuAxisX < -0.6), now);
-      const spellMenuDownPressed = consumeRepeat("controllerSpellMenuDown", isSpellMenuOpen && (dpadDown || menuAxisY > 0.6), now);
-      const spellMenuUpPressed = consumeRepeat("controllerSpellMenuUp", isSpellMenuOpen && (dpadUp || menuAxisY < -0.6), now);
-      const pauseNextPressed = consumeRepeat("controllerPauseNext", pauseMenuOpen && (dpadDown || menuAxisY > 0.6), now);
-      const pausePrevPressed = consumeRepeat("controllerPausePrev", pauseMenuOpen && (dpadUp || menuAxisY < -0.6), now);
-      const pauseRightPressed = consumeRepeat("controllerPauseRight", pauseMenuOpen && (dpadRight || menuAxisX > 0.6), now);
-      const pauseLeftPressed = consumeRepeat("controllerPauseLeft", pauseMenuOpen && (dpadLeft || menuAxisX < -0.6), now);
+      const {
+        spellMenuRightPressed,
+        spellMenuLeftPressed,
+        spellMenuDownPressed,
+        spellMenuUpPressed,
+        pauseNextPressed,
+        pausePrevPressed,
+        pauseRightPressed,
+        pauseLeftPressed,
+      } = readHudControllerOverlayRepeats({
+        isSpellMenuOpen,
+        pauseMenuOpen,
+        dpadLeft,
+        dpadRight,
+        dpadUp,
+        dpadDown,
+        menuAxisX,
+        menuAxisY,
+        now,
+        consumeRepeat,
+      });
       if (isSpellMenuOpen) {
-        if (rightBumperHeld || rightBumperPressed) {
-          setMenuBindingHand("right");
-        } else if (leftBumperHeld || leftBumperPressed) {
-          setMenuBindingHand("left");
+        const spellMenuAction = getHudControllerSpellMenuAction({
+          rightBumperHeld,
+          rightBumperPressed,
+          leftBumperHeld,
+          leftBumperPressed,
+          bPressed,
+          startPressed,
+          aPressed,
+          spellMenuUpPressed,
+          spellMenuDownPressed,
+          spellMenuLeftPressed,
+          spellMenuRightPressed,
+        });
+
+        if (spellMenuAction.bindingHand) {
+          setMenuBindingHand(spellMenuAction.bindingHand);
         }
 
-        if (bPressed || startPressed) {
+        if (spellMenuAction.close) {
           closeSpellMenuAndResume();
           controllerPollScheduler.schedule(0);
           return;
         }
 
-        if (spellMenuUpPressed) {
-          dispatchSpellMenuControllerNavigate("up");
-        } else if (spellMenuDownPressed) {
-          dispatchSpellMenuControllerNavigate("down");
-        } else if (spellMenuLeftPressed) {
-          dispatchSpellMenuControllerNavigate("left");
-        } else if (spellMenuRightPressed) {
-          dispatchSpellMenuControllerNavigate("right");
+        if (spellMenuAction.navigate) {
+          dispatchSpellMenuControllerNavigate(spellMenuAction.navigate);
         }
 
-        if (aPressed) {
+        if (spellMenuAction.select) {
           dispatchSpellMenuControllerSelect();
         }
 

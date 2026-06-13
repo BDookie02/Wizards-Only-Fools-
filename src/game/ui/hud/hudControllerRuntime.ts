@@ -151,6 +151,60 @@ export type HudControllerMagicHoldUpdateOptions = {
   holdMs?: number;
 };
 
+export type HudControllerOverlayRepeatReader = (
+  key: string,
+  pressed: boolean,
+  now: number,
+  firstDelay?: number,
+  repeatDelay?: number,
+) => boolean;
+
+export type HudControllerOverlayRepeatOptions = {
+  isSpellMenuOpen: boolean;
+  pauseMenuOpen: boolean;
+  dpadLeft: boolean;
+  dpadRight: boolean;
+  dpadUp: boolean;
+  dpadDown: boolean;
+  menuAxisX: number;
+  menuAxisY: number;
+  now: number;
+  consumeRepeat: HudControllerOverlayRepeatReader;
+};
+
+export type HudControllerOverlayRepeats = {
+  spellMenuRightPressed: boolean;
+  spellMenuLeftPressed: boolean;
+  spellMenuDownPressed: boolean;
+  spellMenuUpPressed: boolean;
+  pauseNextPressed: boolean;
+  pausePrevPressed: boolean;
+  pauseRightPressed: boolean;
+  pauseLeftPressed: boolean;
+};
+
+export type HudControllerSpellMenuActionOptions = {
+  rightBumperHeld: boolean;
+  rightBumperPressed: boolean;
+  leftBumperHeld: boolean;
+  leftBumperPressed: boolean;
+  bPressed: boolean;
+  startPressed: boolean;
+  aPressed: boolean;
+} & Pick<
+  HudControllerOverlayRepeats,
+  "spellMenuUpPressed" | "spellMenuDownPressed" | "spellMenuLeftPressed" | "spellMenuRightPressed"
+>;
+
+export type HudControllerSpellMenuAction = {
+  bindingHand: "left" | "right" | null;
+  close: boolean;
+  navigate: SpellMenuControllerDirection | null;
+  select: boolean;
+};
+
+const HUD_CONTROLLER_MENU_AXIS_THRESHOLD = 0.6;
+
 export function consumeHudControllerPress(
   controllerButtonsRef: HudControllerButtonsRef,
   key: string,
@@ -429,6 +483,78 @@ export function canUseControllerMapShortcut({
     !isInventoryOpen &&
     !hotbarModifierHeld
   );
+}
+
+export function readHudControllerOverlayRepeats({
+  isSpellMenuOpen,
+  pauseMenuOpen,
+  dpadLeft,
+  dpadRight,
+  dpadUp,
+  dpadDown,
+  menuAxisX,
+  menuAxisY,
+  now,
+  consumeRepeat,
+}: HudControllerOverlayRepeatOptions): HudControllerOverlayRepeats {
+  const rightHeld = dpadRight || menuAxisX > HUD_CONTROLLER_MENU_AXIS_THRESHOLD;
+  const leftHeld = dpadLeft || menuAxisX < -HUD_CONTROLLER_MENU_AXIS_THRESHOLD;
+  const downHeld = dpadDown || menuAxisY > HUD_CONTROLLER_MENU_AXIS_THRESHOLD;
+  const upHeld = dpadUp || menuAxisY < -HUD_CONTROLLER_MENU_AXIS_THRESHOLD;
+
+  return {
+    spellMenuRightPressed: consumeRepeat("controllerSpellMenuRight", isSpellMenuOpen && rightHeld, now),
+    spellMenuLeftPressed: consumeRepeat("controllerSpellMenuLeft", isSpellMenuOpen && leftHeld, now),
+    spellMenuDownPressed: consumeRepeat("controllerSpellMenuDown", isSpellMenuOpen && downHeld, now),
+    spellMenuUpPressed: consumeRepeat("controllerSpellMenuUp", isSpellMenuOpen && upHeld, now),
+    pauseNextPressed: consumeRepeat("controllerPauseNext", pauseMenuOpen && downHeld, now),
+    pausePrevPressed: consumeRepeat("controllerPausePrev", pauseMenuOpen && upHeld, now),
+    pauseRightPressed: consumeRepeat("controllerPauseRight", pauseMenuOpen && rightHeld, now),
+    pauseLeftPressed: consumeRepeat("controllerPauseLeft", pauseMenuOpen && leftHeld, now),
+  };
+}
+
+export function getHudControllerSpellMenuAction({
+  rightBumperHeld,
+  rightBumperPressed,
+  leftBumperHeld,
+  leftBumperPressed,
+  bPressed,
+  startPressed,
+  aPressed,
+  spellMenuUpPressed,
+  spellMenuDownPressed,
+  spellMenuLeftPressed,
+  spellMenuRightPressed,
+}: HudControllerSpellMenuActionOptions): HudControllerSpellMenuAction {
+  const bindingHand =
+    rightBumperHeld || rightBumperPressed
+      ? "right"
+      : leftBumperHeld || leftBumperPressed
+        ? "left"
+        : null;
+
+  if (bPressed || startPressed) {
+    return { bindingHand, close: true, navigate: null, select: false };
+  }
+
+  let navigate: SpellMenuControllerDirection | null = null;
+  if (spellMenuUpPressed) {
+    navigate = "up";
+  } else if (spellMenuDownPressed) {
+    navigate = "down";
+  } else if (spellMenuLeftPressed) {
+    navigate = "left";
+  } else if (spellMenuRightPressed) {
+    navigate = "right";
+  }
+
+  return {
+    bindingHand,
+    close: false,
+    navigate,
+    select: aPressed,
+  };
 }
 
 export function updateHudControllerInventoryHold({
