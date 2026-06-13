@@ -22,6 +22,7 @@ import {
   QA_SURVIVAL_RECOVERY_TURN_RATE,
   QA_SURVIVAL_STUCK_CHECK_SECONDS,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
+  QA_SURVIVAL_WALK_DECISION_MAX_SECONDS,
   QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
   QA_SURVIVAL_WALK_MIN_PROGRESS,
   QA_SURVIVAL_WALK_MIN_TOWARD_PROGRESS,
@@ -589,6 +590,49 @@ export function resolveQaWalkBlockedRecoveryTrigger({
         ? "view-blocked"
         : "clearance",
   };
+}
+
+export function shouldResolveQaWalkSteeringDecision({
+  elapsedSeconds,
+  forwardClearance,
+  forwardLookAhead,
+  lastDecisionAt,
+  lilyCoilTubeQaActive,
+  nextDecisionAt,
+  overheadClearance,
+  qaRouteActive,
+  routeBlockDwelled,
+  viewClearance,
+  decisionMaxSeconds = QA_SURVIVAL_WALK_DECISION_MAX_SECONDS,
+  lookAheadDistance = QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
+  overheadSoftClearance = QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
+  probeDistance = QA_SURVIVAL_WALK_PROBE_DISTANCE,
+  viewSoftClearance = QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
+}: {
+  elapsedSeconds: number;
+  forwardClearance: number;
+  forwardLookAhead: number;
+  lastDecisionAt: number;
+  lilyCoilTubeQaActive: boolean;
+  nextDecisionAt: number;
+  overheadClearance: number;
+  qaRouteActive: boolean;
+  routeBlockDwelled: boolean;
+  viewClearance: number;
+  decisionMaxSeconds?: number;
+  lookAheadDistance?: number;
+  overheadSoftClearance?: number;
+  probeDistance?: number;
+  viewSoftClearance?: number;
+}) {
+  if (lilyCoilTubeQaActive) return false;
+  if (qaRouteActive) return routeBlockDwelled;
+  return forwardClearance < probeDistance * 0.72 ||
+    forwardLookAhead < lookAheadDistance * 0.48 ||
+    viewClearance < viewSoftClearance * 0.68 ||
+    overheadClearance < overheadSoftClearance ||
+    elapsedSeconds >= nextDecisionAt ||
+    elapsedSeconds - lastDecisionAt > decisionMaxSeconds;
 }
 
 export function resolveQaWalkLookInputFrame({

@@ -127,6 +127,7 @@ import {
   resolveQaWalkRouteWaypoint,
   resolveQaWalkTubeMovementFrame,
   resolveQaWalkTravelMovementFrame,
+  shouldResolveQaWalkSteeringDecision,
   useQaSurvivalWalkRuntimeState,
 } from "./tools/qa/survivalWalkQaRuntime";
 import {
@@ -2093,17 +2094,18 @@ export function PlayerController() {
         sprint = tubeMovementFrame.sprint;
       }
 
-      const needsDecision = !lilyCoilTubeQaActive && (qaRouteActive
-        ? routeBlockDwelled
-        : (
-          forwardClearance < QA_SURVIVAL_WALK_PROBE_DISTANCE * 0.72 ||
-          forwardLookAhead < QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE * 0.48 ||
-          viewClearance < QA_SURVIVAL_VIEW_SOFT_CLEARANCE * 0.68 ||
-          overheadClearance < QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE ||
-          elapsed >= qaWalkNextDecisionAt.current ||
-          elapsed - qaWalkLastDecisionAt.current > QA_SURVIVAL_WALK_DECISION_MAX_SECONDS
-        )
-      );
+      const needsDecision = shouldResolveQaWalkSteeringDecision({
+        elapsedSeconds: elapsed,
+        forwardClearance,
+        forwardLookAhead,
+        lastDecisionAt: qaWalkLastDecisionAt.current,
+        lilyCoilTubeQaActive,
+        nextDecisionAt: qaWalkNextDecisionAt.current,
+        overheadClearance,
+        qaRouteActive,
+        routeBlockDwelled,
+        viewClearance,
+      });
 
       if (needsDecision) {
         let best = scoreCandidateYaw(targetYaw, 0);
