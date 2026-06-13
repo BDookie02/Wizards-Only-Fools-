@@ -100,6 +100,7 @@ import {
   resolveQaWalkCombatFocusMovement,
   resolveQaWalkInspectMovement,
   resolveQaWalkIntentJumpHoldUntil,
+  resolveQaWalkLilyCoilTubeWaypoint,
   resolveQaWalkLookInputFrame,
   resolveQaWalkLowSpeedRecovery,
   resolveQaWalkOpenLaneRecoveryRelief,
@@ -1388,19 +1389,16 @@ export function PlayerController() {
       const setLilyCoilTubeWaypoint = () => {
         if (!lilyCoilTubeQaActive) return false;
         const nearestTube = lilyCoilTubeTravelState ?? getNearestLilyCoilTubeState(qaPosition, lilyCoilNearestScratch);
-        const noise = survivalishTurnNoise(pos.x + 317, pos.z - 241, elapsed * 0.21);
-        const direction = qaWalkLilyTubeDirection.current >= 0 ? 1 : -1;
-        const targetT = THREE.MathUtils.clamp(
-          nearestTube.t + direction * (QA_LILY_COIL_TUBE_LOOK_AHEAD_T + (noise - 0.5) * 0.014),
-          0.02,
-          0.98,
-        );
-        const targetFrame = getLilyCoilTubeFrameInto(targetT, lilyCoilLookFrame);
-        qaWalkWaypoint.current = {
-          x: targetFrame.center.x,
-          z: targetFrame.center.z,
-          expiresAt: elapsed + randomRangeFromNoise(noise, 2.4, 4.1),
-        };
+        const tubeWaypoint = resolveQaWalkLilyCoilTubeWaypoint({
+          active: lilyCoilTubeQaActive,
+          elapsedSeconds: elapsed,
+          frameScratch: lilyCoilLookFrame,
+          position: pos,
+          tubeDirection: qaWalkLilyTubeDirection.current,
+          tubeT: nearestTube.t,
+        });
+        if (!tubeWaypoint) return false;
+        qaWalkWaypoint.current = tubeWaypoint;
         return true;
       };
       const isBaseVillageQaArea = isQaWalkBaseVillageArea({

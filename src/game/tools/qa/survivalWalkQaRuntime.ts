@@ -3,8 +3,13 @@ import * as THREE from "three";
 import { useLazyRef } from "../../systems/react/useLazyRef";
 import {
   QA_LILY_COIL_TUBE_FORWARD,
+  QA_LILY_COIL_TUBE_LOOK_AHEAD_T,
   QA_LILY_COIL_TUBE_STRAFE,
 } from "../../systems/player/playerLilyCoilTubeRuntime";
+import {
+  getLilyCoilTubeFrameInto,
+  type LilyCoilTubeFrame,
+} from "../../systems/world/villages/lilyCoilTubeMotion";
 import {
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
@@ -1174,6 +1179,46 @@ export function resolveQaWalkForwardWaypoint({
     x: position.x + Math.sin(yaw) * distance,
     z: position.z - Math.cos(yaw) * distance,
     expiresAt: elapsedSeconds + 5.8,
+  };
+}
+
+export function resolveQaWalkLilyCoilTubeWaypoint({
+  active,
+  elapsedSeconds,
+  frameScratch,
+  lookAheadT = QA_LILY_COIL_TUBE_LOOK_AHEAD_T,
+  lookAheadJitterT = 0.014,
+  maxTargetT = 0.98,
+  minTargetT = 0.02,
+  position,
+  tubeDirection,
+  tubeT,
+}: {
+  active: boolean;
+  elapsedSeconds: number;
+  frameScratch: LilyCoilTubeFrame;
+  lookAheadT?: number;
+  lookAheadJitterT?: number;
+  maxTargetT?: number;
+  minTargetT?: number;
+  position: QaWalkPosition;
+  tubeDirection: number;
+  tubeT: number | null;
+}) {
+  if (!active || tubeT === null || !Number.isFinite(tubeT)) return null;
+
+  const noise = survivalishTurnNoise(position.x + 317, position.z - 241, elapsedSeconds * 0.21);
+  const direction = tubeDirection >= 0 ? 1 : -1;
+  const targetT = clampNumber(
+    tubeT + direction * (lookAheadT + (noise - 0.5) * lookAheadJitterT),
+    minTargetT,
+    maxTargetT,
+  );
+  const targetFrame = getLilyCoilTubeFrameInto(targetT, frameScratch);
+  return {
+    x: targetFrame.center.x,
+    z: targetFrame.center.z,
+    expiresAt: elapsedSeconds + randomRangeFromNoise(noise, 2.4, 4.1),
   };
 }
 
