@@ -112,6 +112,7 @@ import {
   getSettingsPaneForTabIndex,
 } from "./ui/hud/hudSettingsPanelConfig";
 import { getCharacterCustomizationStep } from "./ui/hud/characterCustomizationRuntime";
+import { resolveHudFocusedSettingAdjustment } from "./ui/hud/hudSettingsAdjustmentRuntime";
 import { closeHudCommandConsole, openHudCommandConsole } from "./ui/hud/hudCommandConsoleRuntime";
 import {
   getHudFillSafeFrameStyle,
@@ -638,90 +639,67 @@ export function HUD() {
   };
 
   const adjustFocusedSetting = (direction: 1 | -1) => {
-    if (!showVideoMenu) {
-      if (startMenuStage === "custom-lobby") {
-        if (pauseMenuIndex === 0) {
-          cycleLobbyMap(direction);
-          return true;
-        }
-        if (pauseMenuIndex === 1) {
-          adjustLobbyMaxPlayers(direction);
-          return true;
-        }
-        if (pauseMenuIndex === 2) {
-          cycleLobbyDifficulty(direction);
-          return true;
-        }
-        if (pauseMenuIndex === 3) {
-          cycleLobbyManaRate(direction);
-          return true;
-        }
-      }
+    const adjustmentAction = resolveHudFocusedSettingAdjustment({
+      direction,
+      pauseMenuIndex,
+      settingsPane,
+      showVideoMenu,
+      startMenuStage,
+    });
+    if (!adjustmentAction) return false;
 
-      if (startMenuStage === "survival-options") {
-        if (pauseMenuIndex === 0) {
-          adjustSurvivalMaxPlayers(direction);
-          return true;
-        }
-        if (pauseMenuIndex === 1) {
-          cycleSurvivalDifficulty(direction);
-          return true;
-        }
-        if (pauseMenuIndex === 2) {
-          cycleSurvivalManaRate(direction);
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    if (settingsPane === "keybinds" && pauseMenuIndex === keybindSensitivityStartIndex) {
-      setMouseSensitivity(mouseSensitivity + direction * 0.00025);
-      return true;
-    }
-
-    if (settingsPane === "keybinds" && pauseMenuIndex === keybindSensitivityStartIndex + 1) {
-      setControllerLookSensitivity(controllerLookSensitivity + direction * 0.25);
-      return true;
-    }
-
-    if (settingsPane === "keybinds" && pauseMenuIndex === keybindArrowLookIndex) {
-      setKeyboardArrowLookEnabled(!keyboardArrowLookEnabled);
-      return true;
-    }
-
-    if (settingsPane === "voice") {
-      if (pauseMenuIndex === voiceEnabledIndex) {
+    switch (adjustmentAction.type) {
+      case "lobby-map":
+        cycleLobbyMap(direction);
+        return true;
+      case "lobby-max-players":
+        adjustLobbyMaxPlayers(direction);
+        return true;
+      case "lobby-difficulty":
+        cycleLobbyDifficulty(direction);
+        return true;
+      case "lobby-mana-rate":
+        cycleLobbyManaRate(direction);
+        return true;
+      case "survival-max-players":
+        adjustSurvivalMaxPlayers(direction);
+        return true;
+      case "survival-difficulty":
+        cycleSurvivalDifficulty(direction);
+        return true;
+      case "survival-mana-rate":
+        cycleSurvivalManaRate(direction);
+        return true;
+      case "mouse-sensitivity":
+        setMouseSensitivity(mouseSensitivity + adjustmentAction.direction * 0.00025);
+        return true;
+      case "controller-look-sensitivity":
+        setControllerLookSensitivity(controllerLookSensitivity + adjustmentAction.direction * 0.25);
+        return true;
+      case "keyboard-arrow-look":
+        setKeyboardArrowLookEnabled(!keyboardArrowLookEnabled);
+        return true;
+      case "voice-enabled":
         setVoiceChatEnabled(!voiceChatEnabled);
         return true;
-      }
-
-      if (pauseMenuIndex === voiceInputModeIndex) {
+      case "voice-input-mode":
         toggleVoiceInputMode();
         return true;
-      }
-
-      if (pauseMenuIndex === voiceOutputVolumeIndex) {
-        setVoiceOutputVolume(voiceOutputVolume + direction * 0.05);
+      case "voice-output-volume":
+        setVoiceOutputVolume(voiceOutputVolume + adjustmentAction.direction * 0.05);
         return true;
-      }
-
-      if (pauseMenuIndex === voiceProximityRangeIndex) {
-        setVoiceProximityRange(voiceProximityRange + direction * 2);
+      case "voice-proximity-range":
+        setVoiceProximityRange(voiceProximityRange + adjustmentAction.direction * 2);
         return true;
+      case "character-step": {
+        const nextCharacterUpdate = getCharacterCustomizationStep(characterCustomization, pauseMenuIndex, direction);
+        if (nextCharacterUpdate) {
+          setCharacterCustomization(nextCharacterUpdate);
+          return true;
+        }
+        return false;
       }
     }
-
-    if (settingsPane === "character") {
-      const nextCharacterUpdate = getCharacterCustomizationStep(characterCustomization, pauseMenuIndex, direction);
-      if (nextCharacterUpdate) {
-        setCharacterCustomization(nextCharacterUpdate);
-        return true;
-      }
-    }
-
-    return false;
   };
 
   useEffect(() => {
