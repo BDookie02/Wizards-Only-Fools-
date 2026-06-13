@@ -113,6 +113,7 @@ import {
   resolveQaWalkAvoidMovement,
   resolveQaWalkClearanceThrottle,
   resolveQaWalkCombatFocusMovement,
+  resolveQaWalkInspectMovement,
   resolveQaWalkIntentJumpHoldUntil,
   resolveQaWalkLookInputFrame,
   resolveQaWalkLowSpeedRecovery,
@@ -2140,12 +2141,17 @@ export function PlayerController() {
       }
 
       let avoidMovement: ReturnType<typeof resolveQaWalkAvoidMovement> | null = null;
-      if (elapsed < qaWalkInspectUntil.current) {
-        mode = "inspect";
-        targetYaw = qaWalkInspectYaw.current + Math.sin(elapsed * 1.35) * 0.18;
-        forwardAmount = 0;
-        strafeAmount = 0;
-        sprint = false;
+      const inspectMovement = resolveQaWalkInspectMovement({
+        elapsedSeconds: elapsed,
+        inspectUntil: qaWalkInspectUntil.current,
+        inspectYaw: qaWalkInspectYaw.current,
+      });
+      if (inspectMovement) {
+        mode = inspectMovement.mode;
+        targetYaw = inspectMovement.targetYaw;
+        forwardAmount = inspectMovement.forwardAmount;
+        strafeAmount = inspectMovement.strafeAmount;
+        sprint = inspectMovement.sprint;
       } else if (
         elapsed < qaWalkRecoveryUntil.current ||
         (

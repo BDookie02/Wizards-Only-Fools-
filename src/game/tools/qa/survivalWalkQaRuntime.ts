@@ -478,6 +478,31 @@ export function resolveQaWalkTravelMovementFrame({
   };
 }
 
+export function resolveQaWalkInspectMovement({
+  elapsedSeconds,
+  inspectUntil,
+  inspectYaw,
+}: {
+  elapsedSeconds: number;
+  inspectUntil: number;
+  inspectYaw: number;
+}): {
+  forwardAmount: number;
+  mode: QaSurvivalWalkMode;
+  sprint: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+} | null {
+  if (elapsedSeconds >= inspectUntil) return null;
+  return {
+    forwardAmount: 0,
+    mode: "inspect",
+    sprint: false,
+    strafeAmount: 0,
+    targetYaw: inspectYaw + Math.sin(elapsedSeconds * 1.35) * 0.18,
+  };
+}
+
 export function resolveQaWalkLookInputFrame({
   currentYaw,
   deltaSeconds,
