@@ -145,7 +145,6 @@ import {
 import {
   consumeHudControllerPress,
   consumeHudControllerRepeat,
-  canOpenControllerDevFastTravelMenu,
   canUseControllerInventory,
   canUseControllerMagicShortcut,
   canUseControllerMapShortcut,
@@ -156,9 +155,12 @@ import {
   dispatchSpellMenuControllerScroll,
   dispatchSpellMenuControllerSelect,
   getHudControllerDevFastTravelAction,
+  getHudControllerDevFastTravelOpenAction,
   getHudControllerGameplayStartAction,
   getHudControllerInventoryPanelAction,
+  getHudControllerOverlayScrollAction,
   getHudControllerPauseMenuAction,
+  getHudControllerScoreboardSourceActive,
   getHudControllerSpellMenuAction,
   hasHudControllerGameplaySignal,
   isStandingStillForControllerInventory,
@@ -2591,12 +2593,21 @@ export function HUD() {
         return;
       }
 
-      setScoreboardSource("controller", !isSpellMenuOpen && backHeld);
-      if (pauseMenuOpen && showVideoMenu && Math.abs(scrollAxisY) > 0.05) {
-        scrollSettingsPanel(scrollAxisY * 18);
+      setScoreboardSource(
+        "controller",
+        getHudControllerScoreboardSourceActive({ isSpellMenuOpen, backHeld }),
+      );
+      const overlayScrollAction = getHudControllerOverlayScrollAction({
+        pauseMenuOpen,
+        showVideoMenu,
+        isSpellMenuOpen,
+        scrollAxisY,
+      });
+      if (overlayScrollAction.settingsDelta !== 0) {
+        scrollSettingsPanel(overlayScrollAction.settingsDelta);
       }
-      if (isSpellMenuOpen && Math.abs(scrollAxisY) > 0.05) {
-        dispatchSpellMenuControllerScroll(scrollAxisY * 18);
+      if (overlayScrollAction.spellMenuDelta !== 0) {
+        dispatchSpellMenuControllerScroll(overlayScrollAction.spellMenuDelta);
       }
 
       const {
@@ -2711,7 +2722,7 @@ export function HUD() {
         return;
       }
 
-      const canOpenDevFastTravelMenu = canOpenControllerDevFastTravelMenu({
+      const shouldOpenDevFastTravelMenu = getHudControllerDevFastTravelOpenAction({
         isDevFastTravelAllowed,
         isGameLaunched,
         startMenuStage,
@@ -2723,9 +2734,10 @@ export function HUD() {
         isCommandConsoleOpen,
         hotbarModifierHeld,
         gameplayInputActive,
+        dpadDown,
+        consumePress,
       });
-      const fastTravelOpenPressed = consumePress("controllerDevFastTravelOpen", dpadDown && !hotbarModifierHeld);
-      if (fastTravelOpenPressed && canOpenDevFastTravelMenu) {
+      if (shouldOpenDevFastTravelMenu) {
         openDevFastTravelMenu("controller");
         controllerPollScheduler.schedule(0);
         return;

@@ -159,6 +159,8 @@ export type HudControllerOverlayRepeatReader = (
   repeatDelay?: number,
 ) => boolean;
 
+export type HudControllerPressReader = (key: string, pressed: boolean) => boolean;
+
 export type HudControllerOverlayRepeatOptions = {
   isSpellMenuOpen: boolean;
   pauseMenuOpen: boolean;
@@ -224,6 +226,30 @@ export type HudControllerDevFastTravelActionOptions = {
   navigationDelayMs?: number;
 };
 
+export type HudControllerDevFastTravelOpenActionOptions = HudControllerDevFastTravelGateOptions & {
+  dpadDown: boolean;
+  consumePress: HudControllerPressReader;
+};
+
+export type HudControllerScoreboardSourceOptions = {
+  isSpellMenuOpen: boolean;
+  backHeld: boolean;
+};
+
+export type HudControllerOverlayScrollOptions = {
+  pauseMenuOpen: boolean;
+  showVideoMenu: boolean;
+  isSpellMenuOpen: boolean;
+  scrollAxisY: number;
+  threshold?: number;
+  multiplier?: number;
+};
+
+export type HudControllerOverlayScrollAction = {
+  settingsDelta: number;
+  spellMenuDelta: number;
+};
+
 export type HudControllerInventoryPanelAction = {
   moveDirection: 1 | -1 | null;
   select: boolean;
@@ -275,6 +301,8 @@ export type HudControllerGameplayStartActionOptions = {
 
 const HUD_CONTROLLER_MENU_AXIS_THRESHOLD = 0.6;
 const HUD_CONTROLLER_DEV_FAST_TRAVEL_NAVIGATION_DELAY_MS = 220;
+const HUD_CONTROLLER_OVERLAY_SCROLL_THRESHOLD = 0.05;
+const HUD_CONTROLLER_OVERLAY_SCROLL_MULTIPLIER = 18;
 
 export function consumeHudControllerPress(
   controllerButtonsRef: HudControllerButtonsRef,
@@ -492,6 +520,44 @@ export function canOpenControllerDevFastTravelMenu({
     !hotbarModifierHeld &&
     gameplayInputActive
   );
+}
+
+export function getHudControllerDevFastTravelOpenAction({
+  dpadDown,
+  consumePress,
+  ...gateOptions
+}: HudControllerDevFastTravelOpenActionOptions) {
+  const openPressed = consumePress(
+    "controllerDevFastTravelOpen",
+    dpadDown && !gateOptions.hotbarModifierHeld,
+  );
+  return openPressed && canOpenControllerDevFastTravelMenu(gateOptions);
+}
+
+export function getHudControllerScoreboardSourceActive({
+  isSpellMenuOpen,
+  backHeld,
+}: HudControllerScoreboardSourceOptions) {
+  return !isSpellMenuOpen && backHeld;
+}
+
+export function getHudControllerOverlayScrollAction({
+  pauseMenuOpen,
+  showVideoMenu,
+  isSpellMenuOpen,
+  scrollAxisY,
+  threshold = HUD_CONTROLLER_OVERLAY_SCROLL_THRESHOLD,
+  multiplier = HUD_CONTROLLER_OVERLAY_SCROLL_MULTIPLIER,
+}: HudControllerOverlayScrollOptions): HudControllerOverlayScrollAction {
+  if (Math.abs(scrollAxisY) <= threshold) {
+    return { settingsDelta: 0, spellMenuDelta: 0 };
+  }
+
+  const delta = scrollAxisY * multiplier;
+  return {
+    settingsDelta: pauseMenuOpen && showVideoMenu ? delta : 0,
+    spellMenuDelta: isSpellMenuOpen ? delta : 0,
+  };
 }
 
 export function isStandingStillForControllerInventory({
