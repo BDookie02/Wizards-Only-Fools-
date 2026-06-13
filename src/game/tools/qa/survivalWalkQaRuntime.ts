@@ -12,6 +12,8 @@ import {
   QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
   QA_SURVIVAL_LOW_SPEED_THRESHOLD,
   QA_SURVIVAL_LOW_SPEED_TRIGGER_SECONDS,
+  QA_SURVIVAL_LOOK_TURN_RATE,
+  QA_SURVIVAL_RECOVERY_TURN_RATE,
   QA_SURVIVAL_STUCK_CHECK_SECONDS,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
   QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
@@ -24,6 +26,7 @@ import {
   getQaSurvivalWalkStartDelaySeconds,
   isQaSurvivalWalkEnabled,
   lerpAngleRadians,
+  moveAngleTowardsRadians,
   type QaSurvivalIntent,
   type QaSurvivalRouteWaypoint,
   type QaSurvivalWalkInputState,
@@ -275,6 +278,56 @@ export function resolveQaWalkClearanceThrottle({
   }
 
   return { forwardAmount, sprint };
+}
+
+export function resolveQaWalkLookInputFrame({
+  currentYaw,
+  deltaSeconds,
+  elapsedSeconds,
+  forwardAmount,
+  lilyCoilTubeQaActive,
+  mode,
+  sprint,
+  strafeAmount,
+  targetYaw,
+  lookTurnRate = QA_SURVIVAL_LOOK_TURN_RATE,
+  recoveryTurnRate = QA_SURVIVAL_RECOVERY_TURN_RATE,
+}: {
+  currentYaw: number | null;
+  deltaSeconds: number;
+  elapsedSeconds: number;
+  forwardAmount: number;
+  lilyCoilTubeQaActive: boolean;
+  mode: QaSurvivalWalkMode;
+  sprint: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+  lookTurnRate?: number;
+  recoveryTurnRate?: number;
+}) {
+  const turnRate = mode === "recover"
+    ? recoveryTurnRate
+    : mode === "inspect"
+      ? lookTurnRate * 0.72
+      : lookTurnRate;
+  const yaw = moveAngleTowardsRadians(currentYaw, targetYaw, turnRate * deltaSeconds);
+  const pitch = mode === "inspect"
+    ? -0.02 + Math.sin(elapsedSeconds * 1.18) * 0.1
+    : -0.045 + Math.sin(elapsedSeconds * 0.62) * 0.032;
+  const cameraYaw = lilyCoilTubeQaActive ? yaw : -yaw;
+  const inputMode: QaSurvivalWalkMode = lilyCoilTubeQaActive ? "tube" : mode;
+
+  return {
+    cameraYaw,
+    input: {
+      forward: clampNumber(forwardAmount, inputMode === "tube" ? -1 : -0.28, 1),
+      strafe: clampNumber(strafeAmount, -0.72, 0.72),
+      sprint,
+      mode: inputMode,
+    },
+    pitch,
+    yaw,
+  };
 }
 
 export function resolveQaWalkLowSpeedRecovery({

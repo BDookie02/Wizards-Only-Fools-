@@ -60,7 +60,6 @@ import {
   QA_SURVIVAL_INSPECTION_MAX_SECONDS,
   QA_SURVIVAL_INSPECTION_MIN_INTERVAL,
   QA_SURVIVAL_INSPECTION_MIN_SECONDS,
-  QA_SURVIVAL_LOOK_TURN_RATE,
   QA_SURVIVAL_LOW_SPEED_THRESHOLD,
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
   QA_SURVIVAL_OVERHEAD_PROBE_DISTANCE,
@@ -76,7 +75,6 @@ import {
   QA_SURVIVAL_RECOVERY_NUDGE_SECONDS,
   QA_SURVIVAL_RECOVERY_REVERSE_SECONDS,
   QA_SURVIVAL_RECOVERY_REVERSE_STUCK_SECONDS,
-  QA_SURVIVAL_RECOVERY_TURN_RATE,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
   QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
   QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
@@ -103,7 +101,6 @@ import {
   isQaSpellDummyRunEnabled,
   isSurvivalGameMode,
   lerpAngleRadians,
-  moveAngleTowardsRadians,
   normalizeAngleRadians,
   pickQaQuestDialogChoice,
   publishQaPlayerPosition,
@@ -116,6 +113,7 @@ import {
 import {
   isQaWalkMovingInOpenLane,
   resolveQaWalkClearanceThrottle,
+  resolveQaWalkLookInputFrame,
   resolveQaWalkLowSpeedRecovery,
   resolveQaWalkProgressRecovery,
   resolveQaWalkTelemetryAbnormality,
@@ -2601,27 +2599,24 @@ export function PlayerController() {
         qaWalkLastProgressPos.current.set(pos.x, pos.y, pos.z);
       }
 
-      const turnRate = mode === "recover"
-        ? QA_SURVIVAL_RECOVERY_TURN_RATE
-        : mode === "inspect"
-          ? QA_SURVIVAL_LOOK_TURN_RATE * 0.72
-          : QA_SURVIVAL_LOOK_TURN_RATE;
-      const yaw = moveAngleTowardsRadians(qaWalkYaw.current, targetYaw, turnRate * delta);
+      const lookInputFrame = resolveQaWalkLookInputFrame({
+        currentYaw: qaWalkYaw.current,
+        deltaSeconds: delta,
+        elapsedSeconds: elapsed,
+        forwardAmount,
+        lilyCoilTubeQaActive,
+        mode,
+        sprint,
+        strafeAmount,
+        targetYaw,
+      });
+      const yaw = lookInputFrame.yaw;
       qaWalkYaw.current = yaw;
-      const pitch = mode === "inspect"
-        ? -0.02 + Math.sin(elapsed * 1.18) * 0.1
-        : -0.045 + Math.sin(elapsed * 0.62) * 0.032;
-      const cameraYaw = lilyCoilTubeQaActive ? yaw : -yaw;
-      controllerLookEuler.current.set(pitch, cameraYaw, 0);
+      controllerLookEuler.current.set(lookInputFrame.pitch, lookInputFrame.cameraYaw, 0);
       camera.quaternion.setFromEuler(controllerLookEuler.current);
 
-      const inputMode: QaSurvivalWalkMode = lilyCoilTubeQaActive ? "tube" : mode;
-      qaWalkInputState.current = {
-        forward: THREE.MathUtils.clamp(forwardAmount, inputMode === "tube" ? -1 : -0.28, 1),
-        strafe: THREE.MathUtils.clamp(strafeAmount, -0.72, 0.72),
-        sprint,
-        mode: inputMode,
-      };
+      qaWalkInputState.current = lookInputFrame.input;
+      const inputMode = lookInputFrame.input.mode;
       const movingInOpenLane = isQaWalkMovingInOpenLane({
         forwardClearance,
         forwardLookAhead,
