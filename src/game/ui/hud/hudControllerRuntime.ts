@@ -1,4 +1,5 @@
 import {
+  GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS,
   isGamepadButtonPressed,
   readGamepadStickAxesInto,
   type GamepadButtonName,
@@ -23,6 +24,8 @@ export type HudControllerMagicHoldRefs = {
   controllerMagicHoldStartedAtRef: Ref<number | null>;
   controllerMagicHoldConsumedRef: Ref<boolean>;
 };
+
+export type HudControllerLastSeenRef = Ref<number>;
 
 export type HudControllerBindings = {
   leftHotbar: string;
@@ -299,10 +302,41 @@ export type HudControllerGameplayStartActionOptions = {
   canPauseActiveGameplay: boolean;
 };
 
+export type HudControllerBlockedSurfaceAction =
+  | { type: "none" }
+  | {
+      type: "interrupt";
+      nextPollMs: number;
+      resetTransientState: boolean;
+      clearScoreboardSource: boolean;
+    };
+
+export type HudControllerBlockedSurfaceActionOptions = {
+  questNpcEditorOpen: boolean;
+  questDialogOpen: boolean;
+  nextPollMs?: number;
+};
+
+export type HudControllerMissingGamepadAction = {
+  pauseGameplay: boolean;
+  nextPollMs: number;
+  resetTransientState: boolean;
+  clearScoreboardSource: boolean;
+};
+
+export type HudControllerMissingGamepadActionOptions = {
+  controllerGameplayActive: boolean;
+  controllerLastSeenAtRef: HudControllerLastSeenRef;
+  now: number;
+  nextPollMs?: number;
+  disconnectPauseMs?: number;
+};
+
 const HUD_CONTROLLER_MENU_AXIS_THRESHOLD = 0.6;
 const HUD_CONTROLLER_DEV_FAST_TRAVEL_NAVIGATION_DELAY_MS = 220;
 const HUD_CONTROLLER_OVERLAY_SCROLL_THRESHOLD = 0.05;
 const HUD_CONTROLLER_OVERLAY_SCROLL_MULTIPLIER = 18;
+const HUD_CONTROLLER_DISCONNECT_PAUSE_MS = 1200;
 
 export function consumeHudControllerPress(
   controllerButtonsRef: HudControllerButtonsRef,
@@ -817,6 +851,53 @@ export function getHudControllerGameplayStartAction({
   }
 
   return { type: "none" };
+}
+
+export function getHudControllerBlockedSurfaceAction({
+  questNpcEditorOpen,
+  questDialogOpen,
+  nextPollMs = GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS,
+}: HudControllerBlockedSurfaceActionOptions): HudControllerBlockedSurfaceAction {
+  if (!questNpcEditorOpen && !questDialogOpen) return { type: "none" };
+
+  return {
+    type: "interrupt",
+    nextPollMs,
+    resetTransientState: true,
+    clearScoreboardSource: true,
+  };
+}
+
+export function updateHudControllerMissingGamepadAction({
+  controllerGameplayActive,
+  controllerLastSeenAtRef,
+  now,
+  nextPollMs = GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS,
+  disconnectPauseMs = HUD_CONTROLLER_DISCONNECT_PAUSE_MS,
+}: HudControllerMissingGamepadActionOptions): HudControllerMissingGamepadAction {
+  let pauseGameplay = false;
+
+  if (controllerGameplayActive) {
+    if (controllerLastSeenAtRef.current === 0) {
+      controllerLastSeenAtRef.current = now;
+    } else if (now - controllerLastSeenAtRef.current > disconnectPauseMs) {
+      pauseGameplay = true;
+      controllerLastSeenAtRef.current = 0;
+    }
+  } else {
+    controllerLastSeenAtRef.current = 0;
+  }
+
+  return {
+    pauseGameplay,
+    nextPollMs,
+    resetTransientState: true,
+    clearScoreboardSource: true,
+  };
+}
+
+export function markHudControllerGamepadSeen(controllerLastSeenAtRef: HudControllerLastSeenRef, now: number) {
+  controllerLastSeenAtRef.current = now;
 }
 
 export function updateHudControllerInventoryHold({

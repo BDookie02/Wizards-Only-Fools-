@@ -29,7 +29,6 @@ import {
 } from "./systems/input/browserDisplayMode";
 import {
   createControllerPollScheduler,
-  GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS,
   getPrimaryGamepad,
   hasGamepadInput,
   isGamepadButtonPressed,
@@ -154,6 +153,7 @@ import {
   dispatchSpellMenuControllerNavigate,
   dispatchSpellMenuControllerScroll,
   dispatchSpellMenuControllerSelect,
+  getHudControllerBlockedSurfaceAction,
   getHudControllerDevFastTravelAction,
   getHudControllerDevFastTravelOpenAction,
   getHudControllerGameplayStartAction,
@@ -164,12 +164,14 @@ import {
   getHudControllerSpellMenuAction,
   hasHudControllerGameplaySignal,
   isStandingStillForControllerInventory,
+  markHudControllerGamepadSeen,
   markHudControllerInventoryIgnoreUntilRelease,
   createHudControllerInputSnapshot,
   readHudControllerOverlayRepeats,
   readHudControllerInputSnapshotInto,
   resetHudControllerMagicHoldState,
   resetHudControllerTransientState,
+  updateHudControllerMissingGamepadAction,
   updateHudControllerInventoryHold,
   updateHudControllerMagicHold,
 } from "./ui/hud/hudControllerRuntime";
@@ -2382,48 +2384,58 @@ export function HUD() {
 
     let controllerPollScheduler: ReturnType<typeof createControllerPollScheduler>;
     const pollController = (now: number) => {
-      if (questNpcEditorTarget || questDialogSession) {
-        resetHudControllerTransientState({
-          controllerButtonsRef,
-          controllerRepeatRef,
-          controllerInventoryHoldStartedAtRef,
-          controllerInventoryTapEligibleRef,
-          controllerInventoryIgnoreUntilReleaseRef,
-          controllerMagicHoldStartedAtRef,
-          controllerMagicHoldConsumedRef,
-        });
-        setScoreboardSource("controller", false);
-        controllerPollScheduler.schedule(GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS);
+      const blockedSurfaceAction = getHudControllerBlockedSurfaceAction({
+        questNpcEditorOpen: Boolean(questNpcEditorTarget),
+        questDialogOpen: Boolean(questDialogSession),
+      });
+      if (blockedSurfaceAction.type === "interrupt") {
+        if (blockedSurfaceAction.resetTransientState) {
+          resetHudControllerTransientState({
+            controllerButtonsRef,
+            controllerRepeatRef,
+            controllerInventoryHoldStartedAtRef,
+            controllerInventoryTapEligibleRef,
+            controllerInventoryIgnoreUntilReleaseRef,
+            controllerMagicHoldStartedAtRef,
+            controllerMagicHoldConsumedRef,
+          });
+        }
+        if (blockedSurfaceAction.clearScoreboardSource) {
+          setScoreboardSource("controller", false);
+        }
+        controllerPollScheduler.schedule(blockedSurfaceAction.nextPollMs);
         return;
       }
 
       const gamepad = getPrimaryGamepad();
 
       if (!gamepad) {
-        if (controllerGameplayActive) {
-          if (controllerLastSeenAtRef.current === 0) {
-            controllerLastSeenAtRef.current = now;
-          } else if (now - controllerLastSeenAtRef.current > 1200) {
-            pauseControllerGameplay();
-            controllerLastSeenAtRef.current = 0;
-          }
-        } else {
-          controllerLastSeenAtRef.current = 0;
-        }
-        resetHudControllerTransientState({
-          controllerButtonsRef,
-          controllerRepeatRef,
-          controllerInventoryHoldStartedAtRef,
-          controllerInventoryTapEligibleRef,
-          controllerInventoryIgnoreUntilReleaseRef,
-          controllerMagicHoldStartedAtRef,
-          controllerMagicHoldConsumedRef,
+        const missingGamepadAction = updateHudControllerMissingGamepadAction({
+          controllerGameplayActive,
+          controllerLastSeenAtRef,
+          now,
         });
-        setScoreboardSource("controller", false);
-        controllerPollScheduler.schedule(GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS);
+        if (missingGamepadAction.pauseGameplay) {
+          pauseControllerGameplay();
+        }
+        if (missingGamepadAction.resetTransientState) {
+          resetHudControllerTransientState({
+            controllerButtonsRef,
+            controllerRepeatRef,
+            controllerInventoryHoldStartedAtRef,
+            controllerInventoryTapEligibleRef,
+            controllerInventoryIgnoreUntilReleaseRef,
+            controllerMagicHoldStartedAtRef,
+            controllerMagicHoldConsumedRef,
+          });
+        }
+        if (missingGamepadAction.clearScoreboardSource) {
+          setScoreboardSource("controller", false);
+        }
+        controllerPollScheduler.schedule(missingGamepadAction.nextPollMs);
         return;
       }
-      controllerLastSeenAtRef.current = now;
+      markHudControllerGamepadSeen(controllerLastSeenAtRef, now);
 
       if (isGameLaunched && localPlayerName && hasGamepadInput(gamepad, 0.26)) {
         const inputState = useGameStore.getState();
