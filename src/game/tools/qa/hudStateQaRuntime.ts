@@ -1,10 +1,29 @@
 import { startTransition, useEffect, useRef, type MutableRefObject } from "react";
 import type { QuestDialogSession, QuestNpcEditorTarget, SpellType } from "../../../store/gameStore";
+import {
+  createHudStateQaQuestDialogSession,
+  createHudStateQaQuestNpcEditorTarget,
+  getHudStateQaRunKey,
+  isHudStateQaMagicHandsState,
+  isHudStateQaQuestDialogState,
+  isHudStateQaQuestNpcEditorState,
+  resolveHudStateQaInputMode,
+  resolveHudStateQaMagicSpell,
+  resolveHudStateQaMapPage,
+  resolveHudStateQaSettingsPane,
+  shouldForceHudStateQaMagicHandsCharging,
+  type HudStateQaHand,
+  type HudStateQaInputMode,
+  type HudStateQaMapPage,
+  type HudStateQaSettingsPane,
+} from "./hudStateQaRules";
 
-export type HudStateQaInputMode = "mouse" | "touch" | "controller";
-export type HudStateQaSettingsPane = "video" | "keybinds" | "voice" | "character";
-export type HudStateQaHand = "left" | "right";
-export type HudStateQaMapPage = "live" | "world";
+export type {
+  HudStateQaHand,
+  HudStateQaInputMode,
+  HudStateQaMapPage,
+  HudStateQaSettingsPane,
+} from "./hudStateQaRules";
 
 export type HudStateQaOptions = {
   activeHand: HudStateQaHand;
@@ -57,43 +76,13 @@ export type HudStateQaOptions = {
   videoAspectStartIndex: number;
 };
 
-const HUD_STATE_QA_SETTINGS_PANES: HudStateQaSettingsPane[] = ["video", "keybinds", "voice", "character"];
-const HUD_STATE_QA_MAP_PAGES: HudStateQaMapPage[] = ["live", "world"];
-const HUD_STATE_QA_MAGIC_HAND_SPELLS: SpellType[] = [
-  "fireball",
-  "iceshard",
-  "healspell",
-  "icespell",
-  "ringsofpower",
-  "lightning",
-  "portal",
-  "blink",
-  "grab",
-  "tornado",
-  "meteorshower",
-  "smokebomb",
-  "discshield",
-  "orbshield",
-  "kunai",
-  "healingcrystals",
-  "magicarmor",
-  "jumpboost",
-  "speedboost",
-  "tungstonballsack",
-  "sleep",
-  "poison",
-  "acid",
-  "magicglassorb",
-];
-const HUD_STATE_QA_NON_CHARGING_EFFECT_SPELLS: SpellType[] = ["iceshard", "grab"];
-
 export function useHudStateQaRuntime(options: HudStateQaOptions) {
   const stateAppliedRef = useRef("");
 
   useEffect(() => {
     if (!import.meta.env.DEV || !options.isGameLaunched || !options.qaHudState) return;
 
-    const runKey = `${options.qaHudState}:${options.qaSettingsPane}:${options.qaMapPage}:${options.qaMagicSpell}`;
+    const runKey = getHudStateQaRunKey(options);
     if (stateAppliedRef.current === runKey) return;
     stateAppliedRef.current = runKey;
 
@@ -149,16 +138,10 @@ export function useHudStateQaRuntime(options: HudStateQaOptions) {
     if (options.qaHudState === "settings") {
       closeGameplayOverlaysForQa();
       closeExpandedMapForQa();
-      const nextPane = HUD_STATE_QA_SETTINGS_PANES.includes(options.qaSettingsPane as HudStateQaSettingsPane)
-        ? options.qaSettingsPane as HudStateQaSettingsPane
-        : "video";
+      const nextPane = resolveHudStateQaSettingsPane(options.qaSettingsPane);
       options.pauseMenuExplicitlyRequestedRef.current = true;
       options.pauseMenuRequestedRef.current = true;
-      options.lastGameplayInputModeRef.current = options.touchGameplayActive
-        ? "touch"
-        : options.controllerGameplayActive
-          ? "controller"
-          : "mouse";
+      options.lastGameplayInputModeRef.current = resolveHudStateQaInputMode(options);
       options.setStartMenuStage("resume");
       options.setPauseOverlayOpen(true);
       options.setPauseMenuOpen(true);
@@ -173,9 +156,7 @@ export function useHudStateQaRuntime(options: HudStateQaOptions) {
 
     if (options.qaHudState === "engine") {
       closeExpandedMapForQa();
-      options.openEngineMenu(
-        options.touchGameplayActive ? "touch" : options.controllerGameplayActive ? "controller" : "mouse",
-      );
+      options.openEngineMenu(resolveHudStateQaInputMode(options));
       return;
     }
 
@@ -189,9 +170,7 @@ export function useHudStateQaRuntime(options: HudStateQaOptions) {
       if (!options.isMapExpanded) {
         startTransition(options.toggleMap);
       }
-      const nextMapPage = HUD_STATE_QA_MAP_PAGES.includes(options.qaMapPage as HudStateQaMapPage)
-        ? options.qaMapPage as HudStateQaMapPage
-        : "live";
+      const nextMapPage = resolveHudStateQaMapPage(options.qaMapPage);
       options.setExpandedMapPage(nextMapPage);
       return;
     }
@@ -211,7 +190,7 @@ export function useHudStateQaRuntime(options: HudStateQaOptions) {
       return;
     }
 
-    if (options.qaHudState === "questnpc" || options.qaHudState === "quest-npc") {
+    if (isHudStateQaQuestNpcEditorState(options.qaHudState)) {
       closeGameplayOverlaysForQa();
       closeExpandedMapForQa();
       options.pauseMenuExplicitlyRequestedRef.current = false;
@@ -223,18 +202,11 @@ export function useHudStateQaRuntime(options: HudStateQaOptions) {
       options.releaseMobileGameplayInputs();
       options.setControllerGameplayActive(false);
       options.setQuestDevModeEnabled(true);
-      options.openQuestNpcEditor({
-        npcId: "qa-runtime-npc",
-        townId: "qa-town",
-        hutId: "qa-hut",
-        defaultName: "QA Quest NPC",
-        theme: "qa",
-        position: [0, 0, 0],
-      });
+      options.openQuestNpcEditor(createHudStateQaQuestNpcEditorTarget());
       return;
     }
 
-    if (options.qaHudState === "questdialog" || options.qaHudState === "quest-dialog") {
+    if (isHudStateQaQuestDialogState(options.qaHudState)) {
       closeGameplayOverlaysForQa();
       closeExpandedMapForQa();
       options.pauseMenuExplicitlyRequestedRef.current = false;
@@ -245,25 +217,14 @@ export function useHudStateQaRuntime(options: HudStateQaOptions) {
       options.setTouchControlsActive(false);
       options.releaseMobileGameplayInputs();
       options.setControllerGameplayActive(false);
-      options.setQuestDialogSession({
-        npcId: "qa-dialog-npc",
-        townId: "qa-town",
-        displayName: "QA Quest NPC",
-        line: "QA dialog route for controller, keyboard, and aspect-ratio checks. This session is synthetic and safe to close.",
-        choices: [
-          { id: "darrel-close", label: "Close QA dialog" },
-          { id: "qa-dialog-hold", label: "Keep dialog open" },
-        ],
-      });
+      options.setQuestDialogSession(createHudStateQaQuestDialogSession());
       return;
     }
 
-    if (options.qaHudState === "magichands" || options.qaHudState === "magic-hands") {
+    if (isHudStateQaMagicHandsState(options.qaHudState)) {
       closeGameplayOverlaysForQa();
       closeExpandedMapForQa();
-      const nextSpell = HUD_STATE_QA_MAGIC_HAND_SPELLS.includes(options.qaMagicSpell as SpellType)
-        ? options.qaMagicSpell as SpellType
-        : "fireball";
+      const nextSpell = resolveHudStateQaMagicSpell(options.qaMagicSpell);
       options.pauseMenuExplicitlyRequestedRef.current = false;
       options.pauseMenuRequestedRef.current = false;
       options.setPauseOverlayOpen(false);
@@ -277,7 +238,7 @@ export function useHudStateQaRuntime(options: HudStateQaOptions) {
       options.setSpell(nextSpell, "right");
       options.setLeftRunePower(60);
       options.setRightRunePower(60);
-      const shouldForceCharging = !HUD_STATE_QA_NON_CHARGING_EFFECT_SPELLS.includes(nextSpell);
+      const shouldForceCharging = shouldForceHudStateQaMagicHandsCharging(nextSpell);
       options.setHandCharging("left", shouldForceCharging);
       options.setHandCharging("right", shouldForceCharging);
       return;
