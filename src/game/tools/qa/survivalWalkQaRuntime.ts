@@ -551,6 +551,36 @@ export function isQaWalkMovingInOpenLane({
     viewClearance > viewSoftClearance * 0.82;
 }
 
+export function resolveQaWalkOpenLaneRecoveryRelief({
+  elapsedSeconds,
+  mode,
+  movingInOpenLane,
+  recoveryUntil,
+  stuckStrikes,
+}: {
+  elapsedSeconds: number;
+  mode: QaSurvivalWalkMode;
+  movingInOpenLane: boolean;
+  recoveryUntil: number;
+  stuckStrikes: number;
+}) {
+  if (!movingInOpenLane || stuckStrikes <= 0) {
+    return {
+      changed: false,
+      recoveryUntil,
+      stuckStrikes,
+    };
+  }
+
+  return {
+    changed: true,
+    recoveryUntil: mode === "recover"
+      ? Math.min(recoveryUntil, elapsedSeconds + 0.18)
+      : recoveryUntil,
+    stuckStrikes: Math.max(0, stuckStrikes - 2),
+  };
+}
+
 export function resolveQaWalkTelemetryMovement({
   elapsedSeconds,
   lastTelemetryAt,

@@ -115,6 +115,7 @@ import {
   resolveQaWalkClearanceThrottle,
   resolveQaWalkLookInputFrame,
   resolveQaWalkLowSpeedRecovery,
+  resolveQaWalkOpenLaneRecoveryRelief,
   resolveQaWalkProgressRecovery,
   resolveQaWalkTelemetryAbnormality,
   resolveQaWalkTelemetryMovement,
@@ -2624,11 +2625,16 @@ export function PlayerController() {
         planarSpeedSq,
         viewClearance,
       });
-      if (movingInOpenLane && qaWalkStuckStrikes.current > 0) {
-        qaWalkStuckStrikes.current = Math.max(0, qaWalkStuckStrikes.current - 2);
-        if (mode === "recover") {
-          qaWalkRecoveryUntil.current = Math.min(qaWalkRecoveryUntil.current, elapsed + 0.18);
-        }
+      const openLaneRelief = resolveQaWalkOpenLaneRecoveryRelief({
+        elapsedSeconds: elapsed,
+        mode,
+        movingInOpenLane,
+        recoveryUntil: qaWalkRecoveryUntil.current,
+        stuckStrikes: qaWalkStuckStrikes.current,
+      });
+      if (openLaneRelief.changed) {
+        qaWalkStuckStrikes.current = openLaneRelief.stuckStrikes;
+        qaWalkRecoveryUntil.current = openLaneRelief.recoveryUntil;
       }
       const telemetryMovement = resolveQaWalkTelemetryMovement({
         elapsedSeconds: elapsed,
