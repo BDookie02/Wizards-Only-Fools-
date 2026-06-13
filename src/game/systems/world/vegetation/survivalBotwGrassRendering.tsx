@@ -43,27 +43,19 @@ import {
   SURVIVAL_BOTW_GRASS_MOBILE_PREVIEW_MIN_COUNT,
   SURVIVAL_BOTW_GRASS_NEIGHBOR_PREWARM_INTERVAL_SECONDS,
   SURVIVAL_BOTW_GRASS_NEIGHBOR_PREWARM_OFFSETS,
-  SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE,
-  SURVIVAL_BOTW_GRASS_PENDING_VIEWER_SAFE_DISTANCE,
   SURVIVAL_BOTW_GRASS_PREVIEW_MAX_WAIT_MS,
   SURVIVAL_BOTW_GRASS_PREVIEW_RECENTER_VIEWER_DISTANCE,
   SURVIVAL_BOTW_GRASS_PREVIEW_REFRESH_COUNT,
   SURVIVAL_BOTW_GRASS_PREVIEW_REFRESH_MS,
   SURVIVAL_BOTW_GRASS_PREWARM_AHEAD_STEPS,
-  SURVIVAL_BOTW_GRASS_PREWARM_DISTANCE,
-  SURVIVAL_BOTW_GRASS_PREWARM_VIEWER_DISTANCE,
   SURVIVAL_BOTW_GRASS_RADIUS,
-  SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE,
-  SURVIVAL_BOTW_GRASS_RECENTER_EMERGENCY_VIEWER_DISTANCE,
   SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE,
   SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE_INCREASE,
   SURVIVAL_BOTW_GRASS_RECENTER_MIN_INTERVAL_SECONDS,
-  SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE,
   SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_BATCH,
   SURVIVAL_BOTW_GRASS_UPLOAD_DESKTOP_INITIAL_BATCH,
   SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_BATCH,
   SURVIVAL_BOTW_GRASS_UPLOAD_MOBILE_INITIAL_BATCH,
-  SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE,
   SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_MIN_PROGRESS,
   SURVIVAL_BOTW_GRASS_VERTICAL_FADE_END,
   SURVIVAL_BOTW_GRASS_VERTICAL_FADE_START,
@@ -127,9 +119,25 @@ import {
   type SurvivalBotwGrassBuildResult,
 } from "./survivalBotwGrassBuildCache";
 import {
+  MOBILE_BOTW_GRASS_WIND_UPDATE_INTERVAL_SECONDS,
+  SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE_SQ,
+  SURVIVAL_BOTW_GRASS_PENDING_VIEWER_SAFE_DISTANCE_SQ,
+  SURVIVAL_BOTW_GRASS_PREVIEW_RECENTER_VIEWER_DISTANCE_SQ,
+  SURVIVAL_BOTW_GRASS_PREWARM_DISTANCE_SQ,
+  SURVIVAL_BOTW_GRASS_PREWARM_VIEWER_DISTANCE_SQ,
+  SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE_SQ,
+  SURVIVAL_BOTW_GRASS_RECENTER_EMERGENCY_VIEWER_DISTANCE_SQ,
+  SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE_SQ,
+  SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE_SQ,
+  SURVIVAL_BOTW_GRASS_TARGET_RECENTER_DISTANCE_SQ,
+  SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE_SQ,
+  getSurvivalBotwGrassDebugLineSamples,
   getSurvivalBotwGrassElapsedMs,
   getSurvivalBotwGrassNowMs,
+  getSurvivalBotwGrassSnappedCenter,
+  makeSurvivalBotwGrassOffsetScratch,
   shouldContinueSurvivalBotwGrassSlice,
+  type SurvivalBotwGrassNeighborPrewarmState,
 } from "./survivalBotwGrassRuntime";
 import {
   getSurvivalBotwGrassBuildKey,
@@ -147,48 +155,6 @@ import {
 } from "./survivalBotwGrassFrameRuntime";
 import { SURVIVAL_GRASS_SYSTEM_ENABLED } from "./survivalGrassSystemConfig";
 import { HIDE_FROM_MINIMAP } from "./SurvivalFoliagePrimitives";
-
-const MOBILE_BOTW_GRASS_WIND_UPDATE_INTERVAL_SECONDS = 1 / 24;
-const SURVIVAL_BOTW_GRASS_PENDING_VIEWER_SAFE_DISTANCE_SQ =
-  SURVIVAL_BOTW_GRASS_PENDING_VIEWER_SAFE_DISTANCE * SURVIVAL_BOTW_GRASS_PENDING_VIEWER_SAFE_DISTANCE;
-const SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE_SQ =
-  SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE * SURVIVAL_BOTW_GRASS_PENDING_TARGET_SAFE_DISTANCE;
-const SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE_SQ =
-  SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE * SURVIVAL_BOTW_GRASS_UPLOAD_RECENTER_EDGE_RELEASE_DISTANCE;
-const SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE_SQ =
-  SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE * SURVIVAL_BOTW_GRASS_RECENTER_DISTANCE;
-const SURVIVAL_BOTW_GRASS_TARGET_RECENTER_DISTANCE =
-  SURVIVAL_BOTW_GRASS_RADIUS - SURVIVAL_BOTW_GRASS_EDGE_FADE * 0.35;
-const SURVIVAL_BOTW_GRASS_TARGET_RECENTER_DISTANCE_SQ =
-  SURVIVAL_BOTW_GRASS_TARGET_RECENTER_DISTANCE * SURVIVAL_BOTW_GRASS_TARGET_RECENTER_DISTANCE;
-const SURVIVAL_BOTW_GRASS_PREWARM_VIEWER_DISTANCE_SQ =
-  SURVIVAL_BOTW_GRASS_PREWARM_VIEWER_DISTANCE * SURVIVAL_BOTW_GRASS_PREWARM_VIEWER_DISTANCE;
-const SURVIVAL_BOTW_GRASS_PREWARM_DISTANCE_SQ =
-  SURVIVAL_BOTW_GRASS_PREWARM_DISTANCE * SURVIVAL_BOTW_GRASS_PREWARM_DISTANCE;
-const SURVIVAL_BOTW_GRASS_PREVIEW_RECENTER_VIEWER_DISTANCE_SQ =
-  SURVIVAL_BOTW_GRASS_PREVIEW_RECENTER_VIEWER_DISTANCE * SURVIVAL_BOTW_GRASS_PREVIEW_RECENTER_VIEWER_DISTANCE;
-const SURVIVAL_BOTW_GRASS_RECENTER_EMERGENCY_VIEWER_DISTANCE_SQ =
-  SURVIVAL_BOTW_GRASS_RECENTER_EMERGENCY_VIEWER_DISTANCE * SURVIVAL_BOTW_GRASS_RECENTER_EMERGENCY_VIEWER_DISTANCE;
-const SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE_SQ =
-  SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE * SURVIVAL_BOTW_GRASS_RECENTER_VIEWER_DRIFT_RELEASE;
-const SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE_SQ =
-  SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE * SURVIVAL_BOTW_GRASS_RECENTER_MAX_VIEWER_DISTANCE;
-
-type SurvivalBotwGrassNeighborPrewarmState = {
-  centerKey: string;
-  offsetIndex: number;
-  lastAt: number;
-  travelOffsets: Array<[number, number]>;
-  seenOffsets: Array<[number, number]>;
-};
-
-function makeOffsetScratch(count: number): Array<[number, number]> {
-  const offsets: Array<[number, number]> = [];
-  for (let index = 0; index < count; index += 1) {
-    offsets.push([0, 0]);
-  }
-  return offsets;
-}
 
 function getSurvivalLocalGrassViewerPositionInto(camera: THREE.Camera, target: SurvivalBotwGrassViewerPosition) {
   const localPlayer = getBrowserLocalPlayerPosition();
@@ -216,14 +182,6 @@ function getInitialSurvivalBotwGrassCenter(): SurvivalBotwGrassCenter {
   return getSurvivalBotwGrassSnappedCenter(x, y, z);
 }
 
-function getSurvivalBotwGrassSnappedCenter(worldX: number, worldY: number, worldZ: number): SurvivalBotwGrassCenter {
-  return {
-    x: Math.round(worldX / SURVIVAL_BOTW_GRASS_CENTER_STEP) * SURVIVAL_BOTW_GRASS_CENTER_STEP,
-    y: worldY,
-    z: Math.round(worldZ / SURVIVAL_BOTW_GRASS_CENTER_STEP) * SURVIVAL_BOTW_GRASS_CENTER_STEP,
-  };
-}
-
 function ActiveSurvivalBotwGrassField() {
   const enabled = SURVIVAL_GRASS_SYSTEM_ENABLED;
   const initialCenter = useMemo(() => getInitialSurvivalBotwGrassCenter(), []);
@@ -246,8 +204,8 @@ function ActiveSurvivalBotwGrassField() {
     centerKey: "",
     offsetIndex: 0,
     lastAt: 0,
-    travelOffsets: makeOffsetScratch(5),
-    seenOffsets: makeOffsetScratch(18),
+    travelOffsets: makeSurvivalBotwGrassOffsetScratch(5),
+    seenOffsets: makeSurvivalBotwGrassOffsetScratch(18),
   });
   const hasPublishedGrassBuildRef = useRef(false);
   const publishedGrassBuildKeyRef = useRef<string | null>(null);
@@ -992,16 +950,11 @@ function ActiveSurvivalBotwGrassField() {
       const debugSecond = Math.floor(clock.elapsedTime);
       if (debugSampleSecondRef.current !== debugSecond) {
         debugSampleSecondRef.current = debugSecond;
-        const offsets = [-40, -10, 15, 40, 70, 100, 135, 175, 220, 270];
-        const debugSamples = [];
-        for (let index = 0; index < offsets.length; index += 1) {
-          const offset = offsets[index];
-          debugSamples.push({
-            offset,
-            ...getSurvivalGrassDebugSampleAt(viewerPosition.x + offset, viewerPosition.z),
-          });
-        }
-        publishSurvivalBotwGrassDebugLine(debugSamples);
+        publishSurvivalBotwGrassDebugLine(getSurvivalBotwGrassDebugLineSamples(
+          viewerPosition.x,
+          viewerPosition.z,
+          getSurvivalGrassDebugSampleAt,
+        ));
       }
     } else {
       clearSurvivalBotwGrassDebugLine();
