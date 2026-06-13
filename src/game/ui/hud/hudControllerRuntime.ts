@@ -243,6 +243,21 @@ export type HudControllerInventoryPanelActionOptions = {
   consumeRepeat: HudControllerOverlayRepeatReader;
 };
 
+export type HudControllerPauseMenuAction = {
+  moveFocus: "up" | "down" | null;
+  horizontalDirection: 1 | -1 | null;
+  submit: "close" | "run" | "startGameplay" | null;
+};
+
+export type HudControllerPauseMenuActionOptions = Pick<
+  HudControllerOverlayRepeats,
+  "pauseNextPressed" | "pausePrevPressed" | "pauseRightPressed" | "pauseLeftPressed"
+> & {
+  bPressed: boolean;
+  aPressed: boolean;
+  startPressed: boolean;
+};
+
 const HUD_CONTROLLER_MENU_AXIS_THRESHOLD = 0.6;
 const HUD_CONTROLLER_DEV_FAST_TRAVEL_NAVIGATION_DELAY_MS = 220;
 
@@ -676,6 +691,29 @@ export function getHudControllerSpellMenuAction({
     navigate,
     select: aPressed,
   };
+}
+
+export function getHudControllerPauseMenuAction({
+  pauseNextPressed,
+  pausePrevPressed,
+  pauseRightPressed,
+  pauseLeftPressed,
+  bPressed,
+  aPressed,
+  startPressed,
+}: HudControllerPauseMenuActionOptions): HudControllerPauseMenuAction {
+  const moveFocus = pauseNextPressed ? "down" : pausePrevPressed ? "up" : null;
+  const verticalMoved = pauseNextPressed || pausePrevPressed;
+  const horizontalDirection = verticalMoved
+    ? null
+    : pauseRightPressed
+      ? 1
+      : pauseLeftPressed
+        ? -1
+        : null;
+  const submit = bPressed ? "close" : aPressed ? "run" : startPressed ? "startGameplay" : null;
+
+  return { moveFocus, horizontalDirection, submit };
 }
 
 export function updateHudControllerInventoryHold({

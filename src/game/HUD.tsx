@@ -157,6 +157,7 @@ import {
   dispatchSpellMenuControllerSelect,
   getHudControllerDevFastTravelAction,
   getHudControllerInventoryPanelAction,
+  getHudControllerPauseMenuAction,
   getHudControllerSpellMenuAction,
   hasHudControllerGameplaySignal,
   isStandingStillForControllerInventory,
@@ -2656,38 +2657,34 @@ export function HUD() {
       }
 
       if (pauseMenuOpen) {
-        const pauseVerticalMoved = pauseNextPressed || pausePrevPressed;
-        if (pauseNextPressed) {
-          movePauseMenuFocus("down");
-        } else if (pausePrevPressed) {
-          movePauseMenuFocus("up");
+        const pauseAction = getHudControllerPauseMenuAction({
+          pauseNextPressed,
+          pausePrevPressed,
+          pauseRightPressed,
+          pauseLeftPressed,
+          bPressed,
+          aPressed,
+          startPressed,
+        });
+
+        if (pauseAction.moveFocus) {
+          movePauseMenuFocus(pauseAction.moveFocus);
         }
 
-        if (!pauseVerticalMoved && pauseRightPressed) {
-          if (!adjustFocusedSetting(1)) {
+        if (pauseAction.horizontalDirection !== null) {
+          if (!adjustFocusedSetting(pauseAction.horizontalDirection)) {
             if (showVideoMenu && pauseMenuIndex < settingsTabCount) {
-              const nextTabIndex = wrapIndex(pauseMenuIndex + 1, settingsTabCount);
+              const nextTabIndex = wrapIndex(pauseMenuIndex + pauseAction.horizontalDirection, settingsTabCount);
               const nextPane = getSettingsPaneForTabIndex(nextTabIndex);
               if (nextPane) setSettingsPane(nextPane);
               setPauseMenuIndex(nextTabIndex);
             } else {
-              movePauseMenuFocus("right");
-            }
-          }
-        } else if (!pauseVerticalMoved && pauseLeftPressed) {
-          if (!adjustFocusedSetting(-1)) {
-            if (showVideoMenu && pauseMenuIndex < settingsTabCount) {
-              const nextTabIndex = wrapIndex(pauseMenuIndex - 1, settingsTabCount);
-              const nextPane = getSettingsPaneForTabIndex(nextTabIndex);
-              if (nextPane) setSettingsPane(nextPane);
-              setPauseMenuIndex(nextTabIndex);
-            } else {
-              movePauseMenuFocus("left");
+              movePauseMenuFocus(pauseAction.horizontalDirection > 0 ? "right" : "left");
             }
           }
         }
 
-        if (bPressed) {
+        if (pauseAction.submit === "close") {
           controllerResumeRequestedRef.current = true;
           closePauseMenu("controller");
           controllerResumeRequestedRef.current = false;
@@ -2695,7 +2692,7 @@ export function HUD() {
           return;
         }
 
-        if (aPressed) {
+        if (pauseAction.submit === "run") {
           controllerResumeRequestedRef.current = true;
           runPauseMenuAction();
           controllerResumeRequestedRef.current = false;
@@ -2703,7 +2700,7 @@ export function HUD() {
           return;
         }
 
-        if (startPressed) {
+        if (pauseAction.submit === "startGameplay") {
           startControllerGameplay();
           controllerPollScheduler.schedule(0);
           return;
