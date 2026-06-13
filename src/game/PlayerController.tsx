@@ -221,6 +221,7 @@ import {
   createPlayerGrabCastProjectilePayload,
   createPlayerGrabReleaseProjectilePayload,
 } from "./systems/player/playerGrabCastingRuntime";
+import { resolvePlayerSelfBuffCastPlan } from "./systems/player/playerSelfBuffCastingRuntime";
 import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
@@ -533,46 +534,43 @@ export function PlayerController() {
     };
 
     const castSelfBuffSpell = (hand: HandType, spell: SpellType) => {
+      const selfBuffPlan = resolvePlayerSelfBuffCastPlan({
+        spell,
+        hand,
+        armorMax: ARMOR_MAX,
+        jumpVelocityFloor: JUMP_FORCE * JUMP_BOOST_MULTIPLIER,
+      });
+      if (!selfBuffPlan) return false;
+
       const store = useGameStore.getState();
       store.setHandCharging(hand, true);
       window.setTimeout(() => {
         useGameStore.getState().setHandCharging(hand, false);
-      }, 180);
+      }, selfBuffPlan.chargeMs);
 
-      if (spell === 'magicarmor') {
+      if (selfBuffPlan.effect === "magicArmor") {
         store.activateMagicArmor();
-        emitGameNetworkEvent("setArmor", ARMOR_MAX);
-        dispatchSelfBuffCast({ spell, hand, armor: ARMOR_MAX });
-        return true;
-      }
-
-      if (spell === 'speedboost') {
+      } else if (selfBuffPlan.effect === "speedBoost") {
         store.activateSpeedBoost();
-        dispatchSelfBuffCast({ spell, hand });
-        return true;
-      }
-
-      if (spell === 'jumpboost') {
+      } else if (selfBuffPlan.effect === "jumpBoost") {
         store.activateJumpBoost();
         const velocity = rigidBody.current?.linvel();
         if (velocity && rigidBody.current) {
           rigidBody.current.setLinvel({
             x: velocity.x,
-            y: Math.max(velocity.y, JUMP_FORCE * JUMP_BOOST_MULTIPLIER),
+            y: Math.max(velocity.y, selfBuffPlan.jumpVelocityFloor ?? velocity.y),
             z: velocity.z,
           }, true);
         }
-        dispatchSelfBuffCast({ spell, hand });
-        return true;
-      }
-
-      if (spell === 'magicglassorb') {
+      } else {
         store.activateMagicGlassOrb();
-        dispatchSelfBuffCast({ spell, hand });
-        return true;
       }
 
-      return false;
+      if (typeof selfBuffPlan.armorNetworkValue === "number") {
+        emitGameNetworkEvent("setArmor", selfBuffPlan.armorNetworkValue);
+      }
+      dispatchSelfBuffCast(selfBuffPlan.eventDetail);
+      return true;
     };
 
     const castDirectTungston = (hand: HandType) => {
