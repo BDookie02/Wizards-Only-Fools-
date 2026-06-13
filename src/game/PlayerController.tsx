@@ -134,6 +134,11 @@ import {
   publishSurvivalWalkStationaryInput,
   wasSurvivalWalkManaFlowerCollected,
 } from "./tools/qa/survivalWalkQaTelemetry";
+import {
+  getQaWalkPracticeCastChargeMs,
+  getQaWalkPracticeCastHand,
+  resolveQaWalkPracticeProjectilePosition,
+} from "./tools/qa/survivalWalkQaPracticeCasting";
 import { publishManualFastTravelSpawn } from "./tools/manualFastTravelSpawn";
 import { getPlayerAimDirectionInto } from "./systems/spells/spellProjectileMath";
 import { getEpochMsFromRenderClock } from "./systems/rendering/renderClockEpoch";
@@ -2384,19 +2389,18 @@ export function PlayerController() {
         if (dir.lengthSq() < 0.001) dir.set(0, 0, -1);
         dir.normalize();
 
-        const hand: HandType = qaWalkPracticeSpellIndex.current % 2 === 0 ? "right" : "left";
+        const hand = getQaWalkPracticeCastHand(qaWalkPracticeSpellIndex.current);
         const { spawnPos } = getPlayerSpellLaunchInto(hand, camera, dir, spellLaunchScratch);
         const flatDir = spellFlatDirection.set(dir.x, 0, dir.z);
         if (flatDir.lengthSq() < 0.001) flatDir.set(0, 0, -1);
         flatDir.normalize();
-        const castAtTarget = spell === "lightning";
-        const projectilePos = castAtTarget
-          ? {
-            x: pos.x + flatDir.x * 26,
-            y: pos.y - PLAYER_FOOT_OFFSET + 0.2,
-            z: pos.z + flatDir.z * 26,
-          }
-          : { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z };
+        const projectilePos = resolveQaWalkPracticeProjectilePosition({
+          spell,
+          playerPos: pos,
+          spawnPos,
+          flatDir,
+          footOffset: PLAYER_FOOT_OFFSET,
+        });
         const projectile = createPlayerSpellProjectilePayload({
           id: createQaWalkPracticeProjectileId(spell, nowMs),
           creatorId: getLocalNetworkPlayerId(),
@@ -2411,7 +2415,7 @@ export function PlayerController() {
         store.setHandCharging(hand, true);
         window.setTimeout(() => {
           useGameStore.getState().setHandCharging(hand, false);
-        }, spell === "arcanebeam" ? 420 : 220);
+        }, getQaWalkPracticeCastChargeMs(spell));
         emitGameNetworkEvent("castSpell", projectile);
         store.addProjectile(projectile);
         publishSurvivalWalkPracticeCast(spell);
