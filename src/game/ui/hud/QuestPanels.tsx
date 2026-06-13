@@ -27,33 +27,12 @@ import {
   questNpcRoles,
   removeQuestScriptPointById,
   sanitizeQuestNpcProgramDraft,
+  updateQuestScriptPointDraft,
   type QuestEventBuilderKind,
 } from "./questNpcEditorRuntime";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
-}
-
-function updateQuestScriptPointDraft(
-  program: QuestNpcProgram,
-  pointId: string,
-  updates: Partial<QuestScriptPoint>,
-) {
-  let pointIndex = -1;
-  for (let index = 0; index < program.scriptPoints.length; index += 1) {
-    if (program.scriptPoints[index].id === pointId) {
-      pointIndex = index;
-      break;
-    }
-  }
-  if (pointIndex < 0) return program;
-
-  const scriptPoints = new Array<QuestScriptPoint>(program.scriptPoints.length);
-  for (let index = 0; index < program.scriptPoints.length; index += 1) {
-    scriptPoints[index] = program.scriptPoints[index];
-  }
-  scriptPoints[pointIndex] = { ...program.scriptPoints[pointIndex], ...updates };
-  return { ...program, scriptPoints };
 }
 
 export function QuestNpcEditor() {

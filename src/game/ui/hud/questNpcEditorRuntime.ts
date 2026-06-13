@@ -47,6 +47,28 @@ export function getQuestScriptPointIndex(draft: QuestNpcProgram, point: QuestScr
   return point ? draft.scriptPoints.indexOf(point) : -1;
 }
 
+export function updateQuestScriptPointDraft(
+  program: QuestNpcProgram,
+  pointId: string,
+  updates: Partial<QuestScriptPoint>,
+) {
+  let pointIndex = -1;
+  for (let index = 0; index < program.scriptPoints.length; index += 1) {
+    if (program.scriptPoints[index].id === pointId) {
+      pointIndex = index;
+      break;
+    }
+  }
+  if (pointIndex < 0) return program;
+
+  const scriptPoints = new Array<QuestScriptPoint>(program.scriptPoints.length);
+  for (let index = 0; index < program.scriptPoints.length; index += 1) {
+    scriptPoints[index] = program.scriptPoints[index];
+  }
+  scriptPoints[pointIndex] = { ...program.scriptPoints[pointIndex], ...updates };
+  return { ...program, scriptPoints };
+}
+
 export function countQuestScriptPointEvents(point: QuestScriptPoint | undefined) {
   if (!point) return 0;
   let count = 0;
