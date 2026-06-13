@@ -55,7 +55,10 @@ import {
   QA_SURVIVAL_LOW_SPEED_THRESHOLD,
   QA_SURVIVAL_LOW_SPEED_TRIGGER_SECONDS,
   QA_SURVIVAL_LOOK_TURN_RATE,
+  QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE,
   QA_SURVIVAL_RECOVERY_MIN_SECONDS,
+  QA_SURVIVAL_RECOVERY_NUDGE_DISTANCE,
+  QA_SURVIVAL_RECOVERY_NUDGE_SECONDS,
   QA_SURVIVAL_RECOVERY_TURN_RATE,
   QA_SURVIVAL_STUCK_CHECK_SECONDS,
   QA_SURVIVAL_WAYPOINT_MAX_DISTANCE,
@@ -1672,6 +1675,58 @@ export function resolveQaWalkRecoveryRescuePlan({
   }
 
   return null;
+}
+
+export function shouldResolveQaWalkUnstickNudgePlan({
+  elapsedSeconds,
+  lastUnstickNudgeAt,
+  recoveryAge,
+  recoveryDistanceSq,
+  stuckStrikes,
+  minEscapeDistance = QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE,
+  nudgeSeconds = QA_SURVIVAL_RECOVERY_NUDGE_SECONDS,
+}: {
+  elapsedSeconds: number;
+  lastUnstickNudgeAt: number;
+  recoveryAge: number;
+  recoveryDistanceSq: number;
+  stuckStrikes: number;
+  minEscapeDistance?: number;
+  nudgeSeconds?: number;
+}) {
+  const nudgeEscapeDistance = minEscapeDistance * 0.62;
+  return stuckStrikes >= 3 &&
+    recoveryAge > nudgeSeconds &&
+    recoveryDistanceSq < nudgeEscapeDistance * nudgeEscapeDistance &&
+    elapsedSeconds > lastUnstickNudgeAt + 1.1;
+}
+
+export function resolveQaWalkUnstickNudgePlan({
+  currentPosition,
+  elapsedSeconds,
+  escapeYaw,
+  minRecoverySeconds = QA_SURVIVAL_RECOVERY_MIN_SECONDS,
+  nudgeDistance = QA_SURVIVAL_RECOVERY_NUDGE_DISTANCE,
+  stuckStrikes,
+}: {
+  currentPosition: QaWalkPosition;
+  elapsedSeconds: number;
+  escapeYaw: number;
+  minRecoverySeconds?: number;
+  nudgeDistance?: number;
+  stuckStrikes: number;
+}) {
+  const distance = nudgeDistance + Math.min(stuckStrikes, 6) * 0.8;
+  return {
+    position: {
+      x: currentPosition.x + Math.sin(escapeYaw) * distance,
+      y: currentPosition.y + 0.18,
+      z: currentPosition.z - Math.cos(escapeYaw) * distance,
+    },
+    reason: "unstick-nudge" as const,
+    recoveryUntil: elapsedSeconds + minRecoverySeconds,
+    yaw: escapeYaw,
+  };
 }
 
 export function resolveQaWalkLookInputFrame({

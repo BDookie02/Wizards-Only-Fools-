@@ -38,8 +38,6 @@ import {
   QA_SURVIVAL_RECOVERY_MAX_SECONDS,
   QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE,
   QA_SURVIVAL_RECOVERY_MIN_SECONDS,
-  QA_SURVIVAL_RECOVERY_NUDGE_DISTANCE,
-  QA_SURVIVAL_RECOVERY_NUDGE_SECONDS,
   QA_SURVIVAL_RECOVERY_REVERSE_SECONDS,
   QA_SURVIVAL_RECOVERY_REVERSE_STUCK_SECONDS,
   QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
@@ -109,8 +107,10 @@ import {
   resolveQaWalkRouteWaypoint,
   resolveQaWalkTubeMovementFrame,
   resolveQaWalkTravelMovementFrame,
+  resolveQaWalkUnstickNudgePlan,
   resolveQaWalkWaypointRefreshState,
   shouldResolveQaWalkSteeringDecision,
+  shouldResolveQaWalkUnstickNudgePlan,
   useQaSurvivalWalkRuntimeState,
 } from "./tools/qa/survivalWalkQaRuntime";
 import {
@@ -1904,19 +1904,21 @@ export function PlayerController() {
           forwardAmount = 0;
           strafeAmount = 0;
           recoveryReason = recoveryRescuePlan.reason;
-        } else if (
-          qaWalkStuckStrikes.current >= 3 &&
-          recoveryAge > QA_SURVIVAL_RECOVERY_NUDGE_SECONDS &&
-          recoveryDistanceSq < (QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE * 0.62) * (QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE * 0.62) &&
-          elapsed > qaWalkLastUnstickNudgeAt.current + 1.1
-        ) {
+        } else if (shouldResolveQaWalkUnstickNudgePlan({
+          elapsedSeconds: elapsed,
+          lastUnstickNudgeAt: qaWalkLastUnstickNudgeAt.current,
+          recoveryAge,
+          recoveryDistanceSq,
+          stuckStrikes: qaWalkStuckStrikes.current,
+        })) {
           const escape = findEscapeYaw((qaWalkYaw.current ?? currentYaw) + Math.PI, desiredYaw);
-          const nudgeDistance = QA_SURVIVAL_RECOVERY_NUDGE_DISTANCE + Math.min(qaWalkStuckStrikes.current, 6) * 0.8;
-          const nudgedPosition = {
-            x: pos.x + Math.sin(escape.yaw) * nudgeDistance,
-            y: pos.y + 0.18,
-            z: pos.z - Math.cos(escape.yaw) * nudgeDistance,
-          };
+          const unstickNudgePlan = resolveQaWalkUnstickNudgePlan({
+            currentPosition: pos,
+            elapsedSeconds: elapsed,
+            escapeYaw: escape.yaw,
+            stuckStrikes: qaWalkStuckStrikes.current,
+          });
+          const nudgedPosition = unstickNudgePlan.position;
           rigidBody.current?.setTranslation(nudgedPosition, true);
           rigidBody.current?.setLinvel({ x: 0, y: 0, z: 0 }, true);
           camera.position.set(nudgedPosition.x, nudgedPosition.y + PLAYER_CAMERA_HEIGHT, nudgedPosition.z);
@@ -1925,13 +1927,13 @@ export function PlayerController() {
           qaWalkLastUnstickNudgeAt.current = elapsed;
           qaWalkRecoveryStartPos.current.set(nudgedPosition.x, nudgedPosition.y, nudgedPosition.z);
           qaWalkRecoveryStartedAt.current = elapsed;
-          qaWalkRecoveryUntil.current = elapsed + QA_SURVIVAL_RECOVERY_MIN_SECONDS;
-          qaWalkRecoveryYaw.current = escape.yaw;
-          setForwardQaWaypoint(escape.yaw);
-          targetYaw = escape.yaw;
+          qaWalkRecoveryUntil.current = unstickNudgePlan.recoveryUntil;
+          qaWalkRecoveryYaw.current = unstickNudgePlan.yaw;
+          setForwardQaWaypoint(unstickNudgePlan.yaw);
+          targetYaw = unstickNudgePlan.yaw;
           forwardAmount = 0;
           strafeAmount = 0;
-          recoveryReason = "unstick-nudge";
+          recoveryReason = unstickNudgePlan.reason;
         } else if (recoveryAge < QA_SURVIVAL_RECOVERY_REVERSE_SECONDS || forwardClearance < 2.4) {
           forwardAmount = -0.32;
         } else if (
