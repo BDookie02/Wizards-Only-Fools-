@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { type SpellType, hasRunePower, useGameStore } from "../../../store/gameStore";
+import { getMagicHandsAspectOffsetClass, getMagicHandTranslate, resolveMagicHandPoseFlags } from "./magicHandsPoseRuntime";
 import { useLoopedFrameTimer } from "./useLoopedFrameTimer";
 
 export function useMagicHandsPose(leftSpell: SpellType, rightSpell: SpellType) {
@@ -85,16 +86,19 @@ export function useMagicHandsPose(leftSpell: SpellType, rightSpell: SpellType) {
     }
   }, []);
 
-  const leftFiringPoseActive = isMagicArmed && !isSpellMenuOpen && leftRuneReady && leftSpell !== "arcanebeam" && (isLeftCharging || showLeftFiringPose);
-  const rightFiringPoseActive = isMagicArmed && !isSpellMenuOpen && rightRuneReady && rightSpell !== "arcanebeam" && (isRightCharging || showRightFiringPose);
-  const leftUnpoweredPoseActive = isMagicArmed && !isSpellMenuOpen && !leftRuneReady;
-  const rightUnpoweredPoseActive = isMagicArmed && !isSpellMenuOpen && !rightRuneReady;
-  const leftHandUsesFiringSprite = leftFiringPoseActive || leftUnpoweredPoseActive;
-  const rightHandUsesFiringSprite = rightFiringPoseActive || rightUnpoweredPoseActive;
-  const aspectOffsetClass =
-    aspectRatio === "21/9" ? "magic-hands-ultrawide-offset" :
-    aspectRatio === "4/3" ? "magic-hands-classic-offset" :
-    aspectRatio === "Fill" ? "magic-hands-fill-offset" : "";
+  const { leftHandUsesFiringSprite, rightHandUsesFiringSprite } = resolveMagicHandPoseFlags({
+    isMagicArmed,
+    isSpellMenuOpen,
+    leftRuneReady,
+    rightRuneReady,
+    leftSpell,
+    rightSpell,
+    isLeftCharging,
+    isRightCharging,
+    showLeftFiringPose,
+    showRightFiringPose,
+  });
+  const aspectOffsetClass = getMagicHandsAspectOffsetClass(aspectRatio);
 
   return {
     frame,
@@ -106,8 +110,8 @@ export function useMagicHandsPose(leftSpell: SpellType, rightSpell: SpellType) {
     rightRuneReady,
     leftHandUsesFiringSprite,
     rightHandUsesFiringSprite,
-    leftHandTranslate: leftHandUsesFiringSprite ? "-8%" : "-8.5%",
-    rightHandTranslate: rightHandUsesFiringSprite ? "8%" : "8.5%",
+    leftHandTranslate: getMagicHandTranslate(leftHandUsesFiringSprite, "left"),
+    rightHandTranslate: getMagicHandTranslate(rightHandUsesFiringSprite, "right"),
     aspectOffsetClass,
   };
 }
