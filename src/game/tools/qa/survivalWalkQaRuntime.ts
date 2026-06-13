@@ -8,9 +8,17 @@ import {
 import {
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
+  QA_DARREL_GROVE_DRAGON_DOOR_Z,
+  QA_DARREL_GROVE_DRAGON_INTERACT_DISTANCE,
+  QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_X,
+  QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_Z,
+  QA_DARREL_GROVE_DRAGON_SIDE_STAIR_X,
+  QA_DARREL_GROVE_DRAGON_SIDE_STAIR_Z,
   QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE,
   QA_INTENT_DUMMY_CLOSE_DISTANCE,
   QA_INTENT_DUMMY_KEEP_DISTANCE,
+  QA_INTENT_INTERACT_DISTANCE,
+  QA_INTENT_MANA_COLLECT_RADIUS,
   QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
   QA_SURVIVAL_ROUTE_WAYPOINT_SECONDS,
@@ -37,6 +45,7 @@ import {
   isQaSurvivalWalkEnabled,
   lerpAngleRadians,
   moveAngleTowardsRadians,
+  type QaManaFlowerSnapshot,
   type QaSurvivalIntent,
   type QaSurvivalIntentKind,
   type QaSurvivalRouteWaypoint,
@@ -635,6 +644,104 @@ export function shouldResolveQaWalkSteeringDecision({
     overheadClearance < overheadSoftClearance ||
     elapsedSeconds >= nextDecisionAt ||
     elapsedSeconds - lastDecisionAt > decisionMaxSeconds;
+}
+
+export function getQaWalkIntentDistance(intent: QaSurvivalIntent | null, position: { x: number; z: number }) {
+  if (!intent) return Number.POSITIVE_INFINITY;
+  const distanceX = intent.x - position.x;
+  const distanceZ = intent.z - position.z;
+  return Math.sqrt(distanceX * distanceX + distanceZ * distanceZ);
+}
+
+export function resolveQaWalkIntentMoveTarget({
+  chunkCenterX,
+  chunkCenterZ,
+  intent,
+  isDarrelGroveQaArea,
+  position,
+}: {
+  chunkCenterX: number;
+  chunkCenterZ: number;
+  intent: QaSurvivalIntent;
+  isDarrelGroveQaArea: boolean;
+  position: QaWalkPosition;
+}): QaWalkPosition {
+  if (intent.kind !== "darrel-dragon" || !isDarrelGroveQaArea) return intent;
+
+  const localX = position.x - chunkCenterX;
+  const localZ = position.z - chunkCenterZ;
+  const routeSide = localX >= 0 ? 1 : -1;
+  const stage = (x: number, z: number) => ({
+    x: chunkCenterX + x,
+    y: intent.y,
+    z: chunkCenterZ + z,
+  });
+
+  if (localZ > QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_Z + 14) {
+    return stage(
+      routeSide * QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_X,
+      QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_Z,
+    );
+  }
+  if (
+    Math.abs(localX) > QA_DARREL_GROVE_DRAGON_SIDE_STAIR_X + 12 ||
+    localZ < QA_DARREL_GROVE_DRAGON_SIDE_STAIR_Z - 16
+  ) {
+    return stage(
+      routeSide * QA_DARREL_GROVE_DRAGON_SIDE_STAIR_X,
+      QA_DARREL_GROVE_DRAGON_SIDE_STAIR_Z,
+    );
+  }
+  if (Math.abs(localX) > 18 || localZ < QA_DARREL_GROVE_DRAGON_DOOR_Z - 8) {
+    return stage(0, QA_DARREL_GROVE_DRAGON_DOOR_Z);
+  }
+  return intent;
+}
+
+export function resolveQaWalkIntentCompletionDistance({
+  intent,
+  manaFlowers,
+  dragonInteractDistance = QA_DARREL_GROVE_DRAGON_INTERACT_DISTANCE,
+  dummyKeepDistance = QA_INTENT_DUMMY_KEEP_DISTANCE,
+  interactDistance = QA_INTENT_INTERACT_DISTANCE,
+  manaCollectRadius = QA_INTENT_MANA_COLLECT_RADIUS,
+}: {
+  intent: QaSurvivalIntent;
+  manaFlowers: QaManaFlowerSnapshot[];
+  dragonInteractDistance?: number;
+  dummyKeepDistance?: number;
+  interactDistance?: number;
+  manaCollectRadius?: number;
+}) {
+  if (intent.kind === "mana-flower") {
+    let flowerRadius = 0;
+    for (const flower of manaFlowers) {
+      if (flower.id === intent.id) {
+        flowerRadius = Number.isFinite(flower.radius) ? flower.radius ?? 0 : 0;
+        break;
+      }
+    }
+    return Math.max(manaCollectRadius, 1.2 + flowerRadius);
+  }
+  if (intent.kind === "spell-dummy") return dummyKeepDistance;
+  if (intent.kind === "darrel-dragon") return dragonInteractDistance;
+  return interactDistance;
+}
+
+export function resolveQaWalkIntentWaypoint({
+  elapsedSeconds,
+  intent,
+  maxWaypointSeconds = 3.8,
+}: {
+  elapsedSeconds: number;
+  intent: QaSurvivalIntent;
+  maxWaypointSeconds?: number;
+}) {
+  return {
+    x: intent.x,
+    z: intent.z,
+    expiresAt: Math.min(intent.expiresAt, elapsedSeconds + maxWaypointSeconds),
+  };
 }
 
 export function resolveQaWalkActiveIntentMovement({

@@ -29,21 +29,13 @@ import {
   QA_DARREL_GROVE_CLEARING_LOCAL_X,
   QA_DARREL_GROVE_CLEARING_LOCAL_Z,
   QA_DARREL_GROVE_DRAGON_DOOR_Z,
-  QA_DARREL_GROVE_DRAGON_INTERACT_DISTANCE,
   QA_DARREL_GROVE_DRAGON_INTENT_SECONDS,
   QA_DARREL_GROVE_DRAGON_INTEREST_SCORE,
-  QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_X,
-  QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_Z,
-  QA_DARREL_GROVE_DRAGON_SIDE_STAIR_X,
-  QA_DARREL_GROVE_DRAGON_SIDE_STAIR_Z,
   QA_DARREL_GROVE_RESCUE_Y,
-  QA_INTENT_DUMMY_KEEP_DISTANCE,
   QA_INTENT_DUMMY_RANGE,
   QA_INTENT_DUMMY_TEST_RANGE,
   QA_INTENT_INTERACT_COOLDOWN_SECONDS,
-  QA_INTENT_INTERACT_DISTANCE,
   QA_INTENT_INTEREST_STALE_SECONDS,
-  QA_INTENT_MANA_COLLECT_RADIUS,
   QA_INTENT_MANA_LOW_THRESHOLD,
   QA_INTENT_MANA_RANGE,
   QA_INTENT_OBSERVE_SECONDS,
@@ -108,7 +100,11 @@ import {
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
 import {
+  getQaWalkIntentDistance,
   isQaWalkMovingInOpenLane,
+  resolveQaWalkIntentCompletionDistance,
+  resolveQaWalkIntentMoveTarget,
+  resolveQaWalkIntentWaypoint,
   resolveQaWalkActiveIntentMovement,
   resolveQaWalkAvoidMovement,
   resolveQaWalkBlockedRecoveryTrigger,
@@ -1579,62 +1575,23 @@ export function PlayerController() {
         qaWalkWaypoint.current = routeSelection.waypoint;
         return true;
       };
-      const intentDistance = (intent: QaSurvivalIntent | null) => intent
-        ? Math.sqrt((intent.x - pos.x) * (intent.x - pos.x) + (intent.z - pos.z) * (intent.z - pos.z))
-        : Number.POSITIVE_INFINITY;
-      const getIntentMoveTarget = (intent: QaSurvivalIntent) => {
-        if (intent.kind !== "darrel-dragon" || !isDarrelGroveQaArea) return intent;
-
-        const localX = pos.x - chunkCenterX;
-        const localZ = pos.z - chunkCenterZ;
-        const routeSide = localX >= 0 ? 1 : -1;
-        const stage = (x: number, z: number) => ({
-          x: chunkCenterX + x,
-          y: intent.y,
-          z: chunkCenterZ + z,
-        });
-
-        if (localZ > QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_Z + 14) {
-          return stage(
-            routeSide * QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_X,
-            QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_Z,
-          );
-        }
-        if (
-          Math.abs(localX) > QA_DARREL_GROVE_DRAGON_SIDE_STAIR_X + 12 ||
-          localZ < QA_DARREL_GROVE_DRAGON_SIDE_STAIR_Z - 16
-        ) {
-          return stage(
-            routeSide * QA_DARREL_GROVE_DRAGON_SIDE_STAIR_X,
-            QA_DARREL_GROVE_DRAGON_SIDE_STAIR_Z,
-          );
-        }
-        if (Math.abs(localX) > 18 || localZ < QA_DARREL_GROVE_DRAGON_DOOR_Z - 8) {
-          return stage(0, QA_DARREL_GROVE_DRAGON_DOOR_Z);
-        }
-        return intent;
-      };
-      const intentCompletionDistance = (intent: QaSurvivalIntent) => {
-        if (intent.kind === "mana-flower") {
-          let flowerRadius = 0;
-          for (const flower of getReadyQaManaFlowers()) {
-            if (flower.id === intent.id) {
-              flowerRadius = flower.radius;
-              break;
-            }
-          }
-          return Math.max(QA_INTENT_MANA_COLLECT_RADIUS, 1.2 + flowerRadius);
-        }
-        if (intent.kind === "spell-dummy") return QA_INTENT_DUMMY_KEEP_DISTANCE;
-        if (intent.kind === "darrel-dragon") return QA_DARREL_GROVE_DRAGON_INTERACT_DISTANCE;
-        return QA_INTENT_INTERACT_DISTANCE;
-      };
+      const intentDistance = (intent: QaSurvivalIntent | null) => getQaWalkIntentDistance(intent, pos);
+      const getIntentMoveTarget = (intent: QaSurvivalIntent) => resolveQaWalkIntentMoveTarget({
+        chunkCenterX,
+        chunkCenterZ,
+        intent,
+        isDarrelGroveQaArea,
+        position: pos,
+      });
+      const intentCompletionDistance = (intent: QaSurvivalIntent) => resolveQaWalkIntentCompletionDistance({
+        intent,
+        manaFlowers: getReadyQaManaFlowers(),
+      });
       const setIntentWaypoint = (intent: QaSurvivalIntent) => {
-        qaWalkWaypoint.current = {
-          x: intent.x,
-          z: intent.z,
-          expiresAt: Math.min(intent.expiresAt, elapsed + 3.8),
-        };
+        qaWalkWaypoint.current = resolveQaWalkIntentWaypoint({
+          elapsedSeconds: elapsed,
+          intent,
+        });
       };
       const makeIntent = (
         kind: QaSurvivalIntentKind,
