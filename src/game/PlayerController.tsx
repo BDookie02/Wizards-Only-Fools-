@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { RigidBody, CapsuleCollider, useRapier, RapierRigidBody, interactionGroups } from "@react-three/rapier";
 import * as THREE from "three";
-import { ARMOR_MAX, DARREL_DRAGON_WORLD_POSITION, DARREL_QUEST_CHUNK, DEFAULT_MOUSE_SENSITIVITY, HandType, SpellType, SURVIVAL_BLOCK_SIZE, TOXIC_DAMAGE_PER_SECOND, TUNGSTON_SLOW_DURATION_MS, useGameStore } from "../store/gameStore";
+import { ARMOR_MAX, DARREL_DRAGON_WORLD_POSITION, DARREL_QUEST_CHUNK, DEFAULT_MOUSE_SENSITIVITY, HandType, SpellType, SURVIVAL_BLOCK_SIZE, TOXIC_DAMAGE_PER_SECOND, useGameStore } from "../store/gameStore";
 import {
   emitGameNetworkEvent,
   getConnectedNetworkPlayerId,
@@ -221,6 +221,10 @@ import {
   createPlayerGrabCastProjectilePayload,
   createPlayerGrabReleaseProjectilePayload,
 } from "./systems/player/playerGrabCastingRuntime";
+import {
+  PLAYER_DIRECT_STATUS_HAND_CHARGE_MS,
+  createPlayerDirectStatusCastPlan,
+} from "./systems/player/playerDirectStatusCastingRuntime";
 import { resolvePlayerSelfBuffCastPlan } from "./systems/player/playerSelfBuffCastingRuntime";
 import {
   createPlayerStateDispatchSnapshot,
@@ -583,7 +587,7 @@ export function PlayerController() {
       store.setHandCharging(hand, true);
       window.setTimeout(() => {
         useGameStore.getState().setHandCharging(hand, false);
-      }, 160);
+      }, PLAYER_DIRECT_STATUS_HAND_CHARGE_MS);
 
       const target = findAimedRemotePlayerInto(store.players, [
         { origin: spellAimOrigin.copy(camera.position), dir },
@@ -597,14 +601,17 @@ export function PlayerController() {
         return false;
       }
 
-      const until = getPlayerEventEpochMs() + TUNGSTON_SLOW_DURATION_MS;
-      store.updatePlayer(target.id, { slowUntil: until });
-      emitGameNetworkEvent("applyStatusEffect", {
+      const directStatusPlan = createPlayerDirectStatusCastPlan({
+        spell: "tungstonballsack",
+        hand,
         targetId: target.id,
-        effect: "slow",
-        durationMs: TUNGSTON_SLOW_DURATION_MS,
+        nowMs: getPlayerEventEpochMs(),
       });
-      dispatchDirectStatusCast({ spell: "tungstonballsack", hand, targetId: target.id });
+      if (!directStatusPlan) return false;
+
+      store.updatePlayer(directStatusPlan.targetId, directStatusPlan.targetUpdate);
+      emitGameNetworkEvent("applyStatusEffect", directStatusPlan.networkPayload);
+      dispatchDirectStatusCast(directStatusPlan.eventDetail);
       return true;
     };
 
