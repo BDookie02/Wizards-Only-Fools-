@@ -55,10 +55,14 @@ import {
   QA_SURVIVAL_LOW_SPEED_THRESHOLD,
   QA_SURVIVAL_LOW_SPEED_TRIGGER_SECONDS,
   QA_SURVIVAL_LOOK_TURN_RATE,
+  QA_SURVIVAL_RECOVERY_CLEAR_EXIT_DISTANCE,
+  QA_SURVIVAL_RECOVERY_CLEAR_EXIT_SECONDS,
   QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE,
   QA_SURVIVAL_RECOVERY_MIN_SECONDS,
   QA_SURVIVAL_RECOVERY_NUDGE_DISTANCE,
   QA_SURVIVAL_RECOVERY_NUDGE_SECONDS,
+  QA_SURVIVAL_RECOVERY_REVERSE_SECONDS,
+  QA_SURVIVAL_RECOVERY_REVERSE_STUCK_SECONDS,
   QA_SURVIVAL_RECOVERY_TURN_RATE,
   QA_SURVIVAL_STUCK_CHECK_SECONDS,
   QA_SURVIVAL_WAYPOINT_MAX_DISTANCE,
@@ -1726,6 +1730,94 @@ export function resolveQaWalkUnstickNudgePlan({
     reason: "unstick-nudge" as const,
     recoveryUntil: elapsedSeconds + minRecoverySeconds,
     yaw: escapeYaw,
+  };
+}
+
+export function resolveQaWalkRecoveryMovementFrame({
+  elapsedSeconds,
+  forwardClearance,
+  recoveryAge,
+  recoveryDistanceSq,
+  recoveryStrafe,
+  recoveryYaw,
+  stuckStrikes,
+  targetYaw,
+  yawError,
+  blockedClearance = QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
+  clearExitDistance = QA_SURVIVAL_RECOVERY_CLEAR_EXIT_DISTANCE,
+  clearExitSeconds = QA_SURVIVAL_RECOVERY_CLEAR_EXIT_SECONDS,
+  minEscapeDistance = QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE,
+  reverseSeconds = QA_SURVIVAL_RECOVERY_REVERSE_SECONDS,
+  reverseStuckSeconds = QA_SURVIVAL_RECOVERY_REVERSE_STUCK_SECONDS,
+  turnInPlaceError = QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR,
+}: {
+  elapsedSeconds: number;
+  forwardClearance: number;
+  recoveryAge: number;
+  recoveryDistanceSq: number;
+  recoveryStrafe: number;
+  recoveryYaw: number;
+  stuckStrikes: number;
+  targetYaw: number;
+  yawError: number;
+  blockedClearance?: number;
+  clearExitDistance?: number;
+  clearExitSeconds?: number;
+  minEscapeDistance?: number;
+  reverseSeconds?: number;
+  reverseStuckSeconds?: number;
+  turnInPlaceError?: number;
+}) {
+  const escapeYaw = recoveryYaw || targetYaw;
+  let forwardAmount = 0;
+  let mode: QaSurvivalWalkMode = "recover";
+  let nextStuckStrikes = stuckStrikes;
+  let nextTargetYaw = escapeYaw;
+  let recoveryReason = "";
+  let recoveryUntil: number | null = null;
+  let setForwardWaypointYaw: number | null = null;
+  let strafeAmount = forwardClearance < blockedClearance ? 0 : recoveryStrafe;
+
+  if (recoveryAge < reverseSeconds || forwardClearance < 2.4) {
+    forwardAmount = -0.32;
+  } else if (
+    recoveryDistanceSq < minEscapeDistance * minEscapeDistance &&
+    recoveryAge < reverseStuckSeconds
+  ) {
+    forwardAmount = -0.32;
+    strafeAmount = recoveryStrafe;
+  } else if (
+    recoveryAge > clearExitSeconds &&
+    forwardClearance > clearExitDistance &&
+    recoveryDistanceSq >= minEscapeDistance * minEscapeDistance
+  ) {
+    recoveryUntil = elapsedSeconds;
+    nextStuckStrikes = Math.max(0, stuckStrikes - 1);
+    setForwardWaypointYaw = escapeYaw;
+    mode = "travel";
+    nextTargetYaw = escapeYaw;
+    forwardAmount = 0.62;
+    strafeAmount = recoveryStrafe * 0.22;
+    recoveryReason = "clear-exit";
+  } else if (forwardClearance < blockedClearance * 0.62) {
+    forwardAmount = 0;
+    strafeAmount = 0;
+  } else if (yawError > turnInPlaceError) {
+    forwardAmount = 0;
+    strafeAmount = 0;
+  } else {
+    forwardAmount = forwardClearance < blockedClearance ? 0.22 : 0.56;
+  }
+
+  return {
+    forwardAmount,
+    mode,
+    recoveryReason,
+    recoveryUntil,
+    setForwardWaypointYaw,
+    strafeAmount,
+    stuckStrikes: nextStuckStrikes,
+    targetYaw: nextTargetYaw,
   };
 }
 

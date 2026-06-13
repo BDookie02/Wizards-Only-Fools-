@@ -33,13 +33,8 @@ import {
   QA_SURVIVAL_OVERHEAD_PROBE_DISTANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
   QA_SURVIVAL_PRACTICE_CAST_MIN_INTERVAL,
-  QA_SURVIVAL_RECOVERY_CLEAR_EXIT_DISTANCE,
-  QA_SURVIVAL_RECOVERY_CLEAR_EXIT_SECONDS,
   QA_SURVIVAL_RECOVERY_MAX_SECONDS,
-  QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE,
   QA_SURVIVAL_RECOVERY_MIN_SECONDS,
-  QA_SURVIVAL_RECOVERY_REVERSE_SECONDS,
-  QA_SURVIVAL_RECOVERY_REVERSE_STUCK_SECONDS,
   QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
   QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
@@ -99,6 +94,7 @@ import {
   resolveQaWalkLowSpeedRecovery,
   resolveQaWalkOpenLaneRecoveryRelief,
   resolveQaWalkProgressRecovery,
+  resolveQaWalkRecoveryMovementFrame,
   resolveQaWalkRecoveryJumpHoldUntil,
   resolveQaWalkRecoveryRescuePlan,
   resolveQaWalkTelemetryAbnormality,
@@ -1934,36 +1930,34 @@ export function PlayerController() {
           forwardAmount = 0;
           strafeAmount = 0;
           recoveryReason = unstickNudgePlan.reason;
-        } else if (recoveryAge < QA_SURVIVAL_RECOVERY_REVERSE_SECONDS || forwardClearance < 2.4) {
-          forwardAmount = -0.32;
-        } else if (
-          recoveryDistanceSq < QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE * QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE &&
-          recoveryAge < QA_SURVIVAL_RECOVERY_REVERSE_STUCK_SECONDS
-        ) {
-          forwardAmount = -0.32;
-          strafeAmount = qaWalkRecoveryStrafe.current;
-        } else if (
-          recoveryAge > QA_SURVIVAL_RECOVERY_CLEAR_EXIT_SECONDS &&
-          forwardClearance > QA_SURVIVAL_RECOVERY_CLEAR_EXIT_DISTANCE &&
-          recoveryDistanceSq >= QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE * QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE
-        ) {
-          const escapeYaw = qaWalkRecoveryYaw.current || targetYaw;
-          qaWalkRecoveryUntil.current = elapsed;
-          qaWalkStuckStrikes.current = Math.max(0, qaWalkStuckStrikes.current - 1);
-          setForwardQaWaypoint(escapeYaw);
-          mode = "travel";
-          targetYaw = escapeYaw;
-          forwardAmount = 0.62;
-          strafeAmount = qaWalkRecoveryStrafe.current * 0.22;
-          recoveryReason = "clear-exit";
-        } else if (forwardClearance < QA_SURVIVAL_WALK_BLOCKED_CLEARANCE * 0.62) {
-          forwardAmount = 0;
-          strafeAmount = 0;
-        } else if (yawError > QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR) {
-          forwardAmount = 0;
-          strafeAmount = 0;
         } else {
-          forwardAmount = forwardClearance < QA_SURVIVAL_WALK_BLOCKED_CLEARANCE ? 0.22 : 0.56;
+          const recoveryMovementFrame = resolveQaWalkRecoveryMovementFrame({
+            elapsedSeconds: elapsed,
+            forwardClearance,
+            recoveryAge,
+            recoveryDistanceSq,
+            recoveryStrafe: qaWalkRecoveryStrafe.current,
+            recoveryYaw: qaWalkRecoveryYaw.current,
+            stuckStrikes: qaWalkStuckStrikes.current,
+            targetYaw,
+            yawError,
+          });
+          mode = recoveryMovementFrame.mode;
+          targetYaw = recoveryMovementFrame.targetYaw;
+          forwardAmount = recoveryMovementFrame.forwardAmount;
+          strafeAmount = recoveryMovementFrame.strafeAmount;
+          if (recoveryMovementFrame.recoveryUntil !== null) {
+            qaWalkRecoveryUntil.current = recoveryMovementFrame.recoveryUntil;
+          }
+          if (recoveryMovementFrame.stuckStrikes !== qaWalkStuckStrikes.current) {
+            qaWalkStuckStrikes.current = recoveryMovementFrame.stuckStrikes;
+          }
+          if (recoveryMovementFrame.setForwardWaypointYaw !== null) {
+            setForwardQaWaypoint(recoveryMovementFrame.setForwardWaypointYaw);
+          }
+          if (recoveryMovementFrame.recoveryReason) {
+            recoveryReason = recoveryMovementFrame.recoveryReason;
+          }
         }
         sprint = false;
         const recoveryJumpHoldUntil = resolveQaWalkRecoveryJumpHoldUntil({
