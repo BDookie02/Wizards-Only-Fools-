@@ -31,7 +31,6 @@ import {
   createControllerPollScheduler,
   getPrimaryGamepad,
   hasGamepadInput,
-  isGamepadButtonPressed,
   type GamepadButtonName,
 } from "./systems/input/controllerInput";
 import { controllerActionRows, controllerButtonOptions } from "./systems/input/controllerSettingsConfig";
@@ -161,6 +160,7 @@ import {
   getHudControllerInventoryPanelAction,
   getHudControllerOverlayScrollAction,
   getHudControllerPauseMenuAction,
+  getHudControllerRemapAction,
   getHudControllerScoreboardSourceActive,
   getHudControllerSpellMenuAction,
   hasHudControllerGameplaySignal,
@@ -2467,25 +2467,22 @@ export function HUD() {
       }
 
       if (remappingAction) {
-        if (now >= remapReadyAtRef.current) {
-          const backPressedForRemap = isGamepadButtonPressed(gamepad, controllerBindings.menuBack as GamepadButtonName);
-          if (backPressedForRemap) {
-            setRemappingAction(null);
-            controllerPollScheduler.schedule(0);
-            return;
-          }
+        const remapAction = getHudControllerRemapAction({
+          gamepad,
+          now,
+          remapReadyAt: remapReadyAtRef.current,
+          menuBackButton: controllerBindings.menuBack,
+          controllerButtonOptions,
+        });
+        if (remapAction.type === "cancel") {
+          setRemappingAction(null);
+          controllerPollScheduler.schedule(0);
+          return;
+        }
 
-          let capturedButton: GamepadButtonName | null = null;
-          for (let index = 0; index < controllerButtonOptions.length; index += 1) {
-            const button = controllerButtonOptions[index];
-            if (!isGamepadButtonPressed(gamepad, button as GamepadButtonName)) continue;
-            capturedButton = button;
-            break;
-          }
-          if (capturedButton) {
-            setControllerBinding(remappingAction, capturedButton);
-            setRemappingAction(null);
-          }
+        if (remapAction.type === "capture") {
+          setControllerBinding(remappingAction, remapAction.button as GamepadButtonName);
+          setRemappingAction(null);
         }
         controllerPollScheduler.schedule(0);
         return;

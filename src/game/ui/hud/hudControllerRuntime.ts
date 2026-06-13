@@ -351,6 +351,19 @@ export type HudControllerGameplayActivationActionOptions = {
   lastGameplayInputMode: string;
 };
 
+export type HudControllerRemapAction =
+  | { type: "none" }
+  | { type: "cancel" }
+  | { type: "capture"; button: string };
+
+export type HudControllerRemapActionOptions = {
+  gamepad: Gamepad;
+  now: number;
+  remapReadyAt: number;
+  menuBackButton: string;
+  controllerButtonOptions: readonly string[];
+};
+
 const HUD_CONTROLLER_MENU_AXIS_THRESHOLD = 0.6;
 const HUD_CONTROLLER_DEV_FAST_TRAVEL_NAVIGATION_DELAY_MS = 220;
 const HUD_CONTROLLER_OVERLAY_SCROLL_THRESHOLD = 0.05;
@@ -947,6 +960,28 @@ export function getHudControllerGameplayActivationAction({
     dispatchControllerGameplayStarted: setControllerGameplayActive,
     nextInputMode: "controller",
   };
+}
+
+export function getHudControllerRemapAction({
+  gamepad,
+  now,
+  remapReadyAt,
+  menuBackButton,
+  controllerButtonOptions,
+}: HudControllerRemapActionOptions): HudControllerRemapAction {
+  if (now < remapReadyAt) return { type: "none" };
+
+  if (isGamepadButtonPressed(gamepad, menuBackButton as GamepadButtonName)) {
+    return { type: "cancel" };
+  }
+
+  for (let index = 0; index < controllerButtonOptions.length; index += 1) {
+    const button = controllerButtonOptions[index];
+    if (!isGamepadButtonPressed(gamepad, button as GamepadButtonName)) continue;
+    return { type: "capture", button };
+  }
+
+  return { type: "none" };
 }
 
 export function updateHudControllerInventoryHold({
