@@ -18,7 +18,6 @@ import {
   GameMode,
   ControllerAction,
   type QuestDialogSession,
-  sanitizePlayerName,
 } from "../store/gameStore";
 import {
   canRequestPointerLockHere,
@@ -180,10 +179,7 @@ import { GameplayHudOverlay } from "./ui/hud/GameplayHudOverlay";
 import { PauseStartMenuContent, type StartMenuStage } from "./ui/hud/PauseStartMenuContent";
 import {
   getCurrentInviteRoomCode,
-  getCurrentLanMobileInviteUrl,
-  resolveInviteRoomJoin,
   shouldRequireSecureOriginForVoice,
-  type LanInfoResponse,
 } from "./network/inviteRoom";
 import { useHudTouchGameplayRuntime } from "./ui/hud/useHudTouchGameplayRuntime";
 import { setHudMapSuppressedByToolOverlay } from "./ui/hud/hudMapSuppressionRuntime";
@@ -201,6 +197,11 @@ import {
   resolveHudPlayerStateEvent,
   type HudPlayerState,
 } from "./ui/hud/hudPlayerStateRuntime";
+import {
+  copyHudInviteUrl,
+  resolveHudInviteJoin,
+  resolveHudSubmittedPlayerName,
+} from "./ui/hud/hudInviteRuntime";
 
 let hudCommandConsoleModulePromise: Promise<typeof import("./ui/hud/hudCommandConsole")> | null = null;
 
@@ -518,24 +519,21 @@ export function HUD() {
     startTransition(toggleMap);
   };
   const copyInvite = () => {
-    void (async () => {
-      let inviteUrl = roomUrl;
-      try {
+    void copyHudInviteUrl({
+      fallbackUrl: roomUrl,
+      fetchLanInfo: async () => {
         const response = await fetch("/api/lan-info", { cache: "no-store" });
         if (response.ok) {
-          const info = await response.json() as LanInfoResponse;
-          inviteUrl = getCurrentLanMobileInviteUrl(info, roomUrl);
+          return response.json();
         }
-      } catch {
-        // Fall back to the current URL if the LAN helper is unavailable.
-      }
-
-      await navigator.clipboard?.writeText(inviteUrl).catch(() => {});
-    })();
+        return null;
+      },
+      writeClipboard: value => navigator.clipboard?.writeText(value),
+    });
   };
 
   const joinInviteCode = () => {
-    const joinResolution = resolveInviteRoomJoin(inviteCodeInput, currentInviteRoomCode, window.location.href);
+    const joinResolution = resolveHudInviteJoin(inviteCodeInput, currentInviteRoomCode, window.location.href);
     if (joinResolution.roomCode) {
       setInviteCodeInput(joinResolution.roomCode);
     }
@@ -548,8 +546,8 @@ export function HUD() {
   };
 
   const submitPlayerName = () => {
-    const cleaned = sanitizePlayerName(playerNameInput);
-    if (cleaned.length < 2) return;
+    const cleaned = resolveHudSubmittedPlayerName(playerNameInput);
+    if (!cleaned) return;
     setLocalPlayerName(cleaned);
   };
 
