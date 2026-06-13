@@ -1,4 +1,11 @@
 import { isIOSLikeDevice, isMobileLikeDevice } from "./performanceMode";
+import {
+  resolveAppViewportSizeFromMetrics,
+  type AppViewportCssVarsOptions,
+  type AppViewportSize,
+} from "./mobileViewportRuntime";
+
+export type { AppViewportCssVarsOptions, AppViewportSize } from "./mobileViewportRuntime";
 
 export type MobileLayoutDefaultState = {
   aspectRatio: string;
@@ -14,15 +21,6 @@ export type MobileLayoutDefaultsConfig = {
   setMouseSensitivity: (sensitivity: number) => void;
 };
 
-export type AppViewportSize = {
-  width: number;
-  height: number;
-};
-
-export type AppViewportCssVarsOptions = {
-  useVisualViewport?: boolean;
-};
-
 export function readAppViewportSize({
   useVisualViewport = true,
 }: {
@@ -35,14 +33,14 @@ export function readAppViewportSize({
   const visualViewportWidth = visualViewport?.width ?? window.innerWidth;
   const visualViewportHeight = visualViewport?.height ?? window.innerHeight;
   const coverIOSViewport = useVisualViewport && isIOSLikeDevice();
-  return {
-    width: Math.max(1, Math.round(useVisualViewport
-      ? coverIOSViewport ? Math.max(visualViewportWidth, window.innerWidth) : visualViewportWidth
-      : window.innerWidth)),
-    height: Math.max(1, Math.round(useVisualViewport
-      ? coverIOSViewport ? Math.max(visualViewportHeight, window.innerHeight) : visualViewportHeight
-      : window.innerHeight)),
-  };
+  return resolveAppViewportSizeFromMetrics({
+    innerWidth: window.innerWidth,
+    innerHeight: window.innerHeight,
+    visualViewportWidth,
+    visualViewportHeight,
+    useVisualViewport,
+    coverIOSViewport,
+  });
 }
 
 function hasStoredAspectRatio(storageKey: string) {
