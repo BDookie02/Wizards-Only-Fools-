@@ -30,6 +30,10 @@ import {
   QA_INTENT_QUEST_RANGE,
   QA_INTENT_REPLAN_MAX_SECONDS,
   QA_INTENT_REPLAN_MIN_SECONDS,
+  QA_SURVIVAL_INSPECTION_MAX_INTERVAL,
+  QA_SURVIVAL_INSPECTION_MAX_SECONDS,
+  QA_SURVIVAL_INSPECTION_MIN_INTERVAL,
+  QA_SURVIVAL_INSPECTION_MIN_SECONDS,
   QA_SURVIVAL_COMBAT_TARGET_RANGE,
   QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
@@ -1031,6 +1035,71 @@ export function resolveQaWalkActiveIntentRefresh({
     clearIntent,
     resetNextIntentAt: false,
     shouldChooseIntent: false,
+  };
+}
+
+export function resolveQaWalkInspectionStart({
+  currentYaw,
+  elapsedSeconds,
+  hasCurrentIntent,
+  hasSpellDummies,
+  inspectUntil,
+  lilyCoilTubeQaActive,
+  nextInspectAt,
+  position,
+  qaRouteActive,
+  qaSpellDummyRunActive,
+  recoveryUntil,
+  stuckStrikes,
+  inspectionMaxInterval = QA_SURVIVAL_INSPECTION_MAX_INTERVAL,
+  inspectionMaxSeconds = QA_SURVIVAL_INSPECTION_MAX_SECONDS,
+  inspectionMinInterval = QA_SURVIVAL_INSPECTION_MIN_INTERVAL,
+  inspectionMinSeconds = QA_SURVIVAL_INSPECTION_MIN_SECONDS,
+}: {
+  currentYaw: number;
+  elapsedSeconds: number;
+  hasCurrentIntent: boolean;
+  hasSpellDummies: boolean;
+  inspectUntil: number;
+  lilyCoilTubeQaActive: boolean;
+  nextInspectAt: number;
+  position: QaWalkPosition;
+  qaRouteActive: boolean;
+  qaSpellDummyRunActive: boolean;
+  recoveryUntil: number;
+  stuckStrikes: number;
+  inspectionMaxInterval?: number;
+  inspectionMaxSeconds?: number;
+  inspectionMinInterval?: number;
+  inspectionMinSeconds?: number;
+}) {
+  if (
+    lilyCoilTubeQaActive ||
+    qaRouteActive ||
+    hasCurrentIntent ||
+    (qaSpellDummyRunActive && hasSpellDummies) ||
+    elapsedSeconds < nextInspectAt ||
+    elapsedSeconds < inspectUntil ||
+    elapsedSeconds <= recoveryUntil + 2.5 ||
+    stuckStrikes > 1
+  ) {
+    return null;
+  }
+
+  const inspectNoise = survivalishTurnNoise(position.x + 103, position.z - 59, elapsedSeconds);
+  const nextInspectUntil = elapsedSeconds + randomRangeFromNoise(
+    inspectNoise,
+    inspectionMinSeconds,
+    inspectionMaxSeconds,
+  );
+  return {
+    inspectUntil: nextInspectUntil,
+    inspectYaw: currentYaw + randomRangeFromNoise(inspectNoise, -0.85, 0.85),
+    nextInspectAt: nextInspectUntil + randomRangeFromNoise(
+      survivalishTurnNoise(position.x - 17, position.z + 97, elapsedSeconds * 0.4),
+      inspectionMinInterval,
+      inspectionMaxInterval,
+    ),
   };
 }
 

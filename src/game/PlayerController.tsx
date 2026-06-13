@@ -36,9 +36,7 @@ import {
   QA_SURVIVAL_COMBAT_SPELL_SEQUENCE,
   QA_SURVIVAL_COMBAT_TARGET_RANGE,
   QA_SURVIVAL_INSPECTION_MAX_INTERVAL,
-  QA_SURVIVAL_INSPECTION_MAX_SECONDS,
   QA_SURVIVAL_INSPECTION_MIN_INTERVAL,
-  QA_SURVIVAL_INSPECTION_MIN_SECONDS,
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
   QA_SURVIVAL_OVERHEAD_PROBE_DISTANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
@@ -95,6 +93,7 @@ import {
   resolveQaWalkIntentMoveTarget,
   resolveQaWalkActiveIntentRefresh,
   resolveQaWalkActiveIntentMovement,
+  resolveQaWalkInspectionStart,
   resolveQaWalkAvoidMovement,
   resolveQaWalkBlockedRecoveryTrigger,
   resolveQaWalkClearanceThrottle,
@@ -1676,28 +1675,24 @@ export function PlayerController() {
       }
       const activeIntentDistance = intentDistance(activeIntent);
 
-      if (
-        !lilyCoilTubeQaActive &&
-        !qaRouteActive &&
-        !qaWalkIntent.current &&
-        (!qaSpellDummyRunActive || getQaSpellDummies().length <= 0) &&
-        elapsed >= qaWalkNextInspectAt.current &&
-        elapsed >= qaWalkInspectUntil.current &&
-        elapsed > qaWalkRecoveryUntil.current + 2.5 &&
-        qaWalkStuckStrikes.current <= 1
-      ) {
-        const inspectNoise = survivalishTurnNoise(pos.x + 103, pos.z - 59, elapsed);
-        qaWalkInspectUntil.current = elapsed + randomRangeFromNoise(
-          inspectNoise,
-          QA_SURVIVAL_INSPECTION_MIN_SECONDS,
-          QA_SURVIVAL_INSPECTION_MAX_SECONDS,
-        );
-        qaWalkInspectYaw.current = (qaWalkYaw.current ?? currentYaw) + randomRangeFromNoise(inspectNoise, -0.85, 0.85);
-        qaWalkNextInspectAt.current = qaWalkInspectUntil.current + randomRangeFromNoise(
-          survivalishTurnNoise(pos.x - 17, pos.z + 97, elapsed * 0.4),
-          QA_SURVIVAL_INSPECTION_MIN_INTERVAL,
-          QA_SURVIVAL_INSPECTION_MAX_INTERVAL,
-        );
+      const inspectionStart = resolveQaWalkInspectionStart({
+        currentYaw: qaWalkYaw.current ?? currentYaw,
+        elapsedSeconds: elapsed,
+        hasCurrentIntent: qaWalkIntent.current !== null,
+        hasSpellDummies: getQaSpellDummies().length > 0,
+        inspectUntil: qaWalkInspectUntil.current,
+        lilyCoilTubeQaActive,
+        nextInspectAt: qaWalkNextInspectAt.current,
+        position: pos,
+        qaRouteActive,
+        qaSpellDummyRunActive,
+        recoveryUntil: qaWalkRecoveryUntil.current,
+        stuckStrikes: qaWalkStuckStrikes.current,
+      });
+      if (inspectionStart) {
+        qaWalkInspectUntil.current = inspectionStart.inspectUntil;
+        qaWalkInspectYaw.current = inspectionStart.inspectYaw;
+        qaWalkNextInspectAt.current = inspectionStart.nextInspectAt;
       }
 
       let desiredYaw = Math.atan2(qaWalkWaypoint.current.x - pos.x, -(qaWalkWaypoint.current.z - pos.z));
