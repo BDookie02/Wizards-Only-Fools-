@@ -24,8 +24,6 @@ import {
 } from "./systems/input/playerInputState";
 import { isNavigationRecordingActive, recordNavigationSample } from "./navigationRecorderRuntime";
 import {
-  QA_BASE_VILLAGE_ROAD_HALF_WIDTH,
-  QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT,
   QA_DARREL_GROVE_CLEARING_LOCAL_X,
   QA_DARREL_GROVE_CLEARING_LOCAL_Z,
   QA_DARREL_GROVE_DRAGON_DOOR_Z,
@@ -66,8 +64,6 @@ import {
   QA_SURVIVAL_WALK_SOFT_LOOKAHEAD,
   QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR,
   QA_SURVIVAL_WALK_TURN_OPTIONS,
-  QA_SURVIVAL_WAYPOINT_MAX_DISTANCE,
-  QA_SURVIVAL_WAYPOINT_MIN_DISTANCE,
   angleDeltaRadians,
   getQaSpellDummies,
   getReadyQaManaFlowers,
@@ -86,7 +82,10 @@ import {
 } from "./tools/qa/survivalWalkQa";
 import {
   getQaWalkIntentDistance,
+  isQaWalkBaseVillageArea,
   isQaWalkMovingInOpenLane,
+  resolveQaWalkBaseVillageRoadRescuePosition,
+  resolveQaWalkBaseVillageRoadWaypoint,
   resolveQaWalkIntentCompletionDistance,
   resolveQaWalkIntentChoice,
   resolveQaWalkIntentMoveTarget,
@@ -1404,10 +1403,11 @@ export function PlayerController() {
         };
         return true;
       };
-      const isBaseVillageQaArea =
-        Math.abs(chunkCenterX) < 1 &&
-        Math.abs(chunkCenterZ) < 1 &&
-        Math.max(Math.abs(pos.x), Math.abs(pos.z)) < QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT + 54;
+      const isBaseVillageQaArea = isQaWalkBaseVillageArea({
+        chunkCenterX,
+        chunkCenterZ,
+        position: pos,
+      });
       const isDarrelGroveQaArea =
         Math.abs(chunkCenterX - DARREL_QUEST_CHUNK.cx * SURVIVAL_BLOCK_SIZE) < 1 &&
         Math.abs(chunkCenterZ - DARREL_QUEST_CHUNK.cz * SURVIVAL_BLOCK_SIZE) < 1;
@@ -1480,73 +1480,21 @@ export function PlayerController() {
         return null;
       };
       const setBaseVillageRoadWaypoint = () => {
-        if (!isBaseVillageQaArea) return false;
-
-        const absX = Math.abs(pos.x);
-        const absZ = Math.abs(pos.z);
-        const onVerticalRoad = absX <= QA_BASE_VILLAGE_ROAD_HALF_WIDTH;
-        const onHorizontalRoad = absZ <= QA_BASE_VILLAGE_ROAD_HALF_WIDTH;
-        const noise = survivalishTurnNoise(pos.x + 19, pos.z - 37, elapsed * 0.41);
-        const distance = randomRangeFromNoise(
-          survivalishTurnNoise(pos.x - 27, pos.z + 11, elapsed * 0.23),
-          QA_SURVIVAL_WAYPOINT_MIN_DISTANCE * 0.68,
-          QA_SURVIVAL_WAYPOINT_MAX_DISTANCE * 0.72,
-        );
-        let targetX = pos.x;
-        let targetZ = pos.z;
-
-        if (!onVerticalRoad && !onHorizontalRoad) {
-          if (absX < absZ) {
-            targetX = 0;
-            targetZ = THREE.MathUtils.clamp(pos.z, -QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT, QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT);
-          } else {
-            targetX = THREE.MathUtils.clamp(pos.x, -QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT, QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT);
-            targetZ = 0;
-          }
-        } else if (onVerticalRoad && (!onHorizontalRoad || noise < 0.58)) {
-          const forwardZ = -Math.cos(qaWalkYaw.current ?? currentYaw);
-          const direction = pos.z > QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT * 0.7
-            ? -1
-            : pos.z < -QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT * 0.7
-              ? 1
-              : (Math.abs(forwardZ) > 0.22 ? Math.sign(forwardZ) : (noise > 0.5 ? 1 : -1));
-          targetX = 0;
-          targetZ = THREE.MathUtils.clamp(pos.z + direction * distance, -QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT, QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT);
-        } else {
-          const forwardX = Math.sin(qaWalkYaw.current ?? currentYaw);
-          const direction = pos.x > QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT * 0.7
-            ? -1
-            : pos.x < -QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT * 0.7
-              ? 1
-              : (Math.abs(forwardX) > 0.22 ? Math.sign(forwardX) : (noise > 0.5 ? 1 : -1));
-          targetX = THREE.MathUtils.clamp(pos.x + direction * distance, -QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT, QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT);
-          targetZ = 0;
-        }
-
-        qaWalkWaypoint.current = {
-          x: targetX,
-          z: targetZ,
-          expiresAt: elapsed + randomRangeFromNoise(noise, 4.8, 8.2),
-        };
+        const roadWaypoint = resolveQaWalkBaseVillageRoadWaypoint({
+          active: isBaseVillageQaArea,
+          currentYaw: qaWalkYaw.current ?? currentYaw,
+          elapsedSeconds: elapsed,
+          position: pos,
+        });
+        if (!roadWaypoint) return false;
+        qaWalkWaypoint.current = roadWaypoint;
         return true;
       };
       const getBaseVillageRoadRescuePosition = () => {
-        if (!isBaseVillageQaArea) return null;
-        const absX = Math.abs(pos.x);
-        const absZ = Math.abs(pos.z);
-        if (absX <= QA_BASE_VILLAGE_ROAD_HALF_WIDTH || absZ <= QA_BASE_VILLAGE_ROAD_HALF_WIDTH) return null;
-        if (absX < absZ) {
-          return {
-            x: 0,
-            y: pos.y + 0.28,
-            z: THREE.MathUtils.clamp(pos.z, -QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT, QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT),
-          };
-        }
-        return {
-          x: THREE.MathUtils.clamp(pos.x, -QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT, QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT),
-          y: pos.y + 0.28,
-          z: 0,
-        };
+        return resolveQaWalkBaseVillageRoadRescuePosition({
+          active: isBaseVillageQaArea,
+          position: pos,
+        });
       };
       const setRouteWaypoint = () => {
         const routeSelection = resolveQaWalkRouteWaypoint({
@@ -1624,7 +1572,7 @@ export function PlayerController() {
         });
       };
 
-      const setForwardQaWaypoint = (yaw: number, distance = QA_SURVIVAL_WAYPOINT_MIN_DISTANCE * 1.15) => {
+      const setForwardQaWaypoint = (yaw: number, distance?: number) => {
         qaWalkWaypoint.current = resolveQaWalkForwardWaypoint({
           distance,
           elapsedSeconds: elapsed,

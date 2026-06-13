@@ -8,6 +8,8 @@ import {
 import {
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
+  QA_BASE_VILLAGE_ROAD_HALF_WIDTH,
+  QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT,
   QA_DARREL_GROVE_DRAGON_DOOR_Z,
   QA_DARREL_GROVE_DRAGON_INTERACT_DISTANCE,
   QA_DARREL_GROVE_DRAGON_INTENT_SECONDS,
@@ -1165,6 +1167,120 @@ export function resolveQaWalkForwardWaypoint({
     x: position.x + Math.sin(yaw) * distance,
     z: position.z - Math.cos(yaw) * distance,
     expiresAt: elapsedSeconds + 5.8,
+  };
+}
+
+export function isQaWalkBaseVillageArea({
+  chunkCenterX,
+  chunkCenterZ,
+  position,
+  travelLimit = QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT,
+}: {
+  chunkCenterX: number;
+  chunkCenterZ: number;
+  position: QaWalkPosition;
+  travelLimit?: number;
+}) {
+  return Math.abs(chunkCenterX) < 1 &&
+    Math.abs(chunkCenterZ) < 1 &&
+    Math.max(Math.abs(position.x), Math.abs(position.z)) < travelLimit + 54;
+}
+
+export function resolveQaWalkBaseVillageRoadWaypoint({
+  active,
+  currentYaw,
+  elapsedSeconds,
+  position,
+  halfWidth = QA_BASE_VILLAGE_ROAD_HALF_WIDTH,
+  travelLimit = QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT,
+  waypointMaxDistance = QA_SURVIVAL_WAYPOINT_MAX_DISTANCE,
+  waypointMinDistance = QA_SURVIVAL_WAYPOINT_MIN_DISTANCE,
+}: {
+  active: boolean;
+  currentYaw: number;
+  elapsedSeconds: number;
+  position: QaWalkPosition;
+  halfWidth?: number;
+  travelLimit?: number;
+  waypointMaxDistance?: number;
+  waypointMinDistance?: number;
+}) {
+  if (!active) return null;
+
+  const absX = Math.abs(position.x);
+  const absZ = Math.abs(position.z);
+  const onVerticalRoad = absX <= halfWidth;
+  const onHorizontalRoad = absZ <= halfWidth;
+  const noise = survivalishTurnNoise(position.x + 19, position.z - 37, elapsedSeconds * 0.41);
+  const distance = randomRangeFromNoise(
+    survivalishTurnNoise(position.x - 27, position.z + 11, elapsedSeconds * 0.23),
+    waypointMinDistance * 0.68,
+    waypointMaxDistance * 0.72,
+  );
+  let targetX = position.x;
+  let targetZ = position.z;
+
+  if (!onVerticalRoad && !onHorizontalRoad) {
+    if (absX < absZ) {
+      targetX = 0;
+      targetZ = clampNumber(position.z, -travelLimit, travelLimit);
+    } else {
+      targetX = clampNumber(position.x, -travelLimit, travelLimit);
+      targetZ = 0;
+    }
+  } else if (onVerticalRoad && (!onHorizontalRoad || noise < 0.58)) {
+    const forwardZ = -Math.cos(currentYaw);
+    const direction = position.z > travelLimit * 0.7
+      ? -1
+      : position.z < -travelLimit * 0.7
+        ? 1
+        : (Math.abs(forwardZ) > 0.22 ? Math.sign(forwardZ) : (noise > 0.5 ? 1 : -1));
+    targetX = 0;
+    targetZ = clampNumber(position.z + direction * distance, -travelLimit, travelLimit);
+  } else {
+    const forwardX = Math.sin(currentYaw);
+    const direction = position.x > travelLimit * 0.7
+      ? -1
+      : position.x < -travelLimit * 0.7
+        ? 1
+        : (Math.abs(forwardX) > 0.22 ? Math.sign(forwardX) : (noise > 0.5 ? 1 : -1));
+    targetX = clampNumber(position.x + direction * distance, -travelLimit, travelLimit);
+    targetZ = 0;
+  }
+
+  return {
+    x: targetX,
+    z: targetZ,
+    expiresAt: elapsedSeconds + randomRangeFromNoise(noise, 4.8, 8.2),
+  };
+}
+
+export function resolveQaWalkBaseVillageRoadRescuePosition({
+  active,
+  position,
+  halfWidth = QA_BASE_VILLAGE_ROAD_HALF_WIDTH,
+  travelLimit = QA_BASE_VILLAGE_ROAD_TRAVEL_LIMIT,
+}: {
+  active: boolean;
+  position: QaWalkPosition;
+  halfWidth?: number;
+  travelLimit?: number;
+}) {
+  if (!active) return null;
+  const absX = Math.abs(position.x);
+  const absZ = Math.abs(position.z);
+  if (absX <= halfWidth || absZ <= halfWidth) return null;
+  if (absX < absZ) {
+    return {
+      x: 0,
+      y: position.y + 0.28,
+      z: clampNumber(position.z, -travelLimit, travelLimit),
+    };
+  }
+  return {
+    x: clampNumber(position.x, -travelLimit, travelLimit),
+    y: position.y + 0.28,
+    z: 0,
   };
 }
 
