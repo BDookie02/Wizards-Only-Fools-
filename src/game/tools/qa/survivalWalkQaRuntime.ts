@@ -10,6 +10,8 @@ import {
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
   QA_DARREL_GROVE_DRAGON_DOOR_Z,
   QA_DARREL_GROVE_DRAGON_INTERACT_DISTANCE,
+  QA_DARREL_GROVE_DRAGON_INTENT_SECONDS,
+  QA_DARREL_GROVE_DRAGON_INTEREST_SCORE,
   QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_X,
   QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_Z,
   QA_DARREL_GROVE_DRAGON_SIDE_STAIR_X,
@@ -17,8 +19,18 @@ import {
   QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE,
   QA_INTENT_DUMMY_CLOSE_DISTANCE,
   QA_INTENT_DUMMY_KEEP_DISTANCE,
+  QA_INTENT_DUMMY_RANGE,
+  QA_INTENT_DUMMY_TEST_RANGE,
   QA_INTENT_INTERACT_DISTANCE,
+  QA_INTENT_INTEREST_STALE_SECONDS,
   QA_INTENT_MANA_COLLECT_RADIUS,
+  QA_INTENT_MANA_LOW_THRESHOLD,
+  QA_INTENT_MANA_RANGE,
+  QA_INTENT_OBSERVE_SECONDS,
+  QA_INTENT_QUEST_RANGE,
+  QA_INTENT_REPLAN_MAX_SECONDS,
+  QA_INTENT_REPLAN_MIN_SECONDS,
+  QA_SURVIVAL_COMBAT_TARGET_RANGE,
   QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
   QA_SURVIVAL_ROUTE_WAYPOINT_SECONDS,
@@ -45,7 +57,10 @@ import {
   isQaSurvivalWalkEnabled,
   lerpAngleRadians,
   moveAngleTowardsRadians,
+  randomRangeFromNoise,
+  survivalishTurnNoise,
   type QaManaFlowerSnapshot,
+  type QaSpellDummySnapshot,
   type QaSurvivalIntent,
   type QaSurvivalIntentKind,
   type QaSurvivalRouteWaypoint,
@@ -54,6 +69,7 @@ import {
 } from "./survivalWalkQa";
 
 type QaWalkPosition = { x: number; y: number; z: number };
+type QaWalkQuestIntentTarget = { id: string; label: string; x: number; y: number; z: number };
 type LazyVector3Ref = { current: THREE.Vector3 };
 
 const DEFAULT_QA_WALK_INPUT: QaSurvivalWalkInputState = {
@@ -741,6 +757,191 @@ export function resolveQaWalkIntentWaypoint({
     x: intent.x,
     z: intent.z,
     expiresAt: Math.min(intent.expiresAt, elapsedSeconds + maxWaypointSeconds),
+  };
+}
+
+export function resolveQaWalkIntentChoice({
+  currentIntent,
+  darrelDragonWorldPosition,
+  elapsedSeconds,
+  interestMemory,
+  isDarrelGroveQaArea,
+  lowestRunePower,
+  manaFlowers,
+  position,
+  qaSpellDummyRunActive,
+  questTargets,
+  spellDummies,
+}: {
+  currentIntent: QaSurvivalIntent | null;
+  darrelDragonWorldPosition: QaWalkPosition;
+  elapsedSeconds: number;
+  interestMemory: Record<string, number>;
+  isDarrelGroveQaArea: boolean;
+  lowestRunePower: number;
+  manaFlowers: QaManaFlowerSnapshot[];
+  position: QaWalkPosition;
+  qaSpellDummyRunActive: boolean;
+  questTargets: QaWalkQuestIntentTarget[];
+  spellDummies: QaSpellDummySnapshot[];
+}): {
+  intent: QaSurvivalIntent | null;
+  memoryKey: string | null;
+  memorySeenAt: number;
+  nextIntentAt: number | null;
+  waypoint: { x: number; z: number; expiresAt: number } | null;
+} {
+  let shouldPrioritizeDummies = false;
+  if (qaSpellDummyRunActive) {
+    for (const dummy of spellDummies) {
+      if (dummy.health > 0) {
+        shouldPrioritizeDummies = true;
+        break;
+      }
+    }
+  }
+
+  let currentDummy: QaSpellDummySnapshot | null = null;
+  if (currentIntent?.kind === "spell-dummy") {
+    for (const dummy of spellDummies) {
+      if (dummy.id === currentIntent.id) {
+        currentDummy = dummy;
+        break;
+      }
+    }
+  }
+
+  const abandonCurrentDummy = qaSpellDummyRunActive && currentIntent?.kind === "spell-dummy" && (
+    !currentDummy ||
+    currentDummy.health <= 38 ||
+    getQaWalkIntentDistance(currentIntent, position) > QA_SURVIVAL_COMBAT_TARGET_RANGE * 1.05
+  );
+  if (
+    currentIntent &&
+    elapsedSeconds < currentIntent.expiresAt &&
+    getQaWalkIntentDistance(currentIntent, position) > resolveQaWalkIntentCompletionDistance({
+      intent: currentIntent,
+      manaFlowers,
+    }) &&
+    !(shouldPrioritizeDummies && currentIntent.kind === "mana-flower") &&
+    !abandonCurrentDummy
+  ) {
+    return {
+      intent: currentIntent,
+      memoryKey: null,
+      memorySeenAt: elapsedSeconds,
+      nextIntentAt: null,
+      waypoint: resolveQaWalkIntentWaypoint({ elapsedSeconds, intent: currentIntent }),
+    };
+  }
+
+  const makeIntent = (
+    kind: QaSurvivalIntentKind,
+    id: string,
+    label: string,
+    target: QaWalkPosition,
+    durationSeconds = QA_INTENT_INTEREST_STALE_SECONDS,
+  ): QaSurvivalIntent => ({
+    kind,
+    id,
+    label,
+    x: target.x,
+    y: target.y,
+    z: target.z,
+    expiresAt: elapsedSeconds + durationSeconds,
+    observeUntil: elapsedSeconds + QA_INTENT_OBSERVE_SECONDS,
+  });
+  const scoreInterest = (id: string, score: number) => {
+    const lastSeen = interestMemory[id] ?? -Infinity;
+    return elapsedSeconds - lastSeen < QA_INTENT_INTEREST_STALE_SECONDS ? score - 16 : score;
+  };
+
+  let bestIntent: QaSurvivalIntent | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  const consider = (intent: QaSurvivalIntent, score: number) => {
+    const adjustedScore = scoreInterest(`${intent.kind}:${intent.id}`, score);
+    if (adjustedScore > bestScore) {
+      bestIntent = intent;
+      bestScore = adjustedScore;
+    }
+  };
+
+  const needsMana = shouldPrioritizeDummies ? false : lowestRunePower < QA_INTENT_MANA_LOW_THRESHOLD;
+  const manaRangeSq = QA_INTENT_MANA_RANGE * QA_INTENT_MANA_RANGE;
+  for (const flower of manaFlowers) {
+    if (shouldPrioritizeDummies && !needsMana) continue;
+    const distanceX = flower.x - position.x;
+    const distanceZ = flower.z - position.z;
+    const distanceSq = distanceX * distanceX + distanceZ * distanceZ;
+    if (distanceSq > manaRangeSq) continue;
+    const distance = Math.sqrt(distanceSq);
+    const urgency = needsMana ? 46 : 14;
+    consider(
+      makeIntent("mana-flower", flower.id, "mana flower", { x: flower.x, y: flower.y, z: flower.z }, needsMana ? 15 : 8),
+      urgency - distance / 26,
+    );
+  }
+
+  const dummyIntentRange = qaSpellDummyRunActive ? QA_INTENT_DUMMY_TEST_RANGE : QA_INTENT_DUMMY_RANGE;
+  const dummyIntentRangeSq = dummyIntentRange * dummyIntentRange;
+  for (const dummy of spellDummies) {
+    const distanceX = dummy.position.x - position.x;
+    const distanceZ = dummy.position.z - position.z;
+    const distanceSq = distanceX * distanceX + distanceZ * distanceZ;
+    if (distanceSq > dummyIntentRangeSq) continue;
+    const distance = Math.sqrt(distanceSq);
+    const healthScore = clampNumber(dummy.health / 7, 0, 18);
+    const woundedPenalty = qaSpellDummyRunActive && dummy.health <= 38 ? 20 : 0;
+    consider(
+      makeIntent("spell-dummy", dummy.id, `dummy ${Math.round(dummy.health)}`, dummy.position, qaSpellDummyRunActive ? 24 : 10),
+      (qaSpellDummyRunActive ? 104 - distance / 16 : 52 - distance / 9) + healthScore - woundedPenalty,
+    );
+  }
+
+  const questIntentRangeSq = QA_INTENT_QUEST_RANGE * QA_INTENT_QUEST_RANGE;
+  for (const target of questTargets) {
+    const distanceX = target.x - position.x;
+    const distanceZ = target.z - position.z;
+    const distanceSq = distanceX * distanceX + distanceZ * distanceZ;
+    if (distanceSq > questIntentRangeSq) continue;
+    const distance = Math.sqrt(distanceSq);
+    consider(
+      makeIntent("quest-target", target.id, target.label, { x: target.x, y: target.y, z: target.z }, 18),
+      42 - distance / 22,
+    );
+  }
+
+  if (isDarrelGroveQaArea) {
+    const dragonDistanceX = darrelDragonWorldPosition.x - position.x;
+    const dragonDistanceZ = darrelDragonWorldPosition.z - position.z;
+    const dragonDistance = Math.sqrt(dragonDistanceX * dragonDistanceX + dragonDistanceZ * dragonDistanceZ);
+    consider(
+      makeIntent("darrel-dragon", "darrel-dragon", "spirit dragon", darrelDragonWorldPosition, QA_DARREL_GROVE_DRAGON_INTENT_SECONDS),
+      QA_DARREL_GROVE_DRAGON_INTEREST_SCORE - dragonDistance / 14,
+    );
+  }
+
+  if (!bestIntent || bestScore < 8) {
+    return {
+      intent: null,
+      memoryKey: null,
+      memorySeenAt: elapsedSeconds,
+      nextIntentAt: null,
+      waypoint: null,
+    };
+  }
+
+  const memoryKey = `${bestIntent.kind}:${bestIntent.id}`;
+  return {
+    intent: bestIntent,
+    memoryKey,
+    memorySeenAt: elapsedSeconds,
+    nextIntentAt: elapsedSeconds + randomRangeFromNoise(
+      survivalishTurnNoise(bestIntent.x, bestIntent.z, elapsedSeconds),
+      QA_INTENT_REPLAN_MIN_SECONDS,
+      QA_INTENT_REPLAN_MAX_SECONDS,
+    ),
+    waypoint: resolveQaWalkIntentWaypoint({ elapsedSeconds, intent: bestIntent }),
   };
 }
 
