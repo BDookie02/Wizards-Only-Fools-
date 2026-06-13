@@ -89,6 +89,7 @@ import {
 } from "../../../store/gameStore";
 
 type QaWalkPosition = { x: number; y: number; z: number };
+type QaWalkWaypoint = { x: number; z: number; expiresAt: number };
 type QaWalkQuestIntentTarget = { id: string; label: string; x: number; y: number; z: number };
 type LazyVector3Ref = { current: THREE.Vector3 };
 
@@ -160,6 +161,43 @@ export function resolveQaWalkRouteWaypoint({
       z: target.z,
       expiresAt: elapsedSeconds + waypointSeconds,
     },
+  };
+}
+
+export function resolveQaWalkWaypointRefreshState({
+  blockSize,
+  elapsedSeconds,
+  maxLocalDistance,
+  position,
+  qaRouteActive,
+  routeReachDistance = QA_SURVIVAL_ROUTE_REACH_DISTANCE,
+  travelReachDistance = 18,
+  waypoint,
+}: {
+  blockSize: number;
+  elapsedSeconds: number;
+  maxLocalDistance: number;
+  position: { x: number; z: number };
+  qaRouteActive: boolean;
+  routeReachDistance?: number;
+  travelReachDistance?: number;
+  waypoint: QaWalkWaypoint;
+}) {
+  const waypointDistanceX = waypoint.x - position.x;
+  const waypointDistanceZ = waypoint.z - position.z;
+  const waypointDistanceSq = waypointDistanceX * waypointDistanceX + waypointDistanceZ * waypointDistanceZ;
+  const waypointDistance = Math.sqrt(waypointDistanceSq);
+  const waypointReachDistance = qaRouteActive ? routeReachDistance : travelReachDistance;
+  const preferCenter = !qaRouteActive && maxLocalDistance > blockSize * 0.48;
+  return {
+    preferCenter,
+    shouldRefresh:
+      elapsedSeconds >= waypoint.expiresAt ||
+      waypointDistanceSq < waypointReachDistance * waypointReachDistance ||
+      preferCenter,
+    waypointDistance,
+    waypointDistanceSq,
+    waypointReachDistance,
   };
 }
 

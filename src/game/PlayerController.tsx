@@ -45,7 +45,6 @@ import {
   QA_SURVIVAL_RECOVERY_NUDGE_SECONDS,
   QA_SURVIVAL_RECOVERY_REVERSE_SECONDS,
   QA_SURVIVAL_RECOVERY_REVERSE_STUCK_SECONDS,
-  QA_SURVIVAL_ROUTE_REACH_DISTANCE,
   QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
   QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
@@ -112,6 +111,7 @@ import {
   resolveQaWalkRouteWaypoint,
   resolveQaWalkTubeMovementFrame,
   resolveQaWalkTravelMovementFrame,
+  resolveQaWalkWaypointRefreshState,
   shouldResolveQaWalkSteeringDecision,
   useQaSurvivalWalkRuntimeState,
 } from "./tools/qa/survivalWalkQaRuntime";
@@ -1546,17 +1546,17 @@ export function PlayerController() {
         });
       };
 
-      const waypointDistanceX = qaWalkWaypoint.current.x - pos.x;
-      const waypointDistanceZ = qaWalkWaypoint.current.z - pos.z;
-      const waypointDistanceSq = waypointDistanceX * waypointDistanceX + waypointDistanceZ * waypointDistanceZ;
-      const waypointDistance = Math.sqrt(waypointDistanceSq);
-      const waypointReachDistance = qaRouteActive ? QA_SURVIVAL_ROUTE_REACH_DISTANCE : 18;
-      if (
-        elapsed >= qaWalkWaypoint.current.expiresAt ||
-        waypointDistanceSq < waypointReachDistance * waypointReachDistance ||
-        (!qaRouteActive && maxLocalDistance > SURVIVAL_BLOCK_SIZE * 0.48)
-      ) {
-        chooseNewWaypoint(!qaRouteActive && maxLocalDistance > SURVIVAL_BLOCK_SIZE * 0.48);
+      const waypointRefresh = resolveQaWalkWaypointRefreshState({
+        blockSize: SURVIVAL_BLOCK_SIZE,
+        elapsedSeconds: elapsed,
+        maxLocalDistance,
+        position: pos,
+        qaRouteActive,
+        waypoint: qaWalkWaypoint.current,
+      });
+      const waypointDistance = waypointRefresh.waypointDistance;
+      if (waypointRefresh.shouldRefresh) {
+        chooseNewWaypoint(waypointRefresh.preferCenter);
       }
       let activeIntentRefresh = resolveQaWalkActiveIntentRefresh({
         currentIntent: qaWalkIntent.current,
