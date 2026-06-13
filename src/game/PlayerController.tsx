@@ -218,6 +218,10 @@ import {
   resetPlayerControllerAfterCastRelease,
 } from "./systems/player/playerHandCastingRuntime";
 import {
+  createPlayerGrabCastProjectilePayload,
+  createPlayerGrabReleaseProjectilePayload,
+} from "./systems/player/playerGrabCastingRuntime";
+import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
   dispatchPlayerState,
@@ -624,17 +628,14 @@ export function PlayerController() {
       const { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, dir, spellLaunchScratch);
       const releaseOrigin = { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z };
       const releasedAt = getPlayerEventEpochMs();
-      const releaseProjectile = {
-        id: `${grabId}-release-${releasedAt}`,
-        creatorId: getLocalNetworkPlayerId(),
-        type: 'grab' as const,
-        pos: releaseOrigin,
-        dir: { x: realDir.x, y: realDir.y, z: realDir.z },
-        createdAt: releasedAt,
-        hand,
+      const releaseProjectile = createPlayerGrabReleaseProjectilePayload({
         grabId,
-        grabPhase: 'release' as const,
-      };
+        creatorId: getLocalNetworkPlayerId(),
+        hand,
+        origin: releaseOrigin,
+        direction: { x: realDir.x, y: realDir.y, z: realDir.z },
+        releasedAt,
+      });
 
       activeGrabIds.current[hand] = null;
       emitGameNetworkEvent("castSpell", releaseProjectile);
@@ -730,17 +731,14 @@ export function PlayerController() {
         const { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, d, spellLaunchScratch);
         const projectileOrigin = { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z };
         const grabId = createPlayerGrabProjectileId(getLocalNetworkPlayerId(), hand, now);
-        const projectile = {
-          id: grabId,
-          creatorId: getLocalNetworkPlayerId(),
-          type: 'grab' as const,
-          pos: projectileOrigin,
-          dir: { x: realDir.x, y: realDir.y, z: realDir.z },
-          createdAt: now,
-          hand,
+        const projectile = createPlayerGrabCastProjectilePayload({
           grabId,
-          grabPhase: 'cast' as const,
-        };
+          creatorId: getLocalNetworkPlayerId(),
+          hand,
+          origin: projectileOrigin,
+          direction: { x: realDir.x, y: realDir.y, z: realDir.z },
+          createdAt: now,
+        });
 
         activeGrabIds.current[hand] = grabId;
         if (grabTimeouts.current[hand] !== null) {
