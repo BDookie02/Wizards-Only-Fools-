@@ -62,6 +62,7 @@ import {
   settingsTabButtons,
   settingsTitleRowClass,
 } from "./settingsPanelClassNames";
+import { SettingsRangeCard } from "./SettingsRangeCard";
 import { SettingsVideoPane } from "./SettingsVideoPane";
 
 const LazyCharacterPreview = lazy(() => import("./CharacterPreview").then((module) => ({ default: module.CharacterPreview })));
@@ -133,67 +134,6 @@ function TabButton({ index, label, active, activeClassName, onSelect, isFocused,
     >
       {label}
     </button>
-  );
-}
-
-type RangeCardProps = {
-  index: number;
-  title: string;
-  valueText: string;
-  accentClassName: string;
-  min: number;
-  max: number;
-  step: number;
-  value: number;
-  onReset: () => void;
-  onChange: (value: number) => void;
-  isFocused: boolean;
-  onFocus: () => void;
-  hint?: string;
-};
-
-function RangeCard({
-  index,
-  title,
-  valueText,
-  accentClassName,
-  min,
-  max,
-  step,
-  value,
-  onReset,
-  onChange,
-  isFocused,
-  onFocus,
-  hint = "A resets, D-pad left/right adjusts",
-}: RangeCardProps) {
-  return (
-    <div
-      data-settings-index={index}
-      className={cn(
-        settingsCardClass,
-        isFocused ? focusedMenuClass : "border-cyan-300/25 bg-cyan-400/5"
-      )}
-      onMouseEnter={onFocus}
-      onClick={onReset}
-    >
-      <div className={cn(settingsTitleRowClass, "text-cyan-100")}>
-        <span>{title}</span>
-        <span>{valueText}</span>
-      </div>
-      <input
-        className={cn("mt-2 w-full", accentClassName)}
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => onChange(Number(e.currentTarget.value))}
-      />
-      <div className={cn("mt-1 text-cyan-100/45", settingsHintClass)}>{hint}</div>
-    </div>
   );
 }
 
@@ -293,7 +233,7 @@ export function SettingsPanel({
         <div ref={settingsScrollRef} className="menu-scroll-panel w-full overflow-y-auto pr-1" style={settingsScrollPanelStyle}>
           <div className="settings-section-title mb-2 tracking-widest text-cyan-100/60">CONTROLS / REMAP</div>
           <div className="mb-2 grid gap-2 md:grid-cols-3">
-            <RangeCard
+            <SettingsRangeCard
               index={keybindSensitivityStartIndex}
               title="Look Sensitivity"
               valueText={formatMouseSensitivityPercent(mouseSensitivity)}
@@ -307,7 +247,7 @@ export function SettingsPanel({
               isFocused={settingsFocus(keybindSensitivityStartIndex)}
               onFocus={() => setPauseMenuIndex(keybindSensitivityStartIndex)}
             />
-            <RangeCard
+            <SettingsRangeCard
               index={keybindSensitivityStartIndex + 1}
               title="Joystick Sensitivity"
               valueText={formatControllerLookSensitivityPercent(controllerLookSensitivity)}
@@ -454,7 +394,7 @@ export function SettingsPanel({
               </div>
             </button>
 
-            <RangeCard
+            <SettingsRangeCard
               index={voiceOutputVolumeIndex}
               title="Voice Volume"
               valueText={formatVoiceOutputVolumePercent(voiceOutputVolume)}
@@ -470,7 +410,7 @@ export function SettingsPanel({
               hint="A resets, D-pad left/right adjusts"
             />
 
-            <RangeCard
+            <SettingsRangeCard
               index={voiceProximityRangeIndex}
               title="Proximity Range"
               valueText={formatVoiceProximityRangeMeters(voiceProximityRange)}
