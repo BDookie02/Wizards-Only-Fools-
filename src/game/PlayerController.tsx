@@ -38,8 +38,6 @@ import {
   QA_DARREL_GROVE_DRAGON_SIDE_STAIR_Z,
   QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE,
   QA_DARREL_GROVE_RESCUE_Y,
-  QA_DUMMY_REANCHOR_COOLDOWN_SECONDS,
-  QA_DUMMY_REANCHOR_DISTANCE,
   QA_INTENT_DUMMY_CLOSE_DISTANCE,
   QA_INTENT_DUMMY_KEEP_DISTANCE,
   QA_INTENT_DUMMY_RANGE,
@@ -54,9 +52,6 @@ import {
   QA_INTENT_QUEST_RANGE,
   QA_INTENT_REPLAN_MAX_SECONDS,
   QA_INTENT_REPLAN_MIN_SECONDS,
-  QA_SPELL_DUMMY_COMBAT_CAST_MAX_INTERVAL,
-  QA_SPELL_DUMMY_COMBAT_CAST_MIN_INTERVAL,
-  QA_SURVIVAL_COMBAT_CAST_MAX_INTERVAL,
   QA_SURVIVAL_COMBAT_CAST_MIN_INTERVAL,
   QA_SURVIVAL_COMBAT_FOCUS_SECONDS,
   QA_SURVIVAL_COMBAT_SPELL_SEQUENCE,
@@ -71,7 +66,6 @@ import {
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
   QA_SURVIVAL_OVERHEAD_PROBE_DISTANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
-  QA_SURVIVAL_PRACTICE_CAST_MAX_INTERVAL,
   QA_SURVIVAL_PRACTICE_CAST_MIN_INTERVAL,
   QA_SURVIVAL_PRACTICE_SPELL_SEQUENCE,
   QA_SURVIVAL_RECOVERY_CLEAR_EXIT_DISTANCE,
@@ -139,6 +133,13 @@ import {
   getQaWalkPracticeCastHand,
   resolveQaWalkPracticeProjectilePosition,
 } from "./tools/qa/survivalWalkQaPracticeCasting";
+import {
+  getQaWalkNextCombatCastAt,
+  getQaWalkNextPracticeCastAt,
+  getQaWalkSpellDummyReanchorSpawnOffset,
+  resolveQaWalkSpellDummyTargets,
+  shouldReanchorQaWalkSpellDummy,
+} from "./tools/qa/survivalWalkQaSpellDummyRuntime";
 import { publishManualFastTravelSpawn } from "./tools/manualFastTravelSpawn";
 import { getPlayerAimDirectionInto } from "./systems/spells/spellProjectileMath";
 import { getEpochMsFromRenderClock } from "./systems/rendering/renderClockEpoch";
@@ -2369,25 +2370,24 @@ export function PlayerController() {
       }
 
       const scheduleNextCombatCast = (minimumSeconds = QA_SURVIVAL_COMBAT_CAST_MIN_INTERVAL) => {
-        const minInterval = qaSpellDummyRunActive
-          ? Math.min(minimumSeconds, QA_SPELL_DUMMY_COMBAT_CAST_MIN_INTERVAL)
-          : minimumSeconds;
-        const maxInterval = qaSpellDummyRunActive
-          ? QA_SPELL_DUMMY_COMBAT_CAST_MAX_INTERVAL
-          : QA_SURVIVAL_COMBAT_CAST_MAX_INTERVAL;
-        qaWalkNextCombatCastAt.current = elapsed + randomRangeFromNoise(
-          survivalishTurnNoise(pos.x + 211, pos.z - 173, elapsed + qaWalkCombatSpellIndex.current),
-          minInterval,
-          maxInterval,
-        );
+        qaWalkNextCombatCastAt.current = getQaWalkNextCombatCastAt({
+          elapsedSeconds: elapsed,
+          x: pos.x,
+          z: pos.z,
+          combatSpellIndex: qaWalkCombatSpellIndex.current,
+          minimumSeconds,
+          qaSpellDummyRunActive,
+        });
       };
 
       const scheduleNextPracticeCast = (minimumSeconds = QA_SURVIVAL_PRACTICE_CAST_MIN_INTERVAL) => {
-        qaWalkNextPracticeCastAt.current = elapsed + randomRangeFromNoise(
-          survivalishTurnNoise(pos.x - 419, pos.z + 283, elapsed + qaWalkPracticeSpellIndex.current),
+        qaWalkNextPracticeCastAt.current = getQaWalkNextPracticeCastAt({
+          elapsedSeconds: elapsed,
+          x: pos.x,
+          z: pos.z,
+          practiceSpellIndex: qaWalkPracticeSpellIndex.current,
           minimumSeconds,
-          QA_SURVIVAL_PRACTICE_CAST_MAX_INTERVAL,
-        );
+        });
       };
 
       const castQaPracticeSpell = (spell: SpellType) => {
@@ -2436,60 +2436,32 @@ export function PlayerController() {
       }
 
       const spellDummies = getQaSpellDummies();
-      let nearestSpellDummy: (typeof spellDummies)[number] | null = null;
-      let nearestSpellDummyDistanceSq = Number.POSITIVE_INFINITY;
-      let nearestAnySpellDummy: (typeof spellDummies)[number] | null = null;
-      let nearestAnySpellDummyDistanceSq = Number.POSITIVE_INFINITY;
-      let activeSpellDummyTarget: (typeof spellDummies)[number] | null = null;
-      let activeSpellDummyTargetDistanceSq = Number.POSITIVE_INFINITY;
-      const combatTargetRangeSq = QA_SURVIVAL_COMBAT_TARGET_RANGE * QA_SURVIVAL_COMBAT_TARGET_RANGE;
-      const dummyReanchorDistanceSq = QA_DUMMY_REANCHOR_DISTANCE * QA_DUMMY_REANCHOR_DISTANCE;
-      const expandedCombatTargetRangeSq = combatTargetRangeSq * 1.35 * 1.35;
-      const activeSpellDummyId = activeIntent?.kind === "spell-dummy" ? activeIntent.id : null;
-
-      for (const dummy of spellDummies) {
-        const distanceX = dummy.position.x - pos.x;
-        const distanceZ = dummy.position.z - pos.z;
-        const distanceSq = distanceX * distanceX + distanceZ * distanceZ;
-        if (distanceSq < nearestAnySpellDummyDistanceSq) {
-          nearestAnySpellDummyDistanceSq = distanceSq;
-          nearestAnySpellDummy = dummy;
-        }
-        if (distanceSq <= combatTargetRangeSq && distanceSq < nearestSpellDummyDistanceSq) {
-          nearestSpellDummyDistanceSq = distanceSq;
-          nearestSpellDummy = dummy;
-        }
-        if (activeSpellDummyId && dummy.id === activeSpellDummyId) {
-          activeSpellDummyTarget = dummy;
-          activeSpellDummyTargetDistanceSq = distanceSq;
-        }
-      }
-
-      const combatSpellDummy = activeSpellDummyTarget && activeSpellDummyTargetDistanceSq <= expandedCombatTargetRangeSq
-        ? activeSpellDummyTarget
-        : nearestSpellDummy;
+      const spellDummyTargets = resolveQaWalkSpellDummyTargets({
+        spellDummies,
+        playerPosition: pos,
+        activeIntent,
+        activeIntentDistance,
+        qaSpellDummyRunActive,
+      });
+      const combatSpellDummy = spellDummyTargets.combatSpellDummy;
       const qaSpellDummyHits = getSurvivalWalkSpellDummyHitCount();
-      const activeDummyTooFar = qaSpellDummyRunActive &&
-        activeIntent?.kind === "spell-dummy" &&
-        activeIntentDistance > QA_DUMMY_REANCHOR_DISTANCE;
 
-      if (
-        qaSpellDummyRunActive &&
-        nearestAnySpellDummy &&
-        (qaSpellDummyHits <= 0 || nearestAnySpellDummyDistanceSq > dummyReanchorDistanceSq || activeDummyTooFar) &&
-        (
-          nearestAnySpellDummyDistanceSq > dummyReanchorDistanceSq ||
-          activeDummyTooFar ||
-          ((mode === "recover" || mode === "avoid") && nearestAnySpellDummyDistanceSq > dummyReanchorDistanceSq)
-        ) &&
-        elapsed - qaWalkLastDummyReanchorAt.current > QA_DUMMY_REANCHOR_COOLDOWN_SECONDS
-      ) {
+      if (shouldReanchorQaWalkSpellDummy({
+        activeDummyTooFar: spellDummyTargets.activeDummyTooFar,
+        elapsedSeconds: elapsed,
+        lastDummyReanchorAt: qaWalkLastDummyReanchorAt.current,
+        mode,
+        nearestAnySpellDummy: spellDummyTargets.nearestAnySpellDummy,
+        nearestAnySpellDummyDistanceSq: spellDummyTargets.nearestAnySpellDummyDistanceSq,
+        qaSpellDummyHits,
+        qaSpellDummyRunActive,
+      })) {
         const yawForSpawn = mode === "recover" && qaWalkRecoveryYaw.current
           ? qaWalkRecoveryYaw.current
           : qaWalkYaw.current ?? currentYaw;
         const spawnForwardX = Math.sin(yawForSpawn);
         const spawnForwardZ = -Math.cos(yawForSpawn);
-        const spawnOffset = mode === "recover" || mode === "avoid" ? 14 : 8;
+        const spawnOffset = getQaWalkSpellDummyReanchorSpawnOffset(mode);
         dispatchQaSpellDummySpawn({
           x: pos.x + spawnForwardX * spawnOffset,
           y: pos.y + 0.2,
@@ -2502,7 +2474,7 @@ export function PlayerController() {
         qaWalkNextIntentAt.current = 0;
         qaWalkNextCombatCastAt.current = Math.min(qaWalkNextCombatCastAt.current || Infinity, elapsed + 0.6);
         qaWalkStuckStrikes.current = 0;
-        publishSurvivalWalkAction(`dummy-reanchor:${Math.round(Math.sqrt(nearestAnySpellDummyDistanceSq))}`);
+        publishSurvivalWalkAction(`dummy-reanchor:${Math.round(Math.sqrt(spellDummyTargets.nearestAnySpellDummyDistanceSq))}`);
       }
 
       if (
