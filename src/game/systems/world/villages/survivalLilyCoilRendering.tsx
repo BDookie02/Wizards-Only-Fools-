@@ -19,6 +19,19 @@ import {
   getLilyCoilTexture,
   useLilyCoilEyeSpriteTexture,
 } from "./lilyCoilTextures";
+import {
+  makeLilyCoilBloomParticles,
+  makeLilyCoilButterflies,
+  makeLilyCoilFireflies,
+  makeLilyCoilGroundGrass,
+  makeLilyCoilGroundLilies,
+  makeLilyCoilSmallTubeFlowers,
+  makeLilyCoilTubeFlowers,
+  makeLilyCoilTubeGrassGroups,
+  makeLilyCoilTubeLilies,
+  pickLilyCoilGroundLilyLights,
+  type LilyCoilTubeDecor,
+} from "./lilyCoilFloraRuntime";
 const LILY_COIL_GROUND_Y = 10;
 const LILY_COIL_RADIUS = 640;
 const LILY_COIL_WALL_HEIGHT = 650;
@@ -34,7 +47,6 @@ const LILY_COIL_TUBE_RADIUS = 76;
 const LILY_COIL_TUBE_CENTER_OFFSET_Y = 0;
 
 const LILY_COIL_EYE_CAP_RADIUS = LILY_COIL_TUBE_RADIUS + 30;
-const LILY_COIL_EYE_CAP_FLORA_CLEAR_T = 0.075;
 const LILY_COIL_EYE_CAP_VIEW_CONE = 0.22;
 const LILY_COIL_WALL_SEGMENT_COUNT = 36;
 const LILY_COIL_CURVE_POINT_COUNT = 120;
@@ -64,10 +76,6 @@ type LilyCoilFrame = {
   up: THREE.Vector3;
   side: THREE.Vector3;
 };
-
-function isLilyCoilFloraTAllowed(t: number) {
-  return t > LILY_COIL_EYE_CAP_FLORA_CLEAR_T && t < 1 - LILY_COIL_EYE_CAP_FLORA_CLEAR_T;
-}
 
 function writeLilyCoilViewerWorldPosition(target: THREE.Vector3, cameraPosition: THREE.Vector3) {
   const playerPosition = getLastKnownLocalPlayerPosition();
@@ -404,11 +412,6 @@ function LilyCoilSpringBody() {
   );
 }
 
-type LilyCoilTubeDecor = { t: number; angle: number; yaw: number; scale: number };
-type LilyCoilTubeGrassTuft = { t: number; angle: number; yaw: number; radius: number; height: number; width: number; lean: number };
-type LilyCoilTubeFlower = LilyCoilTubeDecor & { stemHeight: number; bloomHeight: number; bloomWidth: number; tilt: number };
-type LilyCoilBloomParticle = { flowerIndex: number; phase: number; radius: number; speed: number; size: number; height: number };
-type LilyCoilFlyingLight = { anchor: number; hop: number; phase: number; speed: number; arc: number; wander: number; size: number };
 type LilyCoilTubeAnchor = {
   base: THREE.Vector3;
   growth: THREE.Vector3;
@@ -417,7 +420,6 @@ type LilyCoilTubeAnchor = {
   normal: THREE.Vector3;
   glow: THREE.Vector3;
 };
-type LilyCoilGroundGrassTuft = { x: number; z: number; yaw: number; height: number; width: number; lean: number };
 const LILY_COIL_GROUND_GRASS_BLADES_PER_TUFT = 2;
 const LILY_COIL_TUBE_GRASS_BLADES_PER_TUFT = 1;
 const LILY_COIL_TUBE_LILY_PETALS = 5;
@@ -545,66 +547,9 @@ function LilyCoilTunnelFlora() {
   const callaBloomTexture = useMemo(() => getLilyCoilCallaBloomTexture(), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const lastMobileVisualUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
-  const grassGroups = useMemo<LilyCoilTubeGrassTuft[][]>(() => {
-    const groups: LilyCoilTubeGrassTuft[][] = [[], [], []];
-    const longitudinalSegments = mobilePerformanceMode ? 180 : 300;
-    const ringSegments = mobilePerformanceMode ? 40 : 56;
-    for (let tIndex = 0; tIndex < longitudinalSegments; tIndex += 1) {
-      for (let angleIndex = 0; angleIndex < ringSegments; angleIndex += 1) {
-        const seed = tIndex * 997 + angleIndex * 37;
-        const tone = (tIndex + angleIndex) % groups.length;
-        const tJitter = (getDarrelPetalNoise(seed, 191) - 0.5) * 0.72;
-        const angleJitter = (getDarrelPetalNoise(seed, 192) - 0.5) * 0.82;
-        const t = THREE.MathUtils.clamp((tIndex + 0.5 + tJitter) / longitudinalSegments, 0.012, 0.988);
-        if (!isLilyCoilFloraTAllowed(t)) continue;
-        groups[tone].push({
-          t,
-          angle: ((angleIndex + 0.5 + angleJitter) / ringSegments) * Math.PI * 2,
-          yaw: 0,
-          radius: LILY_COIL_TUBE_RADIUS - 0.8,
-          height: 5.5 + getDarrelPetalNoise(seed, 194) * 4.5,
-          width: 10 + getDarrelPetalNoise(seed, 195) * 7,
-          lean: 0.04 + getDarrelPetalNoise(seed, 196) * 0.1,
-        });
-      }
-    }
-    return groups;
-  }, [mobilePerformanceMode]);
-  const lilies = useMemo<LilyCoilTubeDecor[]>(() => {
-    const generated: LilyCoilTubeDecor[] = [];
-    const count = mobilePerformanceMode ? 520 : 1500;
-    for (let index = 0; index < count; index += 1) {
-      const t = 0.018 + getDarrelPetalNoise(index, 91) * 0.964;
-      if (!isLilyCoilFloraTAllowed(t)) continue;
-      generated.push({
-        t,
-        angle: getDarrelPetalNoise(index, 92) * Math.PI * 2,
-        yaw: getDarrelPetalNoise(index, 93) * Math.PI * 2,
-        scale: 0.78 + getDarrelPetalNoise(index, 94) * 1.35,
-      });
-    }
-    return generated;
-  }, [mobilePerformanceMode]);
-  const flowers = useMemo<LilyCoilTubeFlower[]>(() => {
-    const generated: LilyCoilTubeFlower[] = [];
-    const count = mobilePerformanceMode ? 80 : 200;
-    for (let index = 0; index < count; index += 1) {
-      const scale = 0.82 + getDarrelPetalNoise(index, 681) * 0.7;
-      const t = 0.026 + getDarrelPetalNoise(index, 682) * 0.948;
-      if (!isLilyCoilFloraTAllowed(t)) continue;
-      generated.push({
-        t,
-        angle: getDarrelPetalNoise(index, 683) * Math.PI * 2,
-        yaw: getDarrelPetalNoise(index, 684) * Math.PI * 2,
-        scale,
-        stemHeight: (14 + getDarrelPetalNoise(index, 685) * 5.5) * scale,
-        bloomHeight: (9.5 + getDarrelPetalNoise(index, 686) * 4) * scale,
-        bloomWidth: (7 + getDarrelPetalNoise(index, 687) * 3.5) * scale,
-        tilt: (getDarrelPetalNoise(index, 688) - 0.5) * 0.5,
-      });
-    }
-    return generated;
-  }, [mobilePerformanceMode]);
+  const grassGroups = useMemo(() => makeLilyCoilTubeGrassGroups(mobilePerformanceMode, LILY_COIL_TUBE_RADIUS), [mobilePerformanceMode]);
+  const lilies = useMemo(() => makeLilyCoilTubeLilies(mobilePerformanceMode), [mobilePerformanceMode]);
+  const flowers = useMemo(() => makeLilyCoilTubeFlowers(mobilePerformanceMode), [mobilePerformanceMode]);
   const flowerAnchors = useMemo<LilyCoilTubeAnchor[]>(() => {
     const anchors: LilyCoilTubeAnchor[] = [];
     for (let index = 0; index < flowers.length; index += 1) {
@@ -619,45 +564,7 @@ function LilyCoilTunnelFlora() {
     }
     return anchors;
   }, [flowers]);
-  const smallFlowers = useMemo<LilyCoilTubeFlower[]>(() => {
-    const generated: LilyCoilTubeFlower[] = [];
-    const showcaseCount = mobilePerformanceMode ? 12 : 18;
-    for (let index = 0; index < showcaseCount; index += 1) {
-      const row = Math.floor(index / 3);
-      const column = index % 3;
-      const scale = 0.62 + getDarrelPetalNoise(index, 756) * 0.2;
-      const t = 0.112 + row * 0.0075;
-      if (isLilyCoilFloraTAllowed(t)) {
-        generated.push({
-          t,
-          angle: Math.PI + (column - 1) * 0.34 + (getDarrelPetalNoise(index, 757) - 0.5) * 0.08,
-          yaw: getDarrelPetalNoise(index, 758) * Math.PI * 2,
-          scale,
-          stemHeight: (9.2 + getDarrelPetalNoise(index, 759) * 3.2) * scale,
-          bloomHeight: (4.8 + getDarrelPetalNoise(index, 760) * 1.8) * scale,
-          bloomWidth: (3.8 + getDarrelPetalNoise(index, 761) * 1.7) * scale,
-          tilt: (getDarrelPetalNoise(index, 762) - 0.5) * 0.48,
-        });
-      }
-    }
-    const scatteredCount = mobilePerformanceMode ? 90 : 260;
-    for (let index = 0; index < scatteredCount; index += 1) {
-      const scale = 0.56 + getDarrelPetalNoise(index, 761) * 0.28;
-      const t = 0.028 + getDarrelPetalNoise(index, 762) * 0.944;
-      if (!isLilyCoilFloraTAllowed(t)) continue;
-      generated.push({
-        t,
-        angle: getDarrelPetalNoise(index, 763) * Math.PI * 2,
-        yaw: getDarrelPetalNoise(index, 764) * Math.PI * 2,
-        scale,
-        stemHeight: (8.8 + getDarrelPetalNoise(index, 765) * 3.4) * scale,
-        bloomHeight: (4.4 + getDarrelPetalNoise(index, 766) * 1.8) * scale,
-        bloomWidth: (3.6 + getDarrelPetalNoise(index, 767) * 1.7) * scale,
-        tilt: (getDarrelPetalNoise(index, 768) - 0.5) * 0.62,
-      });
-    }
-    return generated;
-  }, [mobilePerformanceMode]);
+  const smallFlowers = useMemo(() => makeLilyCoilSmallTubeFlowers(mobilePerformanceMode), [mobilePerformanceMode]);
   const smallFlowerAnchors = useMemo<LilyCoilTubeAnchor[]>(() => {
     const anchors: LilyCoilTubeAnchor[] = [];
     for (let index = 0; index < smallFlowers.length; index += 1) {
@@ -672,58 +579,18 @@ function LilyCoilTunnelFlora() {
     }
     return anchors;
   }, [smallFlowers]);
-  const smallFlowerParticles = useMemo<LilyCoilBloomParticle[]>(() => {
-    const particlesPerFlower = mobilePerformanceMode ? 2 : 3;
-    const generated: LilyCoilBloomParticle[] = [];
-    const count = smallFlowers.length * particlesPerFlower;
-    const divisor = Math.max(1, smallFlowers.length);
-    for (let index = 0; index < count; index += 1) {
-      const flowerIndex = index % divisor;
-      generated.push({
-        flowerIndex,
-        phase: getDarrelPetalNoise(index, 781) * Math.PI * 2,
-        radius: 1.2 + getDarrelPetalNoise(index, 782) * 2.1,
-        speed: 0.34 + getDarrelPetalNoise(index, 783) * 0.28,
-        size: 0.18 + getDarrelPetalNoise(index, 784) * 0.22,
-        height: (getDarrelPetalNoise(index, 785) - 0.5) * 2.4,
-      });
-    }
-    return generated;
-  }, [mobilePerformanceMode, smallFlowers.length]);
-  const fireflies = useMemo<LilyCoilFlyingLight[]>(() => {
-    const generated: LilyCoilFlyingLight[] = [];
-    const count = mobilePerformanceMode ? 70 : 160;
-    const anchorCount = Math.max(1, flowers.length);
-    for (let index = 0; index < count; index += 1) {
-      generated.push({
-        anchor: Math.floor(getDarrelPetalNoise(index, 701) * anchorCount),
-        hop: 5 + Math.floor(getDarrelPetalNoise(index, 702) * 23),
-        phase: getDarrelPetalNoise(index, 703) * 48,
-        speed: 0.055 + getDarrelPetalNoise(index, 704) * 0.13,
-        arc: 3.5 + getDarrelPetalNoise(index, 705) * 7,
-        wander: 1.1 + getDarrelPetalNoise(index, 706) * 2.6,
-        size: 0.68 + getDarrelPetalNoise(index, 707) * 0.72,
-      });
-    }
-    return generated;
-  }, [flowers.length, mobilePerformanceMode]);
-  const butterflies = useMemo<LilyCoilFlyingLight[]>(() => {
-    const generated: LilyCoilFlyingLight[] = [];
-    const count = mobilePerformanceMode ? 4 : 10;
-    const anchorCount = Math.max(1, flowers.length);
-    for (let index = 0; index < count; index += 1) {
-      generated.push({
-        anchor: Math.floor(getDarrelPetalNoise(index, 721) * anchorCount),
-        hop: 13 + Math.floor(getDarrelPetalNoise(index, 722) * 39),
-        phase: getDarrelPetalNoise(index, 723) * 40,
-        speed: 0.055 + getDarrelPetalNoise(index, 724) * 0.09,
-        arc: 9 + getDarrelPetalNoise(index, 725) * 15,
-        wander: 3.2 + getDarrelPetalNoise(index, 726) * 5,
-        size: 1.08 + getDarrelPetalNoise(index, 727) * 0.82,
-      });
-    }
-    return generated;
-  }, [flowers.length, mobilePerformanceMode]);
+  const smallFlowerParticles = useMemo(
+    () => makeLilyCoilBloomParticles(mobilePerformanceMode, smallFlowers.length),
+    [mobilePerformanceMode, smallFlowers.length],
+  );
+  const fireflies = useMemo(
+    () => makeLilyCoilFireflies(mobilePerformanceMode, flowers.length),
+    [flowers.length, mobilePerformanceMode],
+  );
+  const butterflies = useMemo(
+    () => makeLilyCoilButterflies(mobilePerformanceMode, flowers.length),
+    [flowers.length, mobilePerformanceMode],
+  );
 
   useFrame(({ clock, camera }) => {
     const time = clock.getElapsedTime();
@@ -1226,38 +1093,8 @@ function LilyCoilGroundFlora() {
   const bladeAlphaTexture = useMemo(() => getLilyCoilBladeAlphaTexture(), []);
   const mobilePerformanceMode = useMemo(() => isMobilePerformanceMode(), []);
   const lastMobileGlowUpdateAtRef = useRef(Number.NEGATIVE_INFINITY);
-  const grass = useMemo(() => {
-    const items: LilyCoilGroundGrassTuft[] = [];
-    const count = mobilePerformanceMode ? 1800 : 5200;
-    for (let index = 0; index < count; index += 1) {
-      const radius = 4 + Math.pow(getDarrelPetalNoise(index, 11), 1.95) * (LILY_COIL_RADIUS - 46);
-      const angle = getDarrelPetalNoise(index, 12) * Math.PI * 2;
-      items.push({
-        x: Math.cos(angle) * radius,
-        z: Math.sin(angle) * radius,
-        yaw: getDarrelPetalNoise(index, 13) * Math.PI * 2,
-        height: 16 + getDarrelPetalNoise(index, 14) * 22,
-        width: 0.35 + getDarrelPetalNoise(index, 15) * 0.65,
-        lean: 0.22 + getDarrelPetalNoise(index, 16) * 0.42,
-      });
-    }
-    return items;
-  }, [mobilePerformanceMode]);
-  const lilies = useMemo(() => {
-    const items: Array<{ x: number; z: number; yaw: number; scale: number }> = [];
-    const count = mobilePerformanceMode ? 220 : 560;
-    for (let index = 0; index < count; index += 1) {
-      const radius = 20 + Math.sqrt(getDarrelPetalNoise(index, 31)) * (LILY_COIL_RADIUS - 50);
-      const angle = getDarrelPetalNoise(index, 32) * Math.PI * 2;
-      items.push({
-        x: Math.cos(angle) * radius,
-        z: Math.sin(angle) * radius,
-        yaw: getDarrelPetalNoise(index, 33) * Math.PI * 2,
-        scale: 0.85 + getDarrelPetalNoise(index, 34) * 1.85,
-      });
-    }
-    return items;
-  }, [mobilePerformanceMode]);
+  const grass = useMemo(() => makeLilyCoilGroundGrass(mobilePerformanceMode, LILY_COIL_RADIUS), [mobilePerformanceMode]);
+  const lilies = useMemo(() => makeLilyCoilGroundLilies(mobilePerformanceMode, LILY_COIL_RADIUS), [mobilePerformanceMode]);
 
   useEffect(() => {
     const grassMesh = grassRef.current;
@@ -1341,13 +1178,7 @@ function LilyCoilGroundFlora() {
     }
   });
 
-  const lilyLights = useMemo(() => {
-    const items: Array<{ x: number; z: number; yaw: number; scale: number }> = [];
-    for (let index = 0; index < lilies.length && items.length < 4; index += 112) {
-      items.push(lilies[index]);
-    }
-    return items;
-  }, [lilies]);
+  const lilyLights = useMemo(() => pickLilyCoilGroundLilyLights(lilies), [lilies]);
 
   return (
     <group name="lily-coil-ground-flora" userData={HIDE_FROM_MINIMAP}>
