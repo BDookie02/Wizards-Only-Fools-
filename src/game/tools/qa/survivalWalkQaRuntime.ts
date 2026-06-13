@@ -14,6 +14,7 @@ import {
   QA_SURVIVAL_LOW_SPEED_TRIGGER_SECONDS,
   QA_SURVIVAL_STUCK_CHECK_SECONDS,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
+  QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
   QA_SURVIVAL_WALK_MIN_PROGRESS,
   QA_SURVIVAL_WALK_MIN_TOWARD_PROGRESS,
   QA_SURVIVAL_WALK_PROBE_DISTANCE,
@@ -58,6 +59,8 @@ export type QaWalkTelemetryAbnormality =
   | "low-view"
   | `recovery:${string}`
   | `position-jump:${number}`;
+
+const clampNumber = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 export function resolveQaWalkRouteWaypoint({
   active,
@@ -200,6 +203,78 @@ export function resolveQaWalkRouteSteeringState({
         overheadClearance > overheadBlockedClearance,
     },
   };
+}
+
+export function resolveQaWalkClearanceThrottle({
+  forwardAmount,
+  forwardClearance,
+  forwardLookAhead,
+  mode,
+  overheadClearance,
+  sprint,
+  viewClearance,
+  blockedClearance = QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
+  lookAheadDistance = QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
+  overheadBlockedClearance = QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
+  softClearance = QA_SURVIVAL_WALK_SOFT_CLEARANCE,
+  softLookAhead = QA_SURVIVAL_WALK_SOFT_LOOKAHEAD,
+  viewBlockedClearance = QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
+}: {
+  forwardAmount: number;
+  forwardClearance: number;
+  forwardLookAhead: number;
+  mode: QaSurvivalWalkMode;
+  overheadClearance: number;
+  sprint: boolean;
+  viewClearance: number;
+  blockedClearance?: number;
+  lookAheadDistance?: number;
+  overheadBlockedClearance?: number;
+  softClearance?: number;
+  softLookAhead?: number;
+  viewBlockedClearance?: number;
+}) {
+  if (mode === "route") {
+    if (
+      forwardClearance < blockedClearance ||
+      viewClearance < viewBlockedClearance ||
+      overheadClearance < overheadBlockedClearance
+    ) {
+      return {
+        forwardAmount: Math.min(forwardAmount, 0.22),
+        sprint: false,
+      };
+    }
+
+    if (forwardClearance < softClearance || forwardLookAhead < softLookAhead) {
+      return {
+        forwardAmount: Math.min(forwardAmount, 0.72),
+        sprint: false,
+      };
+    }
+
+    return { forwardAmount, sprint };
+  }
+
+  if (mode === "travel") {
+    const clearanceEase = clampNumber(
+      (forwardClearance - blockedClearance) / Math.max(1, softClearance - blockedClearance),
+      0.32,
+      1,
+    );
+    const lookAheadEase = clampNumber(
+      (forwardLookAhead - softLookAhead) / Math.max(1, lookAheadDistance - softLookAhead),
+      0.38,
+      1,
+    );
+    const humanThrottle = Math.min(clearanceEase, lookAheadEase);
+    return {
+      forwardAmount: forwardAmount * humanThrottle,
+      sprint: humanThrottle < 0.72 ? false : sprint,
+    };
+  }
+
+  return { forwardAmount, sprint };
 }
 
 export function resolveQaWalkLowSpeedRecovery({

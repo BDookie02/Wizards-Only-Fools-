@@ -115,6 +115,7 @@ import {
 } from "./tools/qa/survivalWalkQa";
 import {
   isQaWalkMovingInOpenLane,
+  resolveQaWalkClearanceThrottle,
   resolveQaWalkLowSpeedRecovery,
   resolveQaWalkProgressRecovery,
   resolveQaWalkTelemetryAbnormality,
@@ -2529,35 +2530,18 @@ export function PlayerController() {
         forwardAmount = qaSpellDummyRunActive ? 0 : 0.06;
         strafeAmount = Math.sin(elapsed * 3.1) * (qaSpellDummyRunActive ? 0.035 : 0.1);
         sprint = false;
-      } else if (mode === "route") {
-        if (
-          forwardClearance < QA_SURVIVAL_WALK_BLOCKED_CLEARANCE ||
-          viewClearance < QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE ||
-          overheadClearance < QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE
-        ) {
-          forwardAmount = Math.min(forwardAmount, 0.22);
-          sprint = false;
-        } else if (
-          forwardClearance < QA_SURVIVAL_WALK_SOFT_CLEARANCE ||
-          forwardLookAhead < QA_SURVIVAL_WALK_SOFT_LOOKAHEAD
-        ) {
-          forwardAmount = Math.min(forwardAmount, 0.72);
-          sprint = false;
-        }
-      } else if (mode === "travel") {
-        const clearanceEase = THREE.MathUtils.clamp(
-          (forwardClearance - QA_SURVIVAL_WALK_BLOCKED_CLEARANCE) / Math.max(1, QA_SURVIVAL_WALK_SOFT_CLEARANCE - QA_SURVIVAL_WALK_BLOCKED_CLEARANCE),
-          0.32,
-          1,
-        );
-        const lookAheadEase = THREE.MathUtils.clamp(
-          (forwardLookAhead - QA_SURVIVAL_WALK_SOFT_LOOKAHEAD) / Math.max(1, QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE - QA_SURVIVAL_WALK_SOFT_LOOKAHEAD),
-          0.38,
-          1,
-        );
-        const humanThrottle = Math.min(clearanceEase, lookAheadEase);
-        forwardAmount *= humanThrottle;
-        if (humanThrottle < 0.72) sprint = false;
+      } else {
+        const throttle = resolveQaWalkClearanceThrottle({
+          forwardAmount,
+          forwardClearance,
+          forwardLookAhead,
+          mode,
+          overheadClearance,
+          sprint,
+          viewClearance,
+        });
+        forwardAmount = throttle.forwardAmount;
+        sprint = throttle.sprint;
       }
 
       const planarSpeedSq = velocity.x * velocity.x + velocity.z * velocity.z;
