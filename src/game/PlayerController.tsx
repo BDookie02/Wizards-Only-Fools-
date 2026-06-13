@@ -24,7 +24,6 @@ import {
 } from "./systems/input/playerInputState";
 import { isNavigationRecordingActive, recordNavigationSample } from "./navigationRecorderRuntime";
 import {
-  QA_INTENT_INTERACT_COOLDOWN_SECONDS,
   QA_SURVIVAL_COMBAT_CAST_MIN_INTERVAL,
   QA_SURVIVAL_COMBAT_TARGET_RANGE,
   QA_SURVIVAL_INSPECTION_MAX_INTERVAL,
@@ -70,6 +69,7 @@ import {
   resolveQaWalkDarrelGroveWaypoint,
   resolveQaWalkIntentCompletionDistance,
   resolveQaWalkIntentChoice,
+  resolveQaWalkIntentInteractionAction,
   resolveQaWalkIntentMoveTarget,
   resolveQaWalkActiveIntentRefresh,
   resolveQaWalkActiveIntentMovement,
@@ -86,6 +86,7 @@ import {
   resolveQaWalkLilyCoilTubeWaypoint,
   resolveQaWalkLookInputFrame,
   resolveQaWalkLowSpeedRecovery,
+  resolveQaWalkManaFlowerCollectionAction,
   resolveQaWalkOpenLaneRecoveryRelief,
   resolveQaWalkProgressRecovery,
   resolveQaWalkRecoveryMovementFrame,
@@ -1966,24 +1967,29 @@ export function PlayerController() {
         if (intentJumpHoldUntil !== null) {
           qaWalkJumpHeldUntil.current = intentJumpHoldUntil;
         }
-        if (
-          (activeIntent.kind === "quest-target" || activeIntent.kind === "darrel-dragon") &&
-          activeIntentDistance <= intentCompletionDistance(activeIntent) &&
-          elapsed - qaWalkLastInteractionAt.current > QA_INTENT_INTERACT_COOLDOWN_SECONDS
-        ) {
+        const interactionAction = resolveQaWalkIntentInteractionAction({
+          activeIntent,
+          activeIntentDistance,
+          completionDistance: intentCompletionDistance(activeIntent),
+          elapsedSeconds: elapsed,
+          lastInteractionAt: qaWalkLastInteractionAt.current,
+        });
+        if (interactionAction) {
           const detail = dispatchQuestVillagerInteraction("qa-walk");
           qaWalkLastInteractionAt.current = elapsed;
           publishSurvivalWalkAction(detail.handled
-            ? `interact:${activeIntent.kind}:${activeIntent.id}`
-            : `observe:${activeIntent.kind}:${activeIntent.id}`);
+            ? `interact:${interactionAction.kind}:${interactionAction.id}`
+            : `observe:${interactionAction.kind}:${interactionAction.id}`);
         }
-        if (
-          activeIntent.kind === "mana-flower" &&
-          wasSurvivalWalkManaFlowerCollected(activeIntent.id)
-        ) {
-          publishSurvivalWalkAction(`collect:${activeIntent.id}`);
+        const collectionAction = resolveQaWalkManaFlowerCollectionAction({
+          activeIntent,
+          collected: activeIntent.kind === "mana-flower" && wasSurvivalWalkManaFlowerCollected(activeIntent.id),
+          elapsedSeconds: elapsed,
+        });
+        if (collectionAction) {
+          publishSurvivalWalkAction(collectionAction.actionLabel);
           qaWalkIntent.current = null;
-          qaWalkNextIntentAt.current = elapsed + 0.8;
+          qaWalkNextIntentAt.current = collectionAction.nextIntentAt;
         }
       }
 

@@ -31,6 +31,7 @@ import {
   QA_INTENT_DUMMY_KEEP_DISTANCE,
   QA_INTENT_DUMMY_RANGE,
   QA_INTENT_DUMMY_TEST_RANGE,
+  QA_INTENT_INTERACT_COOLDOWN_SECONDS,
   QA_INTENT_INTERACT_DISTANCE,
   QA_INTENT_INTEREST_STALE_SECONDS,
   QA_INTENT_MANA_COLLECT_RADIUS,
@@ -955,6 +956,49 @@ export function resolveQaWalkIntentCompletionDistance({
   if (intent.kind === "spell-dummy") return dummyKeepDistance;
   if (intent.kind === "darrel-dragon") return dragonInteractDistance;
   return interactDistance;
+}
+
+export function resolveQaWalkIntentInteractionAction({
+  activeIntent,
+  activeIntentDistance,
+  completionDistance,
+  elapsedSeconds,
+  lastInteractionAt,
+  interactCooldownSeconds = QA_INTENT_INTERACT_COOLDOWN_SECONDS,
+}: {
+  activeIntent: QaSurvivalIntent | null;
+  activeIntentDistance: number;
+  completionDistance: number;
+  elapsedSeconds: number;
+  lastInteractionAt: number;
+  interactCooldownSeconds?: number;
+}) {
+  if (!activeIntent) return null;
+  if (activeIntent.kind !== "quest-target" && activeIntent.kind !== "darrel-dragon") return null;
+  if (activeIntentDistance > completionDistance) return null;
+  if (elapsedSeconds - lastInteractionAt <= interactCooldownSeconds) return null;
+  return {
+    id: activeIntent.id,
+    kind: activeIntent.kind,
+  };
+}
+
+export function resolveQaWalkManaFlowerCollectionAction({
+  activeIntent,
+  collected,
+  elapsedSeconds,
+  nextIntentDelaySeconds = 0.8,
+}: {
+  activeIntent: QaSurvivalIntent | null;
+  collected: boolean;
+  elapsedSeconds: number;
+  nextIntentDelaySeconds?: number;
+}) {
+  if (!activeIntent || activeIntent.kind !== "mana-flower" || !collected) return null;
+  return {
+    actionLabel: `collect:${activeIntent.id}`,
+    nextIntentAt: elapsedSeconds + nextIntentDelaySeconds,
+  };
 }
 
 export function resolveQaWalkIntentWaypoint({
