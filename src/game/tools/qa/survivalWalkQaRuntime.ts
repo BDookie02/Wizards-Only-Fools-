@@ -55,6 +55,7 @@ import {
   QA_SURVIVAL_LOW_SPEED_THRESHOLD,
   QA_SURVIVAL_LOW_SPEED_TRIGGER_SECONDS,
   QA_SURVIVAL_LOOK_TURN_RATE,
+  QA_SURVIVAL_RECOVERY_MIN_SECONDS,
   QA_SURVIVAL_RECOVERY_TURN_RATE,
   QA_SURVIVAL_STUCK_CHECK_SECONDS,
   QA_SURVIVAL_WAYPOINT_MAX_DISTANCE,
@@ -1603,6 +1604,74 @@ export function resolveQaWalkActiveIntentMovement({
     strafeAmount: nextStrafeAmount,
     targetYaw: nextTargetYaw,
   };
+}
+
+export type QaWalkRecoveryRescueReason =
+  | "darrel-route-assist"
+  | "darrel-grove-rescue"
+  | "base-road-rescue";
+
+export function resolveQaWalkRecoveryRescuePlan({
+  baseRoadRescuePosition,
+  currentPosition,
+  darrelDragonWorldPosition,
+  darrelGroveRescuePosition,
+  darrelRouteAssistPosition,
+  elapsedSeconds,
+  lastUnstickNudgeAt,
+  minRecoverySeconds = QA_SURVIVAL_RECOVERY_MIN_SECONDS,
+  targetYaw,
+}: {
+  baseRoadRescuePosition: QaWalkPosition | null;
+  currentPosition: QaWalkPosition;
+  darrelDragonWorldPosition: QaWalkPosition;
+  darrelGroveRescuePosition: QaWalkPosition | null;
+  darrelRouteAssistPosition: QaWalkPosition | null;
+  elapsedSeconds: number;
+  lastUnstickNudgeAt: number;
+  minRecoverySeconds?: number;
+  targetYaw: number;
+}) {
+  if (darrelRouteAssistPosition && elapsedSeconds > lastUnstickNudgeAt + 0.9) {
+    const escapeYaw = Math.atan2(
+      darrelDragonWorldPosition.x - darrelRouteAssistPosition.x,
+      -(darrelDragonWorldPosition.z - darrelRouteAssistPosition.z),
+    );
+    return {
+      position: darrelRouteAssistPosition,
+      reason: "darrel-route-assist" as const,
+      recoveryUntil: elapsedSeconds + 0.18,
+      yaw: Number.isFinite(escapeYaw) ? escapeYaw : targetYaw,
+    };
+  }
+
+  if (darrelGroveRescuePosition && elapsedSeconds > lastUnstickNudgeAt + 0.9) {
+    const escapeYaw = Math.atan2(
+      darrelGroveRescuePosition.x - currentPosition.x,
+      -(darrelGroveRescuePosition.z - currentPosition.z),
+    );
+    return {
+      position: darrelGroveRescuePosition,
+      reason: "darrel-grove-rescue" as const,
+      recoveryUntil: elapsedSeconds + minRecoverySeconds,
+      yaw: Number.isFinite(escapeYaw) ? escapeYaw : targetYaw,
+    };
+  }
+
+  if (baseRoadRescuePosition && elapsedSeconds > lastUnstickNudgeAt + 1.1) {
+    const escapeYaw = Math.atan2(
+      baseRoadRescuePosition.x - currentPosition.x,
+      -(baseRoadRescuePosition.z - currentPosition.z),
+    );
+    return {
+      position: baseRoadRescuePosition,
+      reason: "base-road-rescue" as const,
+      recoveryUntil: elapsedSeconds + minRecoverySeconds,
+      yaw: Number.isFinite(escapeYaw) ? escapeYaw : targetYaw,
+    };
+  }
+
+  return null;
 }
 
 export function resolveQaWalkLookInputFrame({

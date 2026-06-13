@@ -102,6 +102,7 @@ import {
   resolveQaWalkOpenLaneRecoveryRelief,
   resolveQaWalkProgressRecovery,
   resolveQaWalkRecoveryJumpHoldUntil,
+  resolveQaWalkRecoveryRescuePlan,
   resolveQaWalkTelemetryAbnormality,
   resolveQaWalkTelemetryMovement,
   resolveQaWalkRouteSteeringState,
@@ -1876,60 +1877,33 @@ export function PlayerController() {
         const darrelRouteAssistPosition = getDarrelDragonRouteAssistPosition();
         const darrelRescuePosition = getDarrelGroveRescuePosition();
         const roadRescuePosition = qaWalkStuckStrikes.current >= 4 ? getBaseVillageRoadRescuePosition() : null;
-        if (darrelRouteAssistPosition && elapsed > qaWalkLastUnstickNudgeAt.current + 0.9) {
-          const escapeYaw = Math.atan2(
-            DARREL_DRAGON_WORLD_POSITION.x - darrelRouteAssistPosition.x,
-            -(DARREL_DRAGON_WORLD_POSITION.z - darrelRouteAssistPosition.z),
-          );
-          rigidBody.current?.setTranslation(darrelRouteAssistPosition, true);
+        const recoveryRescuePlan = resolveQaWalkRecoveryRescuePlan({
+          baseRoadRescuePosition: roadRescuePosition,
+          currentPosition: pos,
+          darrelDragonWorldPosition: DARREL_DRAGON_WORLD_POSITION,
+          darrelGroveRescuePosition: darrelRescuePosition,
+          darrelRouteAssistPosition,
+          elapsedSeconds: elapsed,
+          lastUnstickNudgeAt: qaWalkLastUnstickNudgeAt.current,
+          targetYaw,
+        });
+        if (recoveryRescuePlan) {
+          const rescuePosition = recoveryRescuePlan.position;
+          rigidBody.current?.setTranslation(rescuePosition, true);
           rigidBody.current?.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(darrelRouteAssistPosition.x, darrelRouteAssistPosition.y + PLAYER_CAMERA_HEIGHT, darrelRouteAssistPosition.z);
-          publishLocalPlayerPosition(darrelRouteAssistPosition, { rememberLast: true });
-          publishQaPlayerPosition(darrelRouteAssistPosition);
+          camera.position.set(rescuePosition.x, rescuePosition.y + PLAYER_CAMERA_HEIGHT, rescuePosition.z);
+          publishLocalPlayerPosition(rescuePosition, { rememberLast: true });
+          publishQaPlayerPosition(rescuePosition);
           qaWalkLastUnstickNudgeAt.current = elapsed;
-          qaWalkRecoveryStartPos.current.set(darrelRouteAssistPosition.x, darrelRouteAssistPosition.y, darrelRouteAssistPosition.z);
+          qaWalkRecoveryStartPos.current.set(rescuePosition.x, rescuePosition.y, rescuePosition.z);
           qaWalkRecoveryStartedAt.current = elapsed;
-          qaWalkRecoveryUntil.current = elapsed + 0.18;
-          qaWalkRecoveryYaw.current = Number.isFinite(escapeYaw) ? escapeYaw : targetYaw;
+          qaWalkRecoveryUntil.current = recoveryRescuePlan.recoveryUntil;
+          qaWalkRecoveryYaw.current = recoveryRescuePlan.yaw;
           setForwardQaWaypoint(qaWalkRecoveryYaw.current);
           targetYaw = qaWalkRecoveryYaw.current;
           forwardAmount = 0;
           strafeAmount = 0;
-          recoveryReason = "darrel-route-assist";
-        } else if (darrelRescuePosition && elapsed > qaWalkLastUnstickNudgeAt.current + 0.9) {
-          const escapeYaw = Math.atan2(darrelRescuePosition.x - pos.x, -(darrelRescuePosition.z - pos.z));
-          rigidBody.current?.setTranslation(darrelRescuePosition, true);
-          rigidBody.current?.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(darrelRescuePosition.x, darrelRescuePosition.y + PLAYER_CAMERA_HEIGHT, darrelRescuePosition.z);
-          publishLocalPlayerPosition(darrelRescuePosition, { rememberLast: true });
-          publishQaPlayerPosition(darrelRescuePosition);
-          qaWalkLastUnstickNudgeAt.current = elapsed;
-          qaWalkRecoveryStartPos.current.set(darrelRescuePosition.x, darrelRescuePosition.y, darrelRescuePosition.z);
-          qaWalkRecoveryStartedAt.current = elapsed;
-          qaWalkRecoveryUntil.current = elapsed + QA_SURVIVAL_RECOVERY_MIN_SECONDS;
-          qaWalkRecoveryYaw.current = Number.isFinite(escapeYaw) ? escapeYaw : targetYaw;
-          setForwardQaWaypoint(qaWalkRecoveryYaw.current);
-          targetYaw = qaWalkRecoveryYaw.current;
-          forwardAmount = 0;
-          strafeAmount = 0;
-          recoveryReason = "darrel-grove-rescue";
-        } else if (roadRescuePosition && elapsed > qaWalkLastUnstickNudgeAt.current + 1.1) {
-          const escapeYaw = Math.atan2(roadRescuePosition.x - pos.x, -(roadRescuePosition.z - pos.z));
-          rigidBody.current?.setTranslation(roadRescuePosition, true);
-          rigidBody.current?.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(roadRescuePosition.x, roadRescuePosition.y + PLAYER_CAMERA_HEIGHT, roadRescuePosition.z);
-          publishLocalPlayerPosition(roadRescuePosition, { rememberLast: true });
-          publishQaPlayerPosition(roadRescuePosition);
-          qaWalkLastUnstickNudgeAt.current = elapsed;
-          qaWalkRecoveryStartPos.current.set(roadRescuePosition.x, roadRescuePosition.y, roadRescuePosition.z);
-          qaWalkRecoveryStartedAt.current = elapsed;
-          qaWalkRecoveryUntil.current = elapsed + QA_SURVIVAL_RECOVERY_MIN_SECONDS;
-          qaWalkRecoveryYaw.current = Number.isFinite(escapeYaw) ? escapeYaw : targetYaw;
-          setForwardQaWaypoint(qaWalkRecoveryYaw.current);
-          targetYaw = qaWalkRecoveryYaw.current;
-          forwardAmount = 0;
-          strafeAmount = 0;
-          recoveryReason = "base-road-rescue";
+          recoveryReason = recoveryRescuePlan.reason;
         } else if (
           qaWalkStuckStrikes.current >= 3 &&
           recoveryAge > QA_SURVIVAL_RECOVERY_NUDGE_SECONDS &&
