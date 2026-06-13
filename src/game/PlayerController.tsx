@@ -113,6 +113,7 @@ import {
 import {
   isQaWalkMovingInOpenLane,
   resolveQaWalkClearanceThrottle,
+  resolveQaWalkCombatFocusMovement,
   resolveQaWalkLookInputFrame,
   resolveQaWalkLowSpeedRecovery,
   resolveQaWalkOpenLaneRecoveryRelief,
@@ -2523,12 +2524,21 @@ export function PlayerController() {
         scheduleNextPracticeCast();
       }
 
-      if (combatSpellDummy && (mode === "travel" || mode === "approach" || mode === "act") && elapsed < qaWalkCombatFocusUntil.current) {
-        mode = activeIntent?.kind === "spell-dummy" ? "act" : "inspect";
-        targetYaw = qaWalkCombatTargetYaw.current + Math.sin(elapsed * 2.4) * 0.05;
-        forwardAmount = qaSpellDummyRunActive ? 0 : 0.06;
-        strafeAmount = Math.sin(elapsed * 3.1) * (qaSpellDummyRunActive ? 0.035 : 0.1);
-        sprint = false;
+      const combatFocusMovement = resolveQaWalkCombatFocusMovement({
+        activeIntentKind: activeIntent?.kind ?? null,
+        combatFocusActive: Boolean(combatSpellDummy),
+        combatFocusUntil: qaWalkCombatFocusUntil.current,
+        combatTargetYaw: qaWalkCombatTargetYaw.current,
+        elapsedSeconds: elapsed,
+        mode,
+        qaSpellDummyRunActive,
+      });
+      if (combatFocusMovement) {
+        mode = combatFocusMovement.mode;
+        targetYaw = combatFocusMovement.targetYaw;
+        forwardAmount = combatFocusMovement.forwardAmount;
+        strafeAmount = combatFocusMovement.strafeAmount;
+        sprint = combatFocusMovement.sprint;
       } else {
         const throttle = resolveQaWalkClearanceThrottle({
           forwardAmount,

@@ -28,6 +28,7 @@ import {
   lerpAngleRadians,
   moveAngleTowardsRadians,
   type QaSurvivalIntent,
+  type QaSurvivalIntentKind,
   type QaSurvivalRouteWaypoint,
   type QaSurvivalWalkInputState,
   type QaSurvivalWalkMode,
@@ -278,6 +279,41 @@ export function resolveQaWalkClearanceThrottle({
   }
 
   return { forwardAmount, sprint };
+}
+
+export function resolveQaWalkCombatFocusMovement({
+  activeIntentKind,
+  combatFocusActive,
+  combatFocusUntil,
+  combatTargetYaw,
+  elapsedSeconds,
+  mode,
+  qaSpellDummyRunActive,
+}: {
+  activeIntentKind: QaSurvivalIntentKind | null;
+  combatFocusActive: boolean;
+  combatFocusUntil: number;
+  combatTargetYaw: number;
+  elapsedSeconds: number;
+  mode: QaSurvivalWalkMode;
+  qaSpellDummyRunActive: boolean;
+}): {
+  forwardAmount: number;
+  mode: QaSurvivalWalkMode;
+  sprint: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+} | null {
+  if (!combatFocusActive || elapsedSeconds >= combatFocusUntil) return null;
+  if (mode !== "travel" && mode !== "approach" && mode !== "act") return null;
+
+  return {
+    forwardAmount: qaSpellDummyRunActive ? 0 : 0.06,
+    mode: activeIntentKind === "spell-dummy" ? "act" : "inspect",
+    sprint: false,
+    strafeAmount: Math.sin(elapsedSeconds * 3.1) * (qaSpellDummyRunActive ? 0.035 : 0.1),
+    targetYaw: combatTargetYaw + Math.sin(elapsedSeconds * 2.4) * 0.05,
+  };
 }
 
 export function resolveQaWalkLookInputFrame({
