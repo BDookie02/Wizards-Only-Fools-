@@ -47,6 +47,8 @@ import {
   QA_SURVIVAL_LOOK_TURN_RATE,
   QA_SURVIVAL_RECOVERY_TURN_RATE,
   QA_SURVIVAL_STUCK_CHECK_SECONDS,
+  QA_SURVIVAL_WAYPOINT_MAX_DISTANCE,
+  QA_SURVIVAL_WAYPOINT_MIN_DISTANCE,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
   QA_SURVIVAL_WALK_DECISION_MAX_SECONDS,
   QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
@@ -1100,6 +1102,69 @@ export function resolveQaWalkInspectionStart({
       inspectionMinInterval,
       inspectionMaxInterval,
     ),
+  };
+}
+
+export function resolveQaWalkRoamWaypoint({
+  blockSize,
+  chunkCenterX,
+  chunkCenterZ,
+  currentYaw,
+  elapsedSeconds,
+  maxLocalDistance,
+  position,
+  preferCenter,
+  waypointMaxDistance = QA_SURVIVAL_WAYPOINT_MAX_DISTANCE,
+  waypointMinDistance = QA_SURVIVAL_WAYPOINT_MIN_DISTANCE,
+}: {
+  blockSize: number;
+  chunkCenterX: number;
+  chunkCenterZ: number;
+  currentYaw: number;
+  elapsedSeconds: number;
+  maxLocalDistance: number;
+  position: QaWalkPosition;
+  preferCenter: boolean;
+  waypointMaxDistance?: number;
+  waypointMinDistance?: number;
+}) {
+  const noiseA = survivalishTurnNoise(position.x + elapsedSeconds * 3.7, position.z - elapsedSeconds * 2.9, elapsedSeconds * 0.31);
+  const noiseB = survivalishTurnNoise(position.x - 41.7, position.z + 19.3, elapsedSeconds * 0.23);
+  const noiseC = survivalishTurnNoise(position.x + 7.9, position.z - 13.1, elapsedSeconds * 0.17);
+  const edgePressure = clampNumber((maxLocalDistance - blockSize * 0.34) / (blockSize * 0.18), 0, 1);
+  const centerYaw = Math.atan2(chunkCenterX - position.x, -(chunkCenterZ - position.z));
+  const roamYaw = currentYaw + (noiseA - 0.5) * 1.85;
+  const waypointYaw = preferCenter || edgePressure > 0
+    ? lerpAngleRadians(roamYaw, centerYaw, preferCenter ? 0.82 : edgePressure * 0.72)
+    : roamYaw;
+  const distance = randomRangeFromNoise(noiseB, waypointMinDistance, waypointMaxDistance);
+  const sideOffset = (noiseC - 0.5) * 70;
+  const forwardX = Math.sin(waypointYaw);
+  const forwardZ = -Math.cos(waypointYaw);
+  const rightX = Math.cos(waypointYaw);
+  const rightZ = Math.sin(waypointYaw);
+  return {
+    x: position.x + forwardX * distance + rightX * sideOffset,
+    z: position.z + forwardZ * distance + rightZ * sideOffset,
+    expiresAt: elapsedSeconds + randomRangeFromNoise(noiseC, 6.5, 13.5),
+  };
+}
+
+export function resolveQaWalkForwardWaypoint({
+  distance = QA_SURVIVAL_WAYPOINT_MIN_DISTANCE * 1.15,
+  elapsedSeconds,
+  position,
+  yaw,
+}: {
+  distance?: number;
+  elapsedSeconds: number;
+  position: QaWalkPosition;
+  yaw: number;
+}) {
+  return {
+    x: position.x + Math.sin(yaw) * distance,
+    z: position.z - Math.cos(yaw) * distance,
+    expiresAt: elapsedSeconds + 5.8,
   };
 }
 

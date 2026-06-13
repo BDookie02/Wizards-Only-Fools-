@@ -76,7 +76,6 @@ import {
   getQuestNavigationIntentTargets,
   isQaSpellDummyRunEnabled,
   isSurvivalGameMode,
-  lerpAngleRadians,
   normalizeAngleRadians,
   pickQaQuestDialogChoice,
   publishQaPlayerPosition,
@@ -93,7 +92,9 @@ import {
   resolveQaWalkIntentMoveTarget,
   resolveQaWalkActiveIntentRefresh,
   resolveQaWalkActiveIntentMovement,
+  resolveQaWalkForwardWaypoint,
   resolveQaWalkInspectionStart,
+  resolveQaWalkRoamWaypoint,
   resolveQaWalkAvoidMovement,
   resolveQaWalkBlockedRecoveryTrigger,
   resolveQaWalkClearanceThrottle,
@@ -1611,34 +1612,25 @@ export function PlayerController() {
         if (setDarrelGroveWaypoint()) return;
         if (setBaseVillageRoadWaypoint()) return;
 
-        const noiseA = survivalishTurnNoise(pos.x + elapsed * 3.7, pos.z - elapsed * 2.9, elapsed * 0.31);
-        const noiseB = survivalishTurnNoise(pos.x - 41.7, pos.z + 19.3, elapsed * 0.23);
-        const noiseC = survivalishTurnNoise(pos.x + 7.9, pos.z - 13.1, elapsed * 0.17);
-        const edgePressure = THREE.MathUtils.clamp((maxLocalDistance - SURVIVAL_BLOCK_SIZE * 0.34) / (SURVIVAL_BLOCK_SIZE * 0.18), 0, 1);
-        const centerYaw = Math.atan2(chunkCenterX - pos.x, -(chunkCenterZ - pos.z));
-        const roamYaw = (qaWalkYaw.current ?? currentYaw) + (noiseA - 0.5) * 1.85;
-        const waypointYaw = preferCenter || edgePressure > 0
-          ? lerpAngleRadians(roamYaw, centerYaw, preferCenter ? 0.82 : edgePressure * 0.72)
-          : roamYaw;
-        const distance = randomRangeFromNoise(noiseB, QA_SURVIVAL_WAYPOINT_MIN_DISTANCE, QA_SURVIVAL_WAYPOINT_MAX_DISTANCE);
-        const sideOffset = (noiseC - 0.5) * 70;
-        const forwardX = Math.sin(waypointYaw);
-        const forwardZ = -Math.cos(waypointYaw);
-        const rightX = Math.cos(waypointYaw);
-        const rightZ = Math.sin(waypointYaw);
-        qaWalkWaypoint.current = {
-          x: pos.x + forwardX * distance + rightX * sideOffset,
-          z: pos.z + forwardZ * distance + rightZ * sideOffset,
-          expiresAt: elapsed + randomRangeFromNoise(noiseC, 6.5, 13.5),
-        };
+        qaWalkWaypoint.current = resolveQaWalkRoamWaypoint({
+          blockSize: SURVIVAL_BLOCK_SIZE,
+          chunkCenterX,
+          chunkCenterZ,
+          currentYaw: qaWalkYaw.current ?? currentYaw,
+          elapsedSeconds: elapsed,
+          maxLocalDistance,
+          position: pos,
+          preferCenter,
+        });
       };
 
       const setForwardQaWaypoint = (yaw: number, distance = QA_SURVIVAL_WAYPOINT_MIN_DISTANCE * 1.15) => {
-        qaWalkWaypoint.current = {
-          x: pos.x + Math.sin(yaw) * distance,
-          z: pos.z - Math.cos(yaw) * distance,
-          expiresAt: elapsed + 5.8,
-        };
+        qaWalkWaypoint.current = resolveQaWalkForwardWaypoint({
+          distance,
+          elapsedSeconds: elapsed,
+          position: pos,
+          yaw,
+        });
       };
 
       const waypointDistanceX = qaWalkWaypoint.current.x - pos.x;
