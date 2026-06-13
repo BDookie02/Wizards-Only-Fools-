@@ -1,6 +1,4 @@
 import { lazy, Suspense, type RefObject } from "react";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
 import {
   type AspectRatioOption,
   type CharacterCustomization,
@@ -20,16 +18,13 @@ import {
 } from "./characterCustomizationRuntime";
 import { formatCharacterOption } from "./hudSettingsUtils";
 import {
-  aspectRatioOptions,
   characterColorStartIndex,
   characterMouthStartIndex,
   characterStyleStartIndex,
   keybindArrowLookIndex,
   keybindControlStartIndex,
   keybindSensitivityStartIndex,
-  settingsTabCount,
   settingsPaneMetadata,
-  videoAspectStartIndex,
   voiceEnabledIndex,
   voiceInputModeIndex,
   voiceOutputVolumeIndex,
@@ -59,27 +54,17 @@ import {
   getVoiceStatusText,
   isSettingsIndexFocused,
 } from "./settingsPanelRuntime";
+import {
+  cn,
+  focusedMenuClass,
+  settingsCardClass,
+  settingsHintClass,
+  settingsTabButtons,
+  settingsTitleRowClass,
+} from "./settingsPanelClassNames";
+import { SettingsVideoPane } from "./SettingsVideoPane";
 
 const LazyCharacterPreview = lazy(() => import("./CharacterPreview").then((module) => ({ default: module.CharacterPreview })));
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-const focusedMenuClass = "ring-2 ring-yellow-200 ring-offset-2 ring-offset-black shadow-[0_0_20px_rgba(250,204,21,0.55)] brightness-125";
-const settingsCardClass = "settings-card border text-left transition-all";
-const settingsTitleRowClass = "settings-card-title flex items-center justify-between gap-3 tracking-widest";
-const settingsHintClass = "settings-card-hint leading-4 tracking-widest";
-const settingsTabButtons: readonly {
-  pane: SettingsPane;
-  label: string;
-  activeClassName: string;
-}[] = [
-  { pane: "video", label: "Video", activeClassName: "border-yellow-400 bg-yellow-400/10 text-yellow-300" },
-  { pane: "keybinds", label: "Keybinds", activeClassName: "border-cyan-300 bg-cyan-300/10 text-cyan-100" },
-  { pane: "voice", label: "Voice", activeClassName: "border-emerald-300 bg-emerald-300/10 text-emerald-100" },
-  { pane: "character", label: "Character", activeClassName: "border-pink-300 bg-pink-300/10 text-pink-100" },
-];
 
 type SettingsPanelProps = {
   settingsPane: SettingsPane;
@@ -298,35 +283,12 @@ export function SettingsPanel({
       </div>
 
       {settingsPane === "video" ? (
-        <div className="flex w-full flex-col gap-1">
-          <div className="settings-section-title text-gray-400">Aspect Ratio</div>
-          <div className="flex flex-col gap-1">
-            {aspectRatioOptions.map((ratio, index) => {
-              const settingIndex = index + videoAspectStartIndex;
-              return (
-                <button
-                  key={ratio}
-                  data-settings-index={settingIndex}
-                  className={cn(
-                    "settings-choice-button border px-2 py-0.5 text-left font-mono transition-all",
-                    aspectRatio === ratio ? "border-yellow-400 bg-yellow-400/10 text-yellow-400" : "border-gray-600 text-gray-300 hover:border-gray-400",
-                    settingsFocus(settingIndex) ? focusedMenuClass : ""
-                  )}
-                  style={{ fontSize: "var(--settings-body-font-size)" }}
-                  onMouseEnter={() => setPauseMenuIndex(settingIndex)}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (aspectRatio !== ratio) setAspectRatio(ratio);
-                  }}
-                >
-                  {ratio}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <SettingsVideoPane
+          aspectRatio={aspectRatio}
+          setAspectRatio={setAspectRatio}
+          settingsFocus={settingsFocus}
+          setPauseMenuIndex={setPauseMenuIndex}
+        />
       ) : settingsPane === "keybinds" ? (
         <div ref={settingsScrollRef} className="menu-scroll-panel w-full overflow-y-auto pr-1" style={settingsScrollPanelStyle}>
           <div className="settings-section-title mb-2 tracking-widest text-cyan-100/60">CONTROLS / REMAP</div>
