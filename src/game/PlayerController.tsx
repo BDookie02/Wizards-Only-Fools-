@@ -36,15 +36,12 @@ import {
   QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
   QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
-  QA_SURVIVAL_WALK_ESCAPE_TURNS,
   QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
   QA_SURVIVAL_WALK_PROBE_DISTANCE,
   QA_SURVIVAL_WALK_PROBE_HEIGHTS,
-  QA_SURVIVAL_WALK_SIDE_PROBE_DISTANCE,
   QA_SURVIVAL_WALK_SOFT_CLEARANCE,
   QA_SURVIVAL_WALK_SOFT_LOOKAHEAD,
   QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR,
-  QA_SURVIVAL_WALK_TURN_OPTIONS,
   angleDeltaRadians,
   getQaSpellDummies,
   getReadyQaManaFlowers,
@@ -83,6 +80,7 @@ import {
   resolveQaWalkBlockedRecoveryTrigger,
   resolveQaWalkClearanceThrottle,
   resolveQaWalkCombatFocusMovement,
+  resolveQaWalkEscapeYawCandidate,
   resolveQaWalkInspectMovement,
   resolveQaWalkIntentJumpHoldUntil,
   resolveQaWalkLilyCoilTubeWaypoint,
@@ -1644,38 +1642,11 @@ export function PlayerController() {
       };
 
       const findEscapeYaw = (baseYaw: number, preferYaw: number) => {
-        let best = {
-          yaw: baseYaw + Math.PI,
-          center: 0,
-          left: 0,
-          right: 0,
-          lookAhead: 0,
-          score: Number.NEGATIVE_INFINITY,
-        };
-        const evaluate = (candidateYaw: number, preferWeight: number) => {
-          const center = probeClearance(candidateYaw, QA_SURVIVAL_WALK_PROBE_DISTANCE * 1.15);
-          const left = probeClearance(candidateYaw + 0.42, QA_SURVIVAL_WALK_SIDE_PROBE_DISTANCE * 1.1);
-          const right = probeClearance(candidateYaw - 0.42, QA_SURVIVAL_WALK_SIDE_PROBE_DISTANCE * 1.1);
-          const lookAhead = probeClearance(candidateYaw, QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE);
-          const desiredBias = Math.cos(candidateYaw - preferYaw) * preferWeight;
-          const currentTurn = Math.abs(angleDeltaRadians(baseYaw, candidateYaw));
-          const turnPenalty = currentTurn > 2.75 ? 0.25 : currentTurn * 0.08;
-          const deadEndPenalty = lookAhead < QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE * 0.36 ? 12 : 0;
-          const score = center * 1.55 + Math.min(left, right) * 0.84 + Math.max(left, right) * 0.18 + Math.min(lookAhead, 34) * 0.64 + desiredBias - turnPenalty - deadEndPenalty;
-          if (score > best.score) {
-            best = { yaw: candidateYaw, center, left, right, lookAhead, score };
-          }
-        };
-
-        evaluate(preferYaw, 1.45);
-        evaluate(baseYaw + Math.PI, 0.35);
-        for (let turnIndex = 0; turnIndex < QA_SURVIVAL_WALK_ESCAPE_TURNS.length; turnIndex += 1) {
-          evaluate(baseYaw + QA_SURVIVAL_WALK_ESCAPE_TURNS[turnIndex], 0.75);
-        }
-        for (let turnIndex = 0; turnIndex < QA_SURVIVAL_WALK_TURN_OPTIONS.length; turnIndex += 1) {
-          evaluate(preferYaw + QA_SURVIVAL_WALK_TURN_OPTIONS[turnIndex], 1.05);
-        }
-        return best;
+        return resolveQaWalkEscapeYawCandidate({
+          baseYaw,
+          preferYaw,
+          probeClearance,
+        });
       };
 
       const beginQaWalkRecovery = (aggressive = false) => {

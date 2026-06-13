@@ -71,6 +71,7 @@ import {
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
   QA_SURVIVAL_WALK_DECISION_MAX_SECONDS,
   QA_SURVIVAL_WALK_DECISION_MIN_SECONDS,
+  QA_SURVIVAL_WALK_ESCAPE_TURNS,
   QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
   QA_SURVIVAL_WALK_MIN_PROGRESS,
   QA_SURVIVAL_WALK_MIN_TOWARD_PROGRESS,
@@ -812,6 +813,66 @@ export function resolveQaWalkSteeringDecisionFrame({
       : clampNumber((best.right - best.left) * 0.09, -0.62, 0.62) + initialStrafeAmount * 0.35,
     targetYaw: best.yaw,
   };
+}
+
+export function resolveQaWalkEscapeYawCandidate({
+  baseYaw,
+  preferYaw,
+  probeClearance,
+  escapeTurns = QA_SURVIVAL_WALK_ESCAPE_TURNS,
+  lookAheadDistance = QA_SURVIVAL_WALK_LOOKAHEAD_DISTANCE,
+  probeDistance = QA_SURVIVAL_WALK_PROBE_DISTANCE,
+  sideProbeDistance = QA_SURVIVAL_WALK_SIDE_PROBE_DISTANCE,
+  turnOptions = QA_SURVIVAL_WALK_TURN_OPTIONS,
+}: {
+  baseYaw: number;
+  preferYaw: number;
+  probeClearance: QaWalkClearanceProbe;
+  escapeTurns?: readonly number[];
+  lookAheadDistance?: number;
+  probeDistance?: number;
+  sideProbeDistance?: number;
+  turnOptions?: readonly number[];
+}) {
+  let best = {
+    yaw: baseYaw + Math.PI,
+    center: 0,
+    left: 0,
+    right: 0,
+    lookAhead: 0,
+    score: Number.NEGATIVE_INFINITY,
+  };
+  const evaluate = (candidateYaw: number, preferWeight: number) => {
+    const center = probeClearance(candidateYaw, probeDistance * 1.15);
+    const left = probeClearance(candidateYaw + 0.42, sideProbeDistance * 1.1);
+    const right = probeClearance(candidateYaw - 0.42, sideProbeDistance * 1.1);
+    const lookAhead = probeClearance(candidateYaw, lookAheadDistance);
+    const desiredBias = Math.cos(candidateYaw - preferYaw) * preferWeight;
+    const currentTurn = Math.abs(angleDeltaRadians(baseYaw, candidateYaw));
+    const turnPenalty = currentTurn > 2.75 ? 0.25 : currentTurn * 0.08;
+    const deadEndPenalty = lookAhead < lookAheadDistance * 0.36 ? 12 : 0;
+    const score = center * 1.55 +
+      Math.min(left, right) * 0.84 +
+      Math.max(left, right) * 0.18 +
+      Math.min(lookAhead, 34) * 0.64 +
+      desiredBias -
+      turnPenalty -
+      deadEndPenalty;
+    if (score > best.score) {
+      best = { yaw: candidateYaw, center, left, right, lookAhead, score };
+    }
+  };
+
+  evaluate(preferYaw, 1.45);
+  evaluate(baseYaw + Math.PI, 0.35);
+  for (let turnIndex = 0; turnIndex < escapeTurns.length; turnIndex += 1) {
+    evaluate(baseYaw + escapeTurns[turnIndex], 0.75);
+  }
+  for (let turnIndex = 0; turnIndex < turnOptions.length; turnIndex += 1) {
+    evaluate(preferYaw + turnOptions[turnIndex], 1.05);
+  }
+
+  return best;
 }
 
 export function getQaWalkIntentDistance(intent: QaSurvivalIntent | null, position: { x: number; z: number }) {
