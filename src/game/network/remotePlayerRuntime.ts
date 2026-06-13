@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { sanitizePlayerName, type PlayerState } from "../../store/gameStore";
 
 export type RemoteStatusExpiries = {
   slowUntil: number;
@@ -6,6 +7,24 @@ export type RemoteStatusExpiries = {
   poisonUntil: number;
   acidUntil: number;
 };
+
+const REMOTE_PLAYER_HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+export function getRemotePlayerDisplayName(player?: Pick<PlayerState, "id" | "playerName"> | null) {
+  return sanitizePlayerName(player?.playerName || "") || `Wizard ${player?.id?.slice(0, 4).toUpperCase() || "????"}`;
+}
+
+export function getSafeRemotePlayerHexColor(value: string | undefined, fallback: string) {
+  return value && REMOTE_PLAYER_HEX_COLOR_PATTERN.test(value) ? value : fallback;
+}
+
+export function hashRemotePlayerSeed(value: string) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash || 1);
+}
 
 export function getNextRemoteStatusExpiryMs(expiries: RemoteStatusExpiries, nowMs: number) {
   let nextExpiry = Number.POSITIVE_INFINITY;

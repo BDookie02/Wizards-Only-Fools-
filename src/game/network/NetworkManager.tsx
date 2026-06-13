@@ -16,7 +16,12 @@ import { AvatarBillboard, normalizeCharacterCustomization } from "../PixelAvatar
 import { absoluteAngleDeltaRadians, lerpAngleRadians } from "../systems/math/angleMath";
 import { isMobilePerformanceMode } from "../systems/input/performanceMode";
 import { MULTIPLAYER_JOIN_REJECTION_REASONS } from "./multiplayerSessionConfig";
-import { useRemoteStatusClock } from "./remotePlayerRuntime";
+import {
+  getRemotePlayerDisplayName,
+  getSafeRemotePlayerHexColor,
+  hashRemotePlayerSeed,
+  useRemoteStatusClock,
+} from "./remotePlayerRuntime";
 import { useLazyRef } from "../systems/react/useLazyRef";
 import { getRandomBase36Suffix } from "../systems/random/runtimeRandom";
 import {
@@ -41,24 +46,7 @@ bindGameNetworkTransport({
   },
 });
 
-const HEX_COLOR_PATTERN = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const MOBILE_SLEEP_ZZZ_UPDATE_INTERVAL_SECONDS = 1 / 16;
-
-function getPlayerDisplayName(player?: Pick<PlayerState, "id" | "playerName"> | null) {
-  return sanitizePlayerName(player?.playerName || "") || `Wizard ${player?.id?.slice(0, 4).toUpperCase() || "????"}`;
-}
-
-function safeHexColor(value: string | undefined, fallback: string) {
-  return value && HEX_COLOR_PATTERN.test(value) ? value : fallback;
-}
-
-function hashString(value: string) {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash * 31 + value.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash || 1);
-}
 
 function RagdollPart({
   name,
@@ -138,11 +126,11 @@ function RemoteRagdoll({
   character?: PlayerState["character"];
 }) {
   const style = normalizeCharacterCustomization(character);
-  const skinColor = safeHexColor(style.skinColor, "#d6cf91");
-  const topColor = safeHexColor(style.topColor, "#3b82f6");
-  const pantsColor = safeHexColor(style.pantsColor, "#334155");
-  const shoesColor = safeHexColor(style.shoesColor, "#1f2937");
-  const seed = useMemo(() => hashString(id), [id]);
+  const skinColor = getSafeRemotePlayerHexColor(style.skinColor, "#d6cf91");
+  const topColor = getSafeRemotePlayerHexColor(style.topColor, "#3b82f6");
+  const pantsColor = getSafeRemotePlayerHexColor(style.pantsColor, "#334155");
+  const shoesColor = getSafeRemotePlayerHexColor(style.shoesColor, "#1f2937");
+  const seed = useMemo(() => hashRemotePlayerSeed(id), [id]);
   const tumble = useMemo(() => {
     const angle = yaw + ((seed % 17) - 8) * 0.045;
     const push = 1.3 + (seed % 7) * 0.12;
@@ -479,7 +467,7 @@ export function NetworkManager() {
         setCharacterCustomization(localPlayer.character);
       }
       setPlayers(remotePlayers);
-      addLobbyMessage(`You joined ${r} as ${getPlayerDisplayName(localPlayer ?? { id: socket.id || "", playerName })}`, "system");
+      addLobbyMessage(`You joined ${r} as ${getRemotePlayerDisplayName(localPlayer ?? { id: socket.id || "", playerName })}`, "system");
     };
 
     const handleJoinRejected = ({ reason }: { reason?: string }) => {
@@ -495,7 +483,7 @@ export function NetworkManager() {
 
     const handlePlayerJoined = (p: PlayerState) => {
       addPlayer(p);
-      addLobbyMessage(`${getPlayerDisplayName(p)} joined the lobby`, "join");
+      addLobbyMessage(`${getRemotePlayerDisplayName(p)} joined the lobby`, "join");
     };
 
     const handlePlayerLeft = (id: string) => {
@@ -595,7 +583,7 @@ export function NetworkManager() {
       } else {
         updatePlayer(safeId, { health: 0 });
       }
-      addLobbyMessage(safeId === socket.id ? "You were defeated" : `${getPlayerDisplayName(player)} was defeated`, "death");
+      addLobbyMessage(safeId === socket.id ? "You were defeated" : `${getRemotePlayerDisplayName(player)} was defeated`, "death");
     };
 
     const handleSpellCasted = (payload: any) => {
