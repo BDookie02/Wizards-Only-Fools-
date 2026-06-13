@@ -1,9 +1,16 @@
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent,
+} from "react";
 import type { HandType } from "../../../store/gameStore";
 import { useLazyRef } from "../../systems/react/useLazyRef";
 import {
   emitMobileCast,
   emitMobileControl,
+  emitMobileHotbar,
   type MobileCastPhase,
   type MobileGameplayButton,
 } from "./mobileTouchEvents";
@@ -28,6 +35,17 @@ export function getMobileHotbarDirectionFromPoint(clientY: number, rect: RectLik
 export function getMobileHotbarDirectionFromDelta(deltaY: number, threshold = 18): 1 | -1 | null {
   if (Math.abs(deltaY) < threshold) return null;
   return deltaY > 0 ? 1 : -1;
+}
+
+export function getMobileHotbarDirectionFromWheelDelta(deltaY: number): 1 | -1 | null {
+  if (deltaY === 0) return null;
+  return deltaY > 0 ? 1 : -1;
+}
+
+export function getMobileHotbarDirectionFromKey(key: string): 1 | -1 | null {
+  if (key === "ArrowUp") return -1;
+  if (key === "ArrowDown") return 1;
+  return null;
 }
 
 export function getMobileStickVector(clientX: number, clientY: number, rect: RectLike): MobileStickVector {
@@ -61,6 +79,77 @@ export function getMobileStickKnobTransformFromValues(
 ) {
   const travel = rect ? Math.min(rect.width, rect.height) * 0.3 : 34;
   return `translate(calc(-50% + ${x * travel}px), calc(-50% + ${y * travel}px))`;
+}
+
+export function useMobileHotbarWheelRuntime(hand: HandType) {
+  const startYRef = useRef<number | null>(null);
+  const hasDraggedRef = useRef(false);
+
+  const emitFromPoint = (clientY: number, target: HTMLDivElement) => {
+    const rect = target.getBoundingClientRect();
+    emitMobileHotbar(hand, getMobileHotbarDirectionFromPoint(clientY, rect));
+  };
+
+  const beginWheel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    startYRef.current = event.clientY;
+    hasDraggedRef.current = false;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const moveWheel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (startYRef.current === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const direction = getMobileHotbarDirectionFromDelta(event.clientY - startYRef.current);
+    if (direction === null) return;
+    hasDraggedRef.current = true;
+    emitMobileHotbar(hand, direction);
+    startYRef.current = event.clientY;
+  };
+
+  const endWheel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (startYRef.current !== null && !hasDraggedRef.current) {
+      emitFromPoint(event.clientY, event.currentTarget);
+    }
+    startYRef.current = null;
+    hasDraggedRef.current = false;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
+
+  const cancelWheel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    startYRef.current = null;
+    hasDraggedRef.current = false;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
+
+  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const direction = getMobileHotbarDirectionFromWheelDelta(event.deltaY);
+    if (direction !== null) emitMobileHotbar(hand, direction);
+  };
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const direction = getMobileHotbarDirectionFromKey(event.key);
+    if (direction === null) return;
+    event.preventDefault();
+    emitMobileHotbar(hand, direction);
+  };
+
+  return {
+    beginWheel,
+    cancelWheel,
+    endWheel,
+    handleKeyDown,
+    handleWheel,
+    moveWheel,
+  };
 }
 
 export function useMobileTouchControlRuntime({

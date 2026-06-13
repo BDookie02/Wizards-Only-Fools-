@@ -1,61 +1,15 @@
-import { useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef } from "react";
 import type { HandType } from "../../../store/gameStore";
 import { getSpriteUrl } from "../../SpriteManifest";
-import { emitMobileHotbar } from "./mobileTouchEvents";
 import {
-  getMobileHotbarDirectionFromDelta,
-  getMobileHotbarDirectionFromPoint,
   mobileActionButtonClass,
+  useMobileHotbarWheelRuntime,
   useMobileTouchControlRuntime,
 } from "./mobileTouchControlsRuntime";
 
 function MobileHotbarWheel({ hand }: { hand: HandType }) {
-  const startYRef = useRef<number | null>(null);
-  const hasDraggedRef = useRef(false);
-
-  const emitFromPoint = (clientY: number, target: HTMLDivElement) => {
-    const rect = target.getBoundingClientRect();
-    emitMobileHotbar(hand, getMobileHotbarDirectionFromPoint(clientY, rect));
-  };
-
-  const beginWheel = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    startYRef.current = e.clientY;
-    hasDraggedRef.current = false;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-
-  const moveWheel = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (startYRef.current === null) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const delta = e.clientY - startYRef.current;
-    const direction = getMobileHotbarDirectionFromDelta(delta);
-    if (direction === null) return;
-    hasDraggedRef.current = true;
-    emitMobileHotbar(hand, direction);
-    startYRef.current = e.clientY;
-  };
-
-  const endWheel = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (startYRef.current !== null && !hasDraggedRef.current) {
-      emitFromPoint(e.clientY, e.currentTarget);
-    }
-    startYRef.current = null;
-    hasDraggedRef.current = false;
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-  };
-
-  const cancelWheel = (e: ReactPointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    startYRef.current = null;
-    hasDraggedRef.current = false;
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-  };
+  const { beginWheel, cancelWheel, endWheel, handleKeyDown, handleWheel, moveWheel } =
+    useMobileHotbarWheelRuntime(hand);
 
   return (
     <div
@@ -69,21 +23,8 @@ function MobileHotbarWheel({ hand }: { hand: HandType }) {
       onPointerMove={moveWheel}
       onPointerUp={endWheel}
       onPointerCancel={cancelWheel}
-      onWheel={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.deltaY !== 0) emitMobileHotbar(hand, e.deltaY > 0 ? 1 : -1);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          emitMobileHotbar(hand, -1);
-        }
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          emitMobileHotbar(hand, 1);
-        }
-      }}
+      onWheel={handleWheel}
+      onKeyDown={handleKeyDown}
     >
       <div className="absolute inset-x-0 top-1 flex justify-center text-[10px] leading-none text-cyan-100/80">^</div>
       <div className="absolute inset-x-1 top-1/2 h-px -translate-y-1/2 bg-cyan-100/35" />
