@@ -38,7 +38,7 @@ import {
 import { controllerActionRows, controllerButtonOptions } from "./systems/input/controllerSettingsConfig";
 import { isEditableTarget } from "./systems/input/editableTargets";
 import { requestTouchFullscreenMode, subscribeDocumentFullscreenState } from "./systems/input/fullscreenRuntime";
-import { CONTROLLER_INVENTORY_HOLD_MS, MAGIC_UNARM_HOLD_MS, getPlatformDefaultLookSensitivity } from "./systems/input/hudInputConfig";
+import { getPlatformDefaultLookSensitivity } from "./systems/input/hudInputConfig";
 import { getNumberSlotFromCode } from "./systems/input/playerInputState";
 import type { DevFastTravelLocation } from "./tools/devFastTravel";
 import { releaseMobileGameplayInputs } from "./ui/hud/mobileTouchEvents";
@@ -159,9 +159,10 @@ import {
   isStandingStillForControllerInventory,
   createHudControllerInputSnapshot,
   readHudControllerInputSnapshotInto,
-  resetHudControllerInventoryHoldState,
   resetHudControllerMagicHoldState,
   resetHudControllerTransientState,
+  updateHudControllerInventoryHold,
+  updateHudControllerMagicHold,
 } from "./ui/hud/hudControllerRuntime";
 import { GameplayHudOverlay } from "./ui/hud/GameplayHudOverlay";
 import { PauseStartMenuContent, type StartMenuStage } from "./ui/hud/PauseStartMenuContent";
@@ -2733,41 +2734,22 @@ export function HUD() {
         hotbarModifierHeld,
       });
 
-      if (controllerInventoryIgnoreUntilReleaseRef.current) {
-        controllerInventoryHoldStartedAtRef.current = null;
-        controllerInventoryTapEligibleRef.current = false;
-        if (!inventoryHeld) {
-          controllerInventoryIgnoreUntilReleaseRef.current = false;
-        }
-      } else if (inventoryHeld) {
-        if (isStandingStillForInventory && canUseControllerInventoryShortcut) {
-          if (controllerInventoryHoldStartedAtRef.current === null) {
-            controllerInventoryHoldStartedAtRef.current = now;
-            controllerInventoryTapEligibleRef.current = true;
-          } else if (now - controllerInventoryHoldStartedAtRef.current >= CONTROLLER_INVENTORY_HOLD_MS) {
-            controllerInventoryTapEligibleRef.current = false;
-          }
-        } else {
-          controllerInventoryTapEligibleRef.current = false;
-        }
-      } else if (controllerInventoryHoldStartedAtRef.current !== null) {
-        const holdDuration = now - controllerInventoryHoldStartedAtRef.current;
-        const shouldOpenInventory =
-          controllerInventoryTapEligibleRef.current &&
-          holdDuration < CONTROLLER_INVENTORY_HOLD_MS &&
-          isStandingStillForInventory &&
-          canUseControllerInventoryShortcut;
-        resetHudControllerInventoryHoldState({
+      const inventoryHoldAction = updateHudControllerInventoryHold({
+        refs: {
           controllerInventoryHoldStartedAtRef,
           controllerInventoryTapEligibleRef,
           controllerInventoryIgnoreUntilReleaseRef,
-        });
+        },
+        now,
+        inventoryHeld,
+        isStandingStillForInventory,
+        canUseControllerInventoryShortcut,
+      });
 
-        if (shouldOpenInventory) {
-          openInventoryFromGame();
-          controllerPollScheduler.schedule(0);
-          return;
-        }
+      if (inventoryHoldAction === "openInventory") {
+        openInventoryFromGame();
+        controllerPollScheduler.schedule(0);
+        return;
       }
 
       const canUseControllerMagic = canUseControllerMagicShortcut({
@@ -2784,34 +2766,19 @@ export function HUD() {
         hotbarModifierHeld,
       });
 
-      if (interactHeld) {
-        if (canUseControllerMagic) {
-          if (controllerMagicHoldStartedAtRef.current === null) {
-            controllerMagicHoldStartedAtRef.current = now;
-            controllerMagicHoldConsumedRef.current = false;
-          } else if (!controllerMagicHoldConsumedRef.current && now - controllerMagicHoldStartedAtRef.current >= MAGIC_UNARM_HOLD_MS) {
-            controllerMagicHoldConsumedRef.current = toggleMagicArmedFromGame();
-          }
-        } else {
-          resetHudControllerMagicHoldState({
-            controllerMagicHoldStartedAtRef,
-            controllerMagicHoldConsumedRef,
-          });
-        }
-      } else if (controllerMagicHoldStartedAtRef.current !== null) {
-        const holdDuration = now - controllerMagicHoldStartedAtRef.current;
-        const shouldInteract =
-          !controllerMagicHoldConsumedRef.current &&
-          holdDuration < MAGIC_UNARM_HOLD_MS &&
-          canUseControllerMagic;
-        resetHudControllerMagicHoldState({
+      const magicHoldAction = updateHudControllerMagicHold({
+        refs: {
           controllerMagicHoldStartedAtRef,
           controllerMagicHoldConsumedRef,
-        });
+        },
+        now,
+        interactHeld,
+        canUseControllerMagic,
+        toggleMagicArmed: toggleMagicArmedFromGame,
+      });
 
-        if (shouldInteract) {
-          requestVillagerInteractionFromGame("controller");
-        }
+      if (magicHoldAction === "interact") {
+        requestVillagerInteractionFromGame("controller");
       }
 
       if (spellMenuPressed && canUseControllerMagic) {
