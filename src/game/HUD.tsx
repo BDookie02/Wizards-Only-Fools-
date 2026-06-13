@@ -147,7 +147,13 @@ import {
 } from "./ui/hud/hudControllerRuntime";
 import { GameplayHudOverlay } from "./ui/hud/GameplayHudOverlay";
 import { PauseStartMenuContent, type StartMenuStage } from "./ui/hud/PauseStartMenuContent";
-import { extractInviteRoomCode, getCurrentInviteRoomCode, getCurrentLanMobileInviteUrl, type LanInfoResponse } from "./network/inviteRoom";
+import {
+  getCurrentInviteRoomCode,
+  getCurrentLanMobileInviteUrl,
+  resolveInviteRoomJoin,
+  shouldRequireSecureOriginForVoice,
+  type LanInfoResponse,
+} from "./network/inviteRoom";
 import { useHudTouchGameplayRuntime } from "./ui/hud/useHudTouchGameplayRuntime";
 import { setHudMapSuppressedByToolOverlay } from "./ui/hud/hudMapSuppressionRuntime";
 import { getDecayedRunePower, RUNE_POWER_DECAY_INTERVAL_MS } from "./systems/spells/manaRechargeRuntime";
@@ -470,8 +476,7 @@ export function HUD() {
     || (isGameLaunched && startMenuStage === "resume" && !shouldShowMenuOverlay);
   const roomUrl = window.location.href;
   const currentInviteRoomCode = getCurrentInviteRoomCode();
-  const isLocalHttpOrigin = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-  const voiceNeedsSecureOrigin = !window.isSecureContext && !isLocalHttpOrigin;
+  const voiceNeedsSecureOrigin = shouldRequireSecureOriginForVoice(window.isSecureContext, window.location.hostname);
   const isMultiplayerMode = gameMode !== "solo-survival";
   const isSurvivalMode = gameMode === "solo-survival" || gameMode === "multiplayer-survival";
   const areDeveloperToolsAllowed = isSurvivalMode && (
@@ -520,21 +525,16 @@ export function HUD() {
   };
 
   const joinInviteCode = () => {
-    const roomCode = extractInviteRoomCode(inviteCodeInput);
-    if (!roomCode) {
-      setInviteCodeMessage("ENTER A VALID CODE");
+    const joinResolution = resolveInviteRoomJoin(inviteCodeInput, currentInviteRoomCode, window.location.href);
+    if (joinResolution.roomCode) {
+      setInviteCodeInput(joinResolution.roomCode);
+    }
+    if (joinResolution.status !== "navigate") {
+      setInviteCodeMessage(joinResolution.message);
       return;
     }
 
-    setInviteCodeInput(roomCode);
-    if (roomCode === currentInviteRoomCode) {
-      setInviteCodeMessage("ALREADY IN THIS ROOM");
-      return;
-    }
-
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("room", roomCode);
-    window.location.assign(nextUrl.toString());
+    window.location.assign(joinResolution.nextUrl);
   };
 
   const submitPlayerName = () => {

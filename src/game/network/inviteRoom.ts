@@ -38,6 +38,55 @@ export function getCurrentInviteRoomCode(fallback = "lobby") {
   return sanitizeInviteRoomCode(new URL(window.location.href).searchParams.get("room") || fallback);
 }
 
+export function isLocalInviteHttpHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
+export function shouldRequireSecureOriginForVoice(isSecureContext: boolean, hostname: string) {
+  return !isSecureContext && !isLocalInviteHttpHost(hostname);
+}
+
+export type InviteRoomJoinResolution = {
+  status: "invalid" | "current" | "navigate";
+  roomCode: string;
+  message: string;
+  nextUrl: string;
+};
+
+export function resolveInviteRoomJoin(
+  inviteInput: string,
+  currentRoomCode: string,
+  currentHref = typeof window === "undefined" ? "http://localhost" : window.location.href,
+): InviteRoomJoinResolution {
+  const roomCode = extractInviteRoomCode(inviteInput);
+  if (!roomCode) {
+    return {
+      status: "invalid",
+      roomCode: "",
+      message: "ENTER A VALID CODE",
+      nextUrl: "",
+    };
+  }
+
+  if (roomCode === currentRoomCode) {
+    return {
+      status: "current",
+      roomCode,
+      message: "ALREADY IN THIS ROOM",
+      nextUrl: "",
+    };
+  }
+
+  const nextUrl = new URL(currentHref);
+  nextUrl.searchParams.set("room", roomCode);
+  return {
+    status: "navigate",
+    roomCode,
+    message: "",
+    nextUrl: nextUrl.toString(),
+  };
+}
+
 export function getCurrentLanMobileInviteUrl(
   lanInfo?: LanInfoResponse,
   fallbackUrl = typeof window === "undefined" ? "" : window.location.href,
