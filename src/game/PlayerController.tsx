@@ -132,7 +132,7 @@ import {
 import {
   getQaWalkNextCombatCastAt,
   getQaWalkNextPracticeCastAt,
-  getQaWalkSpellDummyReanchorSpawnOffset,
+  resolveQaWalkSpellDummyReanchorPlan,
   resolveQaWalkSpellDummyTargets,
   shouldReanchorQaWalkSpellDummy,
 } from "./tools/qa/survivalWalkQaSpellDummyRuntime";
@@ -2160,25 +2160,23 @@ export function PlayerController() {
         qaSpellDummyHits,
         qaSpellDummyRunActive,
       })) {
-        const yawForSpawn = mode === "recover" && qaWalkRecoveryYaw.current
-          ? qaWalkRecoveryYaw.current
-          : qaWalkYaw.current ?? currentYaw;
-        const spawnForwardX = Math.sin(yawForSpawn);
-        const spawnForwardZ = -Math.cos(yawForSpawn);
-        const spawnOffset = getQaWalkSpellDummyReanchorSpawnOffset(mode);
-        dispatchQaSpellDummySpawn({
-          x: pos.x + spawnForwardX * spawnOffset,
-          y: pos.y + 0.2,
-          z: pos.z + spawnForwardZ * spawnOffset,
-          yaw: yawForSpawn,
-          preserveHealth: qaSpellDummyHits > 0,
+        const reanchorPlan = resolveQaWalkSpellDummyReanchorPlan({
+          currentYaw: qaWalkYaw.current ?? currentYaw,
+          elapsedSeconds: elapsed,
+          mode,
+          nearestAnySpellDummyDistanceSq: spellDummyTargets.nearestAnySpellDummyDistanceSq,
+          nextCombatCastAt: qaWalkNextCombatCastAt.current,
+          playerPosition: pos,
+          qaSpellDummyHits,
+          recoveryYaw: qaWalkRecoveryYaw.current,
         });
+        dispatchQaSpellDummySpawn(reanchorPlan.spawn);
         qaWalkLastDummyReanchorAt.current = elapsed;
         qaWalkIntent.current = null;
         qaWalkNextIntentAt.current = 0;
-        qaWalkNextCombatCastAt.current = Math.min(qaWalkNextCombatCastAt.current || Infinity, elapsed + 0.6);
+        qaWalkNextCombatCastAt.current = reanchorPlan.nextCombatCastAt;
         qaWalkStuckStrikes.current = 0;
-        publishSurvivalWalkAction(`dummy-reanchor:${Math.round(Math.sqrt(spellDummyTargets.nearestAnySpellDummyDistanceSq))}`);
+        publishSurvivalWalkAction(reanchorPlan.actionLabel);
       }
 
       const combatCastDecision = resolveQaWalkCombatCastDecision({

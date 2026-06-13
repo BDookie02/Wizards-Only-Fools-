@@ -173,3 +173,41 @@ export function getQaWalkSpellDummyReanchorSpawnOffset(mode: QaSurvivalWalkMode)
     ? QA_WALK_SPELL_DUMMY_REANCHOR_RECOVERY_SPAWN_OFFSET
     : QA_WALK_SPELL_DUMMY_REANCHOR_DEFAULT_SPAWN_OFFSET;
 }
+
+export function resolveQaWalkSpellDummyReanchorPlan({
+  currentYaw,
+  elapsedSeconds,
+  mode,
+  nearestAnySpellDummyDistanceSq,
+  nextCombatCastAt,
+  playerPosition,
+  qaSpellDummyHits,
+  recoveryYaw,
+}: {
+  currentYaw: number;
+  elapsedSeconds: number;
+  mode: QaSurvivalWalkMode;
+  nearestAnySpellDummyDistanceSq: number;
+  nextCombatCastAt: number;
+  playerPosition: { x: number; y: number; z: number };
+  qaSpellDummyHits: number;
+  recoveryYaw: number | null;
+}) {
+  const yawForSpawn = mode === "recover" && recoveryYaw
+    ? recoveryYaw
+    : currentYaw;
+  const spawnForwardX = Math.sin(yawForSpawn);
+  const spawnForwardZ = -Math.cos(yawForSpawn);
+  const spawnOffset = getQaWalkSpellDummyReanchorSpawnOffset(mode);
+  return {
+    actionLabel: `dummy-reanchor:${Math.round(Math.sqrt(nearestAnySpellDummyDistanceSq))}`,
+    nextCombatCastAt: Math.min(nextCombatCastAt || Infinity, elapsedSeconds + 0.6),
+    spawn: {
+      x: playerPosition.x + spawnForwardX * spawnOffset,
+      y: playerPosition.y + 0.2,
+      z: playerPosition.z + spawnForwardZ * spawnOffset,
+      yaw: yawForSpawn,
+      preserveHealth: qaSpellDummyHits > 0,
+    },
+  };
+}
