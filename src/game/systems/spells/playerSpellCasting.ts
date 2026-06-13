@@ -1,5 +1,10 @@
 import * as THREE from "three";
-import type { HandType, PlayerState } from "../../../store/gameStore";
+import type {
+  HandType,
+  PlayerState,
+  Projectile,
+  SpellType,
+} from "../../../store/gameStore";
 import {
   DIRECT_STATUS_TARGET_RADIUS,
   DIRECT_STATUS_TARGET_RANGE,
@@ -36,6 +41,19 @@ export type RemoteSpellTargetScratch = {
   flatToPlayer: THREE.Vector3;
 };
 
+export type PlayerSpellVectorPayload = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+export type PlayerSpellCastNetworkPayload = {
+  type: SpellType;
+  pos: PlayerSpellVectorPayload;
+  dir: PlayerSpellVectorPayload;
+  hand: HandType;
+};
+
 export const WIDE_STATUS_AIM_RADIUS = DIRECT_STATUS_TARGET_RADIUS * 1.35;
 const PROJECTILE_TOKEN_SCALE = 0x100000000;
 
@@ -69,6 +87,48 @@ export function createQaWalkPracticeProjectileId(
   random: RandomSource = Math.random,
 ) {
   return `qa-walk-practice-${spell}-${nowMs.toString(36)}-${createRandomToken(random, 5)}`;
+}
+
+export function createPlayerSpellProjectilePayload({
+  id,
+  creatorId,
+  type,
+  pos,
+  dir,
+  createdAt,
+  hand,
+}: {
+  id: string;
+  creatorId: string;
+  type: SpellType;
+  pos: PlayerSpellVectorPayload;
+  dir: PlayerSpellVectorPayload;
+  createdAt: number;
+  hand: HandType;
+}): Projectile {
+  return {
+    id,
+    creatorId,
+    type,
+    pos,
+    dir,
+    createdAt,
+    hand,
+  };
+}
+
+export function createPlayerSpellCastNetworkPayload({
+  type,
+  pos,
+  dir,
+  hand,
+}: PlayerSpellCastNetworkPayload): PlayerSpellCastNetworkPayload {
+  return {
+    type,
+    pos,
+    dir,
+    hand,
+  };
 }
 
 export function getBlinkTeleportOffset(

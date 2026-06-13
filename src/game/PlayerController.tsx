@@ -243,7 +243,9 @@ import {
 import {
   applyFlamethrowerSpreadInto,
   createPlayerGrabProjectileId,
+  createPlayerSpellCastNetworkPayload,
   createPlayerSpellProjectileId,
+  createPlayerSpellProjectilePayload,
   createQaWalkPracticeProjectileId,
   findAimedRemotePlayerInto,
   findRemotePlayerInAimConeInto,
@@ -773,18 +775,18 @@ export function PlayerController() {
           camera.getWorldDirection(d);
           const { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, d, spellLaunchScratch);
 
-          const proj = {
+          const proj = createPlayerSpellProjectilePayload({
             id: createPlayerSpellProjectileId(),
             creatorId: getLocalNetworkPlayerId(),
-            type: spell as string,
+            type: spell,
             pos: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
             dir: { x: realDir.x, y: realDir.y, z: realDir.z },
             createdAt: now,
-            hand
-          };
+            hand,
+          });
           
           emitGameNetworkEvent("castSpell", proj);
-          useGameStore.getState().addProjectile(proj as any);
+          useGameStore.getState().addProjectile(proj);
         }
       }
     };
@@ -871,22 +873,22 @@ export function PlayerController() {
         }, true);
       }
 
-      emitGameNetworkEvent("castSpell", {
+      emitGameNetworkEvent("castSpell", createPlayerSpellCastNetworkPayload({
         type: currentSpell,
         pos: projectileOrigin,
         dir: projectileDir,
-        hand
-      });
+        hand,
+      }));
       
-      useGameStore.getState().addProjectile({
+      useGameStore.getState().addProjectile(createPlayerSpellProjectilePayload({
         id: createPlayerSpellProjectileId(),
         creatorId: getLocalNetworkPlayerId(),
         type: currentSpell,
         pos: projectileOrigin,
         dir: projectileDir,
         createdAt: releasedAt,
-        hand
-      });
+        hand,
+      }));
     };
 
     const onMouseUp = (e: MouseEvent) => {
@@ -2395,7 +2397,7 @@ export function PlayerController() {
             z: pos.z + flatDir.z * 26,
           }
           : { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z };
-        const projectile = {
+        const projectile = createPlayerSpellProjectilePayload({
           id: createQaWalkPracticeProjectileId(spell, nowMs),
           creatorId: getLocalNetworkPlayerId(),
           type: spell,
@@ -2403,7 +2405,7 @@ export function PlayerController() {
           dir: { x: dir.x, y: dir.y, z: dir.z },
           createdAt: nowMs,
           hand,
-        };
+        });
 
         const store = useGameStore.getState();
         store.setHandCharging(hand, true);
@@ -2411,7 +2413,7 @@ export function PlayerController() {
           useGameStore.getState().setHandCharging(hand, false);
         }, spell === "arcanebeam" ? 420 : 220);
         emitGameNetworkEvent("castSpell", projectile);
-        store.addProjectile(projectile as any);
+        store.addProjectile(projectile);
         publishSurvivalWalkPracticeCast(spell);
       };
 
@@ -2778,18 +2780,18 @@ export function PlayerController() {
 
         const { spawnPos } = getPlayerSpellLaunchInto(hand, camera, dir, spellLaunchScratch, true, lateral);
 
-        const projectile = {
+        const projectile = createPlayerSpellProjectilePayload({
           id: createPlayerSpellProjectileId(),
           creatorId: getLocalNetworkPlayerId(),
           type: 'flamethrower',
           pos: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
           dir: { x: dir.x, y: dir.y, z: dir.z },
           createdAt: nowMs,
-          hand
-        };
+          hand,
+        });
         
         emitGameNetworkEvent("castSpell", projectile);
-        useGameStore.getState().addProjectile(projectile as any);
+        useGameStore.getState().addProjectile(projectile);
       }
     }
 
