@@ -9,6 +9,8 @@ import {
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
   QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE,
+  QA_INTENT_DUMMY_CLOSE_DISTANCE,
+  QA_INTENT_DUMMY_KEEP_DISTANCE,
   QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
   QA_SURVIVAL_ROUTE_WAYPOINT_SECONDS,
@@ -633,6 +635,107 @@ export function shouldResolveQaWalkSteeringDecision({
     overheadClearance < overheadSoftClearance ||
     elapsedSeconds >= nextDecisionAt ||
     elapsedSeconds - lastDecisionAt > decisionMaxSeconds;
+}
+
+export function resolveQaWalkActiveIntentMovement({
+  activeIntent,
+  activeIntentDistance,
+  completionDistance,
+  currentYaw,
+  elapsedSeconds,
+  forwardClearance,
+  intentMoveDistance,
+  intentMoveTarget,
+  position,
+  qaSpellDummyRunActive,
+  strafeAmount,
+  dummyCloseDistance = QA_INTENT_DUMMY_CLOSE_DISTANCE,
+  dummyKeepDistance = QA_INTENT_DUMMY_KEEP_DISTANCE,
+  softClearance = QA_SURVIVAL_WALK_SOFT_CLEARANCE,
+  turnInPlaceError = QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR,
+}: {
+  activeIntent: QaSurvivalIntent;
+  activeIntentDistance: number;
+  completionDistance: number;
+  currentYaw: number;
+  elapsedSeconds: number;
+  forwardClearance: number;
+  intentMoveDistance: number;
+  intentMoveTarget: QaWalkPosition;
+  position: QaWalkPosition;
+  qaSpellDummyRunActive: boolean;
+  strafeAmount: number;
+  dummyCloseDistance?: number;
+  dummyKeepDistance?: number;
+  softClearance?: number;
+  turnInPlaceError?: number;
+}): {
+  closeEnough: boolean;
+  forwardAmount: number;
+  mode: QaSurvivalWalkMode;
+  sprint: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+} {
+  const closeEnough = activeIntentDistance <= completionDistance;
+  let mode: QaSurvivalWalkMode = closeEnough ? "act" : "approach";
+  let nextForwardAmount: number;
+  let nextStrafeAmount = strafeAmount;
+  let sprint = !closeEnough &&
+    activeIntentDistance > 72 &&
+    activeIntent.kind !== "quest-target" &&
+    activeIntent.kind !== "darrel-dragon";
+
+  const nextTargetYaw = Math.atan2(intentMoveTarget.x - position.x, -(intentMoveTarget.z - position.z)) +
+    Math.sin(elapsedSeconds * 0.76 + activeIntent.x * 0.001) * 0.045;
+
+  if (activeIntent.kind === "spell-dummy") {
+    if (qaSpellDummyRunActive) {
+      mode = "act";
+      nextForwardAmount = activeIntentDistance < dummyCloseDistance ? -0.04 : 0;
+      nextStrafeAmount = Math.sin(elapsedSeconds * 2.15 + activeIntent.x * 0.01) * 0.04;
+      sprint = false;
+    } else if (activeIntentDistance < dummyCloseDistance) {
+      nextForwardAmount = -0.18;
+    } else if (activeIntentDistance > dummyKeepDistance) {
+      nextForwardAmount = 0.42;
+    } else {
+      nextForwardAmount = 0.04;
+    }
+    if (!qaSpellDummyRunActive) {
+      nextStrafeAmount = Math.sin(elapsedSeconds * 2.15 + activeIntent.x * 0.01) * 0.24;
+    }
+  } else if (closeEnough) {
+    nextForwardAmount = activeIntent.kind === "mana-flower" ? 0.08 : 0;
+    nextStrafeAmount = Math.sin(elapsedSeconds * 1.4 + activeIntent.z * 0.006) * 0.1;
+  } else {
+    nextForwardAmount = clampNumber(intentMoveDistance / 130, 0.34, 0.72);
+    nextStrafeAmount *= 0.35;
+  }
+
+  const intentYawError = Math.abs(angleDeltaRadians(currentYaw, nextTargetYaw));
+  const turnBeforeAdvanceThreshold = forwardClearance < softClearance
+    ? turnInPlaceError * 0.74
+    : turnInPlaceError * 1.45;
+  if (!closeEnough && intentYawError > turnBeforeAdvanceThreshold) {
+    nextForwardAmount = 0;
+    nextStrafeAmount *= 0.35;
+    sprint = false;
+  }
+
+  if (activeIntent.observeUntil && elapsedSeconds < activeIntent.observeUntil) {
+    nextForwardAmount *= 0.34;
+    sprint = false;
+  }
+
+  return {
+    closeEnough,
+    forwardAmount: nextForwardAmount,
+    mode,
+    sprint,
+    strafeAmount: nextStrafeAmount,
+    targetYaw: nextTargetYaw,
+  };
 }
 
 export function resolveQaWalkLookInputFrame({

@@ -37,7 +37,6 @@ import {
   QA_DARREL_GROVE_DRAGON_SIDE_STAIR_X,
   QA_DARREL_GROVE_DRAGON_SIDE_STAIR_Z,
   QA_DARREL_GROVE_RESCUE_Y,
-  QA_INTENT_DUMMY_CLOSE_DISTANCE,
   QA_INTENT_DUMMY_KEEP_DISTANCE,
   QA_INTENT_DUMMY_RANGE,
   QA_INTENT_DUMMY_TEST_RANGE,
@@ -110,6 +109,7 @@ import {
 } from "./tools/qa/survivalWalkQa";
 import {
   isQaWalkMovingInOpenLane,
+  resolveQaWalkActiveIntentMovement,
   resolveQaWalkAvoidMovement,
   resolveQaWalkBlockedRecoveryTrigger,
   resolveQaWalkClearanceThrottle,
@@ -2324,43 +2324,24 @@ export function PlayerController() {
         const intentMoveDistanceX = intentMoveTarget.x - pos.x;
         const intentMoveDistanceZ = intentMoveTarget.z - pos.z;
         const intentMoveDistance = Math.sqrt(intentMoveDistanceX * intentMoveDistanceX + intentMoveDistanceZ * intentMoveDistanceZ);
-        const intentYaw = Math.atan2(intentMoveTarget.x - pos.x, -(intentMoveTarget.z - pos.z));
-        targetYaw = intentYaw + Math.sin(elapsed * 0.76 + activeIntent.x * 0.001) * 0.045;
-        const closeEnough = activeIntentDistance <= intentCompletionDistance(activeIntent);
-        mode = closeEnough ? "act" : "approach";
-        sprint = !closeEnough && activeIntentDistance > 72 && activeIntent.kind !== "quest-target" && activeIntent.kind !== "darrel-dragon";
-        if (activeIntent.kind === "spell-dummy") {
-          if (qaSpellDummyRunActive) {
-            mode = "act";
-            forwardAmount = activeIntentDistance < QA_INTENT_DUMMY_CLOSE_DISTANCE ? -0.04 : 0;
-            strafeAmount = Math.sin(elapsed * 2.15 + activeIntent.x * 0.01) * 0.04;
-            sprint = false;
-          } else if (activeIntentDistance < QA_INTENT_DUMMY_CLOSE_DISTANCE) {
-            forwardAmount = -0.18;
-          } else if (activeIntentDistance > QA_INTENT_DUMMY_KEEP_DISTANCE) {
-            forwardAmount = 0.42;
-          } else {
-            forwardAmount = 0.04;
-          }
-          if (!qaSpellDummyRunActive) {
-            strafeAmount = Math.sin(elapsed * 2.15 + activeIntent.x * 0.01) * 0.24;
-          }
-        } else if (closeEnough) {
-          forwardAmount = activeIntent.kind === "mana-flower" ? 0.08 : 0;
-          strafeAmount = Math.sin(elapsed * 1.4 + activeIntent.z * 0.006) * 0.1;
-        } else {
-          forwardAmount = THREE.MathUtils.clamp(intentMoveDistance / 130, 0.34, 0.72);
-          strafeAmount *= 0.35;
-        }
-        const intentYawError = Math.abs(angleDeltaRadians(qaWalkYaw.current ?? currentYaw, targetYaw));
-        const turnBeforeAdvanceThreshold = forwardClearance < QA_SURVIVAL_WALK_SOFT_CLEARANCE
-          ? QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR * 0.74
-          : QA_SURVIVAL_WALK_TURN_IN_PLACE_ERROR * 1.45;
-        if (!closeEnough && intentYawError > turnBeforeAdvanceThreshold) {
-          forwardAmount = 0;
-          strafeAmount *= 0.35;
-          sprint = false;
-        }
+        const activeIntentMovement = resolveQaWalkActiveIntentMovement({
+          activeIntent,
+          activeIntentDistance,
+          completionDistance: intentCompletionDistance(activeIntent),
+          currentYaw: qaWalkYaw.current ?? currentYaw,
+          elapsedSeconds: elapsed,
+          forwardClearance,
+          intentMoveDistance,
+          intentMoveTarget,
+          position: pos,
+          qaSpellDummyRunActive,
+          strafeAmount,
+        });
+        targetYaw = activeIntentMovement.targetYaw;
+        mode = activeIntentMovement.mode;
+        forwardAmount = activeIntentMovement.forwardAmount;
+        strafeAmount = activeIntentMovement.strafeAmount;
+        sprint = activeIntentMovement.sprint;
         const intentJumpHoldUntil = resolveQaWalkIntentJumpHoldUntil({
           activeIntentDistance,
           activeIntentKind: activeIntent.kind,
@@ -2371,10 +2352,6 @@ export function PlayerController() {
         });
         if (intentJumpHoldUntil !== null) {
           qaWalkJumpHeldUntil.current = intentJumpHoldUntil;
-        }
-        if (activeIntent.observeUntil && elapsed < activeIntent.observeUntil) {
-          forwardAmount *= 0.34;
-          sprint = false;
         }
         if (
           (activeIntent.kind === "quest-target" || activeIntent.kind === "darrel-dragon") &&
