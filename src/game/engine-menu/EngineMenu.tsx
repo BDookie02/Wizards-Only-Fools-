@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   PLACEABLE_CATALOG,
@@ -6,7 +6,7 @@ import {
   type PlaceableDefinition,
 } from "../systems/placeables/placeableCatalog";
 import { getDefaultPlaceableGridSize } from "../systems/placeables/placementRules";
-import { dispatchEnginePlaceableEvent, subscribeEnginePlaceableEvent } from "../systems/placeables/enginePlaceableEvents";
+import { dispatchEnginePlaceableEvent } from "../systems/placeables/enginePlaceableEvents";
 import {
   createEngineMenuPlacementOptions,
   createEngineMenuSlotLookup,
@@ -16,10 +16,8 @@ import {
   getSelectedEnginePlaceable,
   getSelectedEnginePlacedObject,
   getSelectedEngineSlot,
-  hasEnginePlacedObjectSummaryId,
   normalizeEnginePlaceableSearchQuery,
   type EngineMenuPlacementOptions,
-  type EnginePlacedObjectSlotSummary,
   type EnginePlacedObjectSummary,
 } from "./engineMenuRuntime";
 import { EngineMenuCatalogPanel } from "./EngineMenuCatalogPanel";
@@ -28,6 +26,7 @@ import { EngineMenuPlacedObjectsPanel } from "./EngineMenuPlacedObjectsPanel";
 import { EngineMenuPlacementPanel } from "./EngineMenuPlacementPanel";
 import { EngineMenuSaveSlotsPanel } from "./EngineMenuSaveSlotsPanel";
 import { EngineMenuSystemsPanel } from "./EngineMenuSystemsPanel";
+import { useEngineMenuPlaceableBridge } from "./useEngineMenuPlaceableBridge";
 
 export function EngineMenu({
   open,
@@ -54,13 +53,16 @@ export function EngineMenu({
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [gridSize, setGridSize] = useState(2);
   const [yaw, setYaw] = useState(0);
-  const [placedObjects, setPlacedObjects] = useState<EnginePlacedObjectSummary[]>([]);
-  const [selectedPlacedObjectId, setSelectedPlacedObjectId] = useState("");
-  const [placementStatus, setPlacementStatus] = useState("");
-  const [slotSummaries, setSlotSummaries] = useState<EnginePlacedObjectSlotSummary[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState<string>("slot-1");
   const [slotLabel, setSlotLabel] = useState("Slot 1");
   const [searchQuery, setSearchQuery] = useState("");
+  const {
+    placedObjects,
+    placementStatus,
+    selectedPlacedObjectId,
+    setSelectedPlacedObjectId,
+    slotSummaries,
+  } = useEngineMenuPlaceableBridge(open);
   const normalizedSearchQuery = normalizeEnginePlaceableSearchQuery(searchQuery);
   const placementState = useMemo(() => ({
     snapToGrid,
@@ -91,49 +93,6 @@ export function EngineMenu({
     () => getSelectedEngineSlot(slotLookup, selectedSlotId),
     [selectedSlotId, slotLookup]
   );
-
-  useEffect(() => {
-    if (!open) return undefined;
-    const unsubscribeObjects = subscribeEnginePlaceableEvent<{ objects?: EnginePlacedObjectSummary[] }>(
-      "wof-engine-placeable-list",
-      (event) => {
-        setPlacedObjects(event.detail?.objects ?? []);
-      },
-    );
-    const unsubscribeSlots = subscribeEnginePlaceableEvent<{ slots?: EnginePlacedObjectSlotSummary[] }>(
-      "wof-engine-placeable-slots",
-      (event) => {
-        setSlotSummaries(event.detail?.slots ?? []);
-      },
-    );
-    dispatchEnginePlaceableEvent("wof-engine-placeable-list-request", { source: "engine-menu" });
-    dispatchEnginePlaceableEvent("wof-engine-placeable-slot-list-request", { source: "engine-menu" });
-    return () => {
-      unsubscribeObjects();
-      unsubscribeSlots();
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    return subscribeEnginePlaceableEvent<{ ok?: boolean; label?: string; reason?: string }>(
-      "wof-engine-placeable-result",
-      (event) => {
-        const detail = event.detail;
-        if (!detail) return;
-        setPlacementStatus(detail.ok
-          ? `Placed: ${detail.label ?? "object"}`
-          : `Blocked: ${detail.reason ?? "invalid area"}`);
-      },
-    );
-  }, [open]);
-
-  useEffect(() => {
-    if (!selectedPlacedObjectId) return;
-    if (!hasEnginePlacedObjectSummaryId(placedObjects, selectedPlacedObjectId)) {
-      setSelectedPlacedObjectId("");
-    }
-  }, [placedObjects, selectedPlacedObjectId]);
 
   const makePlacementOptions = (overrides?: Partial<EngineMenuPlacementOptions>): EngineMenuPlacementOptions => (
     createEngineMenuPlacementOptions(placementState, overrides)
