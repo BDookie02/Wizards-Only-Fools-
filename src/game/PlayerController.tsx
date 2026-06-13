@@ -26,8 +26,6 @@ import { isNavigationRecordingActive, recordNavigationSample } from "./navigatio
 import {
   QA_INTENT_INTERACT_COOLDOWN_SECONDS,
   QA_SURVIVAL_COMBAT_CAST_MIN_INTERVAL,
-  QA_SURVIVAL_COMBAT_FOCUS_SECONDS,
-  QA_SURVIVAL_COMBAT_SPELL_SEQUENCE,
   QA_SURVIVAL_COMBAT_TARGET_RANGE,
   QA_SURVIVAL_INSPECTION_MAX_INTERVAL,
   QA_SURVIVAL_INSPECTION_MIN_INTERVAL,
@@ -35,7 +33,6 @@ import {
   QA_SURVIVAL_OVERHEAD_PROBE_DISTANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
   QA_SURVIVAL_PRACTICE_CAST_MIN_INTERVAL,
-  QA_SURVIVAL_PRACTICE_SPELL_SEQUENCE,
   QA_SURVIVAL_RECOVERY_CLEAR_EXIT_DISTANCE,
   QA_SURVIVAL_RECOVERY_CLEAR_EXIT_SECONDS,
   QA_SURVIVAL_RECOVERY_MAX_SECONDS,
@@ -128,6 +125,8 @@ import {
 import {
   getQaWalkPracticeCastChargeMs,
   getQaWalkPracticeCastHand,
+  resolveQaWalkCombatCastDecision,
+  resolveQaWalkPracticeCastDecision,
   resolveQaWalkPracticeProjectilePosition,
 } from "./tools/qa/survivalWalkQaPracticeCasting";
 import {
@@ -2182,20 +2181,23 @@ export function PlayerController() {
         publishSurvivalWalkAction(`dummy-reanchor:${Math.round(Math.sqrt(spellDummyTargets.nearestAnySpellDummyDistanceSq))}`);
       }
 
-      if (
-        combatSpellDummy &&
-        (mode === "travel" || mode === "approach" || mode === "act") &&
-        elapsed >= qaWalkNextCombatCastAt.current &&
-        elapsed - qaWalkLastCombatCastAt.current > 1.2
-      ) {
-        const aimYaw = Math.atan2(combatSpellDummy.position.x - pos.x, -(combatSpellDummy.position.z - pos.z));
-        const spell = QA_SURVIVAL_COMBAT_SPELL_SEQUENCE[qaWalkCombatSpellIndex.current % QA_SURVIVAL_COMBAT_SPELL_SEQUENCE.length];
-        qaWalkCombatSpellIndex.current += 1;
+      const combatCastDecision = resolveQaWalkCombatCastDecision({
+        combatSpellDummy,
+        combatSpellIndex: qaWalkCombatSpellIndex.current,
+        elapsedSeconds: elapsed,
+        lastCombatCastAt: qaWalkLastCombatCastAt.current,
+        mode,
+        nextCombatCastAt: qaWalkNextCombatCastAt.current,
+        playerPosition: pos,
+      });
+      if (combatCastDecision) {
+        const spell = combatCastDecision.spell;
+        qaWalkCombatSpellIndex.current = combatCastDecision.nextCombatSpellIndex;
         qaWalkLastCombatCastAt.current = elapsed;
-        qaWalkCombatFocusUntil.current = elapsed + QA_SURVIVAL_COMBAT_FOCUS_SECONDS;
-        qaWalkCombatTargetYaw.current = aimYaw;
-        dispatchQaSpellCastAtDummy({ spell, targetId: combatSpellDummy.id });
-        publishSurvivalWalkAction(`cast:${spell}:${combatSpellDummy.id}`);
+        qaWalkCombatFocusUntil.current = combatCastDecision.combatFocusUntil;
+        qaWalkCombatTargetYaw.current = combatCastDecision.aimYaw;
+        dispatchQaSpellCastAtDummy({ spell, targetId: combatCastDecision.targetId });
+        publishSurvivalWalkAction(`cast:${spell}:${combatCastDecision.targetId}`);
         scheduleNextCombatCast();
       }
 
@@ -2207,19 +2209,23 @@ export function PlayerController() {
         }
       }
 
-      if (
-        !combatSpellDummy &&
-        (!activeIntent || activeIntent.kind === "landmark") &&
-        mode === "travel" &&
-        elapsed >= qaWalkNextPracticeCastAt.current &&
-        forwardClearance > QA_SURVIVAL_WALK_BLOCKED_CLEARANCE &&
-        viewClearance > QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE
-      ) {
-        const spell = QA_SURVIVAL_PRACTICE_SPELL_SEQUENCE[qaWalkPracticeSpellIndex.current % QA_SURVIVAL_PRACTICE_SPELL_SEQUENCE.length];
-        qaWalkPracticeSpellIndex.current += 1;
+      const practiceCastDecision = resolveQaWalkPracticeCastDecision({
+        activeIntentKind: activeIntent?.kind ?? null,
+        combatSpellDummyActive: Boolean(combatSpellDummy),
+        currentYaw: qaWalkYaw.current ?? currentYaw,
+        elapsedSeconds: elapsed,
+        forwardClearance,
+        mode,
+        nextPracticeCastAt: qaWalkNextPracticeCastAt.current,
+        practiceSpellIndex: qaWalkPracticeSpellIndex.current,
+        viewClearance,
+      });
+      if (practiceCastDecision) {
+        const spell = practiceCastDecision.spell;
+        qaWalkPracticeSpellIndex.current = practiceCastDecision.nextPracticeSpellIndex;
         castQaPracticeSpell(spell);
-        qaWalkCombatFocusUntil.current = elapsed + QA_SURVIVAL_COMBAT_FOCUS_SECONDS * 0.72;
-        qaWalkCombatTargetYaw.current = qaWalkYaw.current ?? currentYaw;
+        qaWalkCombatFocusUntil.current = practiceCastDecision.combatFocusUntil;
+        qaWalkCombatTargetYaw.current = practiceCastDecision.combatTargetYaw;
         scheduleNextPracticeCast();
       }
 
