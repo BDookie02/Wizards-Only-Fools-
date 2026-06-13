@@ -9,11 +9,14 @@ import {
 import { isEditableTarget } from "../../systems/input/editableTargets";
 import { InventoryWizardPreview } from "./InventoryWizardPreview";
 import {
+  clampInventoryQuestIndex,
   getActiveInventoryQuestEntries,
   getDarrelQuestProgressRows,
+  getInventoryKeyboardAction,
   getInventoryEntries,
   getInventoryQuestStatus,
   getInventorySlotLayout,
+  getNextInventoryQuestIndex,
   getSelectedInventoryQuestEntry,
   type InventoryControllerMoveDetail,
   type InventoryEntry,
@@ -77,39 +80,24 @@ function ActiveInventoryPanel({ playerState }: { playerState: InventoryHudPlayer
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) return;
-      if (event.code === "KeyJ") {
-        event.preventDefault();
-        event.stopPropagation();
-        setQuestJournalOpen((open) => !open);
-        return;
-      }
 
-      if (isQuestJournalOpen && (event.code === "ArrowDown" || event.code === "ArrowUp")) {
-        event.preventDefault();
-        event.stopPropagation();
-        const direction = event.code === "ArrowDown" ? 1 : -1;
-        setSelectedQuestIndex((index) => {
-          const count = activeQuestEntries.length;
-          return count > 0 ? (index + direction + count) % count : 0;
-        });
-        return;
-      }
+      const action = getInventoryKeyboardAction(event.code, isQuestJournalOpen);
+      if (!action) return;
 
-      if (event.code === "Enter" && !isQuestJournalOpen) {
-        event.preventDefault();
-        event.stopPropagation();
-        setQuestJournalOpen(true);
-        return;
-      }
-
-      if (event.code !== "Escape" && event.code !== "KeyI") return;
       event.preventDefault();
       event.stopPropagation();
-      if (isQuestJournalOpen) {
+
+      if (action.type === "toggle-quest-journal") {
+        setQuestJournalOpen((open) => !open);
+      } else if (action.type === "move-quest") {
+        setSelectedQuestIndex((index) => getNextInventoryQuestIndex(index, action.direction, activeQuestEntries.length));
+      } else if (action.type === "open-quest-journal") {
+        setQuestJournalOpen(true);
+      } else if (action.type === "close-quest-journal") {
         setQuestJournalOpen(false);
-        return;
+      } else {
+        setInventoryOpen(false);
       }
-      setInventoryOpen(false);
     };
 
     window.addEventListener("keydown", handleKeyDown, true);
@@ -117,7 +105,7 @@ function ActiveInventoryPanel({ playerState }: { playerState: InventoryHudPlayer
   }, [activeQuestEntries.length, isQuestJournalOpen, setInventoryOpen]);
 
   useEffect(() => {
-    setSelectedQuestIndex((index) => Math.min(index, Math.max(0, activeQuestEntries.length - 1)));
+    setSelectedQuestIndex((index) => clampInventoryQuestIndex(index, activeQuestEntries.length));
   }, [activeQuestEntries.length]);
 
   useEffect(() => {
@@ -137,10 +125,7 @@ function ActiveInventoryPanel({ playerState }: { playerState: InventoryHudPlayer
       if (!isQuestJournalOpen) return;
       const direction = (event as CustomEvent<InventoryControllerMoveDetail>).detail?.direction;
       if (direction !== 1 && direction !== -1) return;
-      setSelectedQuestIndex((index) => {
-        const count = activeQuestEntries.length;
-        return count > 0 ? (index + direction + count) % count : 0;
-      });
+      setSelectedQuestIndex((index) => getNextInventoryQuestIndex(index, direction, activeQuestEntries.length));
     };
 
     window.addEventListener("inventory-controller-select", handleControllerSelect);

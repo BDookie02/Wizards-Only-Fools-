@@ -46,6 +46,13 @@ export type InventoryQuestProgressRow = {
   done: boolean;
 };
 
+export type InventoryKeyboardAction =
+  | { type: "toggle-quest-journal" }
+  | { type: "move-quest"; direction: 1 | -1 }
+  | { type: "open-quest-journal" }
+  | { type: "close-quest-journal" }
+  | { type: "close-inventory" };
+
 type InventoryQuestDefinition = (typeof SPELL_QUEST_DEFINITIONS)[number];
 
 type InventoryQuestDefinitionLookupEntry = {
@@ -126,6 +133,24 @@ export function getActiveInventoryQuestEntries(
 
 export function getSelectedInventoryQuestEntry(entries: readonly ActiveQuestEntry[], selectedQuestIndex: number) {
   return entries[selectedQuestIndex] ?? entries[0] ?? null;
+}
+
+export function clampInventoryQuestIndex(index: number, count: number) {
+  return Math.min(index, Math.max(0, count - 1));
+}
+
+export function getNextInventoryQuestIndex(index: number, direction: 1 | -1, count: number) {
+  return count > 0 ? (index + direction + count) % count : 0;
+}
+
+export function getInventoryKeyboardAction(code: string, isQuestJournalOpen: boolean): InventoryKeyboardAction | null {
+  if (code === "KeyJ") return { type: "toggle-quest-journal" };
+  if (isQuestJournalOpen && (code === "ArrowDown" || code === "ArrowUp")) {
+    return { type: "move-quest", direction: code === "ArrowDown" ? 1 : -1 };
+  }
+  if (code === "Enter" && !isQuestJournalOpen) return { type: "open-quest-journal" };
+  if (code !== "Escape" && code !== "KeyI") return null;
+  return { type: isQuestJournalOpen ? "close-quest-journal" : "close-inventory" };
 }
 
 export function getInventoryEntries(inventory: InventoryRecord) {
