@@ -1,4 +1,4 @@
-import { startTransition, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { startTransition, Suspense, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   ALL_SPELLS,
@@ -107,6 +107,13 @@ import {
 } from "./ui/hud/hudSettingsPanelConfig";
 import { getCharacterCustomizationStep } from "./ui/hud/characterCustomizationRuntime";
 import { closeHudCommandConsole, openHudCommandConsole } from "./ui/hud/hudCommandConsoleRuntime";
+import {
+  getHudFillSafeFrameStyle,
+  getHudMainMenuActionCount,
+  HUD_ROOT_STYLE,
+  resolveHudDeveloperToolAccess,
+  resolveHudMenuOverlayState,
+} from "./ui/hud/hudOverlayRuntime";
 import {
   countOwnRecordEntries,
   getHudScoreboardSourceUpdate,
@@ -281,13 +288,8 @@ export function HUD() {
   const aspectRatio = useGameStore(s => s.aspectRatio);
   const setAspectRatio = useGameStore(s => s.setAspectRatio);
   const isFillAspect = aspectRatio === "Fill";
-  const fillSafeFrameStyle = isFillAspect ? {
-    width: 'min(100cqw, calc(100cqh * 16 / 9))',
-    height: 'min(100cqh, calc(100cqw * 9 / 16))',
-  } as CSSProperties : undefined;
-  const hudRootStyle = {
-    containerType: "size",
-  } as CSSProperties;
+  const fillSafeFrameStyle = getHudFillSafeFrameStyle(aspectRatio);
+  const hudRootStyle = HUD_ROOT_STYLE;
   const [showVideoMenu, setShowVideoMenu] = useState(false);
 
   const [isLocked, setIsLocked] = useState(false);
@@ -447,59 +449,46 @@ export function HUD() {
   const hasMouseLookFallback = isHudMouseLookFallbackActive();
   const mouseGameplayActive = !pauseMenuRequestedRef.current && (hasPointerLock || hasMouseLookFallback);
   const isGameplayActive = mouseGameplayActive || touchGameplayActive || controllerGameplayActive;
-  const isResumePauseOverlayRequested = isGameLaunched
-    && startMenuStage === "resume"
-    && (
-      (isPauseOverlayOpen && pauseMenuRequestedRef.current && (!isMenuOverlaySuppressedForQa || pauseMenuExplicitlyRequestedRef.current)) ||
-      showVideoMenu
-    )
-    && !mouseGameplayActive;
-  const shouldShowMenuOverlay = (!isMenuOverlaySuppressedForQa || isResumePauseOverlayRequested)
-    && !isCommandConsoleOpen
-    && !isSpellMenuOpen
-    && !questNpcEditorTarget
-    && !questDialogSession
-    && !isInventoryOpen
-    && !isReturningToGame
-    && (isResumePauseOverlayRequested || ((!isGameLaunched || startMenuStage !== "resume") && !isGameplayActive));
-  const menuOverlayStyle = {
-    display: shouldShowMenuOverlay ? "flex" : "none",
-    containerType: "size",
-    width: "var(--app-vw, 100dvw)",
-    height: "var(--app-vh, 100dvh)",
-    maxWidth: "var(--app-vw, 100dvw)",
-    maxHeight: "var(--app-vh, 100dvh)",
-    overflow: "hidden",
-  } as CSSProperties;
-  const shouldRenderGameplayHud = isGameplayActive
-    || isReturningToGame
-    || (isGameLaunched && startMenuStage === "resume" && !shouldShowMenuOverlay);
+  const {
+    isResumePauseOverlayRequested,
+    menuOverlayStyle,
+    shouldRenderGameplayHud,
+    shouldShowMenuOverlay,
+  } = resolveHudMenuOverlayState({
+    isCommandConsoleOpen,
+    isGameLaunched,
+    isGameplayActive,
+    isInventoryOpen,
+    isMenuOverlaySuppressedForQa,
+    isPauseOverlayOpen,
+    isReturningToGame,
+    isSpellMenuOpen,
+    mouseGameplayActive,
+    pauseMenuExplicitlyRequested: pauseMenuExplicitlyRequestedRef.current,
+    pauseMenuRequested: pauseMenuRequestedRef.current,
+    questDialogActive: Boolean(questDialogSession),
+    questNpcEditorActive: Boolean(questNpcEditorTarget),
+    showVideoMenu,
+    startMenuStage,
+  });
   const roomUrl = window.location.href;
   const currentInviteRoomCode = getCurrentInviteRoomCode();
   const voiceNeedsSecureOrigin = shouldRequireSecureOriginForVoice(window.isSecureContext, window.location.hostname);
   const isMultiplayerMode = gameMode !== "solo-survival";
   const isSurvivalMode = gameMode === "solo-survival" || gameMode === "multiplayer-survival";
-  const areDeveloperToolsAllowed = isSurvivalMode && (
-    import.meta.env.DEV ||
-    isQuestDevModeEnabled ||
-    (gameMode as string) === "creative"
-  );
-  const isDevFastTravelAllowed = areDeveloperToolsAllowed;
-  const isEngineMenuAllowed = areDeveloperToolsAllowed;
+  const {
+    isDevFastTravelAllowed,
+    isEngineMenuAllowed,
+  } = resolveHudDeveloperToolAccess({
+    gameMode,
+    isDevBuild: import.meta.env.DEV,
+    isQuestDevModeEnabled,
+    isSurvivalMode,
+  });
   const devFastTravelLocationCount = devFastTravelLocations.length;
   const resumeMenuActionCount = isMultiplayerMode ? pauseMenuItemCount : 2;
   const settingsActionCount = getSettingsActionCount(settingsPane);
-  const mainMenuActionCount = startMenuStage === "press-start"
-    ? 1
-    : startMenuStage === "mode-select"
-      ? 2
-      : startMenuStage === "multiplayer-select"
-        ? 3
-        : startMenuStage === "custom-lobby"
-          ? 8
-          : startMenuStage === "survival-options"
-            ? 7
-            : resumeMenuActionCount;
+  const mainMenuActionCount = getHudMainMenuActionCount(startMenuStage, resumeMenuActionCount);
   const isPauseMenuVisible = shouldShowMenuOverlay && isGameLaunched && startMenuStage === "resume";
   const activeBindingHand: HandType = isRightHandModifier ? "right" : menuBindingHand;
   const requestMapToggle = (now: number) => {
