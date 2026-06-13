@@ -60,6 +60,7 @@ import { clampMenuIndex, findDirectionalMenuIndex, getHudMenuNowMs, type MenuDir
 import {
   clearHudEnginePlaceables,
   deleteHudEnginePlacedObject,
+  formatHudEnginePlaceableResultMessage,
   moveHudEnginePlacedObject,
   previewHudEnginePlaceable,
   previewHudEnginePlacedObject,
@@ -1595,13 +1596,8 @@ export function HUD() {
 
   useEffect(() => {
     const handlePlaceableResult = (event: { detail: { ok?: boolean; label?: string; reason?: string } | undefined }) => {
-      const detail = event.detail;
-      if (!detail) return;
-      if (detail.ok) {
-        addLobbyMessage(`PLACED: ${detail.label ?? "object"}`, "system");
-      } else {
-        addLobbyMessage(`PLACE BLOCKED: ${detail.reason ?? "invalid area"}`, "system");
-      }
+      const message = formatHudEnginePlaceableResultMessage(event.detail);
+      if (message) addLobbyMessage(message, "system");
     };
 
     return subscribeEnginePlaceableEvent("wof-engine-placeable-result", handlePlaceableResult);

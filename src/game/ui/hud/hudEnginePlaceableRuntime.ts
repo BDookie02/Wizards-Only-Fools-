@@ -23,6 +23,12 @@ export type EnginePlacedObjectSelection = {
   yaw: number;
 };
 
+export type HudEnginePlaceableResultDetail = {
+  ok?: boolean;
+  label?: string;
+  reason?: string;
+};
+
 export function buildHudEnginePlaceableDetail(placeable: EnginePlaceableSelection | string, options?: EnginePlaceableOptions) {
   const placeableId = typeof placeable === "string" ? placeable : placeable.id;
   if (!placeableId) return null;
@@ -110,4 +116,10 @@ export function deleteHudEnginePlacedObject(instanceId: string) {
   if (!instanceId) return false;
   dispatchEnginePlaceableEvent("wof-engine-placeable-delete", { instanceId, source: "hud-edit" });
   return true;
+}
+
+export function formatHudEnginePlaceableResultMessage(detail: HudEnginePlaceableResultDetail | undefined) {
+  if (!detail) return null;
+  if (detail.ok) return `PLACED: ${detail.label ?? "object"}`;
+  return `PLACE BLOCKED: ${detail.reason ?? "invalid area"}`;
 }
