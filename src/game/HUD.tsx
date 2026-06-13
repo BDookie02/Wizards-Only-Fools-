@@ -69,6 +69,12 @@ import {
   type EnginePlacedObjectSelection,
 } from "./ui/hud/hudEnginePlaceableRuntime";
 import {
+  HUD_SURVIVAL_AUTOSAVE_INTERVAL_MS,
+  installHudSurvivalAutosaveLoop,
+  isHudSurvivalGameMode,
+  shouldRunHudSurvivalAutosave,
+} from "./ui/hud/hudSurvivalAutosaveRuntime";
+import {
   LazyCommandConsole,
   LazyDevFastTravelMenu,
   LazyEngineMenu,
@@ -188,7 +194,6 @@ type HudPlayerState = {
   isGrounded: boolean;
   isMeditating: boolean;
 };
-const SURVIVAL_AUTOSAVE_INTERVAL_MS = 15000;
 
 export function HUD() {
   const health = useGameStore(s => s.health);
@@ -1632,23 +1637,23 @@ export function HUD() {
   };
 
   useEffect(() => {
-    if (!isGameLaunched || !survivalSave || (gameMode !== "solo-survival" && gameMode !== "multiplayer-survival")) return;
-    let cancelled = false;
-    let autosaveTimeout: number | null = null;
+    const survivalMode = isHudSurvivalGameMode(gameMode) ? gameMode : null;
+    if (!shouldRunHudSurvivalAutosave({
+      isGameLaunched,
+      hasSurvivalSave: Boolean(survivalSave),
+      survivalMode,
+    }) || !survivalMode) {
+      return undefined;
+    }
 
-    const scheduleSurvivalAutosave = () => {
-      autosaveTimeout = window.setTimeout(() => {
-        if (cancelled) return;
-        saveSurvivalProgress({ lastMode: gameMode });
-        scheduleSurvivalAutosave();
-      }, SURVIVAL_AUTOSAVE_INTERVAL_MS);
-    };
-
-    scheduleSurvivalAutosave();
-    return () => {
-      cancelled = true;
-      if (autosaveTimeout !== null) window.clearTimeout(autosaveTimeout);
-    };
+    return installHudSurvivalAutosaveLoop({
+      intervalMs: HUD_SURVIVAL_AUTOSAVE_INTERVAL_MS,
+      setTimer: (callback, delayMs) => window.setTimeout(callback, delayMs),
+      clearTimer: (timerId) => window.clearTimeout(timerId),
+      save: () => {
+        saveSurvivalProgress({ lastMode: survivalMode });
+      },
+    });
   }, [gameMode, isGameLaunched, saveSurvivalProgress, survivalSave]);
 
   const cycleLobbyMap = (direction: 1 | -1) => {
