@@ -155,6 +155,7 @@ import {
   dispatchSpellMenuControllerNavigate,
   dispatchSpellMenuControllerScroll,
   dispatchSpellMenuControllerSelect,
+  getHudControllerDevFastTravelAction,
   getHudControllerSpellMenuAction,
   hasHudControllerGameplaySignal,
   isStandingStillForControllerInventory,
@@ -2541,25 +2542,37 @@ export function HUD() {
 
       if (isDevFastTravelOpen) {
         setScoreboardSource("controller", false);
-        const canNavigateFastTravel = now - devFastTravelOpenedAtRef.current > 220;
-        const fastTravelNextPressed = canNavigateFastTravel && consumeRepeat("controllerDevFastTravelNext", dpadDown || menuAxisY > 0.6, now);
-        const fastTravelPrevPressed = canNavigateFastTravel && consumeRepeat("controllerDevFastTravelPrev", dpadUp || menuAxisY < -0.6, now);
+        const fastTravelAction = getHudControllerDevFastTravelAction({
+          now,
+          openedAt: devFastTravelOpenedAtRef.current,
+          dpadUp,
+          dpadDown,
+          menuAxisY,
+          aPressed,
+          bPressed,
+          startPressed,
+          locationCount: devFastTravelLocationCount,
+          consumeRepeat,
+        });
 
-        if (fastTravelNextPressed || fastTravelPrevPressed) {
-          if (devFastTravelLocationCount <= 0) {
-            controllerPollScheduler.schedule(0);
-            return;
-          }
-          setDevFastTravelIndex(prev => wrapIndex(prev + (fastTravelNextPressed ? 1 : -1), devFastTravelLocationCount));
+        if (fastTravelAction.type === "move") {
+          setDevFastTravelIndex(prev => wrapIndex(prev + fastTravelAction.direction, devFastTravelLocationCount));
+          controllerPollScheduler.schedule(0);
+          return;
         }
 
-        if (bPressed || startPressed) {
+        if (fastTravelAction.type === "emptyMove") {
+          controllerPollScheduler.schedule(0);
+          return;
+        }
+
+        if (fastTravelAction.type === "close") {
           closeDevFastTravelMenu(true);
           controllerPollScheduler.schedule(0);
           return;
         }
 
-        if (aPressed) {
+        if (fastTravelAction.type === "select") {
           const location = devFastTravelLocations[devFastTravelIndex];
           if (location) runDevFastTravel(location);
           controllerPollScheduler.schedule(0);

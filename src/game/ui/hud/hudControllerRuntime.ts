@@ -203,7 +203,29 @@ export type HudControllerSpellMenuAction = {
   select: boolean;
 };
 
+export type HudControllerDevFastTravelAction =
+  | { type: "none" }
+  | { type: "emptyMove" }
+  | { type: "move"; direction: 1 | -1 }
+  | { type: "close" }
+  | { type: "select" };
+
+export type HudControllerDevFastTravelActionOptions = {
+  now: number;
+  openedAt: number;
+  dpadUp: boolean;
+  dpadDown: boolean;
+  menuAxisY: number;
+  aPressed: boolean;
+  bPressed: boolean;
+  startPressed: boolean;
+  locationCount: number;
+  consumeRepeat: HudControllerOverlayRepeatReader;
+  navigationDelayMs?: number;
+};
+
 const HUD_CONTROLLER_MENU_AXIS_THRESHOLD = 0.6;
+const HUD_CONTROLLER_DEV_FAST_TRAVEL_NAVIGATION_DELAY_MS = 220;
 
 export function consumeHudControllerPress(
   controllerButtonsRef: HudControllerButtonsRef,
@@ -512,6 +534,45 @@ export function readHudControllerOverlayRepeats({
     pauseRightPressed: consumeRepeat("controllerPauseRight", pauseMenuOpen && rightHeld, now),
     pauseLeftPressed: consumeRepeat("controllerPauseLeft", pauseMenuOpen && leftHeld, now),
   };
+}
+
+export function getHudControllerDevFastTravelAction({
+  now,
+  openedAt,
+  dpadUp,
+  dpadDown,
+  menuAxisY,
+  aPressed,
+  bPressed,
+  startPressed,
+  locationCount,
+  consumeRepeat,
+  navigationDelayMs = HUD_CONTROLLER_DEV_FAST_TRAVEL_NAVIGATION_DELAY_MS,
+}: HudControllerDevFastTravelActionOptions): HudControllerDevFastTravelAction {
+  const canNavigateFastTravel = now - openedAt > navigationDelayMs;
+  const fastTravelNextPressed =
+    canNavigateFastTravel &&
+    consumeRepeat(
+      "controllerDevFastTravelNext",
+      dpadDown || menuAxisY > HUD_CONTROLLER_MENU_AXIS_THRESHOLD,
+      now,
+    );
+  const fastTravelPrevPressed =
+    canNavigateFastTravel &&
+    consumeRepeat(
+      "controllerDevFastTravelPrev",
+      dpadUp || menuAxisY < -HUD_CONTROLLER_MENU_AXIS_THRESHOLD,
+      now,
+    );
+
+  if (fastTravelNextPressed || fastTravelPrevPressed) {
+    if (locationCount <= 0) return { type: "emptyMove" };
+    return { type: "move", direction: fastTravelNextPressed ? 1 : -1 };
+  }
+
+  if (bPressed || startPressed) return { type: "close" };
+  if (aPressed) return { type: "select" };
+  return { type: "none" };
 }
 
 export function getHudControllerSpellMenuAction({
