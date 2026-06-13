@@ -945,6 +945,95 @@ export function resolveQaWalkIntentChoice({
   };
 }
 
+export function resolveQaWalkActiveIntentRefresh({
+  currentIntent,
+  elapsedSeconds,
+  qaRouteActive,
+  qaSpellDummyRunActive,
+  spellDummies,
+}: {
+  currentIntent: QaSurvivalIntent | null;
+  elapsedSeconds: number;
+  qaRouteActive: boolean;
+  qaSpellDummyRunActive: boolean;
+  spellDummies: QaSpellDummySnapshot[];
+}): {
+  activeIntent: QaSurvivalIntent | null;
+  clearIntent: boolean;
+  resetNextIntentAt: boolean;
+  shouldChooseIntent: boolean;
+} {
+  if (qaRouteActive) {
+    return {
+      activeIntent: null,
+      clearIntent: currentIntent !== null,
+      resetNextIntentAt: false,
+      shouldChooseIntent: false,
+    };
+  }
+
+  let activeIntent = currentIntent && elapsedSeconds < currentIntent.expiresAt ? currentIntent : null;
+  let clearIntent = !activeIntent && currentIntent !== null;
+  if (!activeIntent && qaSpellDummyRunActive && spellDummies.length > 0) {
+    return {
+      activeIntent: null,
+      clearIntent,
+      resetNextIntentAt: false,
+      shouldChooseIntent: true,
+    };
+  }
+
+  let hasActiveSpellDummy = false;
+  if (activeIntent?.kind === "mana-flower" && qaSpellDummyRunActive) {
+    for (const dummy of spellDummies) {
+      if (dummy.health > 0) {
+        hasActiveSpellDummy = true;
+        break;
+      }
+    }
+  }
+  if (activeIntent?.kind === "mana-flower" && qaSpellDummyRunActive && hasActiveSpellDummy) {
+    return {
+      activeIntent: null,
+      clearIntent: true,
+      resetNextIntentAt: true,
+      shouldChooseIntent: true,
+    };
+  }
+
+  if (activeIntent?.kind === "spell-dummy") {
+    let liveDummy: QaSpellDummySnapshot | null = null;
+    for (const dummy of spellDummies) {
+      if (dummy.id === activeIntent.id) {
+        liveDummy = dummy;
+        break;
+      }
+    }
+    if (liveDummy) {
+      activeIntent = {
+        ...activeIntent,
+        x: liveDummy.position.x,
+        y: liveDummy.position.y,
+        z: liveDummy.position.z,
+      };
+    } else if (qaSpellDummyRunActive) {
+      return {
+        activeIntent: null,
+        clearIntent: true,
+        resetNextIntentAt: true,
+        shouldChooseIntent: true,
+      };
+    }
+  }
+
+  return {
+    activeIntent,
+    clearIntent,
+    resetNextIntentAt: false,
+    shouldChooseIntent: false,
+  };
+}
+
 export function resolveQaWalkActiveIntentMovement({
   activeIntent,
   activeIntentDistance,

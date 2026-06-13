@@ -93,6 +93,7 @@ import {
   resolveQaWalkIntentCompletionDistance,
   resolveQaWalkIntentChoice,
   resolveQaWalkIntentMoveTarget,
+  resolveQaWalkActiveIntentRefresh,
   resolveQaWalkActiveIntentMovement,
   resolveQaWalkAvoidMovement,
   resolveQaWalkBlockedRecoveryTrigger,
@@ -1653,55 +1654,25 @@ export function PlayerController() {
       ) {
         chooseNewWaypoint(!qaRouteActive && maxLocalDistance > SURVIVAL_BLOCK_SIZE * 0.48);
       }
-      if (qaRouteActive) {
+      let activeIntentRefresh = resolveQaWalkActiveIntentRefresh({
+        currentIntent: qaWalkIntent.current,
+        elapsedSeconds: elapsed,
+        qaRouteActive,
+        qaSpellDummyRunActive,
+        spellDummies: getQaSpellDummies(),
+      });
+      if (activeIntentRefresh.clearIntent) {
         qaWalkIntent.current = null;
       }
-      let activeIntent = !qaRouteActive && qaWalkIntent.current && elapsed < qaWalkIntent.current.expiresAt ? qaWalkIntent.current : null;
-      if (!activeIntent && qaWalkIntent.current) {
-        qaWalkIntent.current = null;
-      }
-      if (!activeIntent && qaSpellDummyRunActive && getQaSpellDummies().length > 0) {
-        activeIntent = maybeChooseIntent(true);
-      }
-      let hasActiveSpellDummy = false;
-      if (activeIntent?.kind === "mana-flower" && qaSpellDummyRunActive) {
-        for (const dummy of getQaSpellDummies()) {
-          if (dummy.health > 0) {
-            hasActiveSpellDummy = true;
-            break;
-          }
-        }
-      }
-      if (
-        activeIntent?.kind === "mana-flower" &&
-        qaSpellDummyRunActive &&
-        hasActiveSpellDummy
-      ) {
-        qaWalkIntent.current = null;
+      if (activeIntentRefresh.resetNextIntentAt) {
         qaWalkNextIntentAt.current = 0;
+      }
+      let activeIntent = activeIntentRefresh.activeIntent;
+      if (activeIntentRefresh.shouldChooseIntent) {
         activeIntent = maybeChooseIntent(true);
       }
-      if (activeIntent?.kind === "spell-dummy") {
-        let liveDummy: ReturnType<typeof getQaSpellDummies>[number] | null = null;
-        for (const dummy of getQaSpellDummies()) {
-          if (dummy.id === activeIntent.id) {
-            liveDummy = dummy;
-            break;
-          }
-        }
-        if (liveDummy) {
-          activeIntent = {
-            ...activeIntent,
-            x: liveDummy.position.x,
-            y: liveDummy.position.y,
-            z: liveDummy.position.z,
-          };
-          qaWalkIntent.current = activeIntent;
-        } else if (qaSpellDummyRunActive) {
-          qaWalkIntent.current = null;
-          qaWalkNextIntentAt.current = 0;
-          activeIntent = maybeChooseIntent(true);
-        }
+      if (activeIntent && activeIntent !== qaWalkIntent.current) {
+        qaWalkIntent.current = activeIntent;
       }
       const activeIntentDistance = intentDistance(activeIntent);
 
