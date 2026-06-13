@@ -156,9 +156,11 @@ import {
   dispatchSpellMenuControllerScroll,
   dispatchSpellMenuControllerSelect,
   getHudControllerDevFastTravelAction,
+  getHudControllerInventoryPanelAction,
   getHudControllerSpellMenuAction,
   hasHudControllerGameplaySignal,
   isStandingStillForControllerInventory,
+  markHudControllerInventoryIgnoreUntilRelease,
   createHudControllerInputSnapshot,
   readHudControllerOverlayRepeats,
   readHudControllerInputSnapshotInto,
@@ -2496,28 +2498,32 @@ export function HUD() {
           controllerMagicHoldConsumedRef,
         });
         setScoreboardSource("controller", false);
-        const inventoryNextPressed = consumeRepeat(
-          "controllerInventoryNext",
-          dpadDown || menuAxisY > 0.6,
+        const inventoryAction = getHudControllerInventoryPanelAction({
           now,
-        );
-        const inventoryPrevPressed = consumeRepeat(
-          "controllerInventoryPrev",
-          dpadUp || menuAxisY < -0.6,
-          now,
-        );
-        if (inventoryNextPressed || inventoryPrevPressed) {
-          dispatchInventoryControllerMove(inventoryNextPressed ? 1 : -1);
+          dpadUp,
+          dpadDown,
+          menuAxisY,
+          aPressed,
+          bPressed,
+          startPressed,
+          inventoryHeld,
+          consumeRepeat,
+        });
+
+        if (inventoryAction.moveDirection !== null) {
+          dispatchInventoryControllerMove(inventoryAction.moveDirection);
         }
-        if (aPressed) {
+        if (inventoryAction.select) {
           dispatchInventoryControllerSelect();
         }
-        if (bPressed || startPressed) {
+        if (inventoryAction.back) {
           if (!dispatchInventoryControllerBack()) {
-            if (inventoryHeld) {
-              controllerInventoryIgnoreUntilReleaseRef.current = true;
-              controllerInventoryHoldStartedAtRef.current = null;
-              controllerInventoryTapEligibleRef.current = false;
+            if (inventoryAction.ignoreUntilReleaseOnClose) {
+              markHudControllerInventoryIgnoreUntilRelease({
+                controllerInventoryHoldStartedAtRef,
+                controllerInventoryTapEligibleRef,
+                controllerInventoryIgnoreUntilReleaseRef,
+              });
             }
             closeInventoryAndResume();
           }

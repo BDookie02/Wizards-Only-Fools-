@@ -224,6 +224,25 @@ export type HudControllerDevFastTravelActionOptions = {
   navigationDelayMs?: number;
 };
 
+export type HudControllerInventoryPanelAction = {
+  moveDirection: 1 | -1 | null;
+  select: boolean;
+  back: boolean;
+  ignoreUntilReleaseOnClose: boolean;
+};
+
+export type HudControllerInventoryPanelActionOptions = {
+  now: number;
+  dpadUp: boolean;
+  dpadDown: boolean;
+  menuAxisY: number;
+  aPressed: boolean;
+  bPressed: boolean;
+  startPressed: boolean;
+  inventoryHeld: boolean;
+  consumeRepeat: HudControllerOverlayRepeatReader;
+};
+
 const HUD_CONTROLLER_MENU_AXIS_THRESHOLD = 0.6;
 const HUD_CONTROLLER_DEV_FAST_TRAVEL_NAVIGATION_DELAY_MS = 220;
 
@@ -534,6 +553,47 @@ export function readHudControllerOverlayRepeats({
     pauseRightPressed: consumeRepeat("controllerPauseRight", pauseMenuOpen && rightHeld, now),
     pauseLeftPressed: consumeRepeat("controllerPauseLeft", pauseMenuOpen && leftHeld, now),
   };
+}
+
+export function getHudControllerInventoryPanelAction({
+  now,
+  dpadUp,
+  dpadDown,
+  menuAxisY,
+  aPressed,
+  bPressed,
+  startPressed,
+  inventoryHeld,
+  consumeRepeat,
+}: HudControllerInventoryPanelActionOptions): HudControllerInventoryPanelAction {
+  const inventoryNextPressed = consumeRepeat(
+    "controllerInventoryNext",
+    dpadDown || menuAxisY > HUD_CONTROLLER_MENU_AXIS_THRESHOLD,
+    now,
+  );
+  const inventoryPrevPressed = consumeRepeat(
+    "controllerInventoryPrev",
+    dpadUp || menuAxisY < -HUD_CONTROLLER_MENU_AXIS_THRESHOLD,
+    now,
+  );
+  const back = bPressed || startPressed;
+
+  return {
+    moveDirection: inventoryNextPressed || inventoryPrevPressed ? (inventoryNextPressed ? 1 : -1) : null,
+    select: aPressed,
+    back,
+    ignoreUntilReleaseOnClose: back && inventoryHeld,
+  };
+}
+
+export function markHudControllerInventoryIgnoreUntilRelease({
+  controllerInventoryHoldStartedAtRef,
+  controllerInventoryTapEligibleRef,
+  controllerInventoryIgnoreUntilReleaseRef,
+}: HudControllerInventoryHoldRefs) {
+  controllerInventoryIgnoreUntilReleaseRef.current = true;
+  controllerInventoryHoldStartedAtRef.current = null;
+  controllerInventoryTapEligibleRef.current = false;
 }
 
 export function getHudControllerDevFastTravelAction({
