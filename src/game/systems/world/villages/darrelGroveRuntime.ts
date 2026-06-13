@@ -161,10 +161,30 @@ export type DarrelBlossomClusterDescriptor = {
   count: number;
 };
 
+export type DarrelGroveDetailVisibility = {
+  showWaterAndGate: boolean;
+  showTrees: boolean;
+  showFinishingDetails: boolean;
+};
+
 const DARREL_BRANCH_UP = new THREE.Vector3(0, 1, 0);
 const DARREL_SIDE_SIGNS: readonly DarrelSideSign[] = [-1, 1];
 const DARREL_BACKYARD_RIVER_STONE_X = [-170, -128, -88, -48, -8, 34, 78, 122, 166] as const;
 const darrelBlossomSpriteCache = new Map<string, readonly DarrelBlossomSprite[]>();
+
+export const DARREL_GROVE_DETAIL_PHASE_DELAYS_MS = {
+  waterAndGate: 120,
+  trees: 360,
+  finishingDetails: 760,
+} as const;
+
+export function getDarrelGroveDetailVisibility(showDetails: boolean, phase: number): DarrelGroveDetailVisibility {
+  return {
+    showWaterAndGate: !showDetails || phase >= 1,
+    showTrees: !showDetails || phase >= 2,
+    showFinishingDetails: showDetails && phase >= 3,
+  };
+}
 
 export const DARREL_BACKYARD_RIVER_SEGMENTS: readonly DarrelBackyardRiverSegment[] = [
   { x: -110, z: 104, width: 112, depth: 34, rotation: -0.18 },

@@ -34,8 +34,10 @@ import {
   DARREL_WATERFALL_RUNNELS,
   DARREL_WATERFALL_SPRAY_PUFFS,
   DARREL_PETAL_DRIFT_PATCHES,
+  DARREL_GROVE_DETAIL_PHASE_DELAYS_MS,
   type DarrelFallenPetal,
   type DarrelFallingPetal,
+  getDarrelGroveDetailVisibility,
   getDarrelBranchTransform,
   getDarrelBlossomSprites,
   getDarrelFallenPetals,
@@ -1568,9 +1570,9 @@ function useDarrelGroveDetailPhase(active: boolean, chunkKey: string) {
     }
 
     setPhase(0);
-    const waterAndGate = window.setTimeout(() => setPhase(1), 120);
-    const trees = window.setTimeout(() => setPhase(2), 360);
-    const finishingDetails = window.setTimeout(() => setPhase(3), 760);
+    const waterAndGate = window.setTimeout(() => setPhase(1), DARREL_GROVE_DETAIL_PHASE_DELAYS_MS.waterAndGate);
+    const trees = window.setTimeout(() => setPhase(2), DARREL_GROVE_DETAIL_PHASE_DELAYS_MS.trees);
+    const finishingDetails = window.setTimeout(() => setPhase(3), DARREL_GROVE_DETAIL_PHASE_DELAYS_MS.finishingDetails);
     return () => {
       window.clearTimeout(waterAndGate);
       window.clearTimeout(trees);
@@ -1585,9 +1587,11 @@ export function SurvivalDarrelGrove({ chunk }: { chunk: SurvivalChunkInfo }) {
   const groundTexture = useMemo(() => getDarrelTexture("ground"), []);
   const showDetails = chunk.distance === 0;
   const detailPhase = useDarrelGroveDetailPhase(showDetails, chunk.key);
-  const showWaterAndGate = !showDetails || detailPhase >= 1;
-  const showTrees = !showDetails || detailPhase >= 2;
-  const showFinishingDetails = showDetails && detailPhase >= 3;
+  const {
+    showWaterAndGate,
+    showTrees,
+    showFinishingDetails,
+  } = getDarrelGroveDetailVisibility(showDetails, detailPhase);
 
   return (
     <group name={`survival-darrel-grove-${chunk.key}`}>
