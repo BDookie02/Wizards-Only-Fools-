@@ -178,6 +178,11 @@ import {
   installHudRunePowerDecayLoop,
   shouldRunHudRunePowerDecay,
 } from "./ui/hud/hudRunePowerDecayRuntime";
+import {
+  clearHudKeyboardMagicHoldState,
+  resolveHudKeyboardMagicHoldRelease,
+  startHudKeyboardMagicHold,
+} from "./ui/hud/hudKeyboardMagicRuntime";
 
 let hudCommandConsoleModulePromise: Promise<typeof import("./ui/hud/hudCommandConsole")> | null = null;
 
@@ -2185,12 +2190,12 @@ export function HUD() {
 
   useEffect(() => {
     const clearKeyboardMagicHold = () => {
-      if (keyboardMagicHoldTimeoutRef.current !== null) {
-        window.clearTimeout(keyboardMagicHoldTimeoutRef.current);
-        keyboardMagicHoldTimeoutRef.current = null;
-      }
-      keyboardMagicHoldStartedAtRef.current = null;
-      keyboardMagicHoldConsumedRef.current = false;
+      clearHudKeyboardMagicHoldState({
+        keyboardMagicHoldStartedAtRef,
+        keyboardMagicHoldTimeoutRef,
+        keyboardMagicHoldConsumedRef,
+        clearTimer: (timerId) => window.clearTimeout(timerId),
+      });
     };
 
     if (!isGameLaunched) {
@@ -2232,22 +2237,20 @@ export function HUD() {
           return;
         }
 
-        if (e.repeat || keyboardMagicHoldStartedAtRef.current !== null) {
+        const started = startHudKeyboardMagicHold({
+          keyboardMagicHoldStartedAtRef,
+          keyboardMagicHoldTimeoutRef,
+          keyboardMagicHoldConsumedRef,
+          eventTimeStamp: e.timeStamp,
+          repeat: e.repeat,
+          onHold: toggleMagicArmedFromGame,
+          setTimer: (callback, delayMs) => window.setTimeout(callback, delayMs),
+          clearTimer: (timerId) => window.clearTimeout(timerId),
+        });
+        if (!started) {
           return;
         }
 
-        keyboardMagicHoldStartedAtRef.current = e.timeStamp;
-        keyboardMagicHoldConsumedRef.current = false;
-        if (keyboardMagicHoldTimeoutRef.current !== null) {
-          window.clearTimeout(keyboardMagicHoldTimeoutRef.current);
-        }
-        keyboardMagicHoldTimeoutRef.current = window.setTimeout(() => {
-          keyboardMagicHoldTimeoutRef.current = null;
-          if (keyboardMagicHoldStartedAtRef.current === null || keyboardMagicHoldConsumedRef.current) return;
-          if (toggleMagicArmedFromGame()) {
-            keyboardMagicHoldConsumedRef.current = true;
-          }
-        }, MAGIC_UNARM_HOLD_MS);
         return;
       }
 
@@ -2305,15 +2308,17 @@ export function HUD() {
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code !== "KeyE") return;
-      const holdStartedAt = keyboardMagicHoldStartedAtRef.current;
-      if (holdStartedAt === null) return;
+      const release = resolveHudKeyboardMagicHoldRelease({
+        holdStartedAt: keyboardMagicHoldStartedAtRef.current,
+        consumed: keyboardMagicHoldConsumedRef.current,
+        eventTimeStamp: e.timeStamp,
+      });
+      if (!release.handled) return;
 
       e.preventDefault();
-      const wasConsumed = keyboardMagicHoldConsumedRef.current;
-      const holdDuration = e.timeStamp - holdStartedAt;
       clearKeyboardMagicHold();
 
-      if (!wasConsumed && holdDuration < MAGIC_UNARM_HOLD_MS) {
+      if (release.openSpellMenu) {
         openSpellMenuFromGame();
       }
     };
@@ -2348,10 +2353,12 @@ export function HUD() {
   ]);
 
   useEffect(() => () => {
-    if (keyboardMagicHoldTimeoutRef.current !== null) {
-      window.clearTimeout(keyboardMagicHoldTimeoutRef.current);
-      keyboardMagicHoldTimeoutRef.current = null;
-    }
+    clearHudKeyboardMagicHoldState({
+      keyboardMagicHoldStartedAtRef,
+      keyboardMagicHoldTimeoutRef,
+      keyboardMagicHoldConsumedRef,
+      clearTimer: (timerId) => window.clearTimeout(timerId),
+    });
   }, []);
 
   useEffect(() => {
