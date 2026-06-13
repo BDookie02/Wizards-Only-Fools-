@@ -2,6 +2,10 @@ import { useCallback, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLazyRef } from "../../systems/react/useLazyRef";
 import {
+  QA_LILY_COIL_TUBE_FORWARD,
+  QA_LILY_COIL_TUBE_STRAFE,
+} from "../../systems/player/playerLilyCoilTubeRuntime";
+import {
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
   QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE,
@@ -500,6 +504,40 @@ export function resolveQaWalkInspectMovement({
     sprint: false,
     strafeAmount: 0,
     targetYaw: inspectYaw + Math.sin(elapsedSeconds * 1.35) * 0.18,
+  };
+}
+
+export function resolveQaWalkTubeMovementFrame({
+  elapsedSeconds,
+  positionX,
+  positionY,
+  tubeDirection,
+  tubeT,
+  tubeTravelYaw,
+  tubeForward = QA_LILY_COIL_TUBE_FORWARD,
+  tubeStrafe = QA_LILY_COIL_TUBE_STRAFE,
+}: {
+  elapsedSeconds: number;
+  positionX: number;
+  positionY: number;
+  tubeDirection: number;
+  tubeT: number;
+  tubeTravelYaw: number | null;
+  tubeForward?: number;
+  tubeStrafe?: number;
+}): {
+  forwardAmount: number;
+  sprint: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+} | null {
+  if (tubeTravelYaw === null) return null;
+  const direction = tubeDirection >= 0 ? 1 : -1;
+  return {
+    forwardAmount: direction * (tubeForward + Math.sin(elapsedSeconds * 0.21 + positionX * 0.001) * 0.06),
+    sprint: true,
+    strafeAmount: Math.sin(elapsedSeconds * 0.53 + tubeT * 22) * tubeStrafe,
+    targetYaw: tubeTravelYaw + Math.sin(elapsedSeconds * 0.48 + positionY * 0.006) * 0.1,
   };
 }
 

@@ -124,6 +124,7 @@ import {
   resolveQaWalkTelemetryMovement,
   resolveQaWalkRouteSteeringState,
   resolveQaWalkRouteWaypoint,
+  resolveQaWalkTubeMovementFrame,
   resolveQaWalkTravelMovementFrame,
   useQaSurvivalWalkRuntimeState,
 } from "./tools/qa/survivalWalkQaRuntime";
@@ -200,11 +201,9 @@ import {
 } from "./systems/player/playerTouchInputRuntime";
 import {
   LILY_COIL_TUBE_PLAYER_RADIUS,
-  QA_LILY_COIL_TUBE_FORWARD,
   QA_LILY_COIL_TUBE_LOOK_AHEAD_T,
   QA_LILY_COIL_TUBE_RESTART_EDGE_T,
   QA_LILY_COIL_TUBE_REVERSE_EDGE_T,
-  QA_LILY_COIL_TUBE_STRAFE,
 } from "./systems/player/playerLilyCoilTubeRuntime";
 import {
   canUsePlayerControllerMode,
@@ -2078,12 +2077,19 @@ export function PlayerController() {
         qaWalkRouteSmoothedYaw.current = null;
         qaWalkRouteTargetId.current = null;
       }
-      if (lilyCoilTubeTravelYaw !== null) {
-        const tubeDirection = qaWalkLilyTubeDirection.current >= 0 ? 1 : -1;
-        targetYaw = lilyCoilTubeTravelYaw + Math.sin(elapsed * 0.48 + pos.y * 0.006) * 0.1;
-        forwardAmount = tubeDirection * (QA_LILY_COIL_TUBE_FORWARD + Math.sin(elapsed * 0.21 + pos.x * 0.001) * 0.06);
-        strafeAmount = Math.sin(elapsed * 0.53 + (lilyCoilTubeTravelState?.t ?? 0) * 22) * QA_LILY_COIL_TUBE_STRAFE;
-        sprint = true;
+      const tubeMovementFrame = resolveQaWalkTubeMovementFrame({
+        elapsedSeconds: elapsed,
+        positionX: pos.x,
+        positionY: pos.y,
+        tubeDirection: qaWalkLilyTubeDirection.current,
+        tubeT: lilyCoilTubeTravelState?.t ?? 0,
+        tubeTravelYaw: lilyCoilTubeTravelYaw,
+      });
+      if (tubeMovementFrame) {
+        targetYaw = tubeMovementFrame.targetYaw;
+        forwardAmount = tubeMovementFrame.forwardAmount;
+        strafeAmount = tubeMovementFrame.strafeAmount;
+        sprint = tubeMovementFrame.sprint;
       }
 
       const needsDecision = !lilyCoilTubeQaActive && (qaRouteActive
