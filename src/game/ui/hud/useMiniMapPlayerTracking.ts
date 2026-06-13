@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { getPublishedLastPlayerYaw, getPublishedLocalPlayerPosition } from "../../systems/player/playerEventBridge";
 import { isHudMapSuppressedByToolOverlay } from "./hudMapSuppressionRuntime";
 import type { LiveMapPosition } from "./mapOverlayRuntime";
-
-export type MiniMapDisplayCoords = {
-  x: number;
-  z: number;
-};
+import {
+  areLiveMapPositionsEqual,
+  getMiniMapPlayerAngleCssValue,
+  getRoundedMiniMapDisplayCoords,
+  resolveMiniMapMoveDetail,
+  syncMiniMapPositionWithPublishedState,
+  type MiniMapDisplayCoords,
+} from "./miniMapPlayerTrackingRuntime";
 
 type MiniMapPlayerTrackingOptions = {
   isVisible: boolean;
@@ -16,32 +19,17 @@ type MiniMapPlayerTrackingOptions = {
 const STATE_UPDATE_INTERVAL_MS = 100;
 const MOBILE_DOM_UPDATE_INTERVAL_MS = 1000 / 15;
 
-function toFiniteNumber(value: unknown, fallback: number) {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function sameLiveMapPosition(a: LiveMapPosition, b: LiveMapPosition) {
-  return a.x === b.x && a.z === b.z && a.angle === b.angle;
-}
-
 function applyPlayerIconRotation(node: HTMLDivElement | null, angle: number) {
   if (!node) return;
-  node.style.setProperty("--minimap-player-angle", `${angle}rad`);
+  node.style.setProperty("--minimap-player-angle", getMiniMapPlayerAngleCssValue(angle));
 }
 
 function syncMiniMapPositionFromPublishedState(target: LiveMapPosition) {
-  const publishedPosition = getPublishedLocalPlayerPosition();
-  if (publishedPosition) {
-    target.x = publishedPosition.x;
-    target.z = publishedPosition.z;
-  }
-
-  const publishedYaw = getPublishedLastPlayerYaw();
-  if (publishedYaw !== undefined) {
-    target.angle = publishedYaw;
-  }
-
-  return target;
+  return syncMiniMapPositionWithPublishedState(
+    target,
+    getPublishedLocalPlayerPosition(),
+    getPublishedLastPlayerYaw(),
+  );
 }
 
 export function useMiniMapPlayerTracking({
@@ -66,15 +54,14 @@ export function useMiniMapPlayerTracking({
     if (!isVisible || isHudMapSuppressedByToolOverlay()) return;
 
     const position = syncMiniMapPositionFromPublishedState(currentPositionRef.current);
-    const roundedX = Math.round(position.x);
-    const roundedZ = Math.round(position.z);
+    const roundedCoords = getRoundedMiniMapDisplayCoords(position);
     setDisplayCoords((current) => (
-      current.x === roundedX && current.z === roundedZ
+      current.x === roundedCoords.x && current.z === roundedCoords.z
         ? current
-        : { x: roundedX, z: roundedZ }
+        : roundedCoords
     ));
     setPlayerPosition((current) => (
-      sameLiveMapPosition(current, position)
+      areLiveMapPositionsEqual(current, position)
         ? current
         : { x: position.x, z: position.z, angle: position.angle }
     ));
@@ -106,15 +93,14 @@ export function useMiniMapPlayerTracking({
 
       if (frameTime - lastStateUpdateRef.current > STATE_UPDATE_INTERVAL_MS) {
         lastStateUpdateRef.current = frameTime;
-        const roundedX = Math.round(position.x);
-        const roundedZ = Math.round(position.z);
+        const roundedCoords = getRoundedMiniMapDisplayCoords(position);
         setDisplayCoords((current) => (
-          current.x === roundedX && current.z === roundedZ
+          current.x === roundedCoords.x && current.z === roundedCoords.z
             ? current
-            : { x: roundedX, z: roundedZ }
+            : roundedCoords
         ));
         setPlayerPosition((current) => (
-          sameLiveMapPosition(current, position)
+          areLiveMapPositionsEqual(current, position)
             ? current
             : { x: position.x, z: position.z, angle: position.angle }
         ));
@@ -131,9 +117,10 @@ export function useMiniMapPlayerTracking({
       const detail = (event as CustomEvent).detail ?? {};
       const previous = currentPositionRef.current;
       const pendingMove = pendingMoveRef.current;
-      pendingMove.x = toFiniteNumber(detail.x, previous.x);
-      pendingMove.z = toFiniteNumber(detail.z, previous.z);
-      pendingMove.angle = toFiniteNumber(detail.angle, previous.angle);
+      const nextMove = resolveMiniMapMoveDetail(detail, previous);
+      pendingMove.x = nextMove.x;
+      pendingMove.z = nextMove.z;
+      pendingMove.angle = nextMove.angle;
       hasPendingMoveRef.current = true;
       if (moveRafRef.current === null) {
         moveRafRef.current = window.requestAnimationFrame(applyPlayerMove);
