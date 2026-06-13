@@ -36,7 +36,6 @@ import {
   QA_DARREL_GROVE_DRAGON_SIDE_APPROACH_Z,
   QA_DARREL_GROVE_DRAGON_SIDE_STAIR_X,
   QA_DARREL_GROVE_DRAGON_SIDE_STAIR_Z,
-  QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE,
   QA_DARREL_GROVE_RESCUE_Y,
   QA_INTENT_DUMMY_CLOSE_DISTANCE,
   QA_INTENT_DUMMY_KEEP_DISTANCE,
@@ -60,7 +59,6 @@ import {
   QA_SURVIVAL_INSPECTION_MAX_SECONDS,
   QA_SURVIVAL_INSPECTION_MIN_INTERVAL,
   QA_SURVIVAL_INSPECTION_MIN_SECONDS,
-  QA_SURVIVAL_LOW_SPEED_THRESHOLD,
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
   QA_SURVIVAL_OVERHEAD_PROBE_DISTANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
@@ -114,10 +112,12 @@ import {
   isQaWalkMovingInOpenLane,
   resolveQaWalkClearanceThrottle,
   resolveQaWalkCombatFocusMovement,
+  resolveQaWalkIntentJumpHoldUntil,
   resolveQaWalkLookInputFrame,
   resolveQaWalkLowSpeedRecovery,
   resolveQaWalkOpenLaneRecoveryRelief,
   resolveQaWalkProgressRecovery,
+  resolveQaWalkRecoveryJumpHoldUntil,
   resolveQaWalkTelemetryAbnormality,
   resolveQaWalkTelemetryMovement,
   resolveQaWalkRouteSteeringState,
@@ -2271,8 +2271,14 @@ export function PlayerController() {
           forwardAmount = forwardClearance < QA_SURVIVAL_WALK_BLOCKED_CLEARANCE ? 0.22 : 0.56;
         }
         sprint = false;
-        if (state.clock.elapsedTime > qaWalkJumpHeldUntil.current + 2.1 && yawError < 0.55 && forwardClearance > 1.6 && forwardClearance < 4.2) {
-          qaWalkJumpHeldUntil.current = state.clock.elapsedTime + 0.16;
+        const recoveryJumpHoldUntil = resolveQaWalkRecoveryJumpHoldUntil({
+          forwardClearance,
+          nowSeconds: state.clock.elapsedTime,
+          previousJumpHeldUntil: qaWalkJumpHeldUntil.current,
+          yawError,
+        });
+        if (recoveryJumpHoldUntil !== null) {
+          qaWalkJumpHeldUntil.current = recoveryJumpHoldUntil;
         }
       } else if (
         !qaRouteActive &&
@@ -2339,16 +2345,16 @@ export function PlayerController() {
           strafeAmount *= 0.35;
           sprint = false;
         }
-        if (
-          activeIntent.kind === "darrel-dragon" &&
-          activeIntentDistance < QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE &&
-          state.clock.elapsedTime > qaWalkJumpHeldUntil.current + 0.9 &&
-          (
-            velocity.x * velocity.x + velocity.z * velocity.z < QA_SURVIVAL_LOW_SPEED_THRESHOLD * QA_SURVIVAL_LOW_SPEED_THRESHOLD ||
-            intentMoveDistance < 34
-          )
-        ) {
-          qaWalkJumpHeldUntil.current = state.clock.elapsedTime + 0.18;
+        const intentJumpHoldUntil = resolveQaWalkIntentJumpHoldUntil({
+          activeIntentDistance,
+          activeIntentKind: activeIntent.kind,
+          intentMoveDistance,
+          nowSeconds: state.clock.elapsedTime,
+          planarSpeedSq: velocity.x * velocity.x + velocity.z * velocity.z,
+          previousJumpHeldUntil: qaWalkJumpHeldUntil.current,
+        });
+        if (intentJumpHoldUntil !== null) {
+          qaWalkJumpHeldUntil.current = intentJumpHoldUntil;
         }
         if (activeIntent.observeUntil && elapsed < activeIntent.observeUntil) {
           forwardAmount *= 0.34;

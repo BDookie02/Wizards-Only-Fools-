@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { useLazyRef } from "../../systems/react/useLazyRef";
 import {
   QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
+  QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE,
   QA_SURVIVAL_ROUTE_BLOCKED_DWELL_SECONDS,
   QA_SURVIVAL_ROUTE_REACH_DISTANCE,
   QA_SURVIVAL_ROUTE_WAYPOINT_SECONDS,
@@ -314,6 +315,63 @@ export function resolveQaWalkCombatFocusMovement({
     strafeAmount: Math.sin(elapsedSeconds * 3.1) * (qaSpellDummyRunActive ? 0.035 : 0.1),
     targetYaw: combatTargetYaw + Math.sin(elapsedSeconds * 2.4) * 0.05,
   };
+}
+
+export function resolveQaWalkRecoveryJumpHoldUntil({
+  forwardClearance,
+  nowSeconds,
+  previousJumpHeldUntil,
+  yawError,
+  cooldownSeconds = 2.1,
+  holdSeconds = 0.16,
+  maxForwardClearance = 4.2,
+  maxYawError = 0.55,
+  minForwardClearance = 1.6,
+}: {
+  forwardClearance: number;
+  nowSeconds: number;
+  previousJumpHeldUntil: number;
+  yawError: number;
+  cooldownSeconds?: number;
+  holdSeconds?: number;
+  maxForwardClearance?: number;
+  maxYawError?: number;
+  minForwardClearance?: number;
+}) {
+  if (nowSeconds <= previousJumpHeldUntil + cooldownSeconds) return null;
+  if (yawError >= maxYawError) return null;
+  if (forwardClearance <= minForwardClearance || forwardClearance >= maxForwardClearance) return null;
+  return nowSeconds + holdSeconds;
+}
+
+export function resolveQaWalkIntentJumpHoldUntil({
+  activeIntentKind,
+  activeIntentDistance,
+  intentMoveDistance,
+  nowSeconds,
+  planarSpeedSq,
+  previousJumpHeldUntil,
+  cooldownSeconds = 0.9,
+  holdSeconds = 0.18,
+  lowSpeedThreshold = QA_SURVIVAL_LOW_SPEED_THRESHOLD,
+  stepJumpDistance = QA_DARREL_GROVE_DRAGON_STEP_JUMP_DISTANCE,
+}: {
+  activeIntentKind: QaSurvivalIntentKind;
+  activeIntentDistance: number;
+  intentMoveDistance: number;
+  nowSeconds: number;
+  planarSpeedSq: number;
+  previousJumpHeldUntil: number;
+  cooldownSeconds?: number;
+  holdSeconds?: number;
+  lowSpeedThreshold?: number;
+  stepJumpDistance?: number;
+}) {
+  if (activeIntentKind !== "darrel-dragon") return null;
+  if (activeIntentDistance >= stepJumpDistance) return null;
+  if (nowSeconds <= previousJumpHeldUntil + cooldownSeconds) return null;
+  if (planarSpeedSq >= lowSpeedThreshold * lowSpeedThreshold && intentMoveDistance >= 34) return null;
+  return nowSeconds + holdSeconds;
 }
 
 export function resolveQaWalkLookInputFrame({
