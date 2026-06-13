@@ -397,6 +397,21 @@ html.wizards-touch-layout .magic-hands-fill-offset {
   contain: layout paint;
 }
 
+.game-frame[data-aspect-ratio="Fill"] .magic-hand-mask {
+  --magic-hand-mask-bleed: clamp(36px, 5.5cqw, 112px);
+  --magic-hand-mask-hud-anchor: clamp(18px, var(--hud-status-height, 86px), 36px);
+}
+
+html.wizards-touch-layout .magic-hand-mask {
+  --magic-hand-mask-bleed: clamp(42px, 6.5cqw, 132px);
+  --magic-hand-mask-hud-anchor: clamp(20px, var(--hud-status-height, 86px), 42px);
+}
+
+html.wizards-touch-layout .game-frame[data-aspect-ratio="4/3"] .magic-hand-mask {
+  --magic-hand-mask-bleed: clamp(48px, 7.5cqw, 148px);
+  --magic-hand-mask-hud-anchor: clamp(22px, var(--hud-status-height, 86px), 46px);
+}
+
 .magic-hand-mask-left {
   clip-path: inset(0 0 0 0);
 }
