@@ -196,6 +196,11 @@ import {
   resolveHudKeyboardMagicHoldRelease,
   startHudKeyboardMagicHold,
 } from "./ui/hud/hudKeyboardMagicRuntime";
+import {
+  createDefaultHudPlayerState,
+  resolveHudPlayerStateEvent,
+  type HudPlayerState,
+} from "./ui/hud/hudPlayerStateRuntime";
 
 let hudCommandConsoleModulePromise: Promise<typeof import("./ui/hud/hudCommandConsole")> | null = null;
 
@@ -212,14 +217,6 @@ function loadDevFastTravelModule() {
 }
 
 type GameplayInputMode = "mouse" | "touch" | "controller";
-type HudPlayerState = {
-  isMoving: boolean;
-  isSprinting: boolean;
-  isSliding: boolean;
-  isCrouching: boolean;
-  isGrounded: boolean;
-  isMeditating: boolean;
-};
 
 export function HUD() {
   const health = useGameStore(s => s.health);
@@ -332,14 +329,7 @@ export function HUD() {
     const state = useGameStore.getState();
     return state.isGameLaunched && !state.isControllerGameplayActive && !state.isTouchControlsActive;
   });
-  const [playerState, setPlayerState] = useState<HudPlayerState>({
-    isMoving: false,
-    isSprinting: false,
-    isSliding: false,
-    isCrouching: false,
-    isGrounded: true,
-    isMeditating: false
-  });
+  const [playerState, setPlayerState] = useState<HudPlayerState>(createDefaultHudPlayerState);
   const [menuSpellIndex, setMenuSpellIndex] = useState(0);
   const [isRightHandModifier, setIsRightHandModifier] = useState(false);
   const [menuBindingHand, setMenuBindingHand] = useState<HandType>("left");
@@ -889,17 +879,10 @@ export function HUD() {
         }
       }
     };
-    const handlePlayerState = (e: any) => setPlayerState(prev => {
-      if (
-        prev.isMoving === e.detail.isMoving && 
-        prev.isSprinting === e.detail.isSprinting && 
-        prev.isSliding === e.detail.isSliding &&
-        prev.isCrouching === Boolean(e.detail.isCrouching) &&
-        prev.isGrounded === e.detail.isGrounded &&
-        prev.isMeditating === e.detail.isMeditating
-      ) return prev;
-      return { ...e.detail, isCrouching: Boolean(e.detail.isCrouching) };
-    });
+    const handlePlayerState = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      setPlayerState(previous => resolveHudPlayerStateEvent(previous, detail));
+    };
     const handlePointerError = (e: Event) => {
       // Embedded browsers may reject pointer lock; keep the fallback quiet and recoverable.
       e.stopImmediatePropagation();

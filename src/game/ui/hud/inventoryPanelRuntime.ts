@@ -9,18 +9,12 @@ import {
   type QuestNpcAssignment,
   type SpellType,
 } from "../../../store/gameStore";
+import type { HudPlayerState } from "./hudPlayerStateRuntime";
 
 export const inventoryBackpackSlotCount = 27;
 export const inventoryQuickSlotCount = 9;
 
-export type InventoryHudPlayerState = {
-  isMoving: boolean;
-  isSprinting: boolean;
-  isSliding: boolean;
-  isCrouching: boolean;
-  isGrounded: boolean;
-  isMeditating: boolean;
-};
+export type InventoryHudPlayerState = HudPlayerState;
 
 export type InventoryControllerMoveDetail = {
   direction: 1 | -1;
