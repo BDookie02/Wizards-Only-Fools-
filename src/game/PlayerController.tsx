@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { RigidBody, CapsuleCollider, useRapier, RapierRigidBody, interactionGroups } from "@react-three/rapier";
 import * as THREE from "three";
-import { ARMOR_MAX, DARREL_DRAGON_WORLD_POSITION, DARREL_QUEST_CHUNK, DEFAULT_MOUSE_SENSITIVITY, HandType, SpellType, SURVIVAL_BLOCK_SIZE, TOXIC_DAMAGE_PER_SECOND, TUNGSTON_SLOW_DURATION_MS, hasRunePower, useGameStore } from "../store/gameStore";
+import { ARMOR_MAX, DARREL_DRAGON_WORLD_POSITION, DARREL_QUEST_CHUNK, DEFAULT_MOUSE_SENSITIVITY, HandType, SpellType, SURVIVAL_BLOCK_SIZE, TOXIC_DAMAGE_PER_SECOND, TUNGSTON_SLOW_DURATION_MS, useGameStore } from "../store/gameStore";
 import {
   emitGameNetworkEvent,
   getConnectedNetworkPlayerId,
@@ -207,6 +207,17 @@ import {
   resolvePlayerLookInputFrame,
 } from "./systems/player/playerLookInputRuntime";
 import {
+  PLAYER_CASTING_HANDS,
+  canPlayerHandCastNow,
+  clearPlayerCastingHandState,
+  getPlayerSpellForHand,
+  hasPlayerRunePowerForHand,
+  isPlayerReleaseSelfBuffSpell,
+  isPlayerReleaseSuppressedSpell,
+  isPlayerSelfBuffSpell,
+  resetPlayerControllerAfterCastRelease,
+} from "./systems/player/playerHandCastingRuntime";
+import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
   dispatchPlayerState,
@@ -269,15 +280,12 @@ import {
   PLAYER_COLLIDER_RADIUS,
   PLAYER_FOOT_OFFSET,
   PLAYER_MEDITATION_CAMERA_HEIGHT,
-  SELF_BUFF_SPELLS,
   SLIDE_RESTART_COOLDOWN_MS,
   SLIDE_START_MIN_SPEED_SQ,
   VCLIP_SPRINT_MULTIPLIER,
   VCLIP_VERTICAL_SPEED,
   getPlayerCameraHeight,
 } from "./systems/player/playerMovementConfig";
-
-const PLAYER_HANDS: readonly HandType[] = ["left", "right"];
 
 export function PlayerController() {
   const rigidBody = useRef<RapierRigidBody>(null);
@@ -503,11 +511,13 @@ export function PlayerController() {
   useEffect(() => {
     const lastFire: Record<HandType, number> = { left: 0, right: 0 };
     const armControllerAfterRelease = () => {
-      controllerGameplayArmed.current = false;
-      keyboardJumpWasPressed.current = false;
-      controllerJumpWasPressed.current = false;
-      controllerSprintWasPressed.current = false;
-      controllerSprintLatched.current = false;
+      resetPlayerControllerAfterCastRelease({
+        controllerGameplayArmed,
+        keyboardJumpWasPressed,
+        controllerJumpWasPressed,
+        controllerSprintWasPressed,
+        controllerSprintLatched,
+      });
     };
     const canUseGameplayInput = () => {
       const state = useGameStore.getState();
@@ -516,16 +526,6 @@ export function PlayerController() {
         mouseGameplayActive: isMouseGameplayInputActive(),
         controllerGameplayReady,
       });
-    };
-
-    const getSpellForHand = (hand: HandType) => {
-      const state = useGameStore.getState();
-      return hand === 'right' ? state.rightCurrentSpell : state.leftCurrentSpell;
-    };
-
-    const handHasRunePower = (hand: HandType) => {
-      const state = useGameStore.getState();
-      return hasRunePower(hand === 'right' ? state.rightRunePower : state.leftRunePower);
     };
 
     const castSelfBuffSpell = (hand: HandType, spell: SpellType) => {
@@ -607,8 +607,7 @@ export function PlayerController() {
     };
 
     const stopHandCasting = (hand: HandType) => {
-      activeCastingHands.current[hand] = false;
-      useGameStore.getState().setHandCharging(hand, false);
+      clearPlayerCastingHandState(activeCastingHands, hand, useGameStore.getState().setHandCharging);
     };
 
     const emitGrabRelease = (hand: HandType) => {
@@ -650,8 +649,8 @@ export function PlayerController() {
     };
 
     const stopAllCasting = () => {
-      for (let handIndex = 0; handIndex < PLAYER_HANDS.length; handIndex += 1) {
-        const hand = PLAYER_HANDS[handIndex];
+      for (let handIndex = 0; handIndex < PLAYER_CASTING_HANDS.length; handIndex += 1) {
+        const hand = PLAYER_CASTING_HANDS[handIndex];
         emitGrabRelease(hand);
         stopHandCasting(hand);
       }
@@ -700,16 +699,16 @@ export function PlayerController() {
         return;
       }
 
-      const spell = getSpellForHand(hand);
-      if (!handHasRunePower(hand)) {
+      const spell = getPlayerSpellForHand(useGameStore.getState(), hand);
+      if (!hasPlayerRunePowerForHand(useGameStore.getState(), hand)) {
         stopHandCasting(hand);
         return;
       }
       if (activeCastingHands.current[hand]) return;
 
-      if (now - lastFire[hand] < (spell === 'iceshard' ? 400 : 1000)) return;
+      if (!canPlayerHandCastNow(lastFire, hand, spell, now)) return;
 
-      if (SELF_BUFF_SPELLS.has(spell)) {
+      if (isPlayerSelfBuffSpell(spell)) {
         lastFire[hand] = now;
         castSelfBuffSpell(hand, spell);
         return;
@@ -804,7 +803,7 @@ export function PlayerController() {
         return;
       }
       if (!activeCastingHands.current[hand]) return;
-      const currentSpell = getSpellForHand(hand);
+      const currentSpell = getPlayerSpellForHand(useGameStore.getState(), hand);
       stopHandCasting(hand);
 
       if (currentSpell === 'grab') {
@@ -816,8 +815,8 @@ export function PlayerController() {
       
       if (!canUseGameplayInput() || getHealth() <= 0) return;
 
-      if (currentSpell === 'arcanebeam' || currentSpell === 'iceshard' || currentSpell === 'flamethrower' || currentSpell === 'healspell') return;
-      if (!handHasRunePower(hand)) return;
+      if (isPlayerReleaseSuppressedSpell(currentSpell)) return;
+      if (!hasPlayerRunePowerForHand(useGameStore.getState(), hand)) return;
 
       const releasedAt = getPlayerEventEpochMs();
       lastFire[hand] = releasedAt;
@@ -827,17 +826,7 @@ export function PlayerController() {
         return;
       }
 
-      if (currentSpell === 'magicarmor') {
-        castSelfBuffSpell(hand, currentSpell);
-        return;
-      }
-
-      if (currentSpell === 'speedboost') {
-        castSelfBuffSpell(hand, currentSpell);
-        return;
-      }
-
-      if (currentSpell === 'jumpboost') {
+      if (isPlayerReleaseSelfBuffSpell(currentSpell)) {
         castSelfBuffSpell(hand, currentSpell);
         return;
       }
@@ -1088,8 +1077,8 @@ export function PlayerController() {
     });
     return () => {
       stopAllCasting();
-      for (let handIndex = 0; handIndex < PLAYER_HANDS.length; handIndex += 1) {
-        const hand = PLAYER_HANDS[handIndex];
+      for (let handIndex = 0; handIndex < PLAYER_CASTING_HANDS.length; handIndex += 1) {
+        const hand = PLAYER_CASTING_HANDS[handIndex];
         if (grabTimeouts.current[hand] !== null) {
           window.clearTimeout(grabTimeouts.current[hand]!);
           grabTimeouts.current[hand] = null;
@@ -1235,11 +1224,10 @@ export function PlayerController() {
       if (isSliding) setIsSliding(false);
       if (isCrouching) setIsCrouching(false);
       crouchHoldStartedAt.current = null;
-      for (let handIndex = 0; handIndex < PLAYER_HANDS.length; handIndex += 1) {
-        const hand = PLAYER_HANDS[handIndex];
+      for (let handIndex = 0; handIndex < PLAYER_CASTING_HANDS.length; handIndex += 1) {
+        const hand = PLAYER_CASTING_HANDS[handIndex];
         if (activeCastingHands.current[hand] || storeState.chargingHands[hand]) {
-          activeCastingHands.current[hand] = false;
-          useGameStore.getState().setHandCharging(hand, false);
+          clearPlayerCastingHandState(activeCastingHands, hand, useGameStore.getState().setHandCharging);
         }
         flamethrowerTimers.current[hand] = 0;
       }
@@ -2747,16 +2735,14 @@ export function PlayerController() {
 
     const chargingHands = storeState.chargingHands;
 
-    for (let handIndex = 0; handIndex < PLAYER_HANDS.length; handIndex += 1) {
-      const hand = PLAYER_HANDS[handIndex];
-      const handSpell = hand === 'right' ? storeState.rightCurrentSpell : storeState.leftCurrentSpell;
-      const runePower = hand === 'right' ? storeState.rightRunePower : storeState.leftRunePower;
-      const runeReady = hasRunePower(runePower);
+    for (let handIndex = 0; handIndex < PLAYER_CASTING_HANDS.length; handIndex += 1) {
+      const hand = PLAYER_CASTING_HANDS[handIndex];
+      const handSpell = getPlayerSpellForHand(storeState, hand);
+      const runeReady = hasPlayerRunePowerForHand(storeState, hand);
 
       if (!storeState.isMagicArmed) {
         if (chargingHands[hand] || activeCastingHands.current[hand]) {
-          activeCastingHands.current[hand] = false;
-          useGameStore.getState().setHandCharging(hand, false);
+          clearPlayerCastingHandState(activeCastingHands, hand, useGameStore.getState().setHandCharging);
         }
         flamethrowerTimers.current[hand] = 0;
         continue;
@@ -2764,8 +2750,7 @@ export function PlayerController() {
 
       if (!runeReady) {
         if (chargingHands[hand]) {
-          activeCastingHands.current[hand] = false;
-          useGameStore.getState().setHandCharging(hand, false);
+          clearPlayerCastingHandState(activeCastingHands, hand, useGameStore.getState().setHandCharging);
         }
         flamethrowerTimers.current[hand] = 0;
         continue;
@@ -2814,11 +2799,10 @@ export function PlayerController() {
       if (isSliding) setIsSliding(false);
       if (isCrouching) setIsCrouching(false);
       crouchHoldStartedAt.current = null;
-      for (let handIndex = 0; handIndex < PLAYER_HANDS.length; handIndex += 1) {
-        const hand = PLAYER_HANDS[handIndex];
+      for (let handIndex = 0; handIndex < PLAYER_CASTING_HANDS.length; handIndex += 1) {
+        const hand = PLAYER_CASTING_HANDS[handIndex];
         if (activeCastingHands.current[hand] || storeState.chargingHands[hand]) {
-          activeCastingHands.current[hand] = false;
-          useGameStore.getState().setHandCharging(hand, false);
+          clearPlayerCastingHandState(activeCastingHands, hand, useGameStore.getState().setHandCharging);
         }
         flamethrowerTimers.current[hand] = 0;
       }
