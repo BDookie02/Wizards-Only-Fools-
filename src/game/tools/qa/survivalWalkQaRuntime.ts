@@ -442,6 +442,42 @@ export function resolveQaWalkAvoidMovement({
   };
 }
 
+export function resolveQaWalkTravelMovementFrame({
+  desiredYaw,
+  elapsedSeconds,
+  forwardClearance,
+  forwardLookAhead,
+  positionX,
+  positionZ,
+  viewClearance,
+  probeDistance = QA_SURVIVAL_WALK_PROBE_DISTANCE,
+  softLookAhead = QA_SURVIVAL_WALK_SOFT_LOOKAHEAD,
+  viewSoftClearance = QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
+}: {
+  desiredYaw: number;
+  elapsedSeconds: number;
+  forwardClearance: number;
+  forwardLookAhead: number;
+  positionX: number;
+  positionZ: number;
+  viewClearance: number;
+  probeDistance?: number;
+  softLookAhead?: number;
+  viewSoftClearance?: number;
+}) {
+  return {
+    forwardAmount: 0.58 + Math.sin(elapsedSeconds * 0.47 + positionZ * 0.001) * 0.12,
+    sprint: forwardClearance > probeDistance * 0.68 &&
+      forwardLookAhead > softLookAhead &&
+      viewClearance > viewSoftClearance * 0.72 &&
+      Math.sin(elapsedSeconds * 0.29 + positionX * 0.0017) > -0.18,
+    strafeAmount: Math.sin(elapsedSeconds * 0.62 + positionX * 0.003 + positionZ * 0.002) * 0.16,
+    targetYaw: desiredYaw
+      + Math.sin(elapsedSeconds * 0.43 + positionX * 0.002) * 0.14
+      + Math.sin(elapsedSeconds * 0.91 + positionZ * 0.0014) * 0.05,
+  };
+}
+
 export function resolveQaWalkLookInputFrame({
   currentYaw,
   deltaSeconds,

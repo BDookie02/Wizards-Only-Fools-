@@ -123,6 +123,7 @@ import {
   resolveQaWalkTelemetryMovement,
   resolveQaWalkRouteSteeringState,
   resolveQaWalkRouteWaypoint,
+  resolveQaWalkTravelMovementFrame,
   useQaSurvivalWalkRuntimeState,
 } from "./tools/qa/survivalWalkQaRuntime";
 import {
@@ -2050,17 +2051,21 @@ export function PlayerController() {
       qaWalkRouteBlockedSince.current = routeSteering.routeBlockedSince;
       const routeHardBlocked = routeSteering.routeHardBlocked;
       const routeBlockDwelled = routeSteering.routeBlockDwelled;
+      const travelMovementFrame = resolveQaWalkTravelMovementFrame({
+        desiredYaw,
+        elapsedSeconds: elapsed,
+        forwardClearance,
+        forwardLookAhead,
+        positionX: pos.x,
+        positionZ: pos.z,
+        viewClearance,
+      });
       let mode: QaSurvivalWalkMode = qaRouteActive ? "route" : "travel";
-      let targetYaw = desiredYaw
-        + Math.sin(elapsed * 0.43 + pos.x * 0.002) * 0.14
-        + Math.sin(elapsed * 0.91 + pos.z * 0.0014) * 0.05;
-      let forwardAmount = 0.58 + Math.sin(elapsed * 0.47 + pos.z * 0.001) * 0.12;
-      let strafeAmount = Math.sin(elapsed * 0.62 + pos.x * 0.003 + pos.z * 0.002) * 0.16;
+      let targetYaw = travelMovementFrame.targetYaw;
+      let forwardAmount = travelMovementFrame.forwardAmount;
+      let strafeAmount = travelMovementFrame.strafeAmount;
       let recoveryReason = "";
-      let sprint = forwardClearance > QA_SURVIVAL_WALK_PROBE_DISTANCE * 0.68
-        && forwardLookAhead > QA_SURVIVAL_WALK_SOFT_LOOKAHEAD
-        && viewClearance > QA_SURVIVAL_VIEW_SOFT_CLEARANCE * 0.72
-        && Math.sin(elapsed * 0.29 + pos.x * 0.0017) > -0.18;
+      let sprint = travelMovementFrame.sprint;
       if (routeSteering.route) {
         qaWalkRouteSmoothedYaw.current = routeSteering.route.smoothedYaw;
         qaWalkRouteTargetId.current = routeSteering.route.targetId;
