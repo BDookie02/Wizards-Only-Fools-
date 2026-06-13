@@ -18,6 +18,19 @@ import { getPublishedLocalPlayerPosition } from "../systems/player/playerEventBr
 import { getNetworkPlayerIdsKey, hasRemoteNetworkPlayerId, visitNetworkPlayerIdsKey } from "./gameNetworkClient";
 import { readCurrentVoiceChatRouteFlags } from "./voiceChatRouteFlags";
 import { useLazyRef } from "../systems/react/useLazyRef";
+import {
+  getVoiceAnalyzerIntervalMs,
+  getVoiceProximityVolume,
+  serializeVoiceDescription,
+  setVoiceMediaStreamAudioTracksEnabled,
+  stopVoiceMediaStreamTracks,
+  VOICE_DEBUG_PEER_SUMMARY_REFRESH_MS,
+  VOICE_SOUNDBOARD_BLIP_MS,
+  VOICE_SOUNDBOARD_BLIP_NOTES,
+  VOICE_SPEAKING_HANG_MS,
+  VOICE_SPEAKING_THRESHOLD,
+  VOICE_PROXIMITY_VOLUME_REFRESH_MS,
+} from "./voiceChatRuntime";
 
 type VoiceDescriptionSignal = {
   fromId: string;
@@ -48,35 +61,6 @@ const ICE_CONFIGURATION: RTCConfiguration = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
 };
 
-const SPEAKING_THRESHOLD = 0.026;
-const SPEAKING_HANG_MS = 180;
-const VOICE_ANALYZER_INTERVAL_MS = 1000 / 30;
-const MOBILE_VOICE_ANALYZER_INTERVAL_MS = 1000 / 15;
-const VOLUME_REFRESH_MS = 120;
-const SOUNDBOARD_BLIP_MS = 950;
-const DEBUG_PEER_SUMMARY_REFRESH_MS = 250;
-const SOUNDBOARD_BLIP_NOTES: readonly { frequency: number; offset: number; duration: number }[] = [
-  { frequency: 392, offset: 0, duration: 0.16 },
-  { frequency: 523.25, offset: 0.18, duration: 0.18 },
-  { frequency: 659.25, offset: 0.39, duration: 0.2 },
-];
-
-function stopMediaStreamTracks(stream: MediaStream | null | undefined) {
-  if (!stream) return;
-  const tracks = stream.getTracks();
-  for (let index = 0; index < tracks.length; index += 1) {
-    tracks[index].stop();
-  }
-}
-
-function setMediaStreamAudioTracksEnabled(stream: MediaStream | null | undefined, enabled: boolean) {
-  if (!stream) return;
-  const tracks = stream.getAudioTracks();
-  for (let index = 0; index < tracks.length; index += 1) {
-    tracks[index].enabled = enabled;
-  }
-}
-
 function createSoundboardTestStream(): VoiceSource {
   const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
   if (!AudioContextCtor) {
@@ -99,8 +83,8 @@ function createSoundboardTestStream(): VoiceSource {
     resume();
     const now = context.currentTime;
 
-    for (let index = 0; index < SOUNDBOARD_BLIP_NOTES.length; index += 1) {
-      const { frequency, offset, duration } = SOUNDBOARD_BLIP_NOTES[index];
+    for (let index = 0; index < VOICE_SOUNDBOARD_BLIP_NOTES.length; index += 1) {
+      const { frequency, offset, duration } = VOICE_SOUNDBOARD_BLIP_NOTES[index];
       const oscillator = context.createOscillator();
       const noteGain = context.createGain();
       const start = now + offset + 0.02;
@@ -125,7 +109,7 @@ function createSoundboardTestStream(): VoiceSource {
       if (cancelled) return;
       playSoundboardBlip();
       scheduleSoundboardBlip();
-    }, SOUNDBOARD_BLIP_MS);
+    }, VOICE_SOUNDBOARD_BLIP_MS);
   };
 
   window.addEventListener("pointerdown", resume, { passive: true });
@@ -142,15 +126,10 @@ function createSoundboardTestStream(): VoiceSource {
       if (blipTimeout !== null) window.clearTimeout(blipTimeout);
       window.removeEventListener("pointerdown", resume);
       window.removeEventListener("keydown", resume);
-      stopMediaStreamTracks(destination.stream);
+      stopVoiceMediaStreamTracks(destination.stream);
       void context.close().catch(() => {});
     },
   };
-}
-
-function serializeDescription(description: RTCSessionDescription | null): RTCSessionDescriptionInit | null {
-  if (!description) return null;
-  return { type: description.type, sdp: description.sdp };
 }
 
 function getLocalPlayerPosition() {
@@ -216,7 +195,7 @@ export function VoiceChat() {
     );
 
     transmittingRef.current = transmitting;
-    setMediaStreamAudioTracksEnabled(localStreamRef.current, transmitting);
+    setVoiceMediaStreamAudioTracksEnabled(localStreamRef.current, transmitting);
 
     if (!transmitting) {
       setSpeaking(false);
@@ -342,7 +321,7 @@ export function VoiceChat() {
         if (cancelled) return;
         refreshDebugPeerSummary();
         scheduleDebugPeerSummary();
-      }, DEBUG_PEER_SUMMARY_REFRESH_MS);
+      }, VOICE_DEBUG_PEER_SUMMARY_REFRESH_MS);
     };
 
     refreshDebugPeerSummary();
@@ -368,7 +347,7 @@ export function VoiceChat() {
     attachLocalTracks(peer.pc);
     const offer = await peer.pc.createOffer({ offerToReceiveAudio: true });
     await peer.pc.setLocalDescription(offer);
-    const sdp = serializeDescription(peer.pc.localDescription);
+    const sdp = serializeVoiceDescription(peer.pc.localDescription);
     if (sdp) {
       socket.emit("voiceOffer", { targetId: peerId, sdp });
     }
@@ -451,7 +430,7 @@ export function VoiceChat() {
       sourceCleanup = null;
       void audioContext?.close().catch(() => {});
       audioContext = null;
-      stopMediaStreamTracks(localStreamRef.current);
+      stopVoiceMediaStreamTracks(localStreamRef.current);
       localStreamRef.current = null;
       setStreamVersion(version => version + 1);
       closeAllPeers();
@@ -494,14 +473,14 @@ export function VoiceChat() {
     sourcePromise.then((source) => {
       if (disposed) {
         source.cleanup();
-        stopMediaStreamTracks(source.stream);
+        stopVoiceMediaStreamTracks(source.stream);
         return;
       }
 
       sourceCleanup = source.cleanup;
       voiceSourceLabelRef.current = source.label;
       localStreamRef.current = source.stream;
-      setMediaStreamAudioTracksEnabled(source.stream, false);
+      setVoiceMediaStreamAudioTracksEnabled(source.stream, false);
       setStreamVersion(version => version + 1);
       refreshTransmitState();
       setVoiceStatus(`${source.label} ready`);
@@ -518,9 +497,7 @@ export function VoiceChat() {
       const samples = new Uint8Array(analyser.fftSize);
       let lastSoundAt = 0;
       let lastAnalyzeAt = 0;
-      const analyzeInterval = isMobilePerformanceMode()
-        ? MOBILE_VOICE_ANALYZER_INTERVAL_MS
-        : VOICE_ANALYZER_INTERVAL_MS;
+      const analyzeInterval = getVoiceAnalyzerIntervalMs(isMobilePerformanceMode());
 
       const analyze = (now: number) => {
         if (now - lastAnalyzeAt < analyzeInterval) {
@@ -537,10 +514,10 @@ export function VoiceChat() {
         }
 
         const rms = Math.sqrt(sum / samples.length);
-        if (transmittingRef.current && rms > SPEAKING_THRESHOLD) {
+        if (transmittingRef.current && rms > VOICE_SPEAKING_THRESHOLD) {
           lastSoundAt = now;
         }
-        setSpeaking(transmittingRef.current && now - lastSoundAt < SPEAKING_HANG_MS);
+        setSpeaking(transmittingRef.current && now - lastSoundAt < VOICE_SPEAKING_HANG_MS);
         analyzerFrame = window.requestAnimationFrame(analyze);
       };
 
@@ -576,7 +553,7 @@ export function VoiceChat() {
 
       const answer = await peer.pc.createAnswer();
       await peer.pc.setLocalDescription(answer);
-      const response = serializeDescription(peer.pc.localDescription);
+      const response = serializeVoiceDescription(peer.pc.localDescription);
       if (response) {
         socket.emit("voiceAnswer", { targetId: fromId, sdp: response });
       }
@@ -654,8 +631,7 @@ export function VoiceChat() {
       const localPos = getLocalPlayerPosition();
       const state = useGameStore.getState();
       const outputVolume = state.voiceOutputVolume ?? DEFAULT_VOICE_OUTPUT_VOLUME;
-      const range = Math.max(1, state.voiceProximityRange ?? DEFAULT_VOICE_PROXIMITY_RANGE);
-      const rangeSq = range * range;
+      const range = state.voiceProximityRange ?? DEFAULT_VOICE_PROXIMITY_RANGE;
 
       for (const peerId in peersRef.current) {
         if (!Object.prototype.hasOwnProperty.call(peersRef.current, peerId)) continue;
@@ -670,13 +646,7 @@ export function VoiceChat() {
         const dy = remote.pos[1] - localPos.y;
         const dz = remote.pos[2] - localPos.z;
         const distanceSq = dx * dx + dy * dy + dz * dz;
-        if (distanceSq >= rangeSq) {
-          peer.audio.volume = 0;
-          continue;
-        }
-
-        const proximity = 1 - Math.sqrt(distanceSq) / range;
-        peer.audio.volume = Math.max(0, Math.min(1, outputVolume * proximity * proximity));
+        peer.audio.volume = getVoiceProximityVolume({ distanceSq, outputVolume, range });
       }
     };
 
@@ -685,7 +655,7 @@ export function VoiceChat() {
         if (cancelled) return;
         refreshVoiceProximityVolume();
         scheduleVoiceProximityVolume();
-      }, VOLUME_REFRESH_MS);
+      }, VOICE_PROXIMITY_VOLUME_REFRESH_MS);
     };
 
     scheduleVoiceProximityVolume();
@@ -698,7 +668,7 @@ export function VoiceChat() {
   useEffect(() => {
     return () => {
       closeAllPeers();
-      stopMediaStreamTracks(localStreamRef.current);
+      stopVoiceMediaStreamTracks(localStreamRef.current);
       setSpeaking(false);
     };
   }, []);
