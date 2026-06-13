@@ -172,7 +172,10 @@ import {
 } from "./network/inviteRoom";
 import { useHudTouchGameplayRuntime } from "./ui/hud/useHudTouchGameplayRuntime";
 import { setHudMapSuppressedByToolOverlay } from "./ui/hud/hudMapSuppressionRuntime";
-import { getDecayedRunePower, RUNE_POWER_DECAY_INTERVAL_MS } from "./systems/spells/manaRechargeRuntime";
+import {
+  installHudRunePowerDecayLoop,
+  shouldRunHudRunePowerDecay,
+} from "./ui/hud/hudRunePowerDecayRuntime";
 
 let hudCommandConsoleModulePromise: Promise<typeof import("./ui/hud/hudCommandConsole")> | null = null;
 
@@ -807,28 +810,20 @@ export function HUD() {
   }, [controllerGameplayActive, isCommandConsoleOpen, isGameLaunched, isInventoryOpen, isLocked, isPauseMenuVisible, isReturningToGame, isSpellMenuOpen, openPauseMenuFromGameplay, questDialogSession, questNpcEditorTarget, setPauseMenuOpen, showVideoMenu, startMenuStage, touchGameplayActive]);
 
   useEffect(() => {
-    if (!isLocked && !touchGameplayActive && !controllerGameplayActive) return;
-    if (!hasRunePowerToDecay) return;
+    if (!shouldRunHudRunePowerDecay({
+      controllerGameplayActive,
+      hasRunePowerToDecay,
+      isLocked,
+      touchGameplayActive,
+    })) return;
 
-    let cancelled = false;
-    let decayTimeout: number | null = null;
-
-    const decayRunePower = () => {
-      if (cancelled) return;
-      const state = useGameStore.getState();
-      const decay = getDecayedRunePower(state);
-      if (decay) {
-        if (decay.leftChanged) setLeftRunePower(decay.leftRunePower);
-        if (decay.rightChanged) setRightRunePower(decay.rightRunePower);
-      }
-      decayTimeout = window.setTimeout(decayRunePower, RUNE_POWER_DECAY_INTERVAL_MS);
-    };
-
-    decayTimeout = window.setTimeout(decayRunePower, RUNE_POWER_DECAY_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      if (decayTimeout !== null) window.clearTimeout(decayTimeout);
-    };
+    return installHudRunePowerDecayLoop({
+      getState: useGameStore.getState,
+      setLeftRunePower,
+      setRightRunePower,
+      setTimer: (callback, delayMs) => window.setTimeout(callback, delayMs),
+      clearTimer: (timerId) => window.clearTimeout(timerId),
+    });
   }, [
     controllerGameplayActive,
     hasRunePowerToDecay,
