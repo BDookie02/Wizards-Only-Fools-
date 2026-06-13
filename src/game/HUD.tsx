@@ -156,6 +156,7 @@ import {
   getHudControllerBlockedSurfaceAction,
   getHudControllerDevFastTravelAction,
   getHudControllerDevFastTravelOpenAction,
+  getHudControllerGameplayActivationAction,
   getHudControllerGameplayStartAction,
   getHudControllerInventoryPanelAction,
   getHudControllerOverlayScrollAction,
@@ -2437,22 +2438,29 @@ export function HUD() {
       }
       markHudControllerGamepadSeen(controllerLastSeenAtRef, now);
 
-      if (isGameLaunched && localPlayerName && hasGamepadInput(gamepad, 0.26)) {
+      const hasActiveControllerInput = hasGamepadInput(gamepad, 0.26);
+      if (hasActiveControllerInput) {
         const inputState = useGameStore.getState();
-        if (
-          inputState.isTouchControlsActive ||
-          !inputState.isControllerGameplayActive ||
-          lastGameplayInputModeRef.current !== "controller"
-        ) {
+        const gameplayActivationAction = getHudControllerGameplayActivationAction({
+          isGameLaunched,
+          hasLocalPlayerName: Boolean(localPlayerName),
+          hasActiveGamepadInput: hasActiveControllerInput,
+          isTouchControlsActive: inputState.isTouchControlsActive,
+          isControllerGameplayActive: inputState.isControllerGameplayActive,
+          lastGameplayInputMode: lastGameplayInputModeRef.current,
+        });
+        if (gameplayActivationAction.type === "activate") {
           setHudMouseGameplayActive(false);
           setMouseLookFallbackActive(false);
-          if (inputState.isTouchControlsActive) {
+          if (gameplayActivationAction.releaseTouchControls) {
             setTouchControlsActive(false);
             releaseMobileGameplayInputs();
           }
-          lastGameplayInputModeRef.current = "controller";
-          if (!inputState.isControllerGameplayActive) {
+          lastGameplayInputModeRef.current = gameplayActivationAction.nextInputMode;
+          if (gameplayActivationAction.setControllerGameplayActive) {
             setControllerGameplayActive(true);
+          }
+          if (gameplayActivationAction.dispatchControllerGameplayStarted) {
             window.dispatchEvent(new Event("controller-gameplay-started"));
           }
         }

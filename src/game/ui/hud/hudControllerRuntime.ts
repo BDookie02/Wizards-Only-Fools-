@@ -332,6 +332,25 @@ export type HudControllerMissingGamepadActionOptions = {
   disconnectPauseMs?: number;
 };
 
+export type HudControllerGameplayActivationAction =
+  | { type: "none" }
+  | {
+      type: "activate";
+      releaseTouchControls: boolean;
+      setControllerGameplayActive: boolean;
+      dispatchControllerGameplayStarted: boolean;
+      nextInputMode: "controller";
+    };
+
+export type HudControllerGameplayActivationActionOptions = {
+  isGameLaunched: boolean;
+  hasLocalPlayerName: boolean;
+  hasActiveGamepadInput: boolean;
+  isTouchControlsActive: boolean;
+  isControllerGameplayActive: boolean;
+  lastGameplayInputMode: string;
+};
+
 const HUD_CONTROLLER_MENU_AXIS_THRESHOLD = 0.6;
 const HUD_CONTROLLER_DEV_FAST_TRAVEL_NAVIGATION_DELAY_MS = 220;
 const HUD_CONTROLLER_OVERLAY_SCROLL_THRESHOLD = 0.05;
@@ -898,6 +917,36 @@ export function updateHudControllerMissingGamepadAction({
 
 export function markHudControllerGamepadSeen(controllerLastSeenAtRef: HudControllerLastSeenRef, now: number) {
   controllerLastSeenAtRef.current = now;
+}
+
+export function getHudControllerGameplayActivationAction({
+  isGameLaunched,
+  hasLocalPlayerName,
+  hasActiveGamepadInput,
+  isTouchControlsActive,
+  isControllerGameplayActive,
+  lastGameplayInputMode,
+}: HudControllerGameplayActivationActionOptions): HudControllerGameplayActivationAction {
+  if (!isGameLaunched || !hasLocalPlayerName || !hasActiveGamepadInput) {
+    return { type: "none" };
+  }
+
+  if (
+    !isTouchControlsActive &&
+    isControllerGameplayActive &&
+    lastGameplayInputMode === "controller"
+  ) {
+    return { type: "none" };
+  }
+
+  const setControllerGameplayActive = !isControllerGameplayActive;
+  return {
+    type: "activate",
+    releaseTouchControls: isTouchControlsActive,
+    setControllerGameplayActive,
+    dispatchControllerGameplayStarted: setControllerGameplayActive,
+    nextInputMode: "controller",
+  };
 }
 
 export function updateHudControllerInventoryHold({
