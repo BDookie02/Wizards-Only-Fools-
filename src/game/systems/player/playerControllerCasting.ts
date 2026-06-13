@@ -7,6 +7,11 @@ import {
   isGamepadButtonPressed,
   type GamepadButtonName,
 } from "../input/controllerInput";
+import {
+  handlePlayerControllerCastButtonForHand,
+  resetPlayerControllerHotbarTracking,
+  resolvePlayerControllerHotbarActions,
+} from "./playerControllerCastingRuntime";
 
 export type PlayerControllerCastingLoopOptions = {
   canUseGameplayInput: () => boolean;
@@ -14,36 +19,6 @@ export type PlayerControllerCastingLoopOptions = {
   startHandCast: (hand: HandType) => void;
   releaseHandCast: (hand: HandType) => void;
 };
-
-function updateControllerCastButtonForHand(
-  hand: HandType,
-  pressed: boolean,
-  interactionHandled: boolean,
-  magicArmed: boolean,
-  controllerCastingDown: Record<HandType, boolean>,
-  requestQuestVillagerInteraction: () => boolean,
-  startHandCast: (hand: HandType) => void,
-  releaseHandCast: (hand: HandType) => void,
-) {
-  if (interactionHandled) {
-    controllerCastingDown[hand] = pressed;
-    return true;
-  }
-
-  if (pressed && !controllerCastingDown[hand] && requestQuestVillagerInteraction()) {
-    controllerCastingDown[hand] = true;
-    return true;
-  }
-
-  const shouldCast = magicArmed && pressed;
-  if (shouldCast && !controllerCastingDown[hand]) {
-    startHandCast(hand);
-  } else if (!shouldCast && controllerCastingDown[hand]) {
-    releaseHandCast(hand);
-  }
-  controllerCastingDown[hand] = pressed;
-  return false;
-}
 
 export function startPlayerControllerCastingLoop({
   canUseGameplayInput,
@@ -56,40 +31,6 @@ export function startPlayerControllerCastingLoop({
   const controllerCastingDown: Record<HandType, boolean> = { left: false, right: false };
   const controllerHotbarDown: Record<string, boolean> = {};
   const controllerHotbarRepeatAt: Record<string, number> = {};
-
-  const consumeHotbarPress = (key: string, pressed: boolean) => {
-    const wasPressed = controllerHotbarDown[key] ?? false;
-    controllerHotbarDown[key] = pressed;
-    return pressed && !wasPressed;
-  };
-
-  const consumeHotbarRepeat = (
-    key: string,
-    pressed: boolean,
-    now: number,
-    firstDelay = 300,
-    repeatDelay = 150,
-  ) => {
-    const wasPressed = controllerHotbarDown[key] ?? false;
-    controllerHotbarDown[key] = pressed;
-
-    if (!pressed) {
-      delete controllerHotbarRepeatAt[key];
-      return false;
-    }
-
-    if (!wasPressed) {
-      controllerHotbarRepeatAt[key] = now + firstDelay;
-      return false;
-    }
-
-    if (now >= (controllerHotbarRepeatAt[key] ?? 0)) {
-      controllerHotbarRepeatAt[key] = now + repeatDelay;
-      return true;
-    }
-
-    return false;
-  };
 
   const scrollControllerHand = (hand: HandType, direction: 1 | -1) => {
     const store = useGameStore.getState();
@@ -111,7 +52,7 @@ export function startPlayerControllerCastingLoop({
     const leftCastPressed = canUseCastButtons && isGamepadButtonPressed(gamepad, store.controllerBindings.leftCast as GamepadButtonName);
     const rightCastPressed = canUseCastButtons && isGamepadButtonPressed(gamepad, store.controllerBindings.rightCast as GamepadButtonName);
     let castButtonInteractionHandled = false;
-    castButtonInteractionHandled = updateControllerCastButtonForHand(
+    castButtonInteractionHandled = handlePlayerControllerCastButtonForHand(
       "left",
       leftCastPressed,
       castButtonInteractionHandled,
@@ -121,7 +62,7 @@ export function startPlayerControllerCastingLoop({
       startHandCast,
       releaseHandCast,
     );
-    updateControllerCastButtonForHand(
+    handlePlayerControllerCastButtonForHand(
       "right",
       rightCastPressed,
       castButtonInteractionHandled,
@@ -137,37 +78,21 @@ export function startPlayerControllerCastingLoop({
       const rightBumperHeld = isGamepadButtonPressed(gamepad, store.controllerBindings.rightHotbar as GamepadButtonName);
       const dpadLeft = isGamepadButtonPressed(gamepad, "dpadLeft");
       const dpadRight = isGamepadButtonPressed(gamepad, "dpadRight");
-      const leftBumperPressed = consumeHotbarPress("leftBumperHotbar", leftBumperHeld);
-      const rightBumperPressed = consumeHotbarPress("rightBumperHotbar", rightBumperHeld);
-      const leftHotbarPrevPressed = consumeHotbarRepeat("leftHotbarPrev", leftBumperHeld && dpadLeft, now);
-      const leftHotbarNextPressed = consumeHotbarRepeat("leftHotbarNext", leftBumperHeld && dpadRight, now);
-      const rightHotbarPrevPressed = consumeHotbarRepeat("rightHotbarPrev", rightBumperHeld && dpadLeft, now);
-      const rightHotbarNextPressed = consumeHotbarRepeat("rightHotbarNext", rightBumperHeld && dpadRight, now);
 
-      if (leftBumperPressed) {
-        scrollControllerHand("left", dpadLeft ? -1 : 1);
-      } else if (leftHotbarPrevPressed) {
-        scrollControllerHand("left", -1);
-      } else if (leftHotbarNextPressed) {
-        scrollControllerHand("left", 1);
-      }
-
-      if (rightBumperPressed) {
-        scrollControllerHand("right", dpadLeft ? -1 : 1);
-      } else if (rightHotbarPrevPressed) {
-        scrollControllerHand("right", -1);
-      } else if (rightHotbarNextPressed) {
-        scrollControllerHand("right", 1);
+      const hotbarActions = resolvePlayerControllerHotbarActions({
+        buttonDown: controllerHotbarDown,
+        repeatAt: controllerHotbarRepeatAt,
+        now,
+        leftBumperHeld,
+        rightBumperHeld,
+        dpadLeft,
+        dpadRight,
+      });
+      for (const action of hotbarActions) {
+        scrollControllerHand(action.hand, action.direction);
       }
     } else {
-      for (const key in controllerHotbarDown) {
-        if (!Object.prototype.hasOwnProperty.call(controllerHotbarDown, key)) continue;
-        controllerHotbarDown[key] = false;
-      }
-      for (const key in controllerHotbarRepeatAt) {
-        if (!Object.prototype.hasOwnProperty.call(controllerHotbarRepeatAt, key)) continue;
-        delete controllerHotbarRepeatAt[key];
-      }
+      resetPlayerControllerHotbarTracking(controllerHotbarDown, controllerHotbarRepeatAt);
     }
 
     controllerCastingScheduler.schedule(gamepad ? 0 : GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS);
