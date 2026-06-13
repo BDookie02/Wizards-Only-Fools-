@@ -33,8 +33,6 @@ import {
   QA_SURVIVAL_OVERHEAD_PROBE_DISTANCE,
   QA_SURVIVAL_OVERHEAD_SOFT_CLEARANCE,
   QA_SURVIVAL_PRACTICE_CAST_MIN_INTERVAL,
-  QA_SURVIVAL_RECOVERY_MAX_SECONDS,
-  QA_SURVIVAL_RECOVERY_MIN_SECONDS,
   QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
   QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
   QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
@@ -97,6 +95,7 @@ import {
   resolveQaWalkRecoveryMovementFrame,
   resolveQaWalkRecoveryJumpHoldUntil,
   resolveQaWalkRecoveryRescuePlan,
+  resolveQaWalkRecoveryStartPlan,
   resolveQaWalkTelemetryAbnormality,
   resolveQaWalkTelemetryMovement,
   resolveQaWalkRouteSteeringState,
@@ -1703,23 +1702,23 @@ export function PlayerController() {
         const baseYaw = qaWalkYaw.current ?? currentYaw;
         const preferYaw = Math.atan2(qaWalkWaypoint.current.x - pos.x, -(qaWalkWaypoint.current.z - pos.z));
         const escape = findEscapeYaw(baseYaw, preferYaw);
-        const durationNoise = survivalishTurnNoise(pos.x + 31, pos.z - 83, elapsed + qaWalkStuckStrikes.current * 1.7);
-        const strikeBonus = Math.min(qaWalkStuckStrikes.current, 4) * 0.22;
-        qaWalkRecoveryStartedAt.current = elapsed;
+        const recoveryStartPlan = resolveQaWalkRecoveryStartPlan({
+          elapsedSeconds: elapsed,
+          escapeLeftClearance: escape.left,
+          escapeRightClearance: escape.right,
+          escapeYaw: escape.yaw,
+          positionX: pos.x,
+          positionZ: pos.z,
+          stuckStrikes: qaWalkStuckStrikes.current,
+        });
+        qaWalkRecoveryStartedAt.current = recoveryStartPlan.recoveryStartedAt;
         qaWalkRecoveryStartPos.current.set(pos.x, pos.y, pos.z);
-        qaWalkRecoveryUntil.current = elapsed + randomRangeFromNoise(
-          durationNoise,
-          QA_SURVIVAL_RECOVERY_MIN_SECONDS + strikeBonus,
-          QA_SURVIVAL_RECOVERY_MAX_SECONDS + strikeBonus,
-        );
-        qaWalkRecoveryYaw.current = escape.yaw;
-        const strafe = THREE.MathUtils.clamp((escape.right - escape.left) * 0.12, -0.72, 0.72);
-        qaWalkRecoveryStrafe.current = Math.abs(strafe) > 0.12
-          ? strafe
-          : (survivalishTurnNoise(pos.x - 7, pos.z + 19, elapsed) > 0.5 ? 0.46 : -0.46);
+        qaWalkRecoveryUntil.current = recoveryStartPlan.recoveryUntil;
+        qaWalkRecoveryYaw.current = recoveryStartPlan.recoveryYaw;
+        qaWalkRecoveryStrafe.current = recoveryStartPlan.recoveryStrafe;
         qaWalkInspectUntil.current = 0;
         qaWalkLastDecisionAt.current = elapsed;
-        qaWalkNextDecisionAt.current = elapsed + randomRangeFromNoise(durationNoise, 1.15, 2.35);
+        qaWalkNextDecisionAt.current = recoveryStartPlan.nextDecisionAt;
       };
 
       const measuredForwardClearance = probeClearance(qaWalkYaw.current, QA_SURVIVAL_WALK_PROBE_DISTANCE);

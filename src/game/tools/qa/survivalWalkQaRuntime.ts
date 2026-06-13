@@ -57,6 +57,7 @@ import {
   QA_SURVIVAL_LOOK_TURN_RATE,
   QA_SURVIVAL_RECOVERY_CLEAR_EXIT_DISTANCE,
   QA_SURVIVAL_RECOVERY_CLEAR_EXIT_SECONDS,
+  QA_SURVIVAL_RECOVERY_MAX_SECONDS,
   QA_SURVIVAL_RECOVERY_MIN_ESCAPE_DISTANCE,
   QA_SURVIVAL_RECOVERY_MIN_SECONDS,
   QA_SURVIVAL_RECOVERY_NUDGE_DISTANCE,
@@ -1818,6 +1819,47 @@ export function resolveQaWalkRecoveryMovementFrame({
     strafeAmount,
     stuckStrikes: nextStuckStrikes,
     targetYaw: nextTargetYaw,
+  };
+}
+
+export function resolveQaWalkRecoveryStartPlan({
+  elapsedSeconds,
+  escapeLeftClearance,
+  escapeRightClearance,
+  escapeYaw,
+  positionX,
+  positionZ,
+  stuckStrikes,
+  maxRecoverySeconds = QA_SURVIVAL_RECOVERY_MAX_SECONDS,
+  minRecoverySeconds = QA_SURVIVAL_RECOVERY_MIN_SECONDS,
+}: {
+  elapsedSeconds: number;
+  escapeLeftClearance: number;
+  escapeRightClearance: number;
+  escapeYaw: number;
+  positionX: number;
+  positionZ: number;
+  stuckStrikes: number;
+  maxRecoverySeconds?: number;
+  minRecoverySeconds?: number;
+}) {
+  const durationNoise = survivalishTurnNoise(positionX + 31, positionZ - 83, elapsedSeconds + stuckStrikes * 1.7);
+  const strikeBonus = Math.min(stuckStrikes, 4) * 0.22;
+  const strafe = clampNumber((escapeRightClearance - escapeLeftClearance) * 0.12, -0.72, 0.72);
+  const recoveryStrafe = Math.abs(strafe) > 0.12
+    ? strafe
+    : (survivalishTurnNoise(positionX - 7, positionZ + 19, elapsedSeconds) > 0.5 ? 0.46 : -0.46);
+
+  return {
+    nextDecisionAt: elapsedSeconds + randomRangeFromNoise(durationNoise, 1.15, 2.35),
+    recoveryStartedAt: elapsedSeconds,
+    recoveryStrafe,
+    recoveryUntil: elapsedSeconds + randomRangeFromNoise(
+      durationNoise,
+      minRecoverySeconds + strikeBonus,
+      maxRecoverySeconds + strikeBonus,
+    ),
+    recoveryYaw: escapeYaw,
   };
 }
 
