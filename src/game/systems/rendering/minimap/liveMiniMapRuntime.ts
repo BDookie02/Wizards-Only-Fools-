@@ -14,6 +14,8 @@ export type LiveMiniMapHudLayout = {
   expandedMapFrameInnerSize: number;
   expandedMapFrameOuterSize: number;
   expandedMapSize: number;
+  miniMapCompassEdge: number;
+  miniMapCompassFontSize: number;
   miniMapInset: number;
   miniMapRadius: number;
   miniMapSize: number;
@@ -115,12 +117,20 @@ export function getLiveMiniMapHudLayout(width: number, height: number): LiveMini
   const miniMapInset = isUltraShortViewport
     ? Math.max(3, Math.min(minViewportSide * 0.018, 8))
     : Math.max(8, Math.min(minViewportSide * 0.02, 16));
+  const miniMapCompassEdge = isUltraShortViewport
+    ? Math.max(2, Math.min(miniMapSize * 0.055, 4))
+    : Math.max(3, Math.min(miniMapSize * 0.055, 8));
+  const miniMapCompassFontSize = isUltraShortViewport
+    ? Math.max(6, Math.min(miniMapSize * 0.13, 8))
+    : Math.max(7, Math.min(miniMapSize * 0.1, 10));
   const expandedMapSize = Math.min(width * 0.8, height * 0.8, 800);
 
   return {
     expandedMapFrameInnerSize: expandedMapSize + 8,
     expandedMapFrameOuterSize: expandedMapSize + 16,
     expandedMapSize,
+    miniMapCompassEdge,
+    miniMapCompassFontSize,
     miniMapInset,
     miniMapRadius: miniMapSize / 2,
     miniMapSize,

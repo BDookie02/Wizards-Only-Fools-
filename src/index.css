@@ -486,14 +486,14 @@ html.wizards-touch-layout .game-frame[data-aspect-ratio="4/3"] .magic-hand-mask 
 
 .minimap-label {
   container-type: size;
-  --minimap-compass-edge: clamp(3px, 4.5cqw, 8px);
+  --minimap-compass-edge: var(--live-minimap-compass-edge, clamp(3px, 4.5cqw, 8px));
   border-radius: 9999px;
 }
 
 .minimap-compass-label {
   pointer-events: none;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(7px, 11cqw, 10px);
+  font-size: var(--live-minimap-compass-font-size, clamp(7px, 11cqw, 10px));
   font-weight: 700;
   line-height: 1;
   padding: 0 2px;

@@ -74,6 +74,8 @@ export function LiveMiniMap() {
     expandedMapFrameInnerSize,
     expandedMapFrameOuterSize,
     expandedMapSize,
+    miniMapCompassEdge,
+    miniMapCompassFontSize,
     miniMapInset,
     miniMapRadius,
     miniMapSize,
@@ -94,9 +96,11 @@ export function LiveMiniMap() {
   const shouldTrackLiveMiniMapPlayer = !mapUiBlockedByModal && !(isExpanded && expandedMapPage === "world");
 
   useEffect(() => {
+    document.documentElement.style.setProperty("--live-minimap-compass-edge", `${miniMapCompassEdge}px`);
+    document.documentElement.style.setProperty("--live-minimap-compass-font-size", `${miniMapCompassFontSize}px`);
     document.documentElement.style.setProperty("--live-minimap-size", `${miniMapSize}px`);
     document.documentElement.style.setProperty("--live-minimap-inset", `${miniMapInset}px`);
-  }, [miniMapSize, miniMapInset]);
+  }, [miniMapCompassEdge, miniMapCompassFontSize, miniMapSize, miniMapInset]);
 
   useEffect(() => {
     if (!shouldTrackLiveMiniMapPlayer) return;
