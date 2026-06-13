@@ -54,6 +54,8 @@ import {
   getNextHudSurvivalDifficultyRules,
   getNextHudSurvivalManaRateRules,
   getNextHudSurvivalMaxPlayersRules,
+  resolveHudStartMenuAction,
+  type HudStartMenuAction,
 } from "./ui/hud/hudLaunchRulesRuntime";
 import { useHudLobbyMessageCleanup } from "./ui/hud/useHudLobbyMessageCleanup";
 import { clampMenuIndex, findDirectionalMenuIndex, getHudMenuNowMs, type MenuDirection } from "./ui/hud/hudMenuNavigation";
@@ -1881,6 +1883,48 @@ export function HUD() {
     return detail.handled;
   };
 
+  const runStartMenuAction = (action: HudStartMenuAction) => {
+    switch (action.type) {
+      case "set-stage":
+        setStartMenuStage(action.stage);
+        setPauseMenuIndex(action.pauseMenuIndex);
+        return;
+      case "launch":
+        launchMode(action.mode);
+        return;
+      case "cycle-lobby-map":
+        cycleLobbyMap(1);
+        return;
+      case "adjust-lobby-max-players":
+        adjustLobbyMaxPlayers(1);
+        return;
+      case "cycle-lobby-difficulty":
+        cycleLobbyDifficulty(1);
+        return;
+      case "cycle-lobby-mana-rate":
+        cycleLobbyManaRate(1);
+        return;
+      case "toggle-lobby-friendly-fire":
+        setLobbyRules({ friendlyFire: !lobbyRules.friendlyFire });
+        return;
+      case "adjust-survival-max-players":
+        adjustSurvivalMaxPlayers(1);
+        return;
+      case "cycle-survival-difficulty":
+        cycleSurvivalDifficulty(1);
+        return;
+      case "cycle-survival-mana-rate":
+        cycleSurvivalManaRate(1);
+        return;
+      case "toggle-survival-friendly-fire":
+        setSurvivalRules({ friendlyFire: !survivalRules.friendlyFire });
+        return;
+      case "join-invite":
+        joinInviteCode();
+        return;
+    }
+  };
+
   const runPauseMenuAction = (index = pauseMenuIndex) => {
     if (showVideoMenu) {
       const selectedSettingsPane = getSettingsPaneForTabIndex(index);
@@ -1962,115 +2006,9 @@ export function HUD() {
       return;
     }
 
-    if (startMenuStage === "press-start") {
-      setStartMenuStage("mode-select");
-      setPauseMenuIndex(0);
-      return;
-    }
-
-    if (startMenuStage === "mode-select") {
-      if (index === 0) {
-        launchMode("solo-survival");
-        return;
-      }
-
-      setStartMenuStage("multiplayer-select");
-      setPauseMenuIndex(0);
-      return;
-    }
-
-    if (startMenuStage === "multiplayer-select") {
-      if (index === 0) {
-        setStartMenuStage("custom-lobby");
-        setPauseMenuIndex(0);
-        return;
-      }
-
-      if (index === 1) {
-        setStartMenuStage("survival-options");
-        setPauseMenuIndex(0);
-        return;
-      }
-
-      setStartMenuStage("mode-select");
-      setPauseMenuIndex(1);
-      return;
-    }
-
-    if (startMenuStage === "custom-lobby") {
-      if (index === 0) {
-        cycleLobbyMap(1);
-        return;
-      }
-
-      if (index === 1) {
-        adjustLobbyMaxPlayers(1);
-        return;
-      }
-
-      if (index === 2) {
-        cycleLobbyDifficulty(1);
-        return;
-      }
-
-      if (index === 3) {
-        cycleLobbyManaRate(1);
-        return;
-      }
-
-      if (index === 4) {
-        setLobbyRules({ friendlyFire: !lobbyRules.friendlyFire });
-        return;
-      }
-
-      if (index === 5) {
-        joinInviteCode();
-        return;
-      }
-
-      if (index === 6) {
-        launchMode("custom-lobby");
-        return;
-      }
-
-      setStartMenuStage("multiplayer-select");
-      setPauseMenuIndex(0);
-      return;
-    }
-
-    if (startMenuStage === "survival-options") {
-      if (index === 0) {
-        adjustSurvivalMaxPlayers(1);
-        return;
-      }
-
-      if (index === 1) {
-        cycleSurvivalDifficulty(1);
-        return;
-      }
-
-      if (index === 2) {
-        cycleSurvivalManaRate(1);
-        return;
-      }
-
-      if (index === 3) {
-        setSurvivalRules({ friendlyFire: !survivalRules.friendlyFire });
-        return;
-      }
-
-      if (index === 4) {
-        joinInviteCode();
-        return;
-      }
-
-      if (index === 5) {
-        launchMode("multiplayer-survival");
-        return;
-      }
-
-      setStartMenuStage("multiplayer-select");
-      setPauseMenuIndex(1);
+    const startMenuAction = resolveHudStartMenuAction(startMenuStage, index);
+    if (startMenuAction) {
+      runStartMenuAction(startMenuAction);
       return;
     }
 
