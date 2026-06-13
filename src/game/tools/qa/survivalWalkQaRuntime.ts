@@ -49,6 +49,16 @@ export type QaWalkProgressRecoveryAction =
   | "set-forward-waypoint"
   | "clear-stuck";
 
+export type QaWalkTelemetryAbnormality =
+  | ""
+  | "stuck-strikes"
+  | "low-overhead"
+  | "slow-input"
+  | "low-clearance"
+  | "low-view"
+  | `recovery:${string}`
+  | `position-jump:${number}`;
+
 export function resolveQaWalkRouteWaypoint({
   active,
   elapsedSeconds,
@@ -383,6 +393,111 @@ export function resolveQaWalkProgressRecovery({
     stuckStrikes,
     towardProgress,
   };
+}
+
+export function isQaWalkMovingInOpenLane({
+  forwardClearance,
+  forwardLookAhead,
+  lilyCoilTubeQaActive,
+  planarSpeedSq,
+  viewClearance,
+  lowSpeedThreshold = QA_SURVIVAL_LOW_SPEED_THRESHOLD,
+  softClearance = QA_SURVIVAL_WALK_SOFT_CLEARANCE,
+  softLookAhead = QA_SURVIVAL_WALK_SOFT_LOOKAHEAD,
+  viewSoftClearance = QA_SURVIVAL_VIEW_SOFT_CLEARANCE,
+}: {
+  forwardClearance: number;
+  forwardLookAhead: number;
+  lilyCoilTubeQaActive: boolean;
+  planarSpeedSq: number;
+  viewClearance: number;
+  lowSpeedThreshold?: number;
+  softClearance?: number;
+  softLookAhead?: number;
+  viewSoftClearance?: number;
+}) {
+  return !lilyCoilTubeQaActive &&
+    planarSpeedSq > (lowSpeedThreshold * 2.2) * (lowSpeedThreshold * 2.2) &&
+    forwardClearance > softClearance &&
+    forwardLookAhead > softLookAhead &&
+    viewClearance > viewSoftClearance * 0.82;
+}
+
+export function resolveQaWalkTelemetryMovement({
+  elapsedSeconds,
+  lastTelemetryAt,
+  lastTelemetryPosition,
+  planarSpeed,
+  position,
+}: {
+  elapsedSeconds: number;
+  lastTelemetryAt: number;
+  lastTelemetryPosition: { x: number; y: number; z: number };
+  planarSpeed: number;
+  position: { x: number; y: number; z: number };
+}) {
+  const deltaSeconds = lastTelemetryAt > 0 ? elapsedSeconds - lastTelemetryAt : 0;
+  const moveX = position.x - lastTelemetryPosition.x;
+  const moveY = position.y - lastTelemetryPosition.y;
+  const moveZ = position.z - lastTelemetryPosition.z;
+  const moveSq = deltaSeconds > 0 ? moveX * moveX + moveY * moveY + moveZ * moveZ : 0;
+  const jumpThreshold = Math.max(36, planarSpeed * Math.max(deltaSeconds, 0.016) * 3 + 18);
+  return {
+    deltaSeconds,
+    moveSq,
+    positionJumpAbnormality: deltaSeconds > 0 && moveSq > jumpThreshold * jumpThreshold,
+  };
+}
+
+export function resolveQaWalkTelemetryAbnormality({
+  expectingMovement,
+  forwardClearance,
+  lilyCoilTubeQaActive,
+  movingInOpenLane,
+  overheadClearance,
+  planarSpeedSq,
+  positionJumpAbnormality,
+  recoveryReason,
+  stuckStrikes,
+  telemetryMoveSq,
+  viewClearance,
+  blockedClearance = QA_SURVIVAL_WALK_BLOCKED_CLEARANCE,
+  lowSpeedThreshold = QA_SURVIVAL_LOW_SPEED_THRESHOLD,
+  overheadBlockedClearance = QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE,
+  viewBlockedClearance = QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE,
+}: {
+  expectingMovement: boolean;
+  forwardClearance: number;
+  lilyCoilTubeQaActive: boolean;
+  movingInOpenLane: boolean;
+  overheadClearance: number;
+  planarSpeedSq: number;
+  positionJumpAbnormality: boolean;
+  recoveryReason: string;
+  stuckStrikes: number;
+  telemetryMoveSq: number;
+  viewClearance: number;
+  blockedClearance?: number;
+  lowSpeedThreshold?: number;
+  overheadBlockedClearance?: number;
+  viewBlockedClearance?: number;
+}): QaWalkTelemetryAbnormality {
+  if (recoveryReason && recoveryReason !== "clear-exit" && recoveryReason !== "progress" && stuckStrikes >= 2) {
+    return `recovery:${recoveryReason}`;
+  }
+  if (positionJumpAbnormality) return `position-jump:${Math.round(Math.sqrt(telemetryMoveSq))}`;
+  if (stuckStrikes >= 3 && !movingInOpenLane) return "stuck-strikes";
+  if (overheadClearance < overheadBlockedClearance) return "low-overhead";
+  if (
+    !lilyCoilTubeQaActive &&
+    expectingMovement &&
+    planarSpeedSq < (lowSpeedThreshold * 0.65) * (lowSpeedThreshold * 0.65)
+  ) {
+    return "slow-input";
+  }
+  if (forwardClearance < blockedClearance) return "low-clearance";
+  if (viewClearance < viewBlockedClearance) return "low-view";
+  return "";
 }
 
 function useLazyVector3Ref(): LazyVector3Ref {

@@ -114,8 +114,11 @@ import {
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
 import {
+  isQaWalkMovingInOpenLane,
   resolveQaWalkLowSpeedRecovery,
   resolveQaWalkProgressRecovery,
+  resolveQaWalkTelemetryAbnormality,
+  resolveQaWalkTelemetryMovement,
   resolveQaWalkRouteSteeringState,
   resolveQaWalkRouteWaypoint,
   useQaSurvivalWalkRuntimeState,
@@ -2635,50 +2638,44 @@ export function PlayerController() {
         sprint,
         mode: inputMode,
       };
-      const movingInOpenLane = !lilyCoilTubeQaActive &&
-        planarSpeedSq > (QA_SURVIVAL_LOW_SPEED_THRESHOLD * 2.2) * (QA_SURVIVAL_LOW_SPEED_THRESHOLD * 2.2) &&
-        forwardClearance > QA_SURVIVAL_WALK_SOFT_CLEARANCE &&
-        forwardLookAhead > QA_SURVIVAL_WALK_SOFT_LOOKAHEAD &&
-        viewClearance > QA_SURVIVAL_VIEW_SOFT_CLEARANCE * 0.82;
+      const movingInOpenLane = isQaWalkMovingInOpenLane({
+        forwardClearance,
+        forwardLookAhead,
+        lilyCoilTubeQaActive,
+        planarSpeedSq,
+        viewClearance,
+      });
       if (movingInOpenLane && qaWalkStuckStrikes.current > 0) {
         qaWalkStuckStrikes.current = Math.max(0, qaWalkStuckStrikes.current - 2);
         if (mode === "recover") {
           qaWalkRecoveryUntil.current = Math.min(qaWalkRecoveryUntil.current, elapsed + 0.18);
         }
       }
-      const telemetryDt = qaWalkLastTelemetryAt.current > 0 ? elapsed - qaWalkLastTelemetryAt.current : 0;
-      const telemetryMoveX = pos.x - qaWalkLastTelemetryPos.current.x;
-      const telemetryMoveY = pos.y - qaWalkLastTelemetryPos.current.y;
-      const telemetryMoveZ = pos.z - qaWalkLastTelemetryPos.current.z;
-      const telemetryMoveSq = telemetryDt > 0
-        ? telemetryMoveX * telemetryMoveX + telemetryMoveY * telemetryMoveY + telemetryMoveZ * telemetryMoveZ
-        : 0;
-      const telemetryJumpThreshold = Math.max(36, planarSpeed * Math.max(telemetryDt, 0.016) * 3 + 18);
-      const positionJumpAbnormality = telemetryDt > 0 &&
-        telemetryMoveSq > telemetryJumpThreshold * telemetryJumpThreshold;
+      const telemetryMovement = resolveQaWalkTelemetryMovement({
+        elapsedSeconds: elapsed,
+        lastTelemetryAt: qaWalkLastTelemetryAt.current,
+        lastTelemetryPosition: qaWalkLastTelemetryPos.current,
+        planarSpeed,
+        position: pos,
+      });
       qaWalkLastTelemetryAt.current = elapsed;
       qaWalkLastTelemetryPos.current.set(pos.x, pos.y, pos.z);
       const activeRouteWaypoint = qaRouteActive
         ? qaRouteWaypoints[qaWalkRouteIndex.current % qaRouteWaypoints.length]
         : null;
-      const recoveryAbnormality = recoveryReason && !["clear-exit", "progress"].includes(recoveryReason) && qaWalkStuckStrikes.current >= 2
-        ? `recovery:${recoveryReason}`
-        : "";
-      const abnormality = recoveryAbnormality
-        ? recoveryAbnormality
-        : positionJumpAbnormality
-          ? `position-jump:${Math.round(Math.sqrt(telemetryMoveSq))}`
-          : qaWalkStuckStrikes.current >= 3 && !movingInOpenLane
-          ? "stuck-strikes"
-            : overheadClearance < QA_SURVIVAL_OVERHEAD_BLOCKED_CLEARANCE
-              ? "low-overhead"
-              : !lilyCoilTubeQaActive && expectingMovement && planarSpeedSq < (QA_SURVIVAL_LOW_SPEED_THRESHOLD * 0.65) * (QA_SURVIVAL_LOW_SPEED_THRESHOLD * 0.65)
-                ? "slow-input"
-                : forwardClearance < QA_SURVIVAL_WALK_BLOCKED_CLEARANCE
-                  ? "low-clearance"
-                  : viewClearance < QA_SURVIVAL_VIEW_BLOCKED_CLEARANCE
-                    ? "low-view"
-                    : "";
+      const abnormality = resolveQaWalkTelemetryAbnormality({
+        expectingMovement,
+        forwardClearance,
+        lilyCoilTubeQaActive,
+        movingInOpenLane,
+        overheadClearance,
+        planarSpeedSq,
+        positionJumpAbnormality: telemetryMovement.positionJumpAbnormality,
+        recoveryReason,
+        stuckStrikes: qaWalkStuckStrikes.current,
+        telemetryMoveSq: telemetryMovement.moveSq,
+        viewClearance,
+      });
       publishSurvivalWalkFrameTelemetry({
         mode: inputMode,
         input: qaWalkInputState.current,
