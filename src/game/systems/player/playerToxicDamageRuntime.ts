@@ -20,7 +20,23 @@ export type PlayerToxicDamageFrameResult = {
   syncDamage: number;
 };
 
+export type PlayerClearToxicEffectsPlanInput = {
+  acidUntil: number;
+  connectedPlayerId: string | null;
+  nowMs: number;
+  poisonUntil: number;
+};
+
+export type PlayerClearToxicEffectsPlan = {
+  shouldClear: boolean;
+  networkPayload: {
+    targetId: string;
+    effects: string[];
+  } | null;
+};
+
 const DEFAULT_TOXIC_DAMAGE_SYNC_INTERVAL_MS = 500;
+const PLAYER_TOXIC_EFFECTS_TO_CLEAR = ["poison", "acid"] as const;
 
 export function getPlayerToxicDamagePerSecond(
   poisonUntil: number,
@@ -75,5 +91,26 @@ export function updatePlayerToxicDamageFrame(
     active: true,
     health,
     syncDamage,
+  };
+}
+
+export function createPlayerClearToxicEffectsPlan(
+  input: PlayerClearToxicEffectsPlanInput,
+): PlayerClearToxicEffectsPlan {
+  if (input.poisonUntil <= input.nowMs && input.acidUntil <= input.nowMs) {
+    return {
+      shouldClear: false,
+      networkPayload: null,
+    };
+  }
+
+  return {
+    shouldClear: true,
+    networkPayload: input.connectedPlayerId
+      ? {
+          targetId: input.connectedPlayerId,
+          effects: [...PLAYER_TOXIC_EFFECTS_TO_CLEAR],
+        }
+      : null,
   };
 }

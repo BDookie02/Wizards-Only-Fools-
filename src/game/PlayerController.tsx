@@ -179,7 +179,10 @@ import {
   applyPlayerScreenShake,
   applyPlayerScreenShakeEvent,
 } from "./systems/player/playerScreenShakeRuntime";
-import { updatePlayerToxicDamageFrame } from "./systems/player/playerToxicDamageRuntime";
+import {
+  createPlayerClearToxicEffectsPlan,
+  updatePlayerToxicDamageFrame,
+} from "./systems/player/playerToxicDamageRuntime";
 import {
   applyPlayerTouchControlEvent,
   applyPlayerTouchHotbarEvent,
@@ -474,13 +477,17 @@ export function PlayerController() {
 
   const clearToxicEffectsWithNetwork = () => {
     const state = useGameStore.getState();
-    const now = getPlayerEventEpochMs();
-    if (state.poisonUntil <= now && state.acidUntil <= now) return;
+    const clearPlan = createPlayerClearToxicEffectsPlan({
+      acidUntil: state.acidUntil,
+      connectedPlayerId: getConnectedNetworkPlayerId(),
+      nowMs: getPlayerEventEpochMs(),
+      poisonUntil: state.poisonUntil,
+    });
+    if (!clearPlan.shouldClear) return;
 
     state.clearToxicEffects();
-    const connectedPlayerId = getConnectedNetworkPlayerId();
-    if (connectedPlayerId) {
-      emitGameNetworkEvent("clearStatusEffect", { targetId: connectedPlayerId, effects: ["poison", "acid"] });
+    if (clearPlan.networkPayload) {
+      emitGameNetworkEvent("clearStatusEffect", clearPlan.networkPayload);
     }
   };
 
