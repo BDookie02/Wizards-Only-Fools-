@@ -15,7 +15,6 @@ import {
 } from "./network/playerNetworkSync";
 import { getPrimaryGamepad } from "./systems/input/controllerInput";
 import {
-  getNumberSlotFromCode,
   installMovementKeyboardListeners,
   isMouseGameplayInputActive,
   isMouseLookFallbackActive,
@@ -223,6 +222,10 @@ import {
   createPlayerGrabCastProjectilePayload,
   createPlayerGrabReleaseProjectilePayload,
 } from "./systems/player/playerGrabCastingRuntime";
+import {
+  resolvePlayerKeyboardHotbarAction,
+  resolvePlayerWheelSpellAction,
+} from "./systems/player/playerHotbarInputRuntime";
 import {
   resolvePlayerGrabControlEventAction,
   resolvePlayerGrabReleaseEventAction,
@@ -928,23 +931,29 @@ export function PlayerController() {
     // Wheel to switch spells
     const onWheel = (e: WheelEvent) => {
       const store = useGameStore.getState();
-      if (store.isSpellMenuOpen || !store.isMagicArmed) return;
-      if (!canUseGameplayInput()) return;
-      const hand: HandType = keys.KeyQ ? 'right' : 'left';
-      if (e.deltaY > 0) store.nextSpell(hand);
-      else store.prevSpell(hand);
+      const wheelAction = resolvePlayerWheelSpellAction(e.deltaY, {
+        gameplayInputAllowed: canUseGameplayInput(),
+        isMagicArmed: store.isMagicArmed,
+        isSpellMenuOpen: store.isSpellMenuOpen,
+        rightHandModifierHeld: keys.KeyQ,
+      });
+      if (wheelAction.type === "next") store.nextSpell(wheelAction.hand);
+      else if (wheelAction.type === "previous") store.prevSpell(wheelAction.hand);
     };
 
     const onHotbarKeyDown = (e: KeyboardEvent) => {
       const store = useGameStore.getState();
-      if (store.isSpellMenuOpen || !store.isMagicArmed || store.health <= 0) return;
-      if (!canUseGameplayInput()) return;
-
-      const slotIndex = getNumberSlotFromCode(e.code);
-      if (slotIndex === -1) return;
+      const hotbarAction = resolvePlayerKeyboardHotbarAction(e.code, {
+        gameplayInputAllowed: canUseGameplayInput(),
+        health: store.health,
+        isMagicArmed: store.isMagicArmed,
+        isSpellMenuOpen: store.isSpellMenuOpen,
+        rightHandModifierHeld: keys.KeyQ,
+      });
+      if (hotbarAction.type !== "select") return;
 
       e.preventDefault();
-      store.selectHotbarSlot(slotIndex, keys.KeyQ ? 'right' : 'left');
+      store.selectHotbarSlot(hotbarAction.slotIndex, hotbarAction.hand);
     };
 
     const onContextMenu = (e: MouseEvent) => {
