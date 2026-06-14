@@ -2102,6 +2102,44 @@ export function resolveQaWalkRecoveryMovementFrame({
   };
 }
 
+export type QaWalkRecoveryMovementFrame = ReturnType<typeof resolveQaWalkRecoveryMovementFrame>;
+
+export type QaWalkRecoveryMovementRefs = {
+  recoveryUntil: QaWalkMutableRef<number>;
+  stuckStrikes: QaWalkMutableRef<number>;
+};
+
+export type QaWalkRecoveryMovementPublishers = {
+  setForwardQaWaypoint: (yaw: number) => void;
+};
+
+export function applyQaWalkRecoveryMovementFrame({
+  frame,
+  publishers,
+  refs,
+}: {
+  frame: QaWalkRecoveryMovementFrame;
+  publishers: QaWalkRecoveryMovementPublishers;
+  refs: QaWalkRecoveryMovementRefs;
+}): Pick<QaWalkRecoveryMovementFrame, "forwardAmount" | "mode" | "recoveryReason" | "strafeAmount" | "targetYaw"> {
+  if (frame.recoveryUntil !== null) {
+    refs.recoveryUntil.current = frame.recoveryUntil;
+  }
+  if (frame.stuckStrikes !== refs.stuckStrikes.current) {
+    refs.stuckStrikes.current = frame.stuckStrikes;
+  }
+  if (frame.setForwardWaypointYaw !== null) {
+    publishers.setForwardQaWaypoint(frame.setForwardWaypointYaw);
+  }
+  return {
+    forwardAmount: frame.forwardAmount,
+    mode: frame.mode,
+    recoveryReason: frame.recoveryReason,
+    strafeAmount: frame.strafeAmount,
+    targetYaw: frame.targetYaw,
+  };
+}
+
 export function resolveQaWalkRecoveryStartPlan({
   elapsedSeconds,
   escapeLeftClearance,

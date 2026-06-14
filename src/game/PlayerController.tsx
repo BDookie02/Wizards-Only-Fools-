@@ -64,6 +64,7 @@ import {
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
 import {
+  applyQaWalkRecoveryMovementFrame,
   applyQaWalkRecoveryPlacementPlan,
   getQaWalkIntentDistance,
   isQaWalkBaseVillageArea,
@@ -1885,21 +1886,20 @@ export function PlayerController() {
             targetYaw,
             yawError,
           });
-          mode = recoveryMovementFrame.mode;
-          targetYaw = recoveryMovementFrame.targetYaw;
-          forwardAmount = recoveryMovementFrame.forwardAmount;
-          strafeAmount = recoveryMovementFrame.strafeAmount;
-          if (recoveryMovementFrame.recoveryUntil !== null) {
-            qaWalkRecoveryUntil.current = recoveryMovementFrame.recoveryUntil;
-          }
-          if (recoveryMovementFrame.stuckStrikes !== qaWalkStuckStrikes.current) {
-            qaWalkStuckStrikes.current = recoveryMovementFrame.stuckStrikes;
-          }
-          if (recoveryMovementFrame.setForwardWaypointYaw !== null) {
-            setForwardQaWaypoint(recoveryMovementFrame.setForwardWaypointYaw);
-          }
-          if (recoveryMovementFrame.recoveryReason) {
-            recoveryReason = recoveryMovementFrame.recoveryReason;
+          const appliedRecoveryMovement = applyQaWalkRecoveryMovementFrame({
+            frame: recoveryMovementFrame,
+            publishers: { setForwardQaWaypoint },
+            refs: {
+              recoveryUntil: qaWalkRecoveryUntil,
+              stuckStrikes: qaWalkStuckStrikes,
+            },
+          });
+          mode = appliedRecoveryMovement.mode;
+          targetYaw = appliedRecoveryMovement.targetYaw;
+          forwardAmount = appliedRecoveryMovement.forwardAmount;
+          strafeAmount = appliedRecoveryMovement.strafeAmount;
+          if (appliedRecoveryMovement.recoveryReason) {
+            recoveryReason = appliedRecoveryMovement.recoveryReason;
           }
         }
         sprint = false;
