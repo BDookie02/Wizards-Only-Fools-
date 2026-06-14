@@ -205,6 +205,11 @@ import {
   startHudKeyboardMagicHold,
 } from "./ui/hud/hudKeyboardMagicRuntime";
 import {
+  isHudKeyboardMenuBlocked,
+  resolveHudKeyboardMenuKeyDownAction,
+  resolveHudKeyboardMenuKeyUpAction,
+} from "./ui/hud/hudKeyboardMenuRuntime";
+import {
   createDefaultHudPlayerState,
   resolveHudPlayerStateEvent,
   type HudPlayerState,
@@ -2044,122 +2049,98 @@ export function HUD() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
-      if (remappingVoiceKey) {
+      if (isHudKeyboardMenuBlocked({
+        commandConsoleOpen: isCommandConsoleOpen,
+        editableTarget: isEditableTarget(e.target),
+        inventoryOpen: isInventoryOpen,
+        questDialogActive: Boolean(questDialogSession),
+        questNpcEditorActive: Boolean(questNpcEditorTarget),
+      })) {
+        return;
+      }
+
+      const keyboardAction = resolveHudKeyboardMenuKeyDownAction({
+        code: e.code,
+        controllerGameplayActive,
+        devFastTravelLocationCount,
+        fallbackVoiceKey: DEFAULT_VOICE_PUSH_TO_TALK_KEY,
+        isDevFastTravelAllowed,
+        isDevFastTravelOpen,
+        isEngineMenuAllowed,
+        isEngineMenuOpen,
+        isPauseMenuVisible,
+        remappingVoiceKey,
+        repeat: e.repeat,
+        touchGameplayActive,
+      });
+
+      if (keyboardAction.preventDefault) {
         e.preventDefault();
-        if (e.code === "Escape") {
+      }
+
+      switch (keyboardAction.type) {
+        case "none":
+        case "consume":
+          return;
+        case "cancelVoiceKeyRemap":
           setRemappingVoiceKey(false);
           return;
-        }
-
-        setVoicePushToTalkKey(e.code || DEFAULT_VOICE_PUSH_TO_TALK_KEY);
-        setRemappingVoiceKey(false);
-        return;
-      }
-
-      if (isEngineMenuOpen) {
-        if (e.code === "Escape" || e.code === "KeyL") {
-          e.preventDefault();
+        case "setVoiceKey":
+          setVoicePushToTalkKey(keyboardAction.code);
+          setRemappingVoiceKey(false);
+          return;
+        case "closeEngineMenu":
           closeEngineMenu(true);
-        }
-        return;
-      }
-
-      if (isDevFastTravelOpen) {
-        if (e.code === "Escape" || e.code === "F8") {
-          e.preventDefault();
+          return;
+        case "closeDevFastTravel":
           closeDevFastTravelMenu(true);
           return;
-        }
-
-        if (e.code === "ArrowDown" || e.code === "ArrowRight") {
-          e.preventDefault();
-          if (devFastTravelLocationCount <= 0) return;
-          setDevFastTravelIndex(prev => wrapIndex(prev + 1, devFastTravelLocationCount));
+        case "moveDevFastTravel":
+          setDevFastTravelIndex(prev => wrapIndex(prev + keyboardAction.direction, devFastTravelLocationCount));
           return;
-        }
-
-        if (e.code === "ArrowUp" || e.code === "ArrowLeft") {
-          e.preventDefault();
-          if (devFastTravelLocationCount <= 0) return;
-          setDevFastTravelIndex(prev => wrapIndex(prev - 1, devFastTravelLocationCount));
-          return;
-        }
-
-        if (e.code === "Enter" || e.code === "Space") {
-          e.preventDefault();
+        case "selectDevFastTravel": {
           const location = devFastTravelLocations[devFastTravelIndex];
           if (location) runDevFastTravel(location);
           return;
         }
-
-        return;
-      }
-
-      if (e.code === "KeyL" && !e.repeat && isEngineMenuAllowed) {
-        e.preventDefault();
-        const inputMode: GameplayInputMode = controllerGameplayActive
-          ? "controller"
-          : touchGameplayActive
-            ? "touch"
-            : "mouse";
-        openEngineMenu(inputMode);
-        return;
-      }
-
-      if (e.code === "F8" && !e.repeat && isDevFastTravelAllowed) {
-        e.preventDefault();
-        const inputMode: GameplayInputMode = controllerGameplayActive
-          ? "controller"
-          : touchGameplayActive
-            ? "touch"
-            : "mouse";
-        openDevFastTravelMenu(inputMode);
-        return;
-      }
-
-      if (e.code === "Tab") {
-        e.preventDefault();
-        setScoreboardSource("keyboard", true);
-        return;
-      }
-
-      if (!isPauseMenuVisible) return;
-
-      if (e.code === "Escape") {
-        e.preventDefault();
-        closePauseMenu();
-        return;
-      }
-
-      if (e.code === "ArrowDown" || e.code === "ArrowRight") {
-        e.preventDefault();
-        movePauseMenuFocus(e.code === "ArrowDown" ? "down" : "right");
-        return;
-      }
-
-      if (e.code === "ArrowUp" || e.code === "ArrowLeft") {
-        e.preventDefault();
-        movePauseMenuFocus(e.code === "ArrowUp" ? "up" : "left");
-        return;
-      }
-
-      if (e.code === "Space") {
-        e.preventDefault();
-        return;
-      }
-
-      if (e.code === "Enter") {
-        e.preventDefault();
-        runPauseMenuAction();
+        case "openEngineMenu":
+          openEngineMenu(keyboardAction.inputMode);
+          return;
+        case "openDevFastTravel":
+          openDevFastTravelMenu(keyboardAction.inputMode);
+          return;
+        case "setKeyboardScoreboard":
+          setScoreboardSource("keyboard", keyboardAction.open);
+          return;
+        case "closePauseMenu":
+          closePauseMenu();
+          return;
+        case "movePauseMenuFocus":
+          movePauseMenuFocus(keyboardAction.direction);
+          return;
+        case "runPauseMenuAction":
+          runPauseMenuAction();
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
-      if (e.code !== "Tab") return;
-      e.preventDefault();
-      setScoreboardSource("keyboard", false);
+      if (isHudKeyboardMenuBlocked({
+        commandConsoleOpen: isCommandConsoleOpen,
+        editableTarget: isEditableTarget(e.target),
+        inventoryOpen: isInventoryOpen,
+        questDialogActive: Boolean(questDialogSession),
+        questNpcEditorActive: Boolean(questNpcEditorTarget),
+      })) {
+        return;
+      }
+
+      const keyboardAction = resolveHudKeyboardMenuKeyUpAction(e.code);
+      if (keyboardAction.preventDefault) {
+        e.preventDefault();
+      }
+      if (keyboardAction.type === "setKeyboardScoreboard") {
+        setScoreboardSource("keyboard", keyboardAction.open);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
