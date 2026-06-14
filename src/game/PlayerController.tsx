@@ -53,6 +53,8 @@ import {
   publishQaPlayerPosition,
   randomRangeFromNoise,
   survivalishTurnNoise,
+  type QaManaFlowerSnapshot,
+  type QaSpellDummySnapshot,
   type QaSurvivalIntent,
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
@@ -461,6 +463,14 @@ export function PlayerController() {
   const cameraRollScratch = useMemo(createPlayerCameraRollScratch, []);
   const cameraAntiClipScratch = useMemo(createPlayerCameraAntiClipScratch, []);
   const cameraLookScratch = useMemo(createPlayerCameraLookScratch, []);
+  const qaSpellDummySnapshotScratch = useRef<QaSpellDummySnapshot[]>([]);
+  const qaManaFlowerSnapshotScratch = useRef<QaManaFlowerSnapshot[]>([]);
+  const qaManaFlowerCooldownScratch = useRef(new Map<string, number>());
+  const readQaSpellDummiesScratch = () => getQaSpellDummies(qaSpellDummySnapshotScratch.current);
+  const readReadyQaManaFlowersScratch = () => getReadyQaManaFlowers(
+    qaManaFlowerSnapshotScratch.current,
+    qaManaFlowerCooldownScratch.current,
+  );
 
   const isCharging = useGameStore(s => s.isChargingSpell);
   const chargingHands = useGameStore(s => s.chargingHands);
@@ -1517,7 +1527,7 @@ export function PlayerController() {
       });
       const intentCompletionDistance = (intent: QaSurvivalIntent) => resolveQaWalkIntentCompletionDistance({
         intent,
-        manaFlowers: getReadyQaManaFlowers(),
+        manaFlowers: readReadyQaManaFlowersScratch(),
       });
       const maybeChooseIntent = (force = false) => {
         void force;
@@ -1529,11 +1539,11 @@ export function PlayerController() {
           interestMemory: qaWalkInterestMemory.current,
           isDarrelGroveQaArea,
           lowestRunePower,
-          manaFlowers: getReadyQaManaFlowers(),
+          manaFlowers: readReadyQaManaFlowersScratch(),
           position: pos,
           qaSpellDummyRunActive,
           questTargets: getQuestNavigationIntentTargets(),
-          spellDummies: getQaSpellDummies(),
+          spellDummies: readQaSpellDummiesScratch(),
         });
         qaWalkIntent.current = intentChoice.intent;
         if (intentChoice.nextIntentAt !== null) {
@@ -1550,7 +1560,7 @@ export function PlayerController() {
       const chooseNewWaypoint = (preferCenter = false) => {
         if (setLilyCoilTubeWaypoint()) return;
         if (setRouteWaypoint()) return;
-        const shouldPrioritizeDummyIntent = qaSpellDummyRunActive && getQaSpellDummies().length > 0;
+        const shouldPrioritizeDummyIntent = qaSpellDummyRunActive && readQaSpellDummiesScratch().length > 0;
         if ((!preferCenter || shouldPrioritizeDummyIntent) && maybeChooseIntent(shouldPrioritizeDummyIntent || elapsed >= qaWalkNextIntentAt.current)) return;
         if (setDarrelGroveWaypoint()) return;
         if (setBaseVillageRoadWaypoint()) return;
@@ -1593,7 +1603,7 @@ export function PlayerController() {
         elapsedSeconds: elapsed,
         qaRouteActive,
         qaSpellDummyRunActive,
-        spellDummies: getQaSpellDummies(),
+        spellDummies: readQaSpellDummiesScratch(),
       });
       if (activeIntentRefresh.clearIntent) {
         qaWalkIntent.current = null;
@@ -1614,7 +1624,7 @@ export function PlayerController() {
         currentYaw: qaWalkYaw.current ?? currentYaw,
         elapsedSeconds: elapsed,
         hasCurrentIntent: qaWalkIntent.current !== null,
-        hasSpellDummies: getQaSpellDummies().length > 0,
+        hasSpellDummies: readQaSpellDummiesScratch().length > 0,
         inspectUntil: qaWalkInspectUntil.current,
         lilyCoilTubeQaActive,
         nextInspectAt: qaWalkNextInspectAt.current,
@@ -2096,7 +2106,7 @@ export function PlayerController() {
         scheduleNextPracticeCast(QA_SURVIVAL_PRACTICE_CAST_MIN_INTERVAL * 0.45);
       }
 
-      const spellDummies = getQaSpellDummies();
+      const spellDummies = readQaSpellDummiesScratch();
       const spellDummyTargets = resolveQaWalkSpellDummyTargets({
         spellDummies,
         playerPosition: pos,
@@ -2359,7 +2369,7 @@ export function PlayerController() {
         routeLength: qaRouteWaypoints.length,
         waypointDistance,
         observed: {
-          mana: getReadyQaManaFlowers().length,
+          mana: readReadyQaManaFlowersScratch().length,
           dummies: spellDummies.length,
           quests: getQuestNavigationIntentTargets().length,
         },

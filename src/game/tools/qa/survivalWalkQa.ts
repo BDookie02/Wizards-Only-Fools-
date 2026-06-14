@@ -248,10 +248,11 @@ export function isQaSpellDummyRunEnabled() {
   return isCurrentSpellDummyQaRouteEnabled();
 }
 
-export function getQaSpellDummies() {
-  if (typeof window === "undefined") return [] as QaSpellDummySnapshot[];
+export function getQaSpellDummies(target?: QaSpellDummySnapshot[]) {
+  const ready = target ?? [];
+  ready.length = 0;
+  if (typeof window === "undefined") return ready;
   const snapshots = ((window as any).__wofSpellDummies ?? []) as Partial<QaSpellDummySnapshot>[];
-  const ready: QaSpellDummySnapshot[] = [];
   for (let index = 0; index < snapshots.length; index += 1) {
     const dummy = snapshots[index];
     if (
@@ -267,8 +268,9 @@ export function getQaSpellDummies() {
   return ready;
 }
 
-export function getQaManaFlowerCooldowns() {
-  const cooldowns = new Map<string, number>();
+export function getQaManaFlowerCooldowns(target?: Map<string, number>) {
+  const cooldowns = target ?? new Map<string, number>();
+  cooldowns.clear();
   if (typeof document === "undefined") return cooldowns;
 
   const raw = document.documentElement.dataset.wofManaFlowerCooldowns ?? "";
@@ -291,11 +293,12 @@ export function getQaManaFlowerCooldowns() {
   return cooldowns;
 }
 
-export function getReadyQaManaFlowers() {
-  if (typeof window === "undefined") return [] as QaManaFlowerSnapshot[];
-  const cooldowns = getQaManaFlowerCooldowns();
+export function getReadyQaManaFlowers(target?: QaManaFlowerSnapshot[], cooldownTarget?: Map<string, number>) {
+  const ready = target ?? [];
+  ready.length = 0;
+  if (typeof window === "undefined") return ready;
+  const cooldowns = getQaManaFlowerCooldowns(cooldownTarget);
   const sources = ((window as any).__wofManaFlowerSources ?? []) as Partial<QaManaFlowerSnapshot>[];
-  const ready: QaManaFlowerSnapshot[] = [];
   for (let index = 0; index < sources.length; index += 1) {
     const source = sources[index];
     if (
