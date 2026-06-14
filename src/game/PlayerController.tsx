@@ -104,8 +104,8 @@ import {
   setQaSurvivalWalkStationaryInput,
   shouldResolveQaWalkSteeringDecision,
   shouldResolveQaWalkUnstickNudgePlan,
-  useQaSurvivalWalkRuntimeState,
 } from "./tools/qa/survivalWalkQaRuntime";
+import { useQaSurvivalWalkRuntimeState } from "./tools/qa/survivalWalkQaRuntimeState";
 import {
   clearSurvivalWalkRouteTelemetry,
   getSurvivalWalkSpellDummyHitCount,
