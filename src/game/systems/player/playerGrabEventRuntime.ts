@@ -4,6 +4,15 @@ export type PlayerGrabEventVector = {
   z: number;
 };
 
+export type PlayerGrabMutableVector = {
+  set(x: number, y: number, z: number): PlayerGrabMutableVector;
+  normalize(): PlayerGrabMutableVector;
+};
+
+export type PlayerGrabMutableOrigin = {
+  set(x: number, y: number, z: number): unknown;
+};
+
 type PlayerGrabEventPayload = Record<string, unknown>;
 
 export type PlayerGrabStartEventAction =
@@ -35,6 +44,12 @@ export type PlayerGrabReleaseEventAction =
 type PlayerGrabIdentity = {
   casterId: string;
   grabId?: string;
+};
+
+export type PlayerGrabbedEventState = PlayerGrabIdentity & {
+  dir: PlayerGrabMutableVector;
+  origin: PlayerGrabMutableOrigin;
+  lastControlAt: number;
 };
 
 type PlayerGrabStartEventOptions = {
@@ -144,4 +159,32 @@ export function resolvePlayerGrabReleaseEventAction(
       options.fallbackDirection ?? PLAYER_GRAB_DEFAULT_DIRECTION,
     ),
   };
+}
+
+export function applyPlayerGrabControlEventAction(
+  action: PlayerGrabControlEventAction,
+  grabbed: PlayerGrabbedEventState,
+  nowMs: number,
+) {
+  if (action.type !== "apply") return false;
+
+  const aimDir = action.direction;
+  const origin = action.origin;
+  if (aimDir) {
+    grabbed.dir.set(aimDir.x, aimDir.y, aimDir.z).normalize();
+  }
+  if (origin) {
+    grabbed.origin.set(origin.x, origin.y, origin.z);
+  }
+  grabbed.lastControlAt = nowMs;
+  return true;
+}
+
+export function resolvePlayerGrabReleaseDirectionInto<TVector extends PlayerGrabMutableVector>(
+  action: PlayerGrabReleaseEventAction,
+  target: TVector,
+) {
+  if (action.type !== "throw") return null;
+  target.set(action.direction.x, action.direction.y, action.direction.z).normalize();
+  return target;
 }

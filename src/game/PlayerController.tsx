@@ -244,7 +244,9 @@ import {
   resolvePlayerMouseReleaseAction,
 } from "./systems/player/playerMouseCastInputRuntime";
 import {
+  applyPlayerGrabControlEventAction,
   resolvePlayerGrabControlEventAction,
+  resolvePlayerGrabReleaseDirectionInto,
   resolvePlayerGrabReleaseEventAction,
   resolvePlayerGrabStartEventAction,
 } from "./systems/player/playerGrabEventRuntime";
@@ -1089,15 +1091,7 @@ export function PlayerController() {
       });
       if (grabControlAction.type !== "apply") return;
 
-      const aimDir = grabControlAction.direction;
-      const origin = grabControlAction.origin;
-      if (aimDir) {
-        grabbed.dir.set(aimDir.x, aimDir.y, aimDir.z).normalize();
-      }
-      if (origin) {
-        grabbed.origin.set(origin.x, origin.y, origin.z);
-      }
-      grabbed.lastControlAt = getPlayerEventEpochMs();
+      applyPlayerGrabControlEventAction(grabControlAction, grabbed, getPlayerEventEpochMs());
     };
 
     const onReleaseGrabPlayer = (e: any) => {
@@ -1111,9 +1105,8 @@ export function PlayerController() {
       });
       if (grabReleaseAction.type !== "throw") return;
 
-      const releaseDir = grabReleaseDirection
-        .set(grabReleaseAction.direction.x, grabReleaseAction.direction.y, grabReleaseAction.direction.z)
-        .normalize();
+      const releaseDir = resolvePlayerGrabReleaseDirectionInto(grabReleaseAction, grabReleaseDirection);
+      if (!releaseDir) return;
       throwGrabbedPlayer(releaseDir);
     };
 
