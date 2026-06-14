@@ -1,10 +1,3 @@
-import {
-  resetHudControllerInventoryHoldState,
-  resetHudControllerMagicHoldState,
-  type HudControllerInventoryHoldRefs,
-  type HudControllerMagicHoldRefs,
-} from "./hudControllerHoldRuntime";
-import type { HudControllerButtonsRef, HudControllerRepeatRef } from "./hudControllerRepeatRuntime";
 export {
   getHudControllerBlockedSurfaceAction,
   getHudControllerGameplayActivationAction,
@@ -59,6 +52,11 @@ export {
   type HudControllerRepeatRef,
 } from "./hudControllerRepeatRuntime";
 export {
+  resetHudControllerButtonState,
+  resetHudControllerTransientState,
+  type HudControllerTransientResetRefs,
+} from "./hudControllerResetRuntime";
+export {
   getHudControllerDevFastTravelAction,
   getHudControllerGameplayStartAction,
   getHudControllerInventoryPanelAction,
@@ -101,35 +99,3 @@ export {
   type HudControllerPressReader,
   type HudControllerScoreboardSourceOptions,
 } from "./hudControllerShortcutRuntime";
-
-export function resetHudControllerButtonState(
-  controllerButtonsRef: HudControllerButtonsRef,
-  controllerRepeatRef: HudControllerRepeatRef,
-) {
-  controllerButtonsRef.current = {};
-  controllerRepeatRef.current = {};
-}
-
-export function resetHudControllerTransientState({
-  controllerButtonsRef,
-  controllerRepeatRef,
-  controllerInventoryHoldStartedAtRef,
-  controllerInventoryTapEligibleRef,
-  controllerInventoryIgnoreUntilReleaseRef,
-  controllerMagicHoldStartedAtRef,
-  controllerMagicHoldConsumedRef,
-}: HudControllerInventoryHoldRefs & HudControllerMagicHoldRefs & {
-  controllerButtonsRef: HudControllerButtonsRef;
-  controllerRepeatRef: HudControllerRepeatRef;
-}) {
-  resetHudControllerButtonState(controllerButtonsRef, controllerRepeatRef);
-  resetHudControllerInventoryHoldState({
-    controllerInventoryHoldStartedAtRef,
-    controllerInventoryTapEligibleRef,
-    controllerInventoryIgnoreUntilReleaseRef,
-  });
-  resetHudControllerMagicHoldState({
-    controllerMagicHoldStartedAtRef,
-    controllerMagicHoldConsumedRef,
-  });
-}
