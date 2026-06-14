@@ -22,6 +22,7 @@ import {
   updateQuestScriptPointDraft,
   type QuestEventBuilderKind,
 } from "./questNpcEditorRuntime";
+import { QuestNpcEditorHeader } from "./QuestNpcEditorHeader";
 import { QuestNpcEditorSidebar } from "./QuestNpcEditorSidebar";
 import { QuestScriptPointFields } from "./QuestScriptPointFields";
 import { QuestScriptPointList } from "./QuestScriptPointList";
@@ -155,16 +156,12 @@ function ActiveQuestNpcEditor({ target }: { target: QuestNpcEditorTarget }) {
       onWheel={(e) => e.stopPropagation()}
     >
       <div className="flex max-h-[min(800px,calc(var(--app-vh,100dvh)-24px))] w-[min(1180px,calc(var(--app-vw,100dvw)-24px))] flex-col overflow-hidden border-2 border-cyan-200/70 bg-[#050711]/96 shadow-[0_0_36px_rgba(34,211,238,0.28)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-300/35 px-3 py-2">
-          <div>
-            <div className="text-[9px] tracking-[0.26em] text-cyan-100/55">QUEST NPC DEV</div>
-            <div className="normal-case text-lg font-bold tracking-wide text-yellow-100">{draft.displayName || target.defaultName}</div>
-          </div>
-          <div className="flex flex-wrap gap-2 text-[10px] tracking-widest">
-            <button className="border border-emerald-200/70 bg-emerald-400/10 px-3 py-2 text-emerald-50 hover:bg-emerald-300/20" onClick={saveDraft}>SAVE</button>
-            <button className="border border-cyan-200/60 bg-cyan-300/10 px-3 py-2 text-cyan-50 hover:bg-cyan-200/20" onClick={closeQuestNpcEditor}>CLOSE</button>
-          </div>
-        </div>
+        <QuestNpcEditorHeader
+          displayName={draft.displayName}
+          defaultName={target.defaultName}
+          onSave={saveDraft}
+          onClose={closeQuestNpcEditor}
+        />
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-y-auto md:grid-cols-[280px_minmax(0,1fr)]">
           <QuestNpcEditorSidebar
