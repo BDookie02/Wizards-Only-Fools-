@@ -223,8 +223,11 @@ import {
   resetPlayerControllerAfterCastRelease,
 } from "./systems/player/playerHandCastingRuntime";
 import {
+  clearPlayerGrabTimeout,
+  clearPlayerGrabTimeouts,
   createPlayerGrabCastProjectilePayload,
   createPlayerGrabReleaseProjectilePayload,
+  setPlayerGrabTimeout,
 } from "./systems/player/playerGrabCastingRuntime";
 import {
   resolvePlayerKeyboardHotbarAction,
@@ -656,10 +659,7 @@ export function PlayerController() {
       const grabId = activeGrabIds.current[hand];
       if (!grabId) return;
 
-      if (grabTimeouts.current[hand] !== null) {
-        window.clearTimeout(grabTimeouts.current[hand]!);
-        grabTimeouts.current[hand] = null;
-      }
+      clearPlayerGrabTimeout(grabTimeouts.current, hand);
 
       const dir = spellDirection;
       camera.getWorldDirection(dir);
@@ -782,13 +782,14 @@ export function PlayerController() {
         });
 
         activeGrabIds.current[hand] = grabId;
-        if (grabTimeouts.current[hand] !== null) {
-          window.clearTimeout(grabTimeouts.current[hand]!);
-        }
-        grabTimeouts.current[hand] = window.setTimeout(() => {
-          emitGrabRelease(hand);
-          stopHandCasting(hand);
-        }, GRAB_MAX_DURATION_MS);
+        setPlayerGrabTimeout(
+          grabTimeouts.current,
+          hand,
+          window.setTimeout(() => {
+            emitGrabRelease(hand);
+            stopHandCasting(hand);
+          }, GRAB_MAX_DURATION_MS),
+        );
 
         emitGameNetworkEvent("castSpell", projectile);
         emitGameNetworkEvent("grabControl", {
@@ -1136,13 +1137,7 @@ export function PlayerController() {
     });
     return () => {
       stopAllCasting();
-      for (let handIndex = 0; handIndex < PLAYER_CASTING_HANDS.length; handIndex += 1) {
-        const hand = PLAYER_CASTING_HANDS[handIndex];
-        if (grabTimeouts.current[hand] !== null) {
-          window.clearTimeout(grabTimeouts.current[hand]!);
-          grabTimeouts.current[hand] = null;
-        }
-      }
+      clearPlayerGrabTimeouts(grabTimeouts.current, PLAYER_CASTING_HANDS);
       removeWindowListeners();
       removeMovementKeyboardListeners();
       stopControllerCastingLoop();

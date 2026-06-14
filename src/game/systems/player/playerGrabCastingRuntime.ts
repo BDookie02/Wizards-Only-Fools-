@@ -18,6 +18,40 @@ export type PlayerGrabProjectilePayload = {
   grabPhase: "cast" | "release";
 };
 
+export type PlayerGrabTimeouts = Record<HandType, number | null>;
+
+export function clearPlayerGrabTimeout(
+  grabTimeouts: PlayerGrabTimeouts,
+  hand: HandType,
+  clearTimeoutFn: (timeoutId: number) => void = clearTimeout,
+) {
+  const timeoutId = grabTimeouts[hand];
+  if (timeoutId === null) return false;
+  clearTimeoutFn(timeoutId);
+  grabTimeouts[hand] = null;
+  return true;
+}
+
+export function clearPlayerGrabTimeouts(
+  grabTimeouts: PlayerGrabTimeouts,
+  hands: readonly HandType[],
+  clearTimeoutFn: (timeoutId: number) => void = clearTimeout,
+) {
+  for (let handIndex = 0; handIndex < hands.length; handIndex += 1) {
+    clearPlayerGrabTimeout(grabTimeouts, hands[handIndex], clearTimeoutFn);
+  }
+}
+
+export function setPlayerGrabTimeout(
+  grabTimeouts: PlayerGrabTimeouts,
+  hand: HandType,
+  timeoutId: number,
+  clearTimeoutFn: (timeoutId: number) => void = clearTimeout,
+) {
+  clearPlayerGrabTimeout(grabTimeouts, hand, clearTimeoutFn);
+  grabTimeouts[hand] = timeoutId;
+}
+
 export function createPlayerGrabCastProjectilePayload({
   grabId,
   creatorId,
