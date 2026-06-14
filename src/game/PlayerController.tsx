@@ -297,6 +297,7 @@ import {
   dispatchPlayerMovementFrame,
   dispatchPlayerState,
   dispatchPlayerStateIfChanged,
+  dispatchStationaryPlayerState,
   dispatchDirectStatusCast,
   dispatchQuestVillagerInteraction,
   dispatchReleaseGrabPlayer,
@@ -1251,7 +1252,7 @@ export function PlayerController() {
         deltaSeconds: delta,
         dispatchPlayerMoved,
         dispatchStationaryPlayerState: () => {
-          dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, false, false);
+          dispatchStationaryPlayerState(lastDispatchedPlayerStateRef.current);
         },
         followSpeed: GRAB_FOLLOW_SPEED,
         frameForward,
@@ -1312,7 +1313,10 @@ export function PlayerController() {
         cameraTargetPosition: cameraTargetPosition.current,
         dispatchPlayerMoved,
         dispatchStationaryPlayerState: () => {
-          dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, true, true);
+          dispatchStationaryPlayerState(lastDispatchedPlayerStateRef.current, {
+            isGrounded: true,
+            isMeditating: true,
+          });
         },
         frameForward,
         lastNetworkSync,
@@ -2414,7 +2418,7 @@ export function PlayerController() {
         crouchHoldStartedAt,
         currentVelocityY: velocity.y,
         dispatchStationaryPlayerState: () => {
-          dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, true, false);
+          dispatchStationaryPlayerState(lastDispatchedPlayerStateRef.current, { isGrounded: true });
         },
         isCrouching,
         setIsCrouching,

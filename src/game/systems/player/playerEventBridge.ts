@@ -141,6 +141,21 @@ export function dispatchPlayerStateIfChanged(
   return true;
 }
 
+export function dispatchStationaryPlayerState(
+  snapshot: PlayerStateDispatchSnapshot,
+  options: { isGrounded?: boolean; isMeditating?: boolean } = {},
+) {
+  return dispatchPlayerStateIfChanged(
+    snapshot,
+    false,
+    false,
+    false,
+    false,
+    options.isGrounded ?? false,
+    options.isMeditating ?? false,
+  );
+}
+
 export function dispatchPlayerMoved(detail: PlayerMovedEventDetail) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("player-moved", { detail }));
