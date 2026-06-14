@@ -12,6 +12,39 @@ export type PlayerAstralMeditationState = PlayerGameplayInputGateState & {
   setAstralMeditating: (active: boolean) => void;
 };
 
+export type PlayerAstralFrameVector = {
+  x: number;
+  y: number;
+  z: number;
+  set(x: number, y: number, z: number): PlayerAstralFrameVector;
+};
+
+export type PlayerAstralFrameCamera = {
+  position: {
+    lerp(target: PlayerAstralFrameVector, alpha: number): unknown;
+  };
+  getWorldDirection(target: PlayerAstralFrameVector): PlayerAstralFrameVector;
+};
+
+export type PlayerAstralMovedPayload = {
+  x: number;
+  y: number;
+  z: number;
+  angle: number;
+  isMoving: false;
+  grounded: true;
+};
+
+export type PlayerAstralFrameResult = {
+  position: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  shouldSyncNetwork: boolean;
+  yaw: number;
+};
+
 export type PlayerAstralMeditationKeyOptions = {
   state: PlayerAstralMeditationState;
   astralExitHoldStartedAt: MutableRef<number | null>;
@@ -87,4 +120,64 @@ export function updatePlayerMeditationExitHold(
     return false;
   }
   return state.isAstralMeditating;
+}
+
+export function applyPlayerAstralMeditationFrame({
+  applyScreenShake,
+  camera,
+  cameraHeight,
+  cameraLerpAlpha,
+  cameraTargetPosition,
+  dispatchPlayerMoved,
+  dispatchStationaryPlayerState,
+  frameForward,
+  lastNetworkSync,
+  networkSyncIntervalMs,
+  nowMs,
+  playerPosition,
+  publishLocalPlayerPosition,
+}: {
+  applyScreenShake: () => void;
+  camera: PlayerAstralFrameCamera;
+  cameraHeight: number;
+  cameraLerpAlpha: number;
+  cameraTargetPosition: PlayerAstralFrameVector;
+  dispatchPlayerMoved: (payload: PlayerAstralMovedPayload) => void;
+  dispatchStationaryPlayerState: () => void;
+  frameForward: PlayerAstralFrameVector;
+  lastNetworkSync: MutableRef<number>;
+  networkSyncIntervalMs: number;
+  nowMs: number;
+  playerPosition: { x: number; y: number; z: number };
+  publishLocalPlayerPosition: (position: { x: number; y: number; z: number }) => void;
+}): PlayerAstralFrameResult {
+  camera.position.lerp(
+    cameraTargetPosition.set(playerPosition.x, playerPosition.y + cameraHeight, playerPosition.z),
+    cameraLerpAlpha,
+  );
+  applyScreenShake();
+  publishLocalPlayerPosition(playerPosition);
+
+  camera.getWorldDirection(frameForward);
+  const yaw = Math.atan2(frameForward.x, -frameForward.z);
+  dispatchStationaryPlayerState();
+  dispatchPlayerMoved({
+    x: playerPosition.x,
+    y: playerPosition.y,
+    z: playerPosition.z,
+    angle: yaw,
+    isMoving: false,
+    grounded: true,
+  });
+
+  const shouldSyncNetwork = nowMs - lastNetworkSync.current > networkSyncIntervalMs;
+  if (shouldSyncNetwork) {
+    lastNetworkSync.current = nowMs;
+  }
+
+  return {
+    position: playerPosition,
+    shouldSyncNetwork,
+    yaw,
+  };
 }

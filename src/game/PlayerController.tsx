@@ -199,6 +199,7 @@ import {
   canUsePlayerGameplayInput,
 } from "./systems/player/playerGameplayInputGate";
 import {
+  applyPlayerAstralMeditationFrame,
   handlePlayerMeditationKeyDown,
   handlePlayerMeditationKeyUp,
   updatePlayerMeditationExitHold,
@@ -1287,26 +1288,33 @@ export function PlayerController() {
         currentVelocityY: velocity.y,
         vclipActive,
       });
-      camera.position.lerp(cameraTargetPosition.current.set(pos.x, pos.y + PLAYER_MEDITATION_CAMERA_HEIGHT, pos.z), 0.18);
-      applyScreenShake();
-      publishLocalPlayerPosition(pos);
+      const astralFrame = applyPlayerAstralMeditationFrame({
+        applyScreenShake,
+        camera,
+        cameraHeight: PLAYER_MEDITATION_CAMERA_HEIGHT,
+        cameraLerpAlpha: 0.18,
+        cameraTargetPosition: cameraTargetPosition.current,
+        dispatchPlayerMoved,
+        dispatchStationaryPlayerState: () => {
+          dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, true, true);
+        },
+        frameForward,
+        lastNetworkSync,
+        networkSyncIntervalMs: 1000 / 15,
+        nowMs,
+        playerPosition: pos,
+        publishLocalPlayerPosition,
+      });
 
-      camera.getWorldDirection(frameForward);
-      const yaw = Math.atan2(frameForward.x, -frameForward.z);
-
-      dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, true, true);
-      dispatchPlayerMoved({ x: pos.x, y: pos.y, z: pos.z, angle: yaw, isMoving: false, grounded: true });
-
-      if (nowMs - lastNetworkSync.current > 1000 / 15) {
-        lastNetworkSync.current = nowMs;
+      if (astralFrame.shouldSyncNetwork) {
         emitPlayerNetworkPoseSync({
           anim: "meditate",
           camera,
           characterCustomization: storeState.characterCustomization,
           isVoiceSpeaking: storeState.isVoiceSpeaking,
-          pos,
+          pos: astralFrame.position,
           survivalLevel: storeState.survivalLevel,
-          yaw,
+          yaw: astralFrame.yaw,
         });
       }
       return;
