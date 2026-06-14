@@ -4,6 +4,18 @@ import {
   type GamepadButtonName,
 } from "../../systems/input/controllerInput";
 import { CONTROLLER_INVENTORY_HOLD_MS, MAGIC_UNARM_HOLD_MS } from "../../systems/input/hudInputConfig";
+import type { SpellMenuControllerDirection } from "./hudControllerEventRuntime";
+export {
+  dispatchInventoryControllerBack,
+  dispatchInventoryControllerMove,
+  dispatchInventoryControllerSelect,
+  dispatchSpellMenuControllerNavigate,
+  dispatchSpellMenuControllerScroll,
+  dispatchSpellMenuControllerSelect,
+  type InventoryControllerMoveDetail,
+  type SpellMenuControllerDirection,
+  type SpellMenuControllerNavigateDetail,
+} from "./hudControllerEventRuntime";
 export {
   createHudControllerInputSnapshot,
   readHudControllerInputSnapshot,
@@ -31,16 +43,6 @@ export type HudControllerMagicHoldRefs = {
 };
 
 export type HudControllerLastSeenRef = Ref<number>;
-
-export type InventoryControllerMoveDetail = {
-  direction: 1 | -1;
-};
-
-export type SpellMenuControllerDirection = "up" | "down" | "left" | "right";
-
-export type SpellMenuControllerNavigateDetail = {
-  direction: SpellMenuControllerDirection;
-};
 
 export type HudControllerGameplaySignalOptions = {
   isLocked: boolean;
@@ -370,53 +372,6 @@ export function consumeHudControllerRepeat(
   }
 
   return false;
-}
-
-function dispatchHudControllerEvent(event: Event) {
-  if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") return false;
-  return window.dispatchEvent(event);
-}
-
-function createHudControllerCustomEvent<T>(type: string, detail: T) {
-  if (typeof window !== "undefined" && typeof window.CustomEvent === "function") {
-    return new window.CustomEvent<T>(type, { detail });
-  }
-  if (typeof document !== "undefined" && typeof document.createEvent === "function") {
-    const event = document.createEvent("CustomEvent");
-    event.initCustomEvent(type, false, false, detail);
-    return event as CustomEvent<T>;
-  }
-  return new Event(type) as CustomEvent<T>;
-}
-
-export function dispatchInventoryControllerMove(direction: 1 | -1) {
-  return dispatchHudControllerEvent(
-    createHudControllerCustomEvent<InventoryControllerMoveDetail>("inventory-controller-move", { direction }),
-  );
-}
-
-export function dispatchInventoryControllerSelect() {
-  return dispatchHudControllerEvent(new Event("inventory-controller-select"));
-}
-
-export function dispatchInventoryControllerBack() {
-  const detail = { handled: false };
-  dispatchHudControllerEvent(createHudControllerCustomEvent("inventory-controller-back", detail));
-  return detail.handled;
-}
-
-export function dispatchSpellMenuControllerScroll(delta: number) {
-  return dispatchHudControllerEvent(createHudControllerCustomEvent("spell-menu-controller-scroll", delta));
-}
-
-export function dispatchSpellMenuControllerNavigate(direction: SpellMenuControllerDirection) {
-  return dispatchHudControllerEvent(
-    createHudControllerCustomEvent<SpellMenuControllerNavigateDetail>("spell-menu-controller-navigate", { direction }),
-  );
-}
-
-export function dispatchSpellMenuControllerSelect() {
-  return dispatchHudControllerEvent(new Event("spell-menu-controller-select"));
 }
 
 export function hasHudControllerGameplaySignal({
