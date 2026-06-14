@@ -2071,6 +2071,7 @@ export function resolveQaWalkLookInputFrame({
   mode,
   sprint,
   strafeAmount,
+  targetInput,
   targetYaw,
   lookTurnRate = QA_SURVIVAL_LOOK_TURN_RATE,
   recoveryTurnRate = QA_SURVIVAL_RECOVERY_TURN_RATE,
@@ -2083,6 +2084,7 @@ export function resolveQaWalkLookInputFrame({
   mode: QaSurvivalWalkMode;
   sprint: boolean;
   strafeAmount: number;
+  targetInput?: QaSurvivalWalkInputState;
   targetYaw: number;
   lookTurnRate?: number;
   recoveryTurnRate?: number;
@@ -2098,15 +2100,15 @@ export function resolveQaWalkLookInputFrame({
     : -0.045 + Math.sin(elapsedSeconds * 0.62) * 0.032;
   const cameraYaw = lilyCoilTubeQaActive ? yaw : -yaw;
   const inputMode: QaSurvivalWalkMode = lilyCoilTubeQaActive ? "tube" : mode;
+  const input = targetInput ?? createQaSurvivalWalkInputState();
+  input.forward = clampNumber(forwardAmount, inputMode === "tube" ? -1 : -0.28, 1);
+  input.strafe = clampNumber(strafeAmount, -0.72, 0.72);
+  input.sprint = sprint;
+  input.mode = inputMode;
 
   return {
     cameraYaw,
-    input: {
-      forward: clampNumber(forwardAmount, inputMode === "tube" ? -1 : -0.28, 1),
-      strafe: clampNumber(strafeAmount, -0.72, 0.72),
-      sprint,
-      mode: inputMode,
-    },
+    input,
     pitch,
     yaw,
   };

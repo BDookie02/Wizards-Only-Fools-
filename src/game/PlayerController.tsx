@@ -2293,6 +2293,7 @@ export function PlayerController() {
         mode,
         sprint,
         strafeAmount,
+        targetInput: qaWalkInputState.current,
         targetYaw,
       });
       const yaw = lookInputFrame.yaw;
@@ -2300,7 +2301,6 @@ export function PlayerController() {
       controllerLookEuler.current.set(lookInputFrame.pitch, lookInputFrame.cameraYaw, 0);
       camera.quaternion.setFromEuler(controllerLookEuler.current);
 
-      qaWalkInputState.current = lookInputFrame.input;
       const inputMode = lookInputFrame.input.mode;
       const movingInOpenLane = isQaWalkMovingInOpenLane({
         forwardClearance,
