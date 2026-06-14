@@ -443,6 +443,40 @@ export function resolveQaWalkCombatFocusMovement({
   };
 }
 
+export type QaWalkCombatFocusMovementFrame = ReturnType<typeof resolveQaWalkCombatFocusMovement>;
+
+export type QaWalkCombatFocusMovementState = {
+  forwardAmount: number;
+  mode: QaSurvivalWalkMode;
+  sprint: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+};
+
+export type QaWalkCombatFocusMovementApplication = QaWalkCombatFocusMovementState & {
+  applied: boolean;
+};
+
+export function applyQaWalkCombatFocusMovementFrame({
+  current,
+  frame,
+}: {
+  current: QaWalkCombatFocusMovementState;
+  frame: QaWalkCombatFocusMovementFrame;
+}): QaWalkCombatFocusMovementApplication {
+  if (!frame) {
+    return { ...current, applied: false };
+  }
+  return {
+    applied: true,
+    forwardAmount: frame.forwardAmount,
+    mode: frame.mode,
+    sprint: frame.sprint,
+    strafeAmount: frame.strafeAmount,
+    targetYaw: frame.targetYaw,
+  };
+}
+
 export function resolveQaWalkRecoveryJumpHoldUntil({
   forwardClearance,
   nowSeconds,

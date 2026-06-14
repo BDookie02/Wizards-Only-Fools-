@@ -65,6 +65,7 @@ import {
 } from "./tools/qa/survivalWalkQa";
 import {
   applyQaWalkActiveIntentRefresh,
+  applyQaWalkCombatFocusMovementFrame,
   applyQaWalkInspectionStartPlan,
   applyQaWalkJumpHoldUntil,
   applyQaWalkLowSpeedRecovery,
@@ -2193,12 +2194,22 @@ export function PlayerController() {
         mode,
         qaSpellDummyRunActive,
       });
-      if (combatFocusMovement) {
-        mode = combatFocusMovement.mode;
-        targetYaw = combatFocusMovement.targetYaw;
-        forwardAmount = combatFocusMovement.forwardAmount;
-        strafeAmount = combatFocusMovement.strafeAmount;
-        sprint = combatFocusMovement.sprint;
+      const combatFocusMovementApplication = applyQaWalkCombatFocusMovementFrame({
+        current: {
+          forwardAmount,
+          mode,
+          sprint,
+          strafeAmount,
+          targetYaw,
+        },
+        frame: combatFocusMovement,
+      });
+      if (combatFocusMovementApplication.applied) {
+        mode = combatFocusMovementApplication.mode;
+        targetYaw = combatFocusMovementApplication.targetYaw;
+        forwardAmount = combatFocusMovementApplication.forwardAmount;
+        strafeAmount = combatFocusMovementApplication.strafeAmount;
+        sprint = combatFocusMovementApplication.sprint;
       } else {
         const throttle = resolveQaWalkClearanceThrottle({
           forwardAmount,
