@@ -309,8 +309,8 @@ import {
 import {
   applyPlayerBlinkTeleport,
   applyFlamethrowerSpreadInto,
+  applyPlayerReleasedSpellProjectile,
   createPlayerGrabProjectileId,
-  createPlayerSpellCastNetworkPayload,
   createPlayerSpellProjectileId,
   createPlayerSpellProjectilePayload,
   createQaWalkPracticeProjectileId,
@@ -928,22 +928,16 @@ export function PlayerController() {
         });
       }
 
-      emitGameNetworkEvent("castSpell", createPlayerSpellCastNetworkPayload({
-        type: currentSpell,
-        pos: projectileOrigin,
-        dir: projectileDir,
-        hand,
-      }));
-      
-      useGameStore.getState().addProjectile(createPlayerSpellProjectilePayload({
-        id: createPlayerSpellProjectileId(),
-        creatorId: getLocalNetworkPlayerId(),
-        type: currentSpell,
-        pos: projectileOrigin,
-        dir: projectileDir,
+      applyPlayerReleasedSpellProjectile({
+        addProjectile: useGameStore.getState().addProjectile,
         createdAt: releasedAt,
+        creatorId: getLocalNetworkPlayerId(),
+        emitGameNetworkEvent,
+        type: currentSpell,
+        pos: projectileOrigin,
+        dir: projectileDir,
         hand,
-      }));
+      });
     };
 
     const onMouseUp = (e: MouseEvent) => {

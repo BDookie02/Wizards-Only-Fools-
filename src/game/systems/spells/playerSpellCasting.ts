@@ -64,6 +64,11 @@ export type PlayerSpellBlinkTeleportResult = {
   position: PlayerSpellVectorPayload;
 };
 
+export type PlayerReleasedSpellProjectileResult = {
+  networkPayload: PlayerSpellCastNetworkPayload;
+  projectile: Projectile;
+};
+
 export const WIDE_STATUS_AIM_RADIUS = DIRECT_STATUS_TARGET_RADIUS * 1.35;
 const PROJECTILE_TOKEN_SCALE = 0x100000000;
 
@@ -139,6 +144,47 @@ export function createPlayerSpellCastNetworkPayload({
     dir,
     hand,
   };
+}
+
+export function applyPlayerReleasedSpellProjectile({
+  addProjectile,
+  createdAt,
+  creatorId,
+  dir,
+  emitGameNetworkEvent,
+  hand,
+  id,
+  pos,
+  type,
+}: {
+  addProjectile: (projectile: Projectile) => void;
+  createdAt: number;
+  creatorId: string;
+  dir: PlayerSpellVectorPayload;
+  emitGameNetworkEvent: (eventName: string, ...args: unknown[]) => unknown;
+  hand: HandType;
+  id?: string;
+  pos: PlayerSpellVectorPayload;
+  type: SpellType;
+}): PlayerReleasedSpellProjectileResult {
+  const networkPayload = createPlayerSpellCastNetworkPayload({
+    type,
+    pos,
+    dir,
+    hand,
+  });
+  const projectile = createPlayerSpellProjectilePayload({
+    id: id ?? createPlayerSpellProjectileId(),
+    creatorId,
+    type,
+    pos,
+    dir,
+    createdAt,
+    hand,
+  });
+  emitGameNetworkEvent("castSpell", networkPayload);
+  addProjectile(projectile);
+  return { networkPayload, projectile };
 }
 
 export function getBlinkTeleportOffset(
