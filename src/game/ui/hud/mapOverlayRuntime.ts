@@ -62,8 +62,21 @@ export const FULL_MAP_LANDMARK_LABELS: FullMapLandmarkLabel[] = [
   { key: "graveyard", label: "Graveyard", x: 5 * SURVIVAL_BLOCK_SIZE, z: 2 * SURVIVAL_BLOCK_SIZE },
 ];
 
-export function clampPercent(value: number) {
-  return Math.min(100, Math.max(0, value));
+export function clampPercent(value: number, fallback = 50) {
+  const finiteValue = Number.isFinite(value) ? value : fallback;
+  return Math.min(100, Math.max(0, finiteValue));
+}
+
+function getRatioFromClientPoint(value: number, start: number, size: number) {
+  if (!Number.isFinite(value) || !Number.isFinite(start) || !Number.isFinite(size) || size <= 0) {
+    return 0.5;
+  }
+  return clampPercent(((value - start) / size) * 100) / 100;
+}
+
+function clampMapPercent(value: number, min: number, max: number) {
+  const finiteValue = Number.isFinite(value) ? value : 50;
+  return Math.min(max, Math.max(min, finiteValue));
 }
 
 export function getRoundedPlanarDistance(a: { x: number; z: number }, b: { x: number; z: number }) {
@@ -88,8 +101,8 @@ export function getFullMapWaypointFromClientPoint(
   clientY: number,
   rect: Pick<DOMRect, "height" | "left" | "top" | "width">,
 ): MapWaypoint {
-  const xRatio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
-  const zRatio = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+  const xRatio = getRatioFromClientPoint(clientX, rect.left, rect.width);
+  const zRatio = getRatioFromClientPoint(clientY, rect.top, rect.height);
   return {
     x: FULL_MAP_BOUNDS.minX + xRatio * (FULL_MAP_BOUNDS.maxX - FULL_MAP_BOUNDS.minX),
     z: FULL_MAP_BOUNDS.minZ + zRatio * (FULL_MAP_BOUNDS.maxZ - FULL_MAP_BOUNDS.minZ),
@@ -222,9 +235,14 @@ export function getBlockMapMarkerPosition(point: MapWaypoint, blockBounds: Retur
   const min = insetPercent;
   const max = 100 - insetPercent;
   return {
-    left: Math.min(max, Math.max(min, rawLeft)),
-    top: Math.min(max, Math.max(min, rawTop)),
-    pinned: rawLeft < min || rawLeft > max || rawTop < min || rawTop > max,
+    left: clampMapPercent(rawLeft, min, max),
+    top: clampMapPercent(rawTop, min, max),
+    pinned: Number.isFinite(rawLeft) && Number.isFinite(rawTop) && (
+      rawLeft < min ||
+      rawLeft > max ||
+      rawTop < min ||
+      rawTop > max
+    ),
   };
 }
 
@@ -236,6 +254,7 @@ export function getWaypointNavigationMarker(
   if (!waypoint) return null;
   const dx = waypoint.x - playerPosition.x;
   const dz = waypoint.z - playerPosition.z;
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return null;
   const distanceSq = dx * dx + dz * dz;
   if (distanceSq < 1) {
     return { left: 50, top: 50, distance: 0, pinned: false };
