@@ -2603,6 +2603,82 @@ export function resolveQaWalkProgressRecovery({
   };
 }
 
+export type QaWalkProgressRecovery = ReturnType<typeof resolveQaWalkProgressRecovery>;
+
+export type QaWalkProgressRecoveryRefs = {
+  lastProgressAt: QaWalkMutableRef<number>;
+  lastProgressPosition: QaWalkRecoveryStartPositionRef;
+  recoveryYaw: QaWalkMutableRef<number>;
+  stuckStrikes: QaWalkMutableRef<number>;
+};
+
+export type QaWalkProgressRecoveryPublishers = {
+  setForwardQaWaypoint: (yaw: number) => void;
+};
+
+export type QaWalkProgressRecoveryApplication =
+  | { checked: false; recovered: false }
+  | { checked: true; recovered: false }
+  | {
+    checked: true;
+    forwardAmount: number;
+    mode: "recover";
+    recovered: true;
+    recoveryReason: QaWalkProgressRecoveryReason;
+    sprint: false;
+    strafeAmount: 0;
+    targetYaw: number;
+  };
+
+export function applyQaWalkProgressRecovery({
+  beginRecovery,
+  currentYaw,
+  elapsedSeconds,
+  position,
+  progress,
+  publishers,
+  refs,
+}: {
+  beginRecovery: (aggressive: true) => void;
+  currentYaw: number;
+  elapsedSeconds: number;
+  position: QaWalkPosition;
+  progress: QaWalkProgressRecovery;
+  publishers: QaWalkProgressRecoveryPublishers;
+  refs: QaWalkProgressRecoveryRefs;
+}): QaWalkProgressRecoveryApplication {
+  if (!progress.shouldCheck) {
+    return { checked: false, recovered: false };
+  }
+
+  if (progress.action === "recover") {
+    refs.stuckStrikes.current = progress.stuckStrikes;
+    beginRecovery(true);
+  } else if (progress.action === "set-forward-waypoint") {
+    publishers.setForwardQaWaypoint(currentYaw);
+  } else if (progress.action === "clear-stuck") {
+    refs.stuckStrikes.current = progress.stuckStrikes;
+  }
+
+  refs.lastProgressAt.current = elapsedSeconds;
+  refs.lastProgressPosition.current.set(position.x, position.y, position.z);
+
+  if (progress.action !== "recover") {
+    return { checked: true, recovered: false };
+  }
+
+  return {
+    checked: true,
+    forwardAmount: progress.forwardAmount,
+    mode: "recover",
+    recovered: true,
+    recoveryReason: progress.recoveryReason ?? "progress",
+    sprint: false,
+    strafeAmount: 0,
+    targetYaw: refs.recoveryYaw.current,
+  };
+}
+
 export function isQaWalkMovingInOpenLane({
   forwardClearance,
   forwardLookAhead,

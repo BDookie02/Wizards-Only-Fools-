@@ -69,6 +69,7 @@ import {
   applyQaWalkJumpHoldUntil,
   applyQaWalkLowSpeedRecovery,
   applyQaWalkOpenLaneRecoveryRelief,
+  applyQaWalkProgressRecovery,
   applyQaWalkRecoveryMovementFrame,
   applyQaWalkRecoveryPlacementPlan,
   applyQaWalkRecoveryStartPlan,
@@ -2235,23 +2236,27 @@ export function PlayerController() {
         waypoint: qaWalkWaypoint.current,
         waypointDistance,
       });
-      if (progressRecovery.shouldCheck) {
-        if (progressRecovery.action === "recover") {
-          qaWalkStuckStrikes.current = progressRecovery.stuckStrikes;
-          mode = "recover";
-          recoveryReason = progressRecovery.recoveryReason;
-          beginQaWalkRecovery(true);
-          targetYaw = qaWalkRecoveryYaw.current;
-          strafeAmount = 0;
-          forwardAmount = progressRecovery.forwardAmount;
-          sprint = false;
-        } else if (progressRecovery.action === "set-forward-waypoint") {
-          setForwardQaWaypoint(qaWalkYaw.current ?? currentYaw);
-        } else if (progressRecovery.action === "clear-stuck") {
-          qaWalkStuckStrikes.current = 0;
-        }
-        qaWalkLastProgressAt.current = elapsed;
-        qaWalkLastProgressPos.current.set(pos.x, pos.y, pos.z);
+      const progressRecoveryApplication = applyQaWalkProgressRecovery({
+        beginRecovery: beginQaWalkRecovery,
+        currentYaw: qaWalkYaw.current ?? currentYaw,
+        elapsedSeconds: elapsed,
+        position: pos,
+        progress: progressRecovery,
+        publishers: { setForwardQaWaypoint },
+        refs: {
+          lastProgressAt: qaWalkLastProgressAt,
+          lastProgressPosition: qaWalkLastProgressPos,
+          recoveryYaw: qaWalkRecoveryYaw,
+          stuckStrikes: qaWalkStuckStrikes,
+        },
+      });
+      if (progressRecoveryApplication.recovered) {
+        mode = progressRecoveryApplication.mode;
+        recoveryReason = progressRecoveryApplication.recoveryReason;
+        targetYaw = progressRecoveryApplication.targetYaw;
+        strafeAmount = progressRecoveryApplication.strafeAmount;
+        forwardAmount = progressRecoveryApplication.forwardAmount;
+        sprint = progressRecoveryApplication.sprint;
       }
 
       const lookInputFrame = resolveQaWalkLookInputFrame({
