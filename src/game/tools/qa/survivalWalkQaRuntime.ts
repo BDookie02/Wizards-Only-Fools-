@@ -156,6 +156,22 @@ export type QaWalkTelemetryAbnormality =
 
 const clampNumber = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+export type QaWalkWaypointRefs = {
+  waypoint: QaWalkMutableRef<QaWalkWaypoint>;
+};
+
+export function applyQaWalkWaypoint({
+  refs,
+  waypoint,
+}: {
+  refs: QaWalkWaypointRefs;
+  waypoint: QaWalkWaypoint | null;
+}) {
+  if (!waypoint) return false;
+  refs.waypoint.current = waypoint;
+  return true;
+}
+
 export function resolveQaWalkRouteWaypoint({
   active,
   elapsedSeconds,

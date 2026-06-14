@@ -86,6 +86,7 @@ import {
   applyQaWalkRouteSteeringState,
   applyQaWalkSteeringDecisionFrame,
   applyQaWalkTubeMovementFrame,
+  applyQaWalkWaypoint,
   getQaWalkIntentDistance,
   isQaWalkBaseVillageArea,
   isQaWalkDarrelGroveArea,
@@ -1405,9 +1406,10 @@ export function PlayerController() {
           tubeDirection: qaWalkLilyTubeDirection.current,
           tubeT: nearestTube.t,
         });
-        if (!tubeWaypoint) return false;
-        qaWalkWaypoint.current = tubeWaypoint;
-        return true;
+        return applyQaWalkWaypoint({
+          refs: { waypoint: qaWalkWaypoint },
+          waypoint: tubeWaypoint,
+        });
       };
       const isBaseVillageQaArea = isQaWalkBaseVillageArea({
         chunkCenterX,
@@ -1426,9 +1428,10 @@ export function PlayerController() {
           elapsedSeconds: elapsed,
           position: pos,
         });
-        if (!groveWaypoint) return false;
-        qaWalkWaypoint.current = groveWaypoint;
-        return true;
+        return applyQaWalkWaypoint({
+          refs: { waypoint: qaWalkWaypoint },
+          waypoint: groveWaypoint,
+        });
       };
       const getDarrelGroveRescuePosition = () => {
         return resolveQaWalkDarrelGroveRescuePosition({
@@ -1459,9 +1462,10 @@ export function PlayerController() {
           elapsedSeconds: elapsed,
           position: pos,
         });
-        if (!roadWaypoint) return false;
-        qaWalkWaypoint.current = roadWaypoint;
-        return true;
+        return applyQaWalkWaypoint({
+          refs: { waypoint: qaWalkWaypoint },
+          waypoint: roadWaypoint,
+        });
       };
       const getBaseVillageRoadRescuePosition = () => {
         return resolveQaWalkBaseVillageRoadRescuePosition({
@@ -1536,24 +1540,30 @@ export function PlayerController() {
         if (setDarrelGroveWaypoint()) return;
         if (setBaseVillageRoadWaypoint()) return;
 
-        qaWalkWaypoint.current = resolveQaWalkRoamWaypoint({
-          blockSize: SURVIVAL_BLOCK_SIZE,
-          chunkCenterX,
-          chunkCenterZ,
-          currentYaw: qaWalkYaw.current ?? currentYaw,
-          elapsedSeconds: elapsed,
-          maxLocalDistance,
-          position: pos,
-          preferCenter,
+        applyQaWalkWaypoint({
+          refs: { waypoint: qaWalkWaypoint },
+          waypoint: resolveQaWalkRoamWaypoint({
+            blockSize: SURVIVAL_BLOCK_SIZE,
+            chunkCenterX,
+            chunkCenterZ,
+            currentYaw: qaWalkYaw.current ?? currentYaw,
+            elapsedSeconds: elapsed,
+            maxLocalDistance,
+            position: pos,
+            preferCenter,
+          }),
         });
       };
 
       const setForwardQaWaypoint = (yaw: number, distance?: number) => {
-        qaWalkWaypoint.current = resolveQaWalkForwardWaypoint({
-          distance,
-          elapsedSeconds: elapsed,
-          position: pos,
-          yaw,
+        applyQaWalkWaypoint({
+          refs: { waypoint: qaWalkWaypoint },
+          waypoint: resolveQaWalkForwardWaypoint({
+            distance,
+            elapsedSeconds: elapsed,
+            position: pos,
+            yaw,
+          }),
         });
       };
 
