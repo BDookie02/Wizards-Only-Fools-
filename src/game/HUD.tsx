@@ -130,6 +130,13 @@ import {
   type GameplayInputMode,
 } from "./ui/hud/hudGameplayModeRuntime";
 import {
+  canOpenHudInventoryFromGame,
+  canOpenHudSpellMenuFromGame,
+  canRequestHudVillagerInteractionFromGame,
+  canToggleHudMagicFromGame,
+  isHudGameplayInputActive,
+} from "./ui/hud/hudGameplayActionRuntime";
+import {
   resolveHudGameplaySurfaceVisibility,
   resolveHudLayoutQaVisibilityOptions,
 } from "./ui/hud/hudVisibilityRuntime";
@@ -1801,14 +1808,22 @@ export function HUD() {
   };
 
   const openInventoryFromGame = () => {
-    if (
-      isMapExpanded ||
-      showVideoMenu ||
-      isPauseMenuVisible ||
-      isSpellMenuOpen ||
-      questDialogSession ||
-      !(isLocked || isPointerLockActive() || touchGameplayActive || controllerGameplayActive)
-    ) {
+    const gameplayInputActive = isHudGameplayInputActive({
+      controllerGameplayActive,
+      isLocked,
+      pointerLockActive: isPointerLockActive(),
+      touchGameplayActive,
+    });
+    if (!canOpenHudInventoryFromGame({
+      gameplayInputActive,
+      isInventoryOpen,
+      isMapExpanded,
+      isPauseMenuVisible,
+      isSpellMenuOpen,
+      questDialogActive: Boolean(questDialogSession),
+      questNpcEditorActive: Boolean(questNpcEditorTarget),
+      showVideoMenu,
+    })) {
       return;
     }
     lastGameplayInputModeRef.current = controllerGameplayActive
@@ -1825,13 +1840,22 @@ export function HUD() {
   };
 
   const openSpellMenuFromGame = () => {
-    if (
-      isMapExpanded ||
-      showVideoMenu ||
-      isPauseMenuVisible ||
-      isInventoryOpen ||
-      !(isLocked || isPointerLockActive() || touchGameplayActive || controllerGameplayActive)
-    ) {
+    const gameplayInputActive = isHudGameplayInputActive({
+      controllerGameplayActive,
+      isLocked,
+      pointerLockActive: isPointerLockActive(),
+      touchGameplayActive,
+    });
+    if (!canOpenHudSpellMenuFromGame({
+      gameplayInputActive,
+      isInventoryOpen,
+      isMapExpanded,
+      isPauseMenuVisible,
+      isSpellMenuOpen,
+      questDialogActive: Boolean(questDialogSession),
+      questNpcEditorActive: Boolean(questNpcEditorTarget),
+      showVideoMenu,
+    })) {
       return;
     }
     lastGameplayInputModeRef.current = controllerGameplayActive
@@ -1848,15 +1872,22 @@ export function HUD() {
   };
 
   const toggleMagicArmedFromGame = () => {
-    if (
-      isMapExpanded ||
-      showVideoMenu ||
-      isPauseMenuVisible ||
-      isInventoryOpen ||
-      isSpellMenuOpen ||
-      questDialogSession ||
-      !(isLocked || isPointerLockActive() || touchGameplayActive || controllerGameplayActive)
-    ) {
+    const gameplayInputActive = isHudGameplayInputActive({
+      controllerGameplayActive,
+      isLocked,
+      pointerLockActive: isPointerLockActive(),
+      touchGameplayActive,
+    });
+    if (!canToggleHudMagicFromGame({
+      gameplayInputActive,
+      isInventoryOpen,
+      isMapExpanded,
+      isPauseMenuVisible,
+      isSpellMenuOpen,
+      questDialogActive: Boolean(questDialogSession),
+      questNpcEditorActive: Boolean(questNpcEditorTarget),
+      showVideoMenu,
+    })) {
       return false;
     }
 
@@ -1869,16 +1900,22 @@ export function HUD() {
   };
 
   const requestVillagerInteractionFromGame = (source: "keyboard" | "controller" | "cast") => {
-    if (
-      isMapExpanded ||
-      showVideoMenu ||
-      isPauseMenuVisible ||
-      isInventoryOpen ||
-      isSpellMenuOpen ||
-      questDialogSession ||
-      questNpcEditorTarget ||
-      !(isLocked || isPointerLockActive() || touchGameplayActive || controllerGameplayActive)
-    ) {
+    const gameplayInputActive = isHudGameplayInputActive({
+      controllerGameplayActive,
+      isLocked,
+      pointerLockActive: isPointerLockActive(),
+      touchGameplayActive,
+    });
+    if (!canRequestHudVillagerInteractionFromGame({
+      gameplayInputActive,
+      isInventoryOpen,
+      isMapExpanded,
+      isPauseMenuVisible,
+      isSpellMenuOpen,
+      questDialogActive: Boolean(questDialogSession),
+      questNpcEditorActive: Boolean(questNpcEditorTarget),
+      showVideoMenu,
+    })) {
       return false;
     }
 
