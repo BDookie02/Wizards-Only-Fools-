@@ -296,8 +296,7 @@ import {
   createPlayerDirectStatusCastPlan,
 } from "./systems/player/playerDirectStatusCastingRuntime";
 import {
-  applyPlayerSelfBuffCastPlan,
-  resolvePlayerSelfBuffCastPlan,
+  applyPlayerSelfBuffSpellCast,
 } from "./systems/player/playerSelfBuffCastingRuntime";
 import {
   createPlayerStateDispatchSnapshot,
@@ -621,14 +620,13 @@ export function PlayerController() {
     };
 
     const castSelfBuffSpell = (hand: HandType, spell: SpellType) => {
-      const selfBuffPlan = resolvePlayerSelfBuffCastPlan({
+      const store = useGameStore.getState();
+      return applyPlayerSelfBuffSpellCast({
         spell,
         hand,
         armorMax: ARMOR_MAX,
         jumpVelocityFloor: JUMP_FORCE * JUMP_BOOST_MULTIPLIER,
-      });
-      const store = useGameStore.getState();
-      return applyPlayerSelfBuffCastPlan(selfBuffPlan, {
+      }, {
         setHandCharging: (targetHand, charging) => {
           useGameStore.getState().setHandCharging(targetHand, charging);
         },

@@ -41,17 +41,19 @@ export type PlayerSelfBuffCastPlanApplier = {
   dispatchSelfBuffCast: (detail: SelfBuffCastEventDetail) => void;
 };
 
+export type PlayerSelfBuffCastInput = {
+  spell: SpellType;
+  hand: HandType;
+  armorMax: number;
+  jumpVelocityFloor: number;
+};
+
 export function resolvePlayerSelfBuffCastPlan({
   spell,
   hand,
   armorMax,
   jumpVelocityFloor,
-}: {
-  spell: SpellType;
-  hand: HandType;
-  armorMax: number;
-  jumpVelocityFloor: number;
-}): PlayerSelfBuffCastPlan | null {
+}: PlayerSelfBuffCastInput): PlayerSelfBuffCastPlan | null {
   if (spell === "magicarmor") {
     return {
       spell,
@@ -131,4 +133,14 @@ export function applyPlayerSelfBuffCastPlan(
   }
   applier.dispatchSelfBuffCast(plan.eventDetail);
   return true;
+}
+
+export function applyPlayerSelfBuffSpellCast(
+  input: PlayerSelfBuffCastInput,
+  applier: PlayerSelfBuffCastPlanApplier,
+) {
+  return applyPlayerSelfBuffCastPlan(
+    resolvePlayerSelfBuffCastPlan(input),
+    applier,
+  );
 }
