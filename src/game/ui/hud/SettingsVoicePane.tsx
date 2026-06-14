@@ -7,7 +7,7 @@ import {
   voiceProximityRangeIndex,
   voicePushToTalkKeyIndex,
 } from "./hudSettingsPanelConfig";
-import { cn, focusedMenuClass, settingsCardClass, settingsHintClass, settingsTitleRowClass } from "./settingsPanelClassNames";
+import { cn, settingsHintClass, settingsTitleRowClass } from "./settingsPanelClassNames";
 import {
   formatVoiceOutputVolumePercent,
   formatVoiceProximityRangeMeters,
@@ -21,6 +21,7 @@ import {
   getVoiceStatusText,
 } from "./settingsPanelRuntime";
 import { SettingsRangeCard } from "./SettingsRangeCard";
+import { SettingsVoiceActionCard } from "./SettingsVoiceActionCard";
 
 type SettingsVoicePaneProps = {
   settingsScrollRef: RefObject<HTMLDivElement | null>;
@@ -74,59 +75,39 @@ export function SettingsVoicePane({
         </div>
       )}
       <div className="grid gap-2 md:grid-cols-2">
-        <button
-          data-settings-index={voiceEnabledIndex}
-          className={cn(settingsCardClass, settingsFocus(voiceEnabledIndex) ? focusedMenuClass : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70")}
-          onMouseEnter={() => setPauseMenuIndex(voiceEnabledIndex)}
-          onClick={() => setVoiceChatEnabled(!voiceChatEnabled)}
-        >
-          <div className={cn(settingsTitleRowClass, "text-emerald-50")}>
-            <span>Voice Chat</span>
-            <span className={voiceChatEnabled ? "text-lime-200" : "text-red-200"}>{getVoiceEnabledLabel(voiceChatEnabled)}</span>
-          </div>
-          <div className={cn("mt-2 text-emerald-100/45", settingsHintClass)}>
-            Turns your microphone and nearby player voices on or off.
-          </div>
-        </button>
+        <SettingsVoiceActionCard
+          index={voiceEnabledIndex}
+          title="Voice Chat"
+          valueText={getVoiceEnabledLabel(voiceChatEnabled)}
+          valueClassName={voiceChatEnabled ? "text-lime-200" : "text-red-200"}
+          hint="Turns your microphone and nearby player voices on or off."
+          focused={settingsFocus(voiceEnabledIndex)}
+          onFocus={() => setPauseMenuIndex(voiceEnabledIndex)}
+          onSelect={() => setVoiceChatEnabled(!voiceChatEnabled)}
+        />
 
-        <button
-          data-settings-index={voiceInputModeIndex}
-          className={cn(settingsCardClass, settingsFocus(voiceInputModeIndex) ? focusedMenuClass : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70")}
-          onMouseEnter={() => setPauseMenuIndex(voiceInputModeIndex)}
-          onClick={toggleVoiceInputMode}
-        >
-          <div className={cn(settingsTitleRowClass, "text-emerald-50")}>
-            <span>Input Mode</span>
-            <span className="text-yellow-100">{getVoiceInputModeLabel(voiceInputMode)}</span>
-          </div>
-          <div className={cn("mt-2 text-emerald-100/45", settingsHintClass)}>
-            D-pad left/right or A toggles between open mic and press-to-talk.
-          </div>
-        </button>
+        <SettingsVoiceActionCard
+          index={voiceInputModeIndex}
+          title="Input Mode"
+          valueText={getVoiceInputModeLabel(voiceInputMode)}
+          valueClassName="text-yellow-100"
+          hint="D-pad left/right or A toggles between open mic and press-to-talk."
+          focused={settingsFocus(voiceInputModeIndex)}
+          onFocus={() => setPauseMenuIndex(voiceInputModeIndex)}
+          onSelect={toggleVoiceInputMode}
+        />
 
-        <button
-          data-settings-index={voicePushToTalkKeyIndex}
-          className={cn(
-            settingsCardClass,
-            remappingVoiceKey
-              ? "border-pink-300 bg-pink-400/15 text-pink-50 shadow-[0_0_16px_rgba(244,114,182,0.45)]"
-              : settingsFocus(voicePushToTalkKeyIndex)
-                ? focusedMenuClass
-                : "border-emerald-300/25 bg-emerald-400/5 hover:border-emerald-200/70"
-          )}
-          onMouseEnter={() => setPauseMenuIndex(voicePushToTalkKeyIndex)}
-          onClick={beginVoiceKeyRemap}
-        >
-          <div className={cn(settingsTitleRowClass, "text-emerald-50")}>
-            <span>Press-To-Talk Key</span>
-            <span className="border border-yellow-200/50 bg-yellow-200/10 px-2 py-0.5 text-yellow-100">
-              {getVoicePushToTalkKeyLabel(remappingVoiceKey, voicePushToTalkKey)}
-            </span>
-          </div>
-          <div className={cn("mt-2 text-emerald-100/45", settingsHintClass)}>
-            Controller press-to-talk is remapped from the Keybinds tab.
-          </div>
-        </button>
+        <SettingsVoiceActionCard
+          index={voicePushToTalkKeyIndex}
+          title="Press-To-Talk Key"
+          valueText={getVoicePushToTalkKeyLabel(remappingVoiceKey, voicePushToTalkKey)}
+          valueClassName="border border-yellow-200/50 bg-yellow-200/10 px-2 py-0.5 text-yellow-100"
+          hint="Controller press-to-talk is remapped from the Keybinds tab."
+          focused={settingsFocus(voicePushToTalkKeyIndex)}
+          remapping={remappingVoiceKey}
+          onFocus={() => setPauseMenuIndex(voicePushToTalkKeyIndex)}
+          onSelect={beginVoiceKeyRemap}
+        />
 
         <SettingsRangeCard
           index={voiceOutputVolumeIndex}
