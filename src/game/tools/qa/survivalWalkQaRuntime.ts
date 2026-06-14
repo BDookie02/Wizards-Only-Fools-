@@ -1376,6 +1376,28 @@ export function resolveQaWalkInspectionStart({
   };
 }
 
+export type QaWalkInspectionStartPlan = ReturnType<typeof resolveQaWalkInspectionStart>;
+
+export type QaWalkInspectionStartRefs = {
+  inspectUntil: QaWalkMutableRef<number>;
+  inspectYaw: QaWalkMutableRef<number>;
+  nextInspectAt: QaWalkMutableRef<number>;
+};
+
+export function applyQaWalkInspectionStartPlan({
+  plan,
+  refs,
+}: {
+  plan: QaWalkInspectionStartPlan;
+  refs: QaWalkInspectionStartRefs;
+}) {
+  if (!plan) return false;
+  refs.inspectUntil.current = plan.inspectUntil;
+  refs.inspectYaw.current = plan.inspectYaw;
+  refs.nextInspectAt.current = plan.nextInspectAt;
+  return true;
+}
+
 export function resolveQaWalkRoamWaypoint({
   blockSize,
   chunkCenterX,

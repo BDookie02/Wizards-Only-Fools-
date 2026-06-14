@@ -64,6 +64,7 @@ import {
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
 import {
+  applyQaWalkInspectionStartPlan,
   applyQaWalkOpenLaneRecoveryRelief,
   applyQaWalkRecoveryMovementFrame,
   applyQaWalkRecoveryPlacementPlan,
@@ -1582,11 +1583,14 @@ export function PlayerController() {
         recoveryUntil: qaWalkRecoveryUntil.current,
         stuckStrikes: qaWalkStuckStrikes.current,
       });
-      if (inspectionStart) {
-        qaWalkInspectUntil.current = inspectionStart.inspectUntil;
-        qaWalkInspectYaw.current = inspectionStart.inspectYaw;
-        qaWalkNextInspectAt.current = inspectionStart.nextInspectAt;
-      }
+      applyQaWalkInspectionStartPlan({
+        plan: inspectionStart,
+        refs: {
+          inspectUntil: qaWalkInspectUntil,
+          inspectYaw: qaWalkInspectYaw,
+          nextInspectAt: qaWalkNextInspectAt,
+        },
+      });
 
       let desiredYaw = Math.atan2(qaWalkWaypoint.current.x - pos.x, -(qaWalkWaypoint.current.z - pos.z));
       let lilyCoilTubeTravelYaw: number | null = null;
