@@ -21,7 +21,11 @@ import {
   keys,
   resetMovementKeys,
 } from "./systems/input/playerInputState";
-import { isNavigationRecordingActive, recordNavigationSample } from "./navigationRecorderRuntime";
+import {
+  createPlayerNavigationSampleInput,
+  isNavigationRecordingActive,
+  recordNavigationSample,
+} from "./navigationRecorderRuntime";
 import {
   QA_SURVIVAL_COMBAT_CAST_MIN_INTERVAL,
   QA_SURVIVAL_COMBAT_TARGET_RANGE,
@@ -2965,28 +2969,26 @@ export function PlayerController() {
 
     if (isNavigationRecordingActive()) {
       camera.getWorldDirection(navigationAimDirection);
-      recordNavigationSample({
+      recordNavigationSample(createPlayerNavigationSampleInput({
+        aimDirection: navigationAimDirection,
+        bodyVelocityY: velocity.y,
+        cameraRotationX: camera.rotation.x,
+        cameraRotationZ: camera.rotation.z,
+        effectiveGrounded,
+        forwardInput,
         gameMode: storeState.gameMode,
-        pos: [pos.x, pos.y, pos.z],
-        rot: [camera.rotation.x, yaw, camera.rotation.z],
-        aimDir: [navigationAimDirection.x, navigationAimDirection.y, navigationAimDirection.z],
-        velocity: [direction.x, vclipActive ? direction.y : velocity.y, direction.z],
-        input: {
-          forward: forwardInput,
-          strafe: strafeInput,
-          sprint: isSprinting,
-          jump: jumpHeld,
-          slide: slideHeld,
-          vclip: vclipActive,
-        },
-        state: {
-          grounded: effectiveGrounded,
-          moving: hasMovementInput,
-          sliding: isSliding,
-          sprinting: isSprinting,
-          spellMenuOpen: storeState.isSpellMenuOpen,
-        },
-      }, nowMs);
+        hasMovementInput,
+        isSliding,
+        isSprinting,
+        jumpHeld,
+        movementVelocity: direction,
+        playerPosition: pos,
+        slideHeld,
+        spellMenuOpen: storeState.isSpellMenuOpen,
+        strafeInput,
+        vclipActive,
+        yaw,
+      }), nowMs);
     }
 
     if (!vclipActive && effectiveGrounded) {

@@ -36,6 +36,12 @@ export interface NavigationSample extends NavigationSampleInput {
   chunk: ChunkCoord;
 }
 
+export type NavigationFrameVector = {
+  x: number;
+  y: number;
+  z: number;
+};
+
 export interface NavigationRecordingSession {
   id: string;
   label: string;
@@ -120,6 +126,69 @@ export function clearActiveNavigationRecording() {
 
 export function isNavigationRecordingActive() {
   return activeRecording !== null;
+}
+
+export function createPlayerNavigationSampleInput({
+  aimDirection,
+  bodyVelocityY,
+  cameraRotationX,
+  cameraRotationZ,
+  effectiveGrounded,
+  forwardInput,
+  gameMode,
+  hasMovementInput,
+  isSliding,
+  isSprinting,
+  jumpHeld,
+  movementVelocity,
+  playerPosition,
+  slideHeld,
+  spellMenuOpen,
+  strafeInput,
+  vclipActive,
+  yaw,
+}: {
+  aimDirection: NavigationFrameVector;
+  bodyVelocityY: number;
+  cameraRotationX: number;
+  cameraRotationZ: number;
+  effectiveGrounded: boolean;
+  forwardInput: number;
+  gameMode: GameMode;
+  hasMovementInput: boolean;
+  isSliding: boolean;
+  isSprinting: boolean;
+  jumpHeld: boolean;
+  movementVelocity: NavigationFrameVector;
+  playerPosition: NavigationFrameVector;
+  slideHeld: boolean;
+  spellMenuOpen: boolean;
+  strafeInput: number;
+  vclipActive: boolean;
+  yaw: number;
+}): NavigationSampleInput {
+  return {
+    gameMode,
+    pos: [playerPosition.x, playerPosition.y, playerPosition.z],
+    rot: [cameraRotationX, yaw, cameraRotationZ],
+    aimDir: [aimDirection.x, aimDirection.y, aimDirection.z],
+    velocity: [movementVelocity.x, vclipActive ? movementVelocity.y : bodyVelocityY, movementVelocity.z],
+    input: {
+      forward: forwardInput,
+      strafe: strafeInput,
+      sprint: isSprinting,
+      jump: jumpHeld,
+      slide: slideHeld,
+      vclip: vclipActive,
+    },
+    state: {
+      grounded: effectiveGrounded,
+      moving: hasMovementInput,
+      sliding: isSliding,
+      sprinting: isSprinting,
+      spellMenuOpen,
+    },
+  };
 }
 
 export function startNavigationRecordingRuntime(label?: string): NavigationRecorderResult {
