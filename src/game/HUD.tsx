@@ -32,7 +32,7 @@ import {
   hasGamepadInput,
   type GamepadButtonName,
 } from "./systems/input/controllerInput";
-import { controllerActionRows, controllerButtonOptions } from "./systems/input/controllerSettingsConfig";
+import { controllerButtonOptions } from "./systems/input/controllerSettingsConfig";
 import { isEditableTarget } from "./systems/input/editableTargets";
 import { requestTouchFullscreenMode, subscribeDocumentFullscreenState } from "./systems/input/fullscreenRuntime";
 import { getPlatformDefaultLookSensitivity } from "./systems/input/hudInputConfig";
@@ -51,9 +51,9 @@ import {
   getNextHudSurvivalDifficultyRules,
   getNextHudSurvivalManaRateRules,
   getNextHudSurvivalMaxPlayersRules,
-  resolveHudStartMenuAction,
   type HudStartMenuAction,
 } from "./ui/hud/hudLaunchRulesRuntime";
+import { resolveHudPauseMenuAction } from "./ui/hud/hudPauseMenuActionRuntime";
 import { useHudLobbyMessageCleanup } from "./ui/hud/useHudLobbyMessageCleanup";
 import { clampMenuIndex, findDirectionalMenuIndex, getHudMenuNowMs, type MenuDirection } from "./ui/hud/hudMenuNavigation";
 import {
@@ -94,20 +94,9 @@ import {
   LazySpellMenu,
 } from "./ui/hud/hudLazyModules";
 import {
-  aspectRatioOptions,
-  keybindBackIndex,
-  keybindArrowLookIndex,
-  keybindControlStartIndex,
-  keybindSensitivityStartIndex,
   pauseMenuItemCount,
   settingsTabCount,
   videoAspectStartIndex,
-  videoBackIndex,
-  voiceEnabledIndex,
-  voiceInputModeIndex,
-  voiceOutputVolumeIndex,
-  voiceProximityRangeIndex,
-  voicePushToTalkKeyIndex,
   type SettingsPane,
   getSettingsActionCount,
   getSettingsPaneForTabIndex,
@@ -1967,117 +1956,83 @@ export function HUD() {
   };
 
   const runPauseMenuAction = (index = pauseMenuIndex) => {
-    if (showVideoMenu) {
-      const selectedSettingsPane = getSettingsPaneForTabIndex(index);
-      if (selectedSettingsPane) {
-        setSettingsPane(selectedSettingsPane);
+    const action = resolveHudPauseMenuAction({
+      index,
+      isMultiplayerMode,
+      settingsPane,
+      showVideoMenu,
+      startMenuStage,
+    });
+
+    switch (action.type) {
+      case "select-settings-pane":
+        setSettingsPane(action.settingsPane);
         return;
-      }
-
-      if (settingsPane === "video" && index >= videoAspectStartIndex && index < videoBackIndex) {
-        const ratio = aspectRatioOptions[index - videoAspectStartIndex];
-        if (aspectRatio !== ratio) {
-          setAspectRatio(ratio);
+      case "select-aspect-ratio":
+        if (aspectRatio !== action.aspectRatio) {
+          setAspectRatio(action.aspectRatio);
         }
         return;
-      }
-
-      if (settingsPane === "keybinds") {
-        if (index === keybindSensitivityStartIndex) {
-          setMouseSensitivity(getPlatformDefaultLookSensitivity());
-          return;
-        }
-
-        if (index === keybindSensitivityStartIndex + 1) {
-          setControllerLookSensitivity(DEFAULT_CONTROLLER_LOOK_SENSITIVITY);
-          return;
-        }
-
-        if (index === keybindArrowLookIndex) {
-          setKeyboardArrowLookEnabled(!keyboardArrowLookEnabled);
-          return;
-        }
-
-        if (index >= keybindControlStartIndex && index < keybindBackIndex) {
-          beginControllerRemap(controllerActionRows[index - keybindControlStartIndex].action);
-          return;
-        }
-      }
-
-      if (settingsPane === "voice") {
-        if (index === voiceEnabledIndex) {
-          setVoiceChatEnabled(!voiceChatEnabled);
-          return;
-        }
-
-        if (index === voiceInputModeIndex) {
-          toggleVoiceInputMode();
-          return;
-        }
-
-        if (index === voicePushToTalkKeyIndex) {
-          beginVoiceKeyRemap();
-          return;
-        }
-
-        if (index === voiceOutputVolumeIndex) {
-          setVoiceOutputVolume(DEFAULT_VOICE_OUTPUT_VOLUME);
-          return;
-        }
-
-        if (index === voiceProximityRangeIndex) {
-          setVoiceProximityRange(DEFAULT_VOICE_PROXIMITY_RANGE);
-          return;
-        }
-      }
-
-      if (settingsPane === "character") {
+      case "reset-mouse-sensitivity":
+        setMouseSensitivity(getPlatformDefaultLookSensitivity());
+        return;
+      case "reset-controller-look-sensitivity":
+        setControllerLookSensitivity(DEFAULT_CONTROLLER_LOOK_SENSITIVITY);
+        return;
+      case "toggle-keyboard-arrow-look":
+        setKeyboardArrowLookEnabled(!keyboardArrowLookEnabled);
+        return;
+      case "begin-controller-remap":
+        beginControllerRemap(action.action);
+        return;
+      case "toggle-voice-enabled":
+        setVoiceChatEnabled(!voiceChatEnabled);
+        return;
+      case "toggle-voice-input-mode":
+        toggleVoiceInputMode();
+        return;
+      case "begin-voice-key-remap":
+        beginVoiceKeyRemap();
+        return;
+      case "reset-voice-output-volume":
+        setVoiceOutputVolume(DEFAULT_VOICE_OUTPUT_VOLUME);
+        return;
+      case "reset-voice-proximity-range":
+        setVoiceProximityRange(DEFAULT_VOICE_PROXIMITY_RANGE);
+        return;
+      case "character-step": {
         const nextCharacterUpdate = getCharacterCustomizationStep(characterCustomization, index, 1);
         if (nextCharacterUpdate) {
           setCharacterCustomization(nextCharacterUpdate);
-          return;
         }
+        return;
       }
-
-      setShowVideoMenu(false);
-      setSettingsPane("video");
-      setRemappingAction(null);
-      setRemappingVoiceKey(false);
-      setPauseMenuIndex(3);
-      return;
+      case "close-settings-menu":
+        setShowVideoMenu(false);
+        setSettingsPane("video");
+        setRemappingAction(null);
+        setRemappingVoiceKey(false);
+        setPauseMenuIndex(3);
+        return;
+      case "start-menu-action":
+        runStartMenuAction(action.action);
+        return;
+      case "close-pause-menu":
+        closePauseMenu(controllerResumeRequestedRef.current ? "controller" : "last");
+        return;
+      case "join-invite":
+        joinInviteCode();
+        return;
+      case "copy-invite":
+        copyInvite();
+        return;
+      case "open-settings-menu":
+        setShowVideoMenu(true);
+        setSettingsPane("video");
+        setPauseMenuIndex(0);
+        return;
     }
 
-    const startMenuAction = resolveHudStartMenuAction(startMenuStage, index);
-    if (startMenuAction) {
-      runStartMenuAction(startMenuAction);
-      return;
-    }
-
-    if (index === 0) {
-      closePauseMenu(controllerResumeRequestedRef.current ? "controller" : "last");
-      return;
-    }
-
-    if (!isMultiplayerMode) {
-      setShowVideoMenu(true);
-      setSettingsPane("video");
-      setPauseMenuIndex(0);
-      return;
-    }
-
-    if (index === 1) {
-      joinInviteCode();
-      return;
-    }
-
-    if (index === 2) {
-      copyInvite();
-      return;
-    }
-
-    setShowVideoMenu(true);
-    setSettingsPane("video");
-    setPauseMenuIndex(0);
   };
 
   const movePauseMenuFocus = (direction: MenuDirection) => {
