@@ -1,4 +1,8 @@
-import type { HandType, SpellType } from "../../../store/gameStore";
+import type { HandType, Projectile, SpellType } from "../../../store/gameStore";
+import {
+  createPlayerSpellProjectilePayload,
+  createQaWalkPracticeProjectileId,
+} from "../../systems/spells/playerSpellCasting";
 import {
   QA_SURVIVAL_COMBAT_FOCUS_SECONDS,
   QA_SURVIVAL_COMBAT_SPELL_SEQUENCE,
@@ -57,6 +61,48 @@ export function resolveQaWalkPracticeProjectilePosition({
     y: playerPos.y - footOffset + QA_WALK_PRACTICE_GROUND_Y_OFFSET,
     z: playerPos.z + flatDir.z * QA_WALK_PRACTICE_LIGHTNING_TARGET_DISTANCE,
   };
+}
+
+export function applyQaWalkPracticeCast({
+  addProjectile,
+  createdAt,
+  creatorId,
+  dir,
+  emitGameNetworkEvent,
+  hand,
+  pos,
+  projectileId,
+  publishPracticeCast,
+  pulseHandCharging,
+  spell,
+}: {
+  addProjectile: (projectile: Projectile) => void;
+  createdAt: number;
+  creatorId: string;
+  dir: QaWalkPracticeVectorPayload;
+  emitGameNetworkEvent: (eventName: string, ...args: unknown[]) => unknown;
+  hand: HandType;
+  pos: QaWalkPracticeVectorPayload;
+  projectileId?: string;
+  publishPracticeCast: (spell: SpellType) => void;
+  pulseHandCharging: (hand: HandType, chargeMs: number) => void;
+  spell: SpellType;
+}) {
+  const projectile = createPlayerSpellProjectilePayload({
+    id: projectileId ?? createQaWalkPracticeProjectileId(spell, createdAt),
+    creatorId,
+    type: spell,
+    pos,
+    dir,
+    createdAt,
+    hand,
+  });
+
+  pulseHandCharging(hand, getQaWalkPracticeCastChargeMs(spell));
+  emitGameNetworkEvent("castSpell", projectile);
+  addProjectile(projectile);
+  publishPracticeCast(spell);
+  return projectile;
 }
 
 export function resolveQaWalkCombatCastDecision({

@@ -124,7 +124,7 @@ import {
   wasSurvivalWalkManaFlowerCollected,
 } from "./tools/qa/survivalWalkQaTelemetry";
 import {
-  getQaWalkPracticeCastChargeMs,
+  applyQaWalkPracticeCast,
   getQaWalkPracticeCastHand,
   resolveQaWalkCombatCastDecision,
   resolveQaWalkPracticeCastDecision,
@@ -312,8 +312,6 @@ import {
   applyPlayerReleasedSpellProjectile,
   applyPlayerSpellProjectileNetworkCast,
   createPlayerGrabProjectileId,
-  createPlayerSpellProjectilePayload,
-  createQaWalkPracticeProjectileId,
   findAimedRemotePlayerInto,
   findRemotePlayerInAimConeInto,
   getPlayerSpellLaunch,
@@ -2092,24 +2090,24 @@ export function PlayerController() {
           flatDir,
           footOffset: PLAYER_FOOT_OFFSET,
         });
-        const projectile = createPlayerSpellProjectilePayload({
-          id: createQaWalkPracticeProjectileId(spell, nowMs),
-          creatorId: getLocalNetworkPlayerId(),
-          type: spell,
-          pos: projectilePos,
-          dir: { x: dir.x, y: dir.y, z: dir.z },
-          createdAt: nowMs,
-          hand,
-        });
-
         const store = useGameStore.getState();
-        pulsePlayerHandCharging(hand, getQaWalkPracticeCastChargeMs(spell), {
-          setHandCharging: (targetHand, charging) => useGameStore.getState().setHandCharging(targetHand, charging),
-          setTimeout: (handler, timeoutMs) => window.setTimeout(handler, timeoutMs),
+        applyQaWalkPracticeCast({
+          addProjectile: store.addProjectile,
+          createdAt: nowMs,
+          creatorId: getLocalNetworkPlayerId(),
+          dir: { x: dir.x, y: dir.y, z: dir.z },
+          emitGameNetworkEvent,
+          hand,
+          pos: projectilePos,
+          publishPracticeCast: publishSurvivalWalkPracticeCast,
+          pulseHandCharging: (targetHand, chargeMs) => {
+            pulsePlayerHandCharging(targetHand, chargeMs, {
+              setHandCharging: (chargingHand, charging) => useGameStore.getState().setHandCharging(chargingHand, charging),
+              setTimeout: (handler, timeoutMs) => window.setTimeout(handler, timeoutMs),
+            });
+          },
+          spell,
         });
-        emitGameNetworkEvent("castSpell", projectile);
-        store.addProjectile(projectile);
-        publishSurvivalWalkPracticeCast(spell);
       };
 
       if (qaWalkNextCombatCastAt.current <= 0) {
