@@ -193,6 +193,7 @@ import {
   QA_LILY_COIL_TUBE_LOOK_AHEAD_T,
   QA_LILY_COIL_TUBE_RESTART_EDGE_T,
   QA_LILY_COIL_TUBE_REVERSE_EDGE_T,
+  resolvePlayerLilyCoilTubeNetworkFrame,
 } from "./systems/player/playerLilyCoilTubeRuntime";
 import {
   canUsePlayerControllerMode,
@@ -2797,10 +2798,18 @@ export function PlayerController() {
         }, nowMs);
       }
 
-      if (nowMs - lastNetworkSync.current > 1000 / 15) {
-        lastNetworkSync.current = nowMs;
+      const tubeNetworkFrame = resolvePlayerLilyCoilTubeNetworkFrame({
+        isSprinting,
+        lastNetworkSync,
+        networkSyncIntervalMs: 1000 / 15,
+        nowMs,
+        tubeAirborne,
+        tubeMoving,
+        tubeSliding,
+      });
+      if (tubeNetworkFrame.shouldSyncNetwork) {
         emitPlayerNetworkPoseSync({
-          anim: tubeAirborne ? "jump" : tubeSliding ? "slide" : tubeMoving ? isSprinting ? "sprint" : "walk" : "holding",
+          anim: tubeNetworkFrame.anim,
           camera,
           characterCustomization: storeState.characterCustomization,
           isVoiceSpeaking: storeState.isVoiceSpeaking,
