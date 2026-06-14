@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { MobileActionCluster } from "./MobileActionCluster";
 import { MobileJoystick } from "./MobileJoystick";
+import { MobileLookZone } from "./MobileLookZone";
 import { MobileTopActions } from "./MobileTopActions";
 import { useMobileTouchControlRuntime } from "./mobileTouchControlsRuntime";
 
@@ -31,14 +32,7 @@ export function MobileTouchControls({
 
   return (
     <div data-testid="mobile-touch-controls" data-wof-hud-qa="mobile-touch-controls" className="mobile-touch-controls pointer-events-none absolute inset-0 z-[85] select-none">
-      <div
-        className="pointer-events-auto absolute inset-y-0 right-0 w-[58%]"
-        style={{ touchAction: "none" }}
-        onPointerDown={beginLook}
-        onPointerMove={moveLook}
-        onPointerUp={endLook}
-        onPointerCancel={endLook}
-      />
+      <MobileLookZone beginLook={beginLook} moveLook={moveLook} endLook={endLook} />
 
       <MobileTopActions
         openSpellMenu={openSpellMenu}
