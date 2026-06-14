@@ -232,6 +232,8 @@ import {
   setPlayerGrabTimeout,
 } from "./systems/player/playerGrabCastingRuntime";
 import {
+  applyPlayerKeyboardHotbarAction,
+  applyPlayerWheelSpellAction,
   resolvePlayerKeyboardHotbarAction,
   resolvePlayerWheelSpellAction,
 } from "./systems/player/playerHotbarInputRuntime";
@@ -972,8 +974,7 @@ export function PlayerController() {
         isSpellMenuOpen: store.isSpellMenuOpen,
         rightHandModifierHeld: keys.KeyQ,
       });
-      if (wheelAction.type === "next") store.nextSpell(wheelAction.hand);
-      else if (wheelAction.type === "previous") store.prevSpell(wheelAction.hand);
+      applyPlayerWheelSpellAction(wheelAction, store);
     };
 
     const onHotbarKeyDown = (e: KeyboardEvent) => {
@@ -988,7 +989,7 @@ export function PlayerController() {
       if (hotbarAction.type !== "select") return;
 
       e.preventDefault();
-      store.selectHotbarSlot(hotbarAction.slotIndex, hotbarAction.hand);
+      applyPlayerKeyboardHotbarAction(hotbarAction, store);
     };
 
     const onContextMenu = (e: MouseEvent) => {

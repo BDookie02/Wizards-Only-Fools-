@@ -20,6 +20,12 @@ export type PlayerWheelSpellAction =
       hand: HandType;
     };
 
+export type PlayerHotbarActionStore = {
+  nextSpell: (hand: HandType) => void;
+  prevSpell: (hand: HandType) => void;
+  selectHotbarSlot: (slotIndex: number, hand: HandType) => void;
+};
+
 type PlayerHotbarActionOptions = {
   gameplayInputAllowed: boolean;
   isMagicArmed: boolean;
@@ -65,4 +71,28 @@ export function resolvePlayerWheelSpellAction(
     type: deltaY > 0 ? "next" : "previous",
     hand: getHotbarHand(options.rightHandModifierHeld),
   };
+}
+
+export function applyPlayerWheelSpellAction(
+  action: PlayerWheelSpellAction,
+  store: Pick<PlayerHotbarActionStore, "nextSpell" | "prevSpell">,
+) {
+  if (action.type === "next") {
+    store.nextSpell(action.hand);
+    return true;
+  }
+  if (action.type === "previous") {
+    store.prevSpell(action.hand);
+    return true;
+  }
+  return false;
+}
+
+export function applyPlayerKeyboardHotbarAction(
+  action: PlayerKeyboardHotbarAction,
+  store: Pick<PlayerHotbarActionStore, "selectHotbarSlot">,
+) {
+  if (action.type !== "select") return false;
+  store.selectHotbarSlot(action.slotIndex, action.hand);
+  return true;
 }
