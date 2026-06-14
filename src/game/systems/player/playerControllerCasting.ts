@@ -7,6 +7,7 @@ import {
   isGamepadButtonPressed,
   type GamepadButtonName,
 } from "../input/controllerInput";
+import { applyPlayerDirectionalHotbarAction } from "./playerHotbarInputRuntime";
 import {
   handlePlayerControllerCastButtonForHand,
   resetPlayerControllerHotbarTracking,
@@ -36,12 +37,7 @@ export function startPlayerControllerCastingLoop({
 
   const scrollControllerHand = (hand: HandType, direction: 1 | -1) => {
     const store = useGameStore.getState();
-    if (direction > 0) {
-      store.nextSpell(hand);
-    } else {
-      store.prevSpell(hand);
-    }
-    store.setActiveHand(hand);
+    applyPlayerDirectionalHotbarAction({ hand, direction }, store);
   };
 
   let controllerCastingScheduler: ReturnType<typeof createControllerPollScheduler>;

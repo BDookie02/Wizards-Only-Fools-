@@ -2,6 +2,7 @@ import { MathUtils } from "three";
 import type { MutableRefObject } from "react";
 import { type HandType, useGameStore } from "../../../store/gameStore";
 import type { TouchButtonName } from "../input/playerInputState";
+import { applyPlayerDirectionalHotbarAction } from "./playerHotbarInputRuntime";
 
 type PlayerTouchVectorRef = MutableRefObject<{ x: number; y: number }>;
 type PlayerTouchButtonRef = MutableRefObject<Record<TouchButtonName, boolean>>;
@@ -57,10 +58,5 @@ export function applyPlayerTouchHotbarEvent(event: Event) {
   const direction = Number(detail.direction) >= 0 ? 1 : -1;
   const store = useGameStore.getState();
   if (store.questDialogSession || store.isInventoryOpen) return;
-  if (direction > 0) {
-    store.nextSpell(hand);
-  } else {
-    store.prevSpell(hand);
-  }
-  store.setActiveHand(hand);
+  applyPlayerDirectionalHotbarAction({ hand, direction }, store);
 }

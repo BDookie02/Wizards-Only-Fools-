@@ -20,10 +20,16 @@ export type PlayerWheelSpellAction =
       hand: HandType;
     };
 
+export type PlayerDirectionalHotbarAction = {
+  hand: HandType;
+  direction: 1 | -1;
+};
+
 export type PlayerHotbarActionStore = {
   nextSpell: (hand: HandType) => void;
   prevSpell: (hand: HandType) => void;
   selectHotbarSlot: (slotIndex: number, hand: HandType) => void;
+  setActiveHand?: (hand: HandType) => void;
 };
 
 type PlayerHotbarActionOptions = {
@@ -86,6 +92,19 @@ export function applyPlayerWheelSpellAction(
     return true;
   }
   return false;
+}
+
+export function applyPlayerDirectionalHotbarAction(
+  action: PlayerDirectionalHotbarAction,
+  store: Pick<PlayerHotbarActionStore, "nextSpell" | "prevSpell" | "setActiveHand">,
+) {
+  if (action.direction > 0) {
+    store.nextSpell(action.hand);
+  } else {
+    store.prevSpell(action.hand);
+  }
+  store.setActiveHand?.(action.hand);
+  return true;
 }
 
 export function applyPlayerKeyboardHotbarAction(
