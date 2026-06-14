@@ -30,17 +30,19 @@ export type PlayerDirectStatusCastPlanApplier = {
   dispatchDirectStatusCast: (detail: DirectStatusCastEventDetail) => void;
 };
 
+export type PlayerDirectStatusCastInput = {
+  spell: SpellType;
+  hand: HandType;
+  targetId: string;
+  nowMs: number;
+};
+
 export function createPlayerDirectStatusCastPlan({
   spell,
   hand,
   targetId,
   nowMs,
-}: {
-  spell: SpellType;
-  hand: HandType;
-  targetId: string;
-  nowMs: number;
-}): PlayerDirectStatusCastPlan | null {
+}: PlayerDirectStatusCastInput): PlayerDirectStatusCastPlan | null {
   if (spell !== "tungstonballsack") return null;
 
   const config = STATUS_SPELL_CONFIG.tungstonballsack;
@@ -70,4 +72,14 @@ export function applyPlayerDirectStatusCastPlan(
   applier.emitGameNetworkEvent("applyStatusEffect", plan.networkPayload);
   applier.dispatchDirectStatusCast(plan.eventDetail);
   return true;
+}
+
+export function applyPlayerDirectStatusCast(
+  input: PlayerDirectStatusCastInput,
+  applier: PlayerDirectStatusCastPlanApplier,
+) {
+  return applyPlayerDirectStatusCastPlan(
+    createPlayerDirectStatusCastPlan(input),
+    applier,
+  );
 }

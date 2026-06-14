@@ -292,8 +292,7 @@ import {
 } from "./systems/player/playerGrabEventRuntime";
 import {
   PLAYER_DIRECT_STATUS_HAND_CHARGE_MS,
-  applyPlayerDirectStatusCastPlan,
-  createPlayerDirectStatusCastPlan,
+  applyPlayerDirectStatusCast,
 } from "./systems/player/playerDirectStatusCastingRuntime";
 import {
   applyPlayerSelfBuffSpellCast,
@@ -668,14 +667,12 @@ export function PlayerController() {
         return false;
       }
 
-      const directStatusPlan = createPlayerDirectStatusCastPlan({
+      return applyPlayerDirectStatusCast({
         spell: "tungstonballsack",
         hand,
         targetId: target.id,
         nowMs: getPlayerEventEpochMs(),
-      });
-
-      return applyPlayerDirectStatusCastPlan(directStatusPlan, {
+      }, {
         updatePlayer: store.updatePlayer,
         emitGameNetworkEvent,
         dispatchDirectStatusCast,
