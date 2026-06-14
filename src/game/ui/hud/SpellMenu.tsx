@@ -13,16 +13,15 @@ import {
   getVisibleSpellMenuSpells,
   spellFamilyFilters,
   SPELL_MENU_NAV_ATTRIBUTE,
-  SPELL_MENU_NAV_CLOSE_INDEX,
   SPELL_MENU_NAV_COUNT,
   SPELL_MENU_NAV_SELECTOR,
   type SpellFamilyFilter,
 } from "./spellMenuRuntime";
 import { SpellMenuBindStatus } from "./SpellMenuBindStatus";
 import { SpellMenuCard } from "./SpellMenuCard";
-import { SpellMenuCloseButton } from "./SpellMenuCloseButton";
 import { SpellMenuFamilyFilterButton } from "./SpellMenuFamilyFilterButton";
 import { SpellMenuFooter } from "./SpellMenuFooter";
+import { SpellMenuHeader } from "./SpellMenuHeader";
 import { SpellMenuHotbarColumn } from "./SpellMenuHotbarColumn";
 import { SpellMenuVisibleCount } from "./SpellMenuVisibleCount";
 import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
@@ -209,17 +208,11 @@ export const SpellMenu = memo(function SpellMenu({
         }}
       >
         <div className="spell-menu-scanline pointer-events-none absolute inset-0 opacity-40" />
-        <div className="spell-menu-header sticky top-0 z-20 flex items-start justify-between gap-4 border-b border-cyan-300/40 bg-[#12071f]/95 pb-3 backdrop-blur-[2px]">
-          <div className="min-w-0">
-            <div className="spell-menu-kicker text-[10px] tracking-[0.4em] text-cyan-300/80">ARCANE LOADOUT</div>
-            <div className="spell-menu-title mt-2 text-2xl text-white drop-shadow-[0_0_8px_rgba(103,232,249,0.9)]">SPELL BOOK</div>
-          </div>
-          <SpellMenuCloseButton
-            focused={controllerFocusIndex === SPELL_MENU_NAV_CLOSE_INDEX}
-            onFocusClose={() => setControllerFocusIndex(SPELL_MENU_NAV_CLOSE_INDEX)}
-            onClose={onClose}
-          />
-        </div>
+        <SpellMenuHeader
+          controllerFocusIndex={controllerFocusIndex}
+          onFocusClose={setControllerFocusIndex}
+          onClose={onClose}
+        />
 
         <div className="spell-menu-layout relative mt-3 grid grid-cols-[78px_minmax(0,1fr)_78px] gap-2">
           <SpellMenuHotbarColumn
