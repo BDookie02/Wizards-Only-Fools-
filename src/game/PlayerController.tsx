@@ -227,6 +227,12 @@ import {
   resolvePlayerWheelSpellAction,
 } from "./systems/player/playerHotbarInputRuntime";
 import {
+  isPlayerMouseCastButton,
+  resolvePlayerContextMenuAction,
+  resolvePlayerMouseCastAction,
+  resolvePlayerMouseReleaseAction,
+} from "./systems/player/playerMouseCastInputRuntime";
+import {
   resolvePlayerGrabControlEventAction,
   resolvePlayerGrabReleaseEventAction,
   resolvePlayerGrabStartEventAction,
@@ -804,15 +810,28 @@ export function PlayerController() {
       }
     };
 
+    const isMouseCastSurfaceBlocked = () => {
+      const state = useGameStore.getState();
+      return Boolean(state.questNpcEditorTarget || state.questDialogSession || state.isInventoryOpen);
+    };
+
     const onMouseDown = (e: MouseEvent) => {
-      if (useGameStore.getState().questNpcEditorTarget || useGameStore.getState().questDialogSession || useGameStore.getState().isInventoryOpen) return;
-      if (e.button === 0 || e.button === 2) {
-        if (canUseGameplayInput() && requestQuestVillagerInteraction()) {
-          e.preventDefault();
-          return;
-        }
-        startHandCast(e.button === 2 ? 'right' : 'left');
+      const surfaceBlocked = isMouseCastSurfaceBlocked();
+      const gameplayInputAllowed = canUseGameplayInput();
+      const questInteractionHandled = !surfaceBlocked &&
+        gameplayInputAllowed &&
+        isPlayerMouseCastButton(e.button) &&
+        requestQuestVillagerInteraction();
+      const mouseAction = resolvePlayerMouseCastAction(e.button, {
+        gameplayInputAllowed,
+        questInteractionHandled,
+        surfaceBlocked,
+      });
+      if (mouseAction.type === "prevent-default") {
+        e.preventDefault();
+        return;
       }
+      if (mouseAction.type === "start") startHandCast(mouseAction.hand);
     };
 
     const releaseHandCast = (hand: HandType) => {
@@ -905,10 +924,8 @@ export function PlayerController() {
     };
 
     const onMouseUp = (e: MouseEvent) => {
-      if (useGameStore.getState().questNpcEditorTarget || useGameStore.getState().questDialogSession || useGameStore.getState().isInventoryOpen) return;
-      if (e.button === 0 || e.button === 2) {
-        releaseHandCast(e.button === 2 ? 'right' : 'left');
-      }
+      const mouseAction = resolvePlayerMouseReleaseAction(e.button, isMouseCastSurfaceBlocked());
+      if (mouseAction.type === "release") releaseHandCast(mouseAction.hand);
     };
 
     const onMobileControl = (e: Event) => {
@@ -957,7 +974,7 @@ export function PlayerController() {
     };
 
     const onContextMenu = (e: MouseEvent) => {
-      if (canUseGameplayInput()) {
+      if (resolvePlayerContextMenuAction(canUseGameplayInput()).type === "prevent-default") {
         e.preventDefault();
       }
     };
