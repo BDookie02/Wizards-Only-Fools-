@@ -150,7 +150,10 @@ import {
   hasCameraRollAgainstWorldUp as hasPlayerCameraRollAgainstWorldUp,
   resetLilyCoilCameraState as resetPlayerLilyCoilCameraState,
 } from "./systems/player/playerCameraRuntime";
-import { usePlayerControllerRuntimeState } from "./systems/player/playerControllerRuntimeState";
+import {
+  usePlayerControllerRuntimeState,
+  type GrabbedPlayerState,
+} from "./systems/player/playerControllerRuntimeState";
 import { applyPlayerBodyCameraPlacement } from "./systems/player/playerBodyPlacementRuntime";
 import { resolvePlayerSpawnOverrideAction } from "./systems/player/playerSpawnOverrideRuntime";
 import {
@@ -277,12 +280,11 @@ import {
 } from "./systems/player/playerMouseCastInputRuntime";
 import {
   applyPlayerGrabbedFollowFrame,
-  applyPlayerGrabStartEventAction,
+  applyPlayerGrabStartEventDetail,
   applyPlayerGrabControlEventAction,
   resolvePlayerGrabControlEventAction,
   resolvePlayerGrabReleaseDirectionInto,
   resolvePlayerGrabReleaseEventAction,
-  resolvePlayerGrabStartEventAction,
   throwPlayerGrabbedState,
 } from "./systems/player/playerGrabEventRuntime";
 import {
@@ -1027,28 +1029,23 @@ export function PlayerController() {
     };
 
     const onGrabPlayer = (e: any) => {
-      const grabAction = resolvePlayerGrabStartEventAction(e.detail, {
-        defaultDistance: GRAB_DEFAULT_DISTANCE,
-        fallbackOrigin: camera.position,
-        localPlayerId: getLocalNetworkPlayerId(),
-      });
-      if (grabAction.type !== "apply") return;
-
-      grabbedState.current = applyPlayerGrabStartEventAction(
-        grabAction,
-        grabbedState.current,
-        () => ({
-          casterId: grabAction.casterId,
-          grabId: grabAction.grabId,
+      applyPlayerGrabStartEventDetail(e.detail, {
+        createState: (): GrabbedPlayerState => ({
+          casterId: "",
+          grabId: undefined,
           dir: new THREE.Vector3(),
           origin: new THREE.Vector3(),
           distance: GRAB_DEFAULT_DISTANCE,
           lastControlAt: 0,
           until: 0,
         }),
-        getPlayerEventEpochMs(),
-        GRAB_MAX_DURATION_MS,
-      );
+        defaultDistance: GRAB_DEFAULT_DISTANCE,
+        fallbackOrigin: camera.position,
+        grabbedState,
+        localPlayerId: getLocalNetworkPlayerId(),
+        maxDurationMs: GRAB_MAX_DURATION_MS,
+        nowMs: getPlayerEventEpochMs(),
+      });
     };
 
     const onGrabControl = (e: any) => {

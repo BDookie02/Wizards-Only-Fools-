@@ -236,6 +236,37 @@ export function applyPlayerGrabStartEventAction<TState extends PlayerGrabbedEven
   return grabbed;
 }
 
+export function applyPlayerGrabStartEventDetail<TState extends PlayerGrabbedEventState>(
+  detail: unknown,
+  options: PlayerGrabStartEventOptions & {
+    createState: () => TState;
+    grabbedState: PlayerGrabbedStateRef<TState>;
+    maxDurationMs: number;
+    nowMs: number;
+  },
+) {
+  const action = resolvePlayerGrabStartEventAction(detail, options);
+  if (action.type !== "apply") {
+    return {
+      applied: false,
+      state: options.grabbedState.current,
+    };
+  }
+
+  const state = applyPlayerGrabStartEventAction(
+    action,
+    options.grabbedState.current,
+    options.createState,
+    options.nowMs,
+    options.maxDurationMs,
+  );
+  options.grabbedState.current = state;
+  return {
+    applied: Boolean(state),
+    state,
+  };
+}
+
 export function applyPlayerGrabControlEventAction(
   action: PlayerGrabControlEventAction,
   grabbed: PlayerGrabbedEventState,
