@@ -133,9 +133,9 @@ import {
 import {
   getQaWalkNextCombatCastAt,
   getQaWalkNextPracticeCastAt,
+  applyQaWalkSpellDummyRunMotionBrake,
   resolveQaWalkSpellDummyReanchorPlan,
   resolveQaWalkSpellDummyTargets,
-  shouldBrakeQaWalkSpellDummyRunMotion,
   shouldReanchorQaWalkSpellDummy,
 } from "./tools/qa/survivalWalkQaSpellDummyRuntime";
 import { publishManualFastTravelSpawn } from "./tools/manualFastTravelSpawn";
@@ -2201,17 +2201,11 @@ export function PlayerController() {
         scheduleNextCombatCast();
       }
 
-      if (qaSpellDummyRunActive && activeIntent?.kind === "spell-dummy" && rigidBody.current) {
-        const currentLinvel = rigidBody.current.linvel();
-        const horizontalSpeedSq = currentLinvel.x * currentLinvel.x + currentLinvel.z * currentLinvel.z;
-        if (shouldBrakeQaWalkSpellDummyRunMotion({
-          activeIntentKind: activeIntent.kind,
-          horizontalSpeedSq,
-          qaSpellDummyRunActive,
-        })) {
-          rigidBody.current.setLinvel({ x: 0, y: currentLinvel.y, z: 0 }, true);
-        }
-      }
+      applyQaWalkSpellDummyRunMotionBrake({
+        activeIntentKind: activeIntent?.kind ?? null,
+        body: rigidBody.current,
+        qaSpellDummyRunActive,
+      });
 
       const practiceCastDecision = resolveQaWalkPracticeCastDecision({
         activeIntentKind: activeIntent?.kind ?? null,

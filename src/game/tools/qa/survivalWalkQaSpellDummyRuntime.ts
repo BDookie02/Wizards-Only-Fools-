@@ -17,6 +17,11 @@ export const QA_WALK_SPELL_DUMMY_EXPANDED_TARGET_RANGE_MULTIPLIER = 1.35;
 export const QA_WALK_SPELL_DUMMY_REANCHOR_DEFAULT_SPAWN_OFFSET = 8;
 export const QA_WALK_SPELL_DUMMY_REANCHOR_RECOVERY_SPAWN_OFFSET = 14;
 
+export type QaWalkSpellDummyBrakeBody = {
+  linvel(): { x: number; y: number; z: number };
+  setLinvel(velocity: { x: number; y: number; z: number }, wakeUp?: boolean): void;
+};
+
 export function getQaWalkNextCombatCastAt({
   elapsedSeconds,
   x,
@@ -182,6 +187,32 @@ export function shouldBrakeQaWalkSpellDummyRunMotion({
   return qaSpellDummyRunActive &&
     activeIntentKind === "spell-dummy" &&
     horizontalSpeedSq > brakeSpeed * brakeSpeed;
+}
+
+export function applyQaWalkSpellDummyRunMotionBrake({
+  activeIntentKind,
+  body,
+  brakeSpeed,
+  qaSpellDummyRunActive,
+}: {
+  activeIntentKind: QaSurvivalIntent["kind"] | null;
+  body: QaWalkSpellDummyBrakeBody | null | undefined;
+  brakeSpeed?: number;
+  qaSpellDummyRunActive: boolean;
+}) {
+  if (!body) return { braked: false, horizontalSpeedSq: 0 };
+  const currentVelocity = body.linvel();
+  const horizontalSpeedSq = currentVelocity.x * currentVelocity.x + currentVelocity.z * currentVelocity.z;
+  if (!shouldBrakeQaWalkSpellDummyRunMotion({
+    activeIntentKind,
+    brakeSpeed,
+    horizontalSpeedSq,
+    qaSpellDummyRunActive,
+  })) {
+    return { braked: false, horizontalSpeedSq };
+  }
+  body.setLinvel({ x: 0, y: currentVelocity.y, z: 0 }, true);
+  return { braked: true, horizontalSpeedSq };
 }
 
 export function getQaWalkSpellDummyReanchorSpawnOffset(mode: QaSurvivalWalkMode) {
