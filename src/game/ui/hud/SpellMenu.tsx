@@ -17,8 +17,7 @@ import {
 } from "./spellMenuRuntime";
 import { SpellMenuFooter } from "./SpellMenuFooter";
 import { SpellMenuHeader } from "./SpellMenuHeader";
-import { SpellMenuHotbarColumn } from "./SpellMenuHotbarColumn";
-import { SpellMenuSpellPanel } from "./SpellMenuSpellPanel";
+import { SpellMenuLoadoutLayout } from "./SpellMenuLoadoutLayout";
 import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
 
 export const SpellMenu = memo(function SpellMenu({
@@ -209,47 +208,32 @@ export const SpellMenu = memo(function SpellMenu({
           onClose={onClose}
         />
 
-        <div className="spell-menu-layout relative mt-3 grid grid-cols-[78px_minmax(0,1fr)_78px] gap-2">
-          <SpellMenuHotbarColumn
-            hand="left"
-            spells={leftHotbarSpells}
-            selectedIndex={leftSelectedHotbarIndex}
-            bindingHand={bindingHand}
-            controllerFocusIndex={controllerFocusIndex}
-            onFocusSlot={applyControllerFocus}
-          />
-
-          <SpellMenuSpellPanel
-            bindingHand={bindingHand}
-            bindingSelectedIndex={bindingSelectedIndex}
-            leftCurrentSpell={leftCurrentSpell}
-            rightCurrentSpell={rightCurrentSpell}
-            activeFamily={activeFamily}
-            familyCounts={familyCounts}
-            visibleSpells={visibleSpells}
-            menuSpellIndex={menuSpellIndex}
-            controllerFocusIndex={controllerFocusIndex}
-            leftHotbarSlotLookup={leftHotbarSlotLookup}
-            rightHotbarSlotLookup={rightHotbarSlotLookup}
-            bindingHotbarSlotLookup={bindingHotbarSlotLookup}
-            onFilterFocusNav={setControllerFocusIndex}
-            onSelectFamily={(selectedFamily, navIndex) => {
-              setControllerFocusIndex(navIndex);
-              selectFamily(selectedFamily);
-            }}
-            onFocusNav={applyControllerFocus}
-            onAssignSpell={assignSpellToSlot}
-          />
-
-          <SpellMenuHotbarColumn
-            hand="right"
-            spells={rightHotbarSpells}
-            selectedIndex={rightSelectedHotbarIndex}
-            bindingHand={bindingHand}
-            controllerFocusIndex={controllerFocusIndex}
-            onFocusSlot={applyControllerFocus}
-          />
-        </div>
+        <SpellMenuLoadoutLayout
+          leftHotbarSpells={leftHotbarSpells}
+          rightHotbarSpells={rightHotbarSpells}
+          leftSelectedHotbarIndex={leftSelectedHotbarIndex}
+          rightSelectedHotbarIndex={rightSelectedHotbarIndex}
+          bindingHand={bindingHand}
+          bindingSelectedIndex={bindingSelectedIndex}
+          leftCurrentSpell={leftCurrentSpell}
+          rightCurrentSpell={rightCurrentSpell}
+          activeFamily={activeFamily}
+          familyCounts={familyCounts}
+          visibleSpells={visibleSpells}
+          menuSpellIndex={menuSpellIndex}
+          controllerFocusIndex={controllerFocusIndex}
+          leftHotbarSlotLookup={leftHotbarSlotLookup}
+          rightHotbarSlotLookup={rightHotbarSlotLookup}
+          bindingHotbarSlotLookup={bindingHotbarSlotLookup}
+          onFocusSlot={applyControllerFocus}
+          onFilterFocusNav={setControllerFocusIndex}
+          onSelectFamily={(selectedFamily, navIndex) => {
+            setControllerFocusIndex(navIndex);
+            selectFamily(selectedFamily);
+          }}
+          onFocusNav={applyControllerFocus}
+          onAssignSpell={assignSpellToSlot}
+        />
 
         <SpellMenuFooter
           bindingHand={bindingHand}

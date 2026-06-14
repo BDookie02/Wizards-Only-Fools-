@@ -7,7 +7,7 @@ import { SpellMenuBindStatus } from "./SpellMenuBindStatus";
 import { SpellMenuFilterRow } from "./SpellMenuFilterRow";
 import { SpellMenuGrid } from "./SpellMenuGrid";
 
-type SpellMenuSpellPanelProps = {
+export type SpellMenuSpellPanelProps = {
   bindingHand: HandType;
   bindingSelectedIndex: number;
   leftCurrentSpell: SpellType;
