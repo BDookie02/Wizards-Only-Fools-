@@ -145,6 +145,7 @@ import {
 } from "./systems/player/playerCameraRuntime";
 import { usePlayerControllerRuntimeState } from "./systems/player/playerControllerRuntimeState";
 import { resolvePlayerSpawnOverrideAction } from "./systems/player/playerSpawnOverrideRuntime";
+import { resolvePlayerTeleportEventAction } from "./systems/player/playerTeleportRuntime";
 import {
   readPlayerControllerGamepadLookInput,
   readPlayerControllerGamepadMovementInput,
@@ -955,26 +956,21 @@ export function PlayerController() {
 
     const onTeleport = (e: any) => {
       if (!rigidBody.current) return;
-      const detail = e.detail ?? {};
-      const teleportPosition = {
-        x: Number(detail.x),
-        y: Number(detail.y),
-        z: Number(detail.z),
-      };
-      if (!Number.isFinite(teleportPosition.x) || !Number.isFinite(teleportPosition.y) || !Number.isFinite(teleportPosition.z)) return;
+      const teleportAction = resolvePlayerTeleportEventAction(e.detail);
+      if (teleportAction.type !== "apply") return;
+      const teleportPosition = teleportAction.position;
       rigidBody.current.setTranslation(teleportPosition, true);
       rigidBody.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       rigidBody.current.setAngvel({ x: 0, y: 0, z: 0 }, true);
       camera.position.set(teleportPosition.x, teleportPosition.y + PLAYER_CAMERA_HEIGHT, teleportPosition.z);
-      const yaw = Number(detail.yaw);
-      const resolvedYaw = resetLilyCoilCameraState(Number.isFinite(yaw) ? yaw : undefined);
+      const resolvedYaw = resetLilyCoilCameraState(teleportAction.yaw);
       resetQaWalkSession(teleportPosition);
       const now = getPlayerEventEpochMs();
       const manualFastTravelSpawn = publishManualFastTravelSpawn({
         x: teleportPosition.x,
         y: teleportPosition.y,
         z: teleportPosition.z,
-        yaw: Number.isFinite(yaw) ? yaw : undefined,
+        yaw: teleportAction.yaw,
       }, now);
       forcedSpawnKey.current = manualFastTravelSpawn.key;
       publishLocalPlayerPosition(teleportPosition, { rememberLast: true });
