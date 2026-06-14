@@ -218,6 +218,7 @@ import {
   applyPlayerJumpThrusterFrame,
   applyPlayerMovementModifierFrame,
   applyPlayerMovementVelocityFrame,
+  applyPlayerPlanarMovementDirectionFrame,
   resetPlayerCrouchState,
   resetPlayerSlideAndCrouchState,
   resetPlayerSlideState,
@@ -2852,14 +2853,12 @@ export function PlayerController() {
       resetLilyCoilCameraState();
     }
 
-    if (hasPlanarMovementInput) {
-      if (direction.lengthSq() > 1) {
-        direction.normalize();
-      }
-      direction.multiplyScalar(currentSpeed).applyEuler(camera.rotation);
-    } else {
-      direction.set(0, 0, 0);
-    }
+    applyPlayerPlanarMovementDirectionFrame({
+      cameraRotation: camera.rotation,
+      currentSpeed,
+      direction,
+      hasPlanarMovementInput,
+    });
 
     const movementModifierFrame = applyPlayerMovementModifierFrame({
       direction,

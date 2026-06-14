@@ -314,6 +314,41 @@ export type PlayerMovementModifierFrameResult = {
   vclipApplied: boolean;
 };
 
+export type PlayerPlanarMovementDirectionFrameResult = {
+  hadPlanarInput: boolean;
+  normalizedInput: boolean;
+};
+
+export function applyPlayerPlanarMovementDirectionFrame({
+  cameraRotation,
+  currentSpeed,
+  direction,
+  hasPlanarMovementInput,
+}: {
+  cameraRotation: THREE.Euler;
+  currentSpeed: number;
+  direction: THREE.Vector3;
+  hasPlanarMovementInput: boolean;
+}): PlayerPlanarMovementDirectionFrameResult {
+  if (!hasPlanarMovementInput) {
+    direction.set(0, 0, 0);
+    return {
+      hadPlanarInput: false,
+      normalizedInput: false,
+    };
+  }
+
+  const normalizedInput = direction.lengthSq() > 1;
+  if (normalizedInput) {
+    direction.normalize();
+  }
+  direction.multiplyScalar(currentSpeed).applyEuler(cameraRotation);
+  return {
+    hadPlanarInput: true,
+    normalizedInput,
+  };
+}
+
 export function applyPlayerMovementModifierFrame({
   direction,
   isSliding,
