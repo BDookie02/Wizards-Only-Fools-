@@ -4,6 +4,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { GameMode, LobbyRules, SurvivalRules } from "../../../store/gameStore";
 import { formatCharacterOption } from "./hudSettingsUtils";
+import { PAUSE_FOCUSED_MENU_CLASS, PauseMenuButton } from "./PauseMenuButton";
 
 export type StartMenuStage = "press-start" | "mode-select" | "multiplayer-select" | "custom-lobby" | "survival-options" | "resume";
 
@@ -81,26 +82,17 @@ export function PauseStartMenuContent({
   setSurvivalRules,
 }: PauseStartMenuContentProps) {
   const mainMenuFocus = (index: number) => pauseMenuIndex === index;
-  const focusedMenuClass = "ring-2 ring-yellow-200 ring-offset-2 ring-offset-black shadow-[0_0_20px_rgba(250,204,21,0.55)] brightness-125";
 
   const renderMenuButton = (index: number, label: string, hint: string, onClick: () => void) => (
-    <button
+    <PauseMenuButton
       key={`${startMenuStage}-${index}-${label}`}
-      type="button"
-      data-menu-index={index}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      onMouseEnter={() => setPauseMenuIndex(index)}
-      className={cn(
-        "pause-menu-button wizard-panel w-full cursor-pointer border-2 border-purple-300/45 bg-[#15081f]/80 px-5 py-3 text-left font-mono uppercase tracking-widest text-white shadow-[6px_6px_0_rgba(0,0,0,0.65)] transition-all hover:brightness-125",
-        mainMenuFocus(index) ? focusedMenuClass : ""
-      )}
-    >
-      <span className="pause-menu-button-label block font-bold text-yellow-100">{label}</span>
-      <span className="pause-menu-button-hint mt-1 block normal-case text-cyan-100/70">{hint}</span>
-    </button>
+      index={index}
+      label={label}
+      hint={hint}
+      focused={mainMenuFocus(index)}
+      onFocus={() => setPauseMenuIndex(index)}
+      onSelect={onClick}
+    />
   );
 
   const renderRuleButton = (
@@ -318,7 +310,7 @@ export function PauseStartMenuContent({
             className={cn(
               "pause-primary-button font-bold uppercase tracking-wider shadow-[6px_6px_0_theme(colors.black)] font-mono text-center wizard-panel text-white transition-all",
               canLock ? "cursor-pointer hover:brightness-125" : "",
-              mainMenuFocus(0) ? focusedMenuClass : ""
+              mainMenuFocus(0) ? PAUSE_FOCUSED_MENU_CLASS : ""
             )}
             style={{
               pointerEvents: canLock ? "auto" : "none",
@@ -342,7 +334,7 @@ export function PauseStartMenuContent({
               onMouseEnter={() => setPauseMenuIndex(2)}
               className={cn(
                 "pause-utility-button flex items-center gap-2 bg-[#555] border-2 border-[#888] border-b-[#222] border-r-[#222] hover:bg-[#666] text-white shadow-lg cursor-pointer transition-all",
-                mainMenuFocus(2) ? focusedMenuClass : ""
+                mainMenuFocus(2) ? PAUSE_FOCUSED_MENU_CLASS : ""
               )}
             >
               <Copy size={14} />
@@ -358,7 +350,7 @@ export function PauseStartMenuContent({
             onMouseEnter={() => setPauseMenuIndex(isMultiplayerMode ? 3 : 1)}
             className={cn(
               "pause-utility-button flex items-center gap-2 bg-[#555] border-2 border-[#888] border-b-[#222] border-r-[#222] hover:bg-[#666] text-white shadow-lg cursor-pointer transition-all uppercase tracking-widest font-bold",
-              mainMenuFocus(isMultiplayerMode ? 3 : 1) ? focusedMenuClass : ""
+              mainMenuFocus(isMultiplayerMode ? 3 : 1) ? PAUSE_FOCUSED_MENU_CLASS : ""
             )}
           >
             Settings
