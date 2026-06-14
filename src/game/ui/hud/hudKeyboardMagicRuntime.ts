@@ -10,6 +10,11 @@ export type HudKeyboardMagicHoldRefs = {
   keyboardMagicHoldConsumedRef: Ref<boolean>;
 };
 
+export type HudKeyboardHandModifierAction =
+  | { type: "none" }
+  | { type: "activateRightHand" }
+  | { type: "releaseRightHand"; resetBindingHand: boolean };
+
 export function clearHudKeyboardMagicHoldState({
   clearTimer,
   keyboardMagicHoldConsumedRef,
@@ -83,4 +88,30 @@ export function resolveHudKeyboardMagicHoldRelease({
     handled: true,
     openSpellMenu: !consumed && eventTimeStamp - holdStartedAt < holdMs,
   };
+}
+
+export function resolveHudKeyboardHandModifierKeyDownAction({
+  blocked,
+  code,
+  repeat,
+}: {
+  blocked: boolean;
+  code: string;
+  repeat: boolean;
+}): HudKeyboardHandModifierAction {
+  if (blocked || code !== "KeyQ" || repeat) return { type: "none" };
+  return { type: "activateRightHand" };
+}
+
+export function resolveHudKeyboardHandModifierKeyUpAction({
+  blocked,
+  code,
+  spellMenuOpen,
+}: {
+  blocked: boolean;
+  code: string;
+  spellMenuOpen: boolean;
+}): HudKeyboardHandModifierAction {
+  if (blocked || code !== "KeyQ") return { type: "none" };
+  return { type: "releaseRightHand", resetBindingHand: !spellMenuOpen };
 }

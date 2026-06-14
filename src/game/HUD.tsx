@@ -201,6 +201,8 @@ import {
 } from "./ui/hud/hudRunePowerDecayRuntime";
 import {
   clearHudKeyboardMagicHoldState,
+  resolveHudKeyboardHandModifierKeyDownAction,
+  resolveHudKeyboardHandModifierKeyUpAction,
   resolveHudKeyboardMagicHoldRelease,
   startHudKeyboardMagicHold,
 } from "./ui/hud/hudKeyboardMagicRuntime";
@@ -721,7 +723,7 @@ export function HUD() {
     return () => setPauseMenuOpen(false);
   }, [isGameLaunched, isPauseMenuVisible, setPauseMenuOpen, startMenuStage]);
 
-  // Deplete rune energy
+  // Track the Q key right-hand modifier for keyboard spell selection.
   useEffect(() => {
     if (!isGameLaunched) {
       qHeldRef.current = false;
@@ -730,20 +732,30 @@ export function HUD() {
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
-      if (e.code !== "KeyQ" || e.repeat) return;
-      qHeldRef.current = true;
-      setIsRightHandModifier(true);
-      setMenuBindingHand("right");
-      setActiveHand("right");
+      const action = resolveHudKeyboardHandModifierKeyDownAction({
+        blocked: isCommandConsoleOpen || Boolean(questNpcEditorTarget) || Boolean(questDialogSession) || isInventoryOpen || isEditableTarget(e.target),
+        code: e.code,
+        repeat: e.repeat,
+      });
+      if (action.type === "activateRightHand") {
+        qHeldRef.current = true;
+        setIsRightHandModifier(true);
+        setMenuBindingHand("right");
+        setActiveHand("right");
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
-      if (e.code !== "KeyQ") return;
+      const action = resolveHudKeyboardHandModifierKeyUpAction({
+        blocked: isCommandConsoleOpen || Boolean(questNpcEditorTarget) || Boolean(questDialogSession) || isInventoryOpen || isEditableTarget(e.target),
+        code: e.code,
+        spellMenuOpen: useGameStore.getState().isSpellMenuOpen,
+      });
+      if (action.type !== "releaseRightHand") return;
+
       qHeldRef.current = false;
       setIsRightHandModifier(false);
-      if (!useGameStore.getState().isSpellMenuOpen) {
+      if (action.resetBindingHand) {
         setMenuBindingHand("left");
         setActiveHand("left");
       }
