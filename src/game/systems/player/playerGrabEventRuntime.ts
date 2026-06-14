@@ -286,6 +286,22 @@ export function applyPlayerGrabControlEventAction(
   return true;
 }
 
+export function applyPlayerGrabControlEventDetail<TState extends PlayerGrabbedEventState>(
+  detail: unknown,
+  grabbedState: PlayerGrabbedStateRef<TState>,
+  nowMs: number,
+) {
+  const grabbed = grabbedState.current;
+  if (!grabbed) return false;
+
+  const action = resolvePlayerGrabControlEventAction(detail, {
+    casterId: grabbed.casterId,
+    fallbackOrigin: grabbed.origin,
+    grabId: grabbed.grabId,
+  });
+  return applyPlayerGrabControlEventAction(action, grabbed, nowMs);
+}
+
 export function resolvePlayerGrabReleaseDirectionInto<TVector extends PlayerGrabMutableVector>(
   action: PlayerGrabReleaseEventAction,
   target: TVector,
@@ -293,6 +309,31 @@ export function resolvePlayerGrabReleaseDirectionInto<TVector extends PlayerGrab
   if (action.type !== "throw") return null;
   target.set(action.direction.x, action.direction.y, action.direction.z).normalize();
   return target;
+}
+
+export function applyPlayerGrabReleaseEventDetail<
+  TState extends PlayerGrabbedEventState,
+  TVector extends PlayerGrabMutableVector,
+>(
+  detail: unknown,
+  options: {
+    grabbedState: PlayerGrabbedStateRef<TState>;
+    releaseDirection: TVector;
+    throwGrabbedPlayer: (direction: TVector) => unknown;
+  },
+) {
+  const grabbed = options.grabbedState.current;
+  if (!grabbed) return false;
+
+  const action = resolvePlayerGrabReleaseEventAction(detail, {
+    casterId: grabbed.casterId,
+    fallbackDirection: grabbed.dir,
+    grabId: grabbed.grabId,
+  });
+  const releaseDirection = resolvePlayerGrabReleaseDirectionInto(action, options.releaseDirection);
+  if (!releaseDirection) return false;
+  options.throwGrabbedPlayer(releaseDirection);
+  return true;
 }
 
 export function applyPlayerGrabbedFollowFrame<TVector extends PlayerGrabFollowVector>({

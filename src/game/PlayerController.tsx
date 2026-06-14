@@ -281,10 +281,8 @@ import {
 import {
   applyPlayerGrabbedFollowFrame,
   applyPlayerGrabStartEventDetail,
-  applyPlayerGrabControlEventAction,
-  resolvePlayerGrabControlEventAction,
-  resolvePlayerGrabReleaseDirectionInto,
-  resolvePlayerGrabReleaseEventAction,
+  applyPlayerGrabControlEventDetail,
+  applyPlayerGrabReleaseEventDetail,
   throwPlayerGrabbedState,
 } from "./systems/player/playerGrabEventRuntime";
 import {
@@ -1049,33 +1047,15 @@ export function PlayerController() {
     };
 
     const onGrabControl = (e: any) => {
-      const grabbed = grabbedState.current;
-      if (!grabbed) return;
-
-      const grabControlAction = resolvePlayerGrabControlEventAction(e.detail, {
-        casterId: grabbed.casterId,
-        fallbackOrigin: grabbed.origin,
-        grabId: grabbed.grabId,
-      });
-      if (grabControlAction.type !== "apply") return;
-
-      applyPlayerGrabControlEventAction(grabControlAction, grabbed, getPlayerEventEpochMs());
+      applyPlayerGrabControlEventDetail(e.detail, grabbedState, getPlayerEventEpochMs());
     };
 
     const onReleaseGrabPlayer = (e: any) => {
-      const grabbed = grabbedState.current;
-      if (!grabbed) return;
-
-      const grabReleaseAction = resolvePlayerGrabReleaseEventAction(e.detail, {
-        casterId: grabbed.casterId,
-        fallbackDirection: grabbed.dir,
-        grabId: grabbed.grabId,
+      applyPlayerGrabReleaseEventDetail(e.detail, {
+        grabbedState,
+        releaseDirection: grabReleaseDirection,
+        throwGrabbedPlayer,
       });
-      if (grabReleaseAction.type !== "throw") return;
-
-      const releaseDir = resolvePlayerGrabReleaseDirectionInto(grabReleaseAction, grabReleaseDirection);
-      if (!releaseDir) return;
-      throwGrabbedPlayer(releaseDir);
     };
 
     const removeMovementKeyboardListeners = installMovementKeyboardListeners();
