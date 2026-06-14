@@ -129,6 +129,10 @@ import {
   type GameplayInputMode,
 } from "./ui/hud/hudGameplayModeRuntime";
 import {
+  resolveHudGameplaySurfaceVisibility,
+  resolveHudLayoutQaVisibilityOptions,
+} from "./ui/hud/hudVisibilityRuntime";
+import {
   countOwnRecordEntries,
   getHudScoreboardSourceUpdate,
   type HudScoreboardSource,
@@ -2929,40 +2933,52 @@ export function HUD() {
     closePauseMenu("mouse");
   };
 
-  const shouldShowMagicHands = shouldRenderGameplayHud
-    && !shouldHideGameplayViewObstructionsForQa
-    && !isSpellMenuOpen
-    && !isInventoryOpen
-    && !isMapExpanded
-    && !isScoreboardOpen
-    && !isEngineMenuOpen
-    && !isDevFastTravelOpen
-    && !questNpcEditorTarget
-    && !questDialogSession;
-  const shouldExpectMagicHands = shouldShowMagicHands && isMagicArmed && !playerState.isMeditating;
-  const shouldShowTouchControls = touchGameplayActive && !shouldHideGameplayHudForQa && !isSpellMenuOpen && !isInventoryOpen && !isMapExpanded && !isScoreboardOpen && !isEngineMenuOpen && !questNpcEditorTarget && !questDialogSession;
-  const shouldShowGameplayOverlay = shouldRenderGameplayHud && !shouldHideGameplayHudForQa && !isSpellMenuOpen && !isInventoryOpen && !isMapExpanded && !isScoreboardOpen && !isEngineMenuOpen && !questNpcEditorTarget && !questDialogSession;
-  const shouldSuppressMapForHudToolOverlay = isEngineMenuOpen || isDevFastTravelOpen || Boolean(questNpcEditorTarget) || Boolean(questDialogSession);
+  const {
+    shouldExpectMagicHands,
+    shouldShowGameplayOverlay,
+    shouldShowMagicHands,
+    shouldShowTouchControls,
+    shouldSuppressMapForHudToolOverlay,
+  } = resolveHudGameplaySurfaceVisibility({
+    isDevFastTravelOpen,
+    isEngineMenuOpen,
+    isInventoryOpen,
+    isMagicArmed,
+    isMapExpanded,
+    isScoreboardOpen,
+    isSpellMenuOpen,
+    playerMeditating: playerState.isMeditating,
+    questDialogActive: Boolean(questDialogSession),
+    questNpcEditorActive: Boolean(questNpcEditorTarget),
+    shouldHideGameplayHudForQa,
+    shouldHideGameplayViewObstructionsForQa,
+    shouldRenderGameplayHud,
+    touchGameplayActive,
+  });
 
   useEffect(() => {
     setHudMapSuppressedByToolOverlay(shouldSuppressMapForHudToolOverlay);
     return () => setHudMapSuppressedByToolOverlay(false);
   }, [shouldSuppressMapForHudToolOverlay]);
 
-  const hudLayoutQaOptions = {
-    gameplayHudVisible: shouldShowGameplayOverlay,
-    magicHandsVisible: shouldExpectMagicHands,
-    touchControlsVisible: shouldShowTouchControls,
-    compactMapVisible: isGameLaunched && !isMapExpanded && !isSpellMenuOpen && !isPauseMenuVisible && !isScoreboardOpen && !isEngineMenuOpen && !isDevFastTravelOpen && !isInventoryOpen && !questNpcEditorTarget && !questDialogSession,
-    expandedMapVisible: isGameLaunched && isMapExpanded && !isSpellMenuOpen && !isPauseMenuVisible && !isScoreboardOpen && !isEngineMenuOpen && !isDevFastTravelOpen && !isInventoryOpen && !questNpcEditorTarget && !questDialogSession,
-    spellMenuVisible: isSpellMenuOpen,
-    settingsPanelVisible: showVideoMenu && shouldShowMenuOverlay,
-    engineMenuVisible: isEngineMenuOpen && isEngineMenuAllowed,
-    inventoryVisible: isInventoryOpen && !isSpellMenuOpen,
-    questNpcEditorVisible: Boolean(questNpcEditorTarget),
-    questDialogVisible: Boolean(questDialogSession),
-    scoreboardVisible: isScoreboardOpen && !isSpellMenuOpen && !isInventoryOpen,
-  };
+  const hudLayoutQaOptions = resolveHudLayoutQaVisibilityOptions({
+    isDevFastTravelOpen,
+    isEngineMenuAllowed,
+    isEngineMenuOpen,
+    isGameLaunched,
+    isInventoryOpen,
+    isMapExpanded,
+    isPauseMenuVisible,
+    isScoreboardOpen,
+    isSpellMenuOpen,
+    questDialogActive: Boolean(questDialogSession),
+    questNpcEditorActive: Boolean(questNpcEditorTarget),
+    shouldExpectMagicHands,
+    shouldShowGameplayOverlay,
+    shouldShowMenuOverlay,
+    shouldShowTouchControls,
+    showVideoMenu,
+  });
 
   return (
     <div data-wof-hud-qa="hud-root" className="pointer-events-none absolute inset-0 text-white font-mono uppercase" style={hudRootStyle}>
