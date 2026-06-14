@@ -1,5 +1,13 @@
 import type { EnginePlaceableNetworkObject } from "../../network/gameNetworkClient";
+import {
+  appendEnginePlacedObjectBounded,
+  findEnginePlacedObjectById,
+  hasEnginePlacedObjectId,
+  removeEnginePlacedObjectById,
+  replaceEnginePlacedObjectById,
+} from "./enginePlacedObjectListRuntime";
 import type { EnginePlacedObjectRecord } from "./enginePlacedObjectStorage";
+import { MAX_ENGINE_PLACED_OBJECTS } from "./enginePlacedObjectStorage";
 import { getPlaceableDefinition } from "./placeableCatalog";
 
 export type EnginePlaceableNetworkUpsertDetail = {
@@ -41,4 +49,75 @@ export function normalizeReplicatedEnginePlacedObject(value: unknown): EnginePla
     z,
     yaw,
   };
+}
+
+export type EnginePlacedObjectNetworkUpsertResult =
+  | {
+      ok: true;
+      object: EnginePlacedObjectRecord;
+      objects: EnginePlacedObjectRecord[];
+    }
+  | {
+      ok: false;
+    };
+
+export type EnginePlacedObjectNetworkDeleteResult =
+  | {
+      ok: true;
+      object: EnginePlacedObjectRecord;
+      objects: EnginePlacedObjectRecord[];
+    }
+  | {
+      ok: false;
+    };
+
+export type EnginePlacedObjectNetworkSnapshotResult = {
+  receivedAt?: number;
+  objects: EnginePlacedObjectRecord[];
+};
+
+export function applyReplicatedEnginePlacedObjectUpsert(
+  currentObjects: EnginePlacedObjectRecord[],
+  detail: EnginePlaceableNetworkUpsertDetail | undefined
+): EnginePlacedObjectNetworkUpsertResult {
+  const object = normalizeReplicatedEnginePlacedObject(detail?.object);
+  if (!object) return { ok: false };
+
+  const nextObjects = hasEnginePlacedObjectId(currentObjects, object.instanceId)
+    ? replaceEnginePlacedObjectById(currentObjects, object.instanceId, object)
+    : appendEnginePlacedObjectBounded(currentObjects, object);
+  return { ok: true, object, objects: nextObjects };
+}
+
+export function applyReplicatedEnginePlacedObjectDelete(
+  currentObjects: EnginePlacedObjectRecord[],
+  detail: EnginePlaceableNetworkDeleteDetail | undefined
+): EnginePlacedObjectNetworkDeleteResult {
+  const instanceId = String(detail?.instanceId ?? "");
+  if (!instanceId) return { ok: false };
+
+  const object = findEnginePlacedObjectById(currentObjects, instanceId);
+  if (!object) return { ok: false };
+
+  return {
+    ok: true,
+    object,
+    objects: removeEnginePlacedObjectById(currentObjects, instanceId),
+  };
+}
+
+export function applyReplicatedEnginePlacedObjectSnapshot(
+  detail: EnginePlaceableNetworkSnapshotDetail | undefined
+): EnginePlacedObjectNetworkSnapshotResult {
+  const incomingObjects = detail?.objects ?? [];
+  const objects: EnginePlacedObjectRecord[] = [];
+  for (let index = 0; index < incomingObjects.length && objects.length < MAX_ENGINE_PLACED_OBJECTS; index += 1) {
+    const object = normalizeReplicatedEnginePlacedObject(incomingObjects[index]);
+    if (object) objects.push(object);
+  }
+
+  if (Number.isFinite(detail?.receivedAt)) {
+    return { receivedAt: Number(detail?.receivedAt), objects };
+  }
+  return { objects };
 }

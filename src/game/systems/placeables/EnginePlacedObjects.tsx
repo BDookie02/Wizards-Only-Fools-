@@ -20,7 +20,9 @@ import {
   type EnginePlacementPreview,
 } from "./EnginePlacedObjectVisuals";
 import {
-  normalizeReplicatedEnginePlacedObject,
+  applyReplicatedEnginePlacedObjectDelete,
+  applyReplicatedEnginePlacedObjectSnapshot,
+  applyReplicatedEnginePlacedObjectUpsert,
   type EnginePlaceableNetworkDeleteDetail,
   type EnginePlaceableNetworkSnapshotDetail,
   type EnginePlaceableNetworkUpsertDetail,
@@ -251,37 +253,25 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       publishEnginePlacedObjectSlotList();
     };
     const handleNetworkUpsert = (event: { detail: EnginePlaceableNetworkUpsertDetail | undefined }) => {
-      const object = normalizeReplicatedEnginePlacedObject(event.detail?.object);
-      if (!object) return;
-      const currentObjects = objectsRef.current;
-      const nextObjects = hasEnginePlacedObjectId(currentObjects, object.instanceId)
-        ? replaceEnginePlacedObjectById(currentObjects, object.instanceId, object)
-        : appendEnginePlacedObjectBounded(currentObjects, object);
-      commitEnginePlacedObjects(nextObjects);
-      publishEnginePlacementResult({ ok: true, label: `synced ${object.label}` });
+      const result = applyReplicatedEnginePlacedObjectUpsert(objectsRef.current, event.detail);
+      if (result.ok === false) return;
+      commitEnginePlacedObjects(result.objects);
+      publishEnginePlacementResult({ ok: true, label: `synced ${result.object.label}` });
     };
     const handleNetworkDelete = (event: { detail: EnginePlaceableNetworkDeleteDetail | undefined }) => {
-      const instanceId = String(event.detail?.instanceId ?? "");
-      if (!instanceId) return;
-      const currentObjects = objectsRef.current;
-      const object = findEnginePlacedObjectById(currentObjects, instanceId);
-      if (!object) return;
-      commitEnginePlacedObjects(removeEnginePlacedObjectById(currentObjects, instanceId));
-      publishEnginePlacementResult({ ok: true, label: `synced delete ${object.label}` });
+      const result = applyReplicatedEnginePlacedObjectDelete(objectsRef.current, event.detail);
+      if (result.ok === false) return;
+      commitEnginePlacedObjects(result.objects);
+      publishEnginePlacementResult({ ok: true, label: `synced delete ${result.object.label}` });
     };
     const handleNetworkSnapshot = (event: { detail: EnginePlaceableNetworkSnapshotDetail | undefined }) => {
-      if (Number.isFinite(event.detail?.receivedAt)) {
-        appliedNetworkSnapshotAtRef.current = Number(event.detail?.receivedAt);
+      const result = applyReplicatedEnginePlacedObjectSnapshot(event.detail);
+      if (Number.isFinite(result.receivedAt)) {
+        appliedNetworkSnapshotAtRef.current = Number(result.receivedAt);
       }
-      const incomingObjects = event.detail?.objects ?? [];
-      const nextObjects: EnginePlacedObject[] = [];
-      for (let index = 0; index < incomingObjects.length && nextObjects.length < MAX_ENGINE_PLACED_OBJECTS; index += 1) {
-        const object = normalizeReplicatedEnginePlacedObject(incomingObjects[index]);
-        if (object) nextObjects.push(object);
-      }
-      commitEnginePlacedObjects(nextObjects);
+      commitEnginePlacedObjects(result.objects);
       setPreview(null);
-      publishEnginePlacementResult({ ok: true, label: "synced placement snapshot", count: nextObjects.length });
+      publishEnginePlacementResult({ ok: true, label: "synced placement snapshot", count: result.objects.length });
     };
     const pendingNetworkSnapshot = (window as WindowWithEnginePlaceables).wofEnginePlaceableNetworkSnapshot;
     if (
