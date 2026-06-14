@@ -5,6 +5,7 @@ import {
 } from "../../systems/input/controllerInput";
 import { CONTROLLER_INVENTORY_HOLD_MS, MAGIC_UNARM_HOLD_MS } from "../../systems/input/hudInputConfig";
 import type { SpellMenuControllerDirection } from "./hudControllerEventRuntime";
+import type { HudControllerButtonsRef, HudControllerRepeatRef } from "./hudControllerRepeatRuntime";
 export {
   dispatchInventoryControllerBack,
   dispatchInventoryControllerMove,
@@ -23,13 +24,16 @@ export {
   type HudControllerBindings,
   type HudControllerInputSnapshot,
 } from "./hudControllerInputSnapshotRuntime";
+export {
+  consumeHudControllerPress,
+  consumeHudControllerRepeat,
+  type HudControllerButtonsRef,
+  type HudControllerRepeatRef,
+} from "./hudControllerRepeatRuntime";
 
 type Ref<T> = {
   current: T;
 };
-
-export type HudControllerButtonsRef = Ref<Record<string, boolean>>;
-export type HudControllerRepeatRef = Ref<Partial<Record<string, number>>>;
 
 export type HudControllerInventoryHoldRefs = {
   controllerInventoryHoldStartedAtRef: Ref<number | null>;
@@ -333,46 +337,6 @@ const HUD_CONTROLLER_DEV_FAST_TRAVEL_NAVIGATION_DELAY_MS = 220;
 const HUD_CONTROLLER_OVERLAY_SCROLL_THRESHOLD = 0.05;
 const HUD_CONTROLLER_OVERLAY_SCROLL_MULTIPLIER = 18;
 const HUD_CONTROLLER_DISCONNECT_PAUSE_MS = 1200;
-
-export function consumeHudControllerPress(
-  controllerButtonsRef: HudControllerButtonsRef,
-  key: string,
-  pressed: boolean,
-) {
-  const wasPressed = controllerButtonsRef.current[key] ?? false;
-  controllerButtonsRef.current[key] = pressed;
-  return pressed && !wasPressed;
-}
-
-export function consumeHudControllerRepeat(
-  controllerButtonsRef: HudControllerButtonsRef,
-  controllerRepeatRef: HudControllerRepeatRef,
-  key: string,
-  pressed: boolean,
-  now: number,
-  firstDelay = 260,
-  repeatDelay = 170,
-) {
-  const wasPressed = controllerButtonsRef.current[key] ?? false;
-  controllerButtonsRef.current[key] = pressed;
-
-  if (!pressed) {
-    delete controllerRepeatRef.current[key];
-    return false;
-  }
-
-  if (!wasPressed) {
-    controllerRepeatRef.current[key] = now + firstDelay;
-    return true;
-  }
-
-  if (now >= (controllerRepeatRef.current[key] ?? 0)) {
-    controllerRepeatRef.current[key] = now + repeatDelay;
-    return true;
-  }
-
-  return false;
-}
 
 export function hasHudControllerGameplaySignal({
   isLocked,
