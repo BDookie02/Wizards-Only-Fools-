@@ -1,10 +1,10 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { type SpellType } from "../../../store/gameStore";
 import {
-  getFallbackSpellThumbnail,
   getSpellThumbnail,
   isAnimatedThumbnailSource,
 } from "./spellMenuRuntime";
+import { SpellThumbnailImageProbe } from "./SpellThumbnailImageProbe";
 
 type SpellThumbnailBlock = [number, number, number, number, string, number?];
 
@@ -725,19 +725,12 @@ export const SpellThumbnail = memo(function SpellThumbnail({
         style={{ imageRendering: "pixelated", ...portalMask }}
       />
       {!canvasOnlyThumbnail && (
-        <img
-          ref={imgRef}
+        <SpellThumbnailImageProbe
+          imgRef={imgRef}
           src={src}
-          alt=""
-          crossOrigin="anonymous"
-          loading={animate ? "eager" : "lazy"}
-          decoding="async"
-          className="pointer-events-none absolute h-px w-px opacity-0"
-          onLoad={() => setImageFrameVersion((version) => version + 1)}
-          onError={() => {
-            const fallback = getFallbackSpellThumbnail();
-            if (src !== fallback) setSrc(fallback);
-          }}
+          animate={animate}
+          onFrameLoaded={() => setImageFrameVersion((version) => version + 1)}
+          onFallbackSrc={setSrc}
         />
       )}
     </>
