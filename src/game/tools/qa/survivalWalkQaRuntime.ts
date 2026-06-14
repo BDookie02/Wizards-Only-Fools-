@@ -711,6 +711,38 @@ export function resolveQaWalkTubeMovementFrame({
   };
 }
 
+export type QaWalkTubeMovementFrame = ReturnType<typeof resolveQaWalkTubeMovementFrame>;
+
+export type QaWalkTubeMovementState = {
+  forwardAmount: number;
+  sprint: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+};
+
+export type QaWalkTubeMovementApplication = QaWalkTubeMovementState & {
+  applied: boolean;
+};
+
+export function applyQaWalkTubeMovementFrame({
+  current,
+  frame,
+}: {
+  current: QaWalkTubeMovementState;
+  frame: QaWalkTubeMovementFrame;
+}): QaWalkTubeMovementApplication {
+  if (!frame) {
+    return { ...current, applied: false };
+  }
+  return {
+    applied: true,
+    forwardAmount: frame.forwardAmount,
+    sprint: frame.sprint,
+    strafeAmount: frame.strafeAmount,
+    targetYaw: frame.targetYaw,
+  };
+}
+
 export function resolveQaWalkBlockedRecoveryTrigger({
   elapsedSeconds,
   forwardClearance,

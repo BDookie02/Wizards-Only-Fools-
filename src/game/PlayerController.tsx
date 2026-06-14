@@ -75,6 +75,7 @@ import {
   applyQaWalkRecoveryPlacementPlan,
   applyQaWalkRecoveryStartPlan,
   applyQaWalkSteeringDecisionFrame,
+  applyQaWalkTubeMovementFrame,
   getQaWalkIntentDistance,
   isQaWalkBaseVillageArea,
   isQaWalkDarrelGroveArea,
@@ -1745,11 +1746,20 @@ export function PlayerController() {
         tubeT: lilyCoilTubeTravelState?.t ?? 0,
         tubeTravelYaw: lilyCoilTubeTravelYaw,
       });
-      if (tubeMovementFrame) {
-        targetYaw = tubeMovementFrame.targetYaw;
-        forwardAmount = tubeMovementFrame.forwardAmount;
-        strafeAmount = tubeMovementFrame.strafeAmount;
-        sprint = tubeMovementFrame.sprint;
+      const tubeMovementApplication = applyQaWalkTubeMovementFrame({
+        current: {
+          forwardAmount,
+          sprint,
+          strafeAmount,
+          targetYaw,
+        },
+        frame: tubeMovementFrame,
+      });
+      if (tubeMovementApplication.applied) {
+        targetYaw = tubeMovementApplication.targetYaw;
+        forwardAmount = tubeMovementApplication.forwardAmount;
+        strafeAmount = tubeMovementApplication.strafeAmount;
+        sprint = tubeMovementApplication.sprint;
       }
 
       const needsDecision = shouldResolveQaWalkSteeringDecision({
