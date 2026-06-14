@@ -254,6 +254,7 @@ import {
   resolvePlayerMouseReleaseAction,
 } from "./systems/player/playerMouseCastInputRuntime";
 import {
+  applyPlayerGrabbedFollowFrame,
   applyPlayerGrabStartEventAction,
   applyPlayerGrabControlEventAction,
   resolvePlayerGrabControlEventAction,
@@ -1219,47 +1220,47 @@ export function PlayerController() {
     const activeGrab = grabbedState.current;
     if (activeGrab) {
       resetPlayerCrouchState({ crouchHoldStartedAt, isCrouching, setIsCrouching });
-      if (nowMs >= activeGrab.until) {
+      const grabbedFollowFrame = applyPlayerGrabbedFollowFrame({
+        aimScratch: spellDirection,
+        applyScreenShake,
+        body: rigidBody.current,
+        camera,
+        cameraHeight: PLAYER_CAMERA_HEIGHT,
+        cameraTargetPosition: cameraTargetPosition.current,
+        caster: storeState.players[activeGrab.casterId],
+        casterAnchor: grabbedCasterAnchor,
+        currentPosition: grabbedCurrentPosition,
+        deltaSeconds: delta,
+        dispatchPlayerMoved,
+        dispatchStationaryPlayerState: () => {
+          dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, false, false);
+        },
+        followSpeed: GRAB_FOLLOW_SPEED,
+        frameForward,
+        grabbed: activeGrab,
+        holdPoint: grabbedHoldPoint,
+        lastNetworkSync,
+        networkSyncIntervalMs: 1000 / 30,
+        nowMs,
+        playerPosition: pos,
+        publishLocalPlayerPosition,
+        resolveCasterAimDirection: getPlayerAimDirectionInto,
+      });
+
+      if (grabbedFollowFrame.type === "expired") {
         throwGrabbedPlayer();
         return;
       }
 
-      const caster = storeState.players[activeGrab.casterId];
-      const hasRecentControl = nowMs - activeGrab.lastControlAt < 450;
-      const liveAimDir = hasRecentControl ? activeGrab.dir : caster ? getPlayerAimDirectionInto(caster, spellDirection) : activeGrab.dir;
-      activeGrab.dir.copy(liveAimDir);
-
-      const casterAnchor = hasRecentControl
-        ? grabbedCasterAnchor.copy(activeGrab.origin)
-        : caster
-          ? grabbedCasterAnchor.set(caster.pos[0], caster.pos[1] + PLAYER_CAMERA_HEIGHT, caster.pos[2])
-          : grabbedCasterAnchor.copy(activeGrab.origin);
-      const holdPoint = grabbedHoldPoint.copy(casterAnchor).addScaledVector(liveAimDir, activeGrab.distance);
-      const currentPos = grabbedCurrentPosition.set(pos.x, pos.y, pos.z);
-      const followAlpha = 1 - Math.exp(-GRAB_FOLLOW_SPEED * delta);
-      const nextGrabPos = currentPos.lerp(holdPoint, followAlpha);
-
-      rigidBody.current.setTranslation(nextGrabPos, true);
-      rigidBody.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      camera.position.lerp(cameraTargetPosition.current.set(nextGrabPos.x, nextGrabPos.y + PLAYER_CAMERA_HEIGHT, nextGrabPos.z), 0.55);
-      applyScreenShake();
-      publishLocalPlayerPosition(nextGrabPos);
-
-      camera.getWorldDirection(frameForward);
-      const yaw = Math.atan2(frameForward.x, -frameForward.z);
-      dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, false, false);
-      dispatchPlayerMoved({ x: nextGrabPos.x, y: nextGrabPos.y, z: nextGrabPos.z, angle: yaw, isMoving: false, grounded: false });
-
-      if (nowMs - lastNetworkSync.current > 1000 / 30) {
-        lastNetworkSync.current = nowMs;
+      if (grabbedFollowFrame.shouldSyncNetwork) {
         emitPlayerNetworkPoseSync({
           anim: "grabbed",
           camera,
           characterCustomization: storeState.characterCustomization,
           isVoiceSpeaking: storeState.isVoiceSpeaking,
-          pos: { x: nextGrabPos.x, y: nextGrabPos.y, z: nextGrabPos.z },
+          pos: grabbedFollowFrame.position,
           survivalLevel: storeState.survivalLevel,
-          yaw,
+          yaw: grabbedFollowFrame.yaw,
         });
       }
       return;

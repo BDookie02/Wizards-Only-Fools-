@@ -12,8 +12,15 @@ export type PlayerGrabMutableVector = {
   normalize(): PlayerGrabMutableVector;
 };
 
-export type PlayerGrabMutableOrigin = {
+export type PlayerGrabMutableOrigin = PlayerGrabEventVector & {
   set(x: number, y: number, z: number): unknown;
+};
+
+export type PlayerGrabFollowVector = PlayerGrabEventVector & {
+  set(x: number, y: number, z: number): PlayerGrabFollowVector;
+  normalize(): PlayerGrabFollowVector;
+  addScaledVector(vector: PlayerGrabEventVector, scale: number): PlayerGrabFollowVector;
+  lerp(vector: PlayerGrabEventVector, alpha: number): PlayerGrabFollowVector;
 };
 
 type PlayerGrabEventPayload = Record<string, unknown>;
@@ -64,6 +71,41 @@ export type PlayerGrabbedStateRef<TState extends PlayerGrabbedEventState> = {
 export type PlayerGrabThrowBody = {
   setLinvel(velocity: PlayerGrabEventVector, wakeUp: boolean): void;
 };
+
+export type PlayerGrabFollowBody = PlayerGrabThrowBody & {
+  setTranslation(position: PlayerGrabEventVector, wakeUp: boolean): void;
+};
+
+export type PlayerGrabFollowCamera = {
+  position: {
+    lerp(target: PlayerGrabEventVector, alpha: number): unknown;
+  };
+  getWorldDirection(target: PlayerGrabMutableVector): PlayerGrabMutableVector;
+};
+
+export type PlayerGrabFollowCaster = {
+  aimDir?: [number, number, number];
+  pos: [number, number, number];
+  rot?: [number, number, number];
+};
+
+export type PlayerGrabFollowMovedPayload = {
+  x: number;
+  y: number;
+  z: number;
+  angle: number;
+  isMoving: false;
+  grounded: false;
+};
+
+export type PlayerGrabFollowFrameResult =
+  | { type: "expired" }
+  | {
+      type: "applied";
+      position: PlayerGrabEventVector;
+      shouldSyncNetwork: boolean;
+      yaw: number;
+    };
 
 type PlayerGrabStartEventOptions = {
   localPlayerId: string | null | undefined;
@@ -220,6 +262,111 @@ export function resolvePlayerGrabReleaseDirectionInto<TVector extends PlayerGrab
   if (action.type !== "throw") return null;
   target.set(action.direction.x, action.direction.y, action.direction.z).normalize();
   return target;
+}
+
+export function applyPlayerGrabbedFollowFrame<TVector extends PlayerGrabFollowVector>({
+  aimScratch,
+  applyScreenShake,
+  body,
+  camera,
+  cameraHeight,
+  cameraTargetPosition,
+  caster,
+  casterAnchor,
+  currentPosition,
+  deltaSeconds,
+  dispatchPlayerMoved,
+  dispatchStationaryPlayerState,
+  followSpeed,
+  frameForward,
+  grabbed,
+  holdPoint,
+  lastNetworkSync,
+  networkSyncIntervalMs,
+  nowMs,
+  playerPosition,
+  publishLocalPlayerPosition,
+  resolveCasterAimDirection,
+}: {
+  aimScratch: TVector;
+  applyScreenShake: () => void;
+  body: PlayerGrabFollowBody;
+  camera: PlayerGrabFollowCamera;
+  cameraHeight: number;
+  cameraTargetPosition: TVector;
+  caster: PlayerGrabFollowCaster | null | undefined;
+  casterAnchor: TVector;
+  currentPosition: TVector;
+  deltaSeconds: number;
+  dispatchPlayerMoved: (payload: PlayerGrabFollowMovedPayload) => void;
+  dispatchStationaryPlayerState: () => void;
+  followSpeed: number;
+  frameForward: PlayerGrabMutableVector;
+  grabbed: PlayerGrabbedEventState;
+  holdPoint: TVector;
+  lastNetworkSync: { current: number };
+  networkSyncIntervalMs: number;
+  nowMs: number;
+  playerPosition: PlayerGrabEventVector;
+  publishLocalPlayerPosition: (position: PlayerGrabEventVector) => void;
+  resolveCasterAimDirection: (caster: PlayerGrabFollowCaster, target: TVector) => PlayerGrabEventVector;
+}): PlayerGrabFollowFrameResult {
+  if (nowMs >= grabbed.until) return { type: "expired" };
+
+  const hasRecentControl = nowMs - grabbed.lastControlAt < 450;
+  const liveAimDir = hasRecentControl
+    ? grabbed.dir
+    : caster
+      ? resolveCasterAimDirection(caster, aimScratch)
+      : grabbed.dir;
+  grabbed.dir.set(liveAimDir.x, liveAimDir.y, liveAimDir.z).normalize();
+
+  if (hasRecentControl || !caster) {
+    casterAnchor.set(grabbed.origin.x, grabbed.origin.y, grabbed.origin.z);
+  } else {
+    casterAnchor.set(caster.pos[0], caster.pos[1] + cameraHeight, caster.pos[2]);
+  }
+
+  holdPoint
+    .set(casterAnchor.x, casterAnchor.y, casterAnchor.z)
+    .addScaledVector(grabbed.dir, grabbed.distance);
+  const followAlpha = 1 - Math.exp(-followSpeed * deltaSeconds);
+  const nextPosition = currentPosition
+    .set(playerPosition.x, playerPosition.y, playerPosition.z)
+    .lerp(holdPoint, followAlpha);
+
+  body.setTranslation(nextPosition, true);
+  body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  camera.position.lerp(
+    cameraTargetPosition.set(nextPosition.x, nextPosition.y + cameraHeight, nextPosition.z),
+    0.55,
+  );
+  applyScreenShake();
+  publishLocalPlayerPosition(nextPosition);
+
+  camera.getWorldDirection(frameForward);
+  const yaw = Math.atan2(frameForward.x, -frameForward.z);
+  dispatchStationaryPlayerState();
+  dispatchPlayerMoved({
+    x: nextPosition.x,
+    y: nextPosition.y,
+    z: nextPosition.z,
+    angle: yaw,
+    isMoving: false,
+    grounded: false,
+  });
+
+  const shouldSyncNetwork = nowMs - lastNetworkSync.current > networkSyncIntervalMs;
+  if (shouldSyncNetwork) {
+    lastNetworkSync.current = nowMs;
+  }
+
+  return {
+    type: "applied",
+    position: nextPosition,
+    shouldSyncNetwork,
+    yaw,
+  };
 }
 
 export function throwPlayerGrabbedState<TState extends PlayerGrabbedEventState>({
