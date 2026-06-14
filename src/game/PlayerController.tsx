@@ -184,9 +184,8 @@ import {
   applyPlayerScreenShakeEvent,
 } from "./systems/player/playerScreenShakeRuntime";
 import {
-  applyPlayerClearToxicEffectsPlan,
+  applyPlayerClearToxicEffectsWithNetwork,
   applyPlayerToxicDamageFrameResult,
-  createPlayerClearToxicEffectsPlan,
   updatePlayerToxicDamageFrame,
 } from "./systems/player/playerToxicDamageRuntime";
 import {
@@ -540,13 +539,12 @@ export function PlayerController() {
 
   const clearToxicEffectsWithNetwork = () => {
     const state = useGameStore.getState();
-    const clearPlan = createPlayerClearToxicEffectsPlan({
+    applyPlayerClearToxicEffectsWithNetwork({
       acidUntil: state.acidUntil,
       connectedPlayerId: getConnectedNetworkPlayerId(),
       nowMs: getPlayerEventEpochMs(),
       poisonUntil: state.poisonUntil,
-    });
-    applyPlayerClearToxicEffectsPlan(clearPlan, {
+    }, {
       clearToxicEffects: state.clearToxicEffects,
       emitGameNetworkEvent,
     });
