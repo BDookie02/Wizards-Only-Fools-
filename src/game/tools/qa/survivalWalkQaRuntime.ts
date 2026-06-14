@@ -500,6 +500,22 @@ export function resolveQaWalkIntentJumpHoldUntil({
   return nowSeconds + holdSeconds;
 }
 
+export type QaWalkJumpHoldRefs = {
+  jumpHeldUntil: QaWalkMutableRef<number>;
+};
+
+export function applyQaWalkJumpHoldUntil({
+  jumpHoldUntil,
+  refs,
+}: {
+  jumpHoldUntil: number | null;
+  refs: QaWalkJumpHoldRefs;
+}) {
+  if (jumpHoldUntil === null) return false;
+  refs.jumpHeldUntil.current = jumpHoldUntil;
+  return true;
+}
+
 export function resolveQaWalkAvoidMovement({
   currentYaw,
   elapsedSeconds,

@@ -66,6 +66,7 @@ import {
 import {
   applyQaWalkActiveIntentRefresh,
   applyQaWalkInspectionStartPlan,
+  applyQaWalkJumpHoldUntil,
   applyQaWalkOpenLaneRecoveryRelief,
   applyQaWalkRecoveryMovementFrame,
   applyQaWalkRecoveryPlacementPlan,
@@ -1924,9 +1925,10 @@ export function PlayerController() {
           previousJumpHeldUntil: qaWalkJumpHeldUntil.current,
           yawError,
         });
-        if (recoveryJumpHoldUntil !== null) {
-          qaWalkJumpHeldUntil.current = recoveryJumpHoldUntil;
-        }
+        applyQaWalkJumpHoldUntil({
+          jumpHoldUntil: recoveryJumpHoldUntil,
+          refs: { jumpHeldUntil: qaWalkJumpHeldUntil },
+        });
       } else if (
         (avoidMovement = resolveQaWalkAvoidMovement({
           currentYaw: qaWalkYaw.current ?? currentYaw,
@@ -1977,9 +1979,10 @@ export function PlayerController() {
           planarSpeedSq: velocity.x * velocity.x + velocity.z * velocity.z,
           previousJumpHeldUntil: qaWalkJumpHeldUntil.current,
         });
-        if (intentJumpHoldUntil !== null) {
-          qaWalkJumpHeldUntil.current = intentJumpHoldUntil;
-        }
+        applyQaWalkJumpHoldUntil({
+          jumpHoldUntil: intentJumpHoldUntil,
+          refs: { jumpHeldUntil: qaWalkJumpHeldUntil },
+        });
         const interactionAction = resolveQaWalkIntentInteractionAction({
           activeIntent,
           activeIntentDistance,
