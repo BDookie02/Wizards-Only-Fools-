@@ -310,6 +310,7 @@ import {
   applyPlayerBlinkTeleport,
   applyFlamethrowerSpreadInto,
   applyPlayerReleasedSpellProjectile,
+  applyPlayerSpellProjectileNetworkCast,
   createPlayerGrabProjectileId,
   createPlayerSpellProjectileId,
   createPlayerSpellProjectilePayload,
@@ -820,18 +821,16 @@ export function PlayerController() {
           camera.getWorldDirection(d);
           const { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, d, spellLaunchScratch);
 
-          const proj = createPlayerSpellProjectilePayload({
-            id: createPlayerSpellProjectileId(),
-            creatorId: getLocalNetworkPlayerId(),
-            type: spell,
-            pos: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
-            dir: { x: realDir.x, y: realDir.y, z: realDir.z },
+          applyPlayerSpellProjectileNetworkCast({
+            addProjectile: useGameStore.getState().addProjectile,
             createdAt: now,
+            creatorId: getLocalNetworkPlayerId(),
+            dir: { x: realDir.x, y: realDir.y, z: realDir.z },
+            emitGameNetworkEvent,
             hand,
+            pos: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
+            type: spell,
           });
-          
-          emitGameNetworkEvent("castSpell", proj);
-          useGameStore.getState().addProjectile(proj);
         }
       }
     };
