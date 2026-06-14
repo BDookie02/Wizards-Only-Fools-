@@ -1,25 +1,6 @@
-import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  PLACEABLE_CATALOG,
-  type PlaceableCategory,
-  type PlaceableDefinition,
-} from "../systems/placeables/placeableCatalog";
-import { getDefaultPlaceableGridSize } from "../systems/placeables/placementRules";
-import { dispatchEnginePlaceableEvent } from "../systems/placeables/enginePlaceableEvents";
-import {
-  createEngineMenuPlacementOptions,
-  createEngineMenuSlotLookup,
-  getEngineMenuSlotLabel,
-  getEnginePlaceableCategoryCounts,
-  getFilteredEnginePlaceables,
-  getSelectedEnginePlaceable,
-  getSelectedEnginePlacedObject,
-  getSelectedEngineSlot,
-  normalizeEnginePlaceableSearchQuery,
-  type EngineMenuPlacementOptions,
-  type EnginePlacedObjectSummary,
-} from "./engineMenuRuntime";
+import type { PlaceableDefinition } from "../systems/placeables/placeableCatalog";
+import type { EngineMenuPlacementOptions, EnginePlacedObjectSummary } from "./engineMenuRuntime";
 import { EngineMenuCatalogPanel } from "./EngineMenuCatalogPanel";
 import { EngineMenuCategorySidebar } from "./EngineMenuCategorySidebar";
 import { EngineMenuFooter } from "./EngineMenuFooter";
@@ -28,7 +9,7 @@ import { EngineMenuPlacedObjectsPanel } from "./EngineMenuPlacedObjectsPanel";
 import { EngineMenuPlacementPanel } from "./EngineMenuPlacementPanel";
 import { EngineMenuSaveSlotsPanel } from "./EngineMenuSaveSlotsPanel";
 import { EngineMenuSystemsPanel } from "./EngineMenuSystemsPanel";
-import { useEngineMenuPlaceableBridge } from "./useEngineMenuPlaceableBridge";
+import { useEngineMenuController } from "./useEngineMenuController";
 
 export function EngineMenu({
   open,
@@ -51,112 +32,12 @@ export function EngineMenu({
   onClearPlaceables: () => void;
   onClose: () => void;
 }) {
-  const [activeCategory, setActiveCategory] = useState<PlaceableCategory>("huts");
-  const [snapToGrid, setSnapToGrid] = useState(true);
-  const [gridSize, setGridSize] = useState(2);
-  const [yaw, setYaw] = useState(0);
-  const [selectedSlotId, setSelectedSlotId] = useState<string>("slot-1");
-  const [slotLabel, setSlotLabel] = useState("Slot 1");
-  const [searchQuery, setSearchQuery] = useState("");
-  const {
-    placedObjects,
-    placementStatus,
-    selectedPlacedObjectId,
-    setSelectedPlacedObjectId,
-    slotSummaries,
-  } = useEngineMenuPlaceableBridge(open);
-  const normalizedSearchQuery = normalizeEnginePlaceableSearchQuery(searchQuery);
-  const placementState = useMemo(() => ({
-    snapToGrid,
-    gridSize,
-    yaw,
-  }), [gridSize, snapToGrid, yaw]);
-  const categoryCounts = useMemo(
-    () => getEnginePlaceableCategoryCounts(PLACEABLE_CATALOG, normalizedSearchQuery),
-    [normalizedSearchQuery],
-  );
-  const filteredPlaceables = useMemo(
-    () => getFilteredEnginePlaceables(PLACEABLE_CATALOG, activeCategory, normalizedSearchQuery),
-    [activeCategory, normalizedSearchQuery],
-  );
-  const selectedPlaceable = useMemo(
-    () => getSelectedEnginePlaceable(PLACEABLE_CATALOG, selectedId),
-    [selectedId]
-  );
-  const selectedPlacedObject = useMemo(
-    () => getSelectedEnginePlacedObject(placedObjects, selectedPlacedObjectId),
-    [placedObjects, selectedPlacedObjectId]
-  );
-  const slotLookup = useMemo(
-    () => createEngineMenuSlotLookup(slotSummaries),
-    [slotSummaries],
-  );
-  const selectedSlot = useMemo(
-    () => getSelectedEngineSlot(slotLookup, selectedSlotId),
-    [selectedSlotId, slotLookup]
-  );
-
-  const makePlacementOptions = (overrides?: Partial<EngineMenuPlacementOptions>): EngineMenuPlacementOptions => (
-    createEngineMenuPlacementOptions(placementState, overrides)
-  );
-
-  const previewPlaceable = (placeable: PlaceableDefinition, overrides?: Partial<EngineMenuPlacementOptions>) => {
-    const defaultGridSize = getDefaultPlaceableGridSize(placeable);
-    const nextGridSize = overrides?.gridSize ?? (gridSize > 0 ? gridSize : defaultGridSize);
-    onPreviewPlaceable(placeable, makePlacementOptions({ gridSize: nextGridSize, ...overrides }));
-  };
-
-  const rotateSelected = (delta: number) => {
-    const nextYaw = yaw + delta;
-    setYaw(nextYaw);
-    if (selectedPlaceable) {
-      previewPlaceable(selectedPlaceable, { yaw: nextYaw });
-    }
-  };
-
-  const selectGridSize = (nextGridSize: number) => {
-    setGridSize(nextGridSize);
-    if (selectedPlaceable) {
-      previewPlaceable(selectedPlaceable, { gridSize: nextGridSize });
-    }
-  };
-
-  const toggleSnapToGrid = () => {
-    const nextSnap = !snapToGrid;
-    setSnapToGrid(nextSnap);
-    if (selectedPlaceable) {
-      previewPlaceable(selectedPlaceable, { snapToGrid: nextSnap });
-    }
-  };
-
-  const selectSlot = (slotId: string) => {
-    setSelectedSlotId(slotId);
-    setSlotLabel(getSelectedEngineSlot(slotLookup, slotId)?.label ?? getEngineMenuSlotLabel(slotId));
-  };
-
-  const requestSlotSave = () => {
-    dispatchEnginePlaceableEvent("wof-engine-placeable-slot-save", {
-      source: "engine-menu",
-      slotId: selectedSlotId,
-      label: slotLabel || getEngineMenuSlotLabel(selectedSlotId),
-    });
-  };
-
-  const requestSlotLoad = () => {
-    dispatchEnginePlaceableEvent("wof-engine-placeable-slot-load", {
-      source: "engine-menu",
-      slotId: selectedSlotId,
-      label: selectedSlot?.label ?? slotLabel,
-    });
-  };
-
-  const requestSlotDelete = () => {
-    dispatchEnginePlaceableEvent("wof-engine-placeable-slot-delete", {
-      source: "engine-menu",
-      slotId: selectedSlotId,
-      label: selectedSlot?.label ?? slotLabel,
-    });
-  };
+  const engineMenu = useEngineMenuController({
+    open,
+    selectedId,
+    onPreviewPlaceable,
+    onSelectPlaceable,
+  });
 
   if (!open) return null;
 
@@ -174,53 +55,53 @@ export function EngineMenu({
 
         <div className="grid min-h-0 min-w-0 grid-cols-[160px_minmax(0,1fr)_220px] gap-3 overflow-hidden p-3">
           <EngineMenuCategorySidebar
-            activeCategory={activeCategory}
-            categoryCounts={categoryCounts}
-            onSelectCategory={setActiveCategory}
+            activeCategory={engineMenu.activeCategory}
+            categoryCounts={engineMenu.categoryCounts}
+            onSelectCategory={engineMenu.setActiveCategory}
           />
 
           <EngineMenuCatalogPanel
-            filteredPlaceables={filteredPlaceables}
+            filteredPlaceables={engineMenu.filteredPlaceables}
             selectedId={selectedId}
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            onClearSearchQuery={() => setSearchQuery("")}
-            onPreviewPlaceable={previewPlaceable}
+            searchQuery={engineMenu.searchQuery}
+            onSearchQueryChange={engineMenu.setSearchQuery}
+            onClearSearchQuery={() => engineMenu.setSearchQuery("")}
+            onPreviewPlaceable={engineMenu.previewPlaceable}
           />
 
           <div className="hidden min-h-0 min-w-0 max-w-full grid-rows-[minmax(0,1.45fr)_minmax(0,1fr)] gap-2 overflow-hidden border border-cyan-100/20 bg-black/24 p-2 lg:grid">
             <EngineMenuPlacementPanel
-              selectedPlaceable={selectedPlaceable}
-              placementStatus={placementStatus}
-              gridSize={gridSize}
-              snapToGrid={snapToGrid}
-              onSelectGridSize={selectGridSize}
-              onRotateSelected={rotateSelected}
-              onToggleSnapToGrid={toggleSnapToGrid}
-              onPlaceSelected={() => selectedPlaceable && onSelectPlaceable(selectedPlaceable, makePlacementOptions())}
+              selectedPlaceable={engineMenu.selectedPlaceable}
+              placementStatus={engineMenu.placementStatus}
+              gridSize={engineMenu.gridSize}
+              snapToGrid={engineMenu.snapToGrid}
+              onSelectGridSize={engineMenu.selectGridSize}
+              onRotateSelected={engineMenu.rotateSelected}
+              onToggleSnapToGrid={engineMenu.toggleSnapToGrid}
+              onPlaceSelected={engineMenu.placeSelected}
               onClearPlaceables={onClearPlaceables}
             >
               <EngineMenuPlacedObjectsPanel
-                placedObjects={placedObjects}
-                selectedPlacedObject={selectedPlacedObject}
-                selectedPlacedObjectId={selectedPlacedObjectId}
-                onSelectPlacedObjectId={setSelectedPlacedObjectId}
+                placedObjects={engineMenu.placedObjects}
+                selectedPlacedObject={engineMenu.selectedPlacedObject}
+                selectedPlacedObjectId={engineMenu.selectedPlacedObjectId}
+                onSelectPlacedObjectId={engineMenu.setSelectedPlacedObjectId}
                 onPreviewPlacedObject={onPreviewPlacedObject}
                 onMovePlacedObject={onMovePlacedObject}
                 onDeletePlacedObject={onDeletePlacedObject}
-                makePlacementOptions={makePlacementOptions}
+                makePlacementOptions={engineMenu.makePlacementOptions}
               />
               <EngineMenuSaveSlotsPanel
-                slotSummaries={slotSummaries}
-                slotLookup={slotLookup}
-                selectedSlot={selectedSlot}
-                selectedSlotId={selectedSlotId}
-                slotLabel={slotLabel}
-                onSelectSlot={selectSlot}
-                onSlotLabelChange={setSlotLabel}
-                onSaveSlot={requestSlotSave}
-                onLoadSlot={requestSlotLoad}
-                onDeleteSlot={requestSlotDelete}
+                slotSummaries={engineMenu.slotSummaries}
+                slotLookup={engineMenu.slotLookup}
+                selectedSlot={engineMenu.selectedSlot}
+                selectedSlotId={engineMenu.selectedSlotId}
+                slotLabel={engineMenu.slotLabel}
+                onSelectSlot={engineMenu.selectSlot}
+                onSlotLabelChange={engineMenu.setSlotLabel}
+                onSaveSlot={engineMenu.requestSlotSave}
+                onLoadSlot={engineMenu.requestSlotLoad}
+                onDeleteSlot={engineMenu.requestSlotDelete}
               />
             </EngineMenuPlacementPanel>
 
