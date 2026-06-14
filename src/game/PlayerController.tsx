@@ -223,6 +223,11 @@ import {
   createPlayerGrabReleaseProjectilePayload,
 } from "./systems/player/playerGrabCastingRuntime";
 import {
+  resolvePlayerGrabControlEventAction,
+  resolvePlayerGrabReleaseEventAction,
+  resolvePlayerGrabStartEventAction,
+} from "./systems/player/playerGrabEventRuntime";
+import {
   PLAYER_DIRECT_STATUS_HAND_CHARGE_MS,
   createPlayerDirectStatusCastPlan,
 } from "./systems/player/playerDirectStatusCastingRuntime";
@@ -994,28 +999,27 @@ export function PlayerController() {
     };
 
     const onGrabPlayer = (e: any) => {
-      const detail = e.detail ?? {};
-      const casterId = detail.casterId;
-      if (!casterId || casterId === getLocalNetworkPlayerId()) return;
+      const grabAction = resolvePlayerGrabStartEventAction(e.detail, {
+        defaultDistance: GRAB_DEFAULT_DISTANCE,
+        fallbackOrigin: camera.position,
+        localPlayerId: getLocalNetworkPlayerId(),
+      });
+      if (grabAction.type !== "apply") return;
 
       const grabbed = grabbedState.current ?? {
-        casterId,
-        grabId: detail.grabId,
+        casterId: grabAction.casterId,
+        grabId: grabAction.grabId,
         dir: new THREE.Vector3(),
         origin: new THREE.Vector3(),
         distance: GRAB_DEFAULT_DISTANCE,
         lastControlAt: 0,
         until: 0,
       };
-      grabbed.casterId = casterId;
-      grabbed.grabId = detail.grabId;
-      grabbed.dir.set(detail.dir?.x ?? 0, detail.dir?.y ?? 0, detail.dir?.z ?? -1).normalize();
-      grabbed.origin.set(
-        detail.origin?.x ?? camera.position.x,
-        detail.origin?.y ?? camera.position.y,
-        detail.origin?.z ?? camera.position.z,
-      );
-      grabbed.distance = Math.max(4, Math.min(36, detail.distance ?? GRAB_DEFAULT_DISTANCE));
+      grabbed.casterId = grabAction.casterId;
+      grabbed.grabId = grabAction.grabId;
+      grabbed.dir.set(grabAction.direction.x, grabAction.direction.y, grabAction.direction.z).normalize();
+      grabbed.origin.set(grabAction.origin.x, grabAction.origin.y, grabAction.origin.z);
+      grabbed.distance = grabAction.distance;
       const now = getPlayerEventEpochMs();
       grabbed.lastControlAt = now;
       grabbed.until = now + GRAB_MAX_DURATION_MS;
@@ -1024,21 +1028,22 @@ export function PlayerController() {
 
     const onGrabControl = (e: any) => {
       const grabbed = grabbedState.current;
-      const detail = e.detail ?? {};
       if (!grabbed) return;
 
-      const casterId = detail.id ?? detail.casterId;
-      const sameGrab = detail.grabId && grabbed.grabId === detail.grabId;
-      const sameCaster = casterId && grabbed.casterId === casterId;
-      if (!sameGrab && !sameCaster) return;
+      const grabControlAction = resolvePlayerGrabControlEventAction(e.detail, {
+        casterId: grabbed.casterId,
+        fallbackOrigin: grabbed.origin,
+        grabId: grabbed.grabId,
+      });
+      if (grabControlAction.type !== "apply") return;
 
-      const aimDir = detail.aimDir ?? detail.dir;
-      const origin = detail.origin;
+      const aimDir = grabControlAction.direction;
+      const origin = grabControlAction.origin;
       if (aimDir) {
-        grabbed.dir.set(aimDir.x ?? 0, aimDir.y ?? 0, aimDir.z ?? -1).normalize();
+        grabbed.dir.set(aimDir.x, aimDir.y, aimDir.z).normalize();
       }
       if (origin) {
-        grabbed.origin.set(origin.x ?? grabbed.origin.x, origin.y ?? grabbed.origin.y, origin.z ?? grabbed.origin.z);
+        grabbed.origin.set(origin.x, origin.y, origin.z);
       }
       grabbed.lastControlAt = getPlayerEventEpochMs();
     };
@@ -1047,13 +1052,15 @@ export function PlayerController() {
       const grabbed = grabbedState.current;
       if (!grabbed) return;
 
-      const detail = e.detail ?? {};
-      const sameGrab = detail.grabId && grabbed.grabId === detail.grabId;
-      const sameCaster = detail.casterId && grabbed.casterId === detail.casterId;
-      if (!sameGrab && !sameCaster) return;
+      const grabReleaseAction = resolvePlayerGrabReleaseEventAction(e.detail, {
+        casterId: grabbed.casterId,
+        fallbackDirection: grabbed.dir,
+        grabId: grabbed.grabId,
+      });
+      if (grabReleaseAction.type !== "throw") return;
 
       const releaseDir = grabReleaseDirection
-        .set(detail.dir?.x ?? grabbed.dir.x, detail.dir?.y ?? grabbed.dir.y, detail.dir?.z ?? grabbed.dir.z)
+        .set(grabReleaseAction.direction.x, grabReleaseAction.direction.y, grabReleaseAction.direction.z)
         .normalize();
       throwGrabbedPlayer(releaseDir);
     };
