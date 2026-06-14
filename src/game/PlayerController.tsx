@@ -304,6 +304,7 @@ import {
   publishLastTeleportPosition,
   publishLocalPlayerRigidBody,
   publishLocalPlayerPosition,
+  publishPlayerLilyCoilTubeState,
 } from "./systems/player/playerEventBridge";
 import {
   applyFlamethrowerSpreadInto,
@@ -2747,10 +2748,10 @@ export function PlayerController() {
       const tubeYaw = Math.atan2(frameForward.x, -frameForward.z);
       publishLastPlayerYaw(tubeYaw);
       publishLocalPlayerPosition(tubeBodyPosition, { rememberLast: true });
-      (window as any).__wofLilyCoilTubeState = {
+      publishPlayerLilyCoilTubeState({
         t: tubeState.t,
         surfaceAngle: tubeState.surfaceAngle,
-      };
+      });
 
       const tubeMoving = isPlayerLilyCoilTubeMoving({
         forwardInput,

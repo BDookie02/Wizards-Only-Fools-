@@ -28,6 +28,11 @@ export type PlayerPositionLike = {
   z: number;
 };
 
+export type PlayerLilyCoilTubeStateGlobals = {
+  t: number;
+  surfaceAngle: number;
+};
+
 export type PlayerRigidBodyLike = {
   translation(): PlayerPositionLike;
   setLinvel?(velocity: PlayerPositionLike, wakeUp?: boolean): void;
@@ -58,6 +63,7 @@ export type QuestVillagerInteractionDetail = {
 };
 
 type PlayerWindowGlobals = Window & typeof globalThis & {
+  __wofLilyCoilTubeState?: PlayerLilyCoilTubeStateGlobals;
   __wofLastPlayerPosition?: PlayerPositionLike;
   __wofLastPlayerYaw?: number;
   localPlayerRigidBody?: unknown;
@@ -252,6 +258,16 @@ export function getPublishedRemotePlayerPosition(playerId: string): PlayerPositi
 export function publishLastPlayerYaw(yaw: number) {
   if (typeof window === "undefined" || !Number.isFinite(yaw)) return;
   (window as PlayerWindowGlobals).__wofLastPlayerYaw = yaw;
+}
+
+export function publishPlayerLilyCoilTubeState(state: PlayerLilyCoilTubeStateGlobals) {
+  if (typeof window === "undefined") return false;
+  if (!Number.isFinite(state.t) || !Number.isFinite(state.surfaceAngle)) return false;
+  (window as PlayerWindowGlobals).__wofLilyCoilTubeState = {
+    t: state.t,
+    surfaceAngle: state.surfaceAngle,
+  };
+  return true;
 }
 
 export function getPublishedLastPlayerYaw(): number | undefined {
