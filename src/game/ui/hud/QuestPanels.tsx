@@ -27,7 +27,7 @@ import {
   updateQuestScriptPointDraft,
   type QuestEventBuilderKind,
 } from "./questNpcEditorRuntime";
-import { QuestEventBuilder } from "./QuestEventBuilder";
+import { QuestScriptPointFields } from "./QuestScriptPointFields";
 import { QuestScriptPointList } from "./QuestScriptPointList";
 
 export function QuestNpcEditor() {
@@ -232,46 +232,18 @@ function ActiveQuestNpcEditor({ target }: { target: QuestNpcEditorTarget }) {
 
             {selectedPoint && (
               <div className="min-w-0">
-                <label className="block text-[9px] tracking-[0.2em] text-cyan-100/65">
-                  POINT TITLE
-                  <input
-                    className="normal-case mt-1 w-full border border-cyan-300/45 bg-black/65 px-2 py-2 text-sm tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                    maxLength={48}
-                    value={selectedPoint.title}
-                    onChange={(e) => updatePoint({ title: e.currentTarget.value })}
-                  />
-                </label>
-                <label className="mt-3 block text-[9px] tracking-[0.2em] text-cyan-100/65">
-                  DIALOG
-                  <textarea
-                    className="normal-case mt-1 h-28 w-full resize-none border border-cyan-300/45 bg-black/65 px-2 py-2 text-sm leading-5 tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                    maxLength={900}
-                    value={selectedPoint.dialog}
-                    onChange={(e) => updatePoint({ dialog: e.currentTarget.value })}
-                  />
-                </label>
-                <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
-                  <label className="block text-[9px] tracking-[0.2em] text-cyan-100/65">
-                    EVENTS
-                    <textarea
-                      className="normal-case mt-1 h-44 w-full resize-none border border-cyan-300/45 bg-black/65 px-2 py-2 text-xs leading-5 tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                      maxLength={900}
-                      value={selectedPoint.eventScript}
-                      onChange={(e) => updatePoint({ eventScript: e.currentTarget.value })}
-                      placeholder={"unlockSpell blink\nunlockRandomLockedSpell\nstartQuest town_01_fetch\ncompleteQuest town_01_fetch\nsetFlag town_01_quests=1\nmessage Good work, wizard."}
-                    />
-                  </label>
-                  <QuestEventBuilder
-                    eventMessage={eventMessage}
-                    eventQuestId={eventQuestId}
-                    eventFlag={eventFlag}
-                    onEventMessageChange={setEventMessage}
-                    onEventQuestIdChange={setEventQuestId}
-                    onEventFlagChange={setEventFlag}
-                    onAppendPresetLine={appendEventLine}
-                    onAppendEvent={appendEventFromBuilder}
-                  />
-                </div>
+                <QuestScriptPointFields
+                  selectedPoint={selectedPoint}
+                  eventMessage={eventMessage}
+                  eventQuestId={eventQuestId}
+                  eventFlag={eventFlag}
+                  onUpdatePoint={updatePoint}
+                  onEventMessageChange={setEventMessage}
+                  onEventQuestIdChange={setEventQuestId}
+                  onEventFlagChange={setEventFlag}
+                  onAppendPresetLine={appendEventLine}
+                  onAppendEvent={appendEventFromBuilder}
+                />
                 <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
                   <div className="border border-cyan-300/25 bg-black/35 p-2">
                     <div className="text-[9px] tracking-[0.22em] text-cyan-100/60">PREVIEW</div>
