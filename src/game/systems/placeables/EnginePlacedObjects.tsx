@@ -5,7 +5,7 @@ import {
   emitEnginePlaceableNetworkUpsert,
 } from "../../network/gameNetworkClient";
 import { makeRuntimeRandomId } from "../random/runtimeRandom";
-import { dispatchEnginePlaceableEvent, subscribeEnginePlaceableEvent } from "./enginePlaceableEvents";
+import { dispatchEnginePlaceableEvent } from "./enginePlaceableEvents";
 import { findEnginePlacementCollision } from "./enginePlacementCollision";
 import {
   appendEnginePlacedObjectBounded,
@@ -33,6 +33,11 @@ import {
   publishEnginePlacementResult,
   type WindowWithEnginePlaceables,
 } from "./enginePlacedObjectPublishRuntime";
+import {
+  subscribeEnginePlacedObjectRuntimeEvents,
+  type EnginePlacedObjectDeleteDetail,
+  type EnginePlacedObjectSlotActionDetail,
+} from "./enginePlacedObjectSubscriptions";
 import { getEnginePlacementGroundResolver } from "./enginePlacementGroundRuntime";
 import { getEnginePlacementPlayerSnapshot } from "./enginePlacementPlayerSnapshotRuntime";
 import { planEnginePlacementPreview } from "./enginePlacementPreviewRuntime";
@@ -105,7 +110,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       publishEnginePlacementResult({ ok: true, label: "cleared placements", count: 0 });
       emitEnginePlaceableNetworkSnapshot([]);
     };
-    const handleDeletePlacedObject = (event: { detail: { instanceId?: string } | undefined }) => {
+    const handleDeletePlacedObject = (event: { detail: EnginePlacedObjectDeleteDetail | undefined }) => {
       const instanceId = String(event.detail?.instanceId ?? "");
       if (!instanceId) {
         publishEnginePlacementResult({ ok: false, reason: "missing placed object" });
@@ -213,7 +218,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
     const handlePlacedObjectSlotListRequest = () => {
       publishEnginePlacedObjectSlotList();
     };
-    const handleSavePlacedObjectSlot = (event: { detail: { slotId?: string; label?: string } | undefined }) => {
+    const handleSavePlacedObjectSlot = (event: { detail: EnginePlacedObjectSlotActionDetail | undefined }) => {
       const summary = saveStoredEngineObjectSlot(
         getEnginePlacementStorage(),
         event.detail?.slotId,
@@ -227,7 +232,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       publishEnginePlacementResult({ ok: true, label: `saved ${summary.label}`, count: summary.count });
       publishEnginePlacedObjectSlotList();
     };
-    const handleLoadPlacedObjectSlot = (event: { detail: { slotId?: string; label?: string } | undefined }) => {
+    const handleLoadPlacedObjectSlot = (event: { detail: EnginePlacedObjectSlotActionDetail | undefined }) => {
       const slotId = event.detail?.slotId;
       const loadedObjects = loadStoredEngineObjectsFromSlot(getEnginePlacementStorage(), slotId);
       const label = getEnginePlacementSlotLabel(String(slotId ?? ""), event.detail?.label);
@@ -242,7 +247,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       publishEnginePlacedObjectSlotList();
       emitEnginePlaceableNetworkSnapshot(loadedObjects);
     };
-    const handleDeletePlacedObjectSlot = (event: { detail: { slotId?: string; label?: string } | undefined }) => {
+    const handleDeletePlacedObjectSlot = (event: { detail: EnginePlacedObjectSlotActionDetail | undefined }) => {
       const slotId = event.detail?.slotId;
       const label = getEnginePlacementSlotLabel(String(slotId ?? ""), event.detail?.label);
       if (!deleteStoredEngineObjectSlot(getEnginePlacementStorage(), slotId)) {
@@ -293,34 +298,21 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       handleNetworkSnapshot({ detail: pendingNetworkSnapshot });
     }
 
-    const unsubscribePreview = subscribeEnginePlaceableEvent("wof-engine-placeable-preview", handlePreviewRequest);
-    const unsubscribePreviewClear = subscribeEnginePlaceableEvent("wof-engine-placeable-preview-clear", handlePreviewClear);
-    const unsubscribeClear = subscribeEnginePlaceableEvent("wof-engine-placeable-clear", handleClearPlacedObjects);
-    const unsubscribeDelete = subscribeEnginePlaceableEvent("wof-engine-placeable-delete", handleDeletePlacedObject);
-    const unsubscribeRequest = subscribeEnginePlaceableEvent("wof-engine-placeable-request", handlePlaceableRequest);
-    const unsubscribeListRequest = subscribeEnginePlaceableEvent("wof-engine-placeable-list-request", handlePlacedObjectListRequest);
-    const unsubscribeSlotListRequest = subscribeEnginePlaceableEvent("wof-engine-placeable-slot-list-request", handlePlacedObjectSlotListRequest);
-    const unsubscribeSlotSave = subscribeEnginePlaceableEvent("wof-engine-placeable-slot-save", handleSavePlacedObjectSlot);
-    const unsubscribeSlotLoad = subscribeEnginePlaceableEvent("wof-engine-placeable-slot-load", handleLoadPlacedObjectSlot);
-    const unsubscribeSlotDelete = subscribeEnginePlaceableEvent("wof-engine-placeable-slot-delete", handleDeletePlacedObjectSlot);
-    const unsubscribeNetworkUpsert = subscribeEnginePlaceableEvent("wof-engine-placeable-network-upsert", handleNetworkUpsert);
-    const unsubscribeNetworkDelete = subscribeEnginePlaceableEvent("wof-engine-placeable-network-delete", handleNetworkDelete);
-    const unsubscribeNetworkSnapshot = subscribeEnginePlaceableEvent("wof-engine-placeable-network-snapshot", handleNetworkSnapshot);
-    return () => {
-      unsubscribePreview();
-      unsubscribePreviewClear();
-      unsubscribeClear();
-      unsubscribeDelete();
-      unsubscribeRequest();
-      unsubscribeListRequest();
-      unsubscribeSlotListRequest();
-      unsubscribeSlotSave();
-      unsubscribeSlotLoad();
-      unsubscribeSlotDelete();
-      unsubscribeNetworkUpsert();
-      unsubscribeNetworkDelete();
-      unsubscribeNetworkSnapshot();
-    };
+    return subscribeEnginePlacedObjectRuntimeEvents({
+      onPreviewRequest: handlePreviewRequest,
+      onPreviewClear: handlePreviewClear,
+      onClearPlacedObjects: handleClearPlacedObjects,
+      onDeletePlacedObject: handleDeletePlacedObject,
+      onPlaceableRequest: handlePlaceableRequest,
+      onPlacedObjectListRequest: handlePlacedObjectListRequest,
+      onPlacedObjectSlotListRequest: handlePlacedObjectSlotListRequest,
+      onSavePlacedObjectSlot: handleSavePlacedObjectSlot,
+      onLoadPlacedObjectSlot: handleLoadPlacedObjectSlot,
+      onDeletePlacedObjectSlot: handleDeletePlacedObjectSlot,
+      onNetworkUpsert: handleNetworkUpsert,
+      onNetworkDelete: handleNetworkDelete,
+      onNetworkSnapshot: handleNetworkSnapshot,
+    });
   }, [isSurvivalMode]);
 
   if (objects.length === 0 && !preview) return null;
