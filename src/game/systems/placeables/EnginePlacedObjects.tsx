@@ -3,7 +3,6 @@ import {
   emitEnginePlaceableNetworkDelete,
   emitEnginePlaceableNetworkSnapshot,
   emitEnginePlaceableNetworkUpsert,
-  type EnginePlaceableNetworkObject,
 } from "../../network/gameNetworkClient";
 import {
   getLastKnownLocalPlayerPosition,
@@ -28,6 +27,12 @@ import {
   type EnginePlacementPreview,
 } from "./EnginePlacedObjectVisuals";
 import {
+  normalizeReplicatedEnginePlacedObject,
+  type EnginePlaceableNetworkDeleteDetail,
+  type EnginePlaceableNetworkSnapshotDetail,
+  type EnginePlaceableNetworkUpsertDetail,
+} from "./enginePlacedObjectNetworkRuntime";
+import {
   MAX_ENGINE_PLACED_OBJECTS,
   deleteStoredEngineObjectSlot,
   getEnginePlacementSlotLabel,
@@ -47,22 +52,6 @@ import {
 } from "./placementRules";
 
 type EnginePlacedObject = EnginePlacedObjectRecord;
-
-type EnginePlaceableNetworkUpsertDetail = {
-  object?: EnginePlaceableNetworkObject;
-  sourcePlayerId?: string;
-};
-
-type EnginePlaceableNetworkDeleteDetail = {
-  instanceId?: string;
-  sourcePlayerId?: string;
-};
-
-type EnginePlaceableNetworkSnapshotDetail = {
-  objects?: EnginePlaceableNetworkObject[];
-  sourcePlayerId?: string;
-  receivedAt?: number;
-};
 
 type EnginePlacementResultDetail = {
   ok: boolean;
@@ -133,31 +122,6 @@ function getEnginePlacementStorage() {
   } catch {
     return undefined;
   }
-}
-
-function normalizeReplicatedEnginePlacedObject(value: unknown): EnginePlacedObject | null {
-  const record = value && typeof value === "object" && !Array.isArray(value)
-    ? value as Partial<EnginePlacedObject>
-    : null;
-  if (!record) return null;
-  const placeable = getPlaceableDefinition(String(record.placeableId ?? ""));
-  if (!placeable) return null;
-  const x = Number(record.x);
-  const y = Number(record.y);
-  const z = Number(record.z);
-  const yaw = Number(record.yaw);
-  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || !Number.isFinite(yaw)) {
-    return null;
-  }
-  return {
-    instanceId: String(record.instanceId || `engine-${placeable.id}`),
-    placeableId: placeable.id,
-    label: String(record.label || placeable.name),
-    x,
-    y,
-    z,
-    yaw,
-  };
 }
 
 function getInvalidPreviewFallback(
