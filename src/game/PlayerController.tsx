@@ -146,6 +146,7 @@ import {
   resetLilyCoilCameraState as resetPlayerLilyCoilCameraState,
 } from "./systems/player/playerCameraRuntime";
 import { usePlayerControllerRuntimeState } from "./systems/player/playerControllerRuntimeState";
+import { applyPlayerBodyCameraPlacement } from "./systems/player/playerBodyPlacementRuntime";
 import { resolvePlayerSpawnOverrideAction } from "./systems/player/playerSpawnOverrideRuntime";
 import { resolvePlayerTeleportEventAction } from "./systems/player/playerTeleportRuntime";
 import { resolvePlayerPullEventAction } from "./systems/player/playerPullRuntime";
@@ -729,9 +730,12 @@ export function PlayerController() {
           
           if (rigidBody.current) {
             const [spawnX, spawnY, spawnZ] = getPlayerSpawnPosition();
-            rigidBody.current.setTranslation({ x: spawnX, y: spawnY, z: spawnZ }, true);
-            rigidBody.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-            camera.position.set(spawnX, spawnY + PLAYER_CAMERA_HEIGHT, spawnZ);
+            applyPlayerBodyCameraPlacement({
+              body: rigidBody.current,
+              camera,
+              cameraHeight: PLAYER_CAMERA_HEIGHT,
+              position: { x: spawnX, y: spawnY, z: spawnZ },
+            });
           }
         }
         return;
@@ -1002,10 +1006,13 @@ export function PlayerController() {
       const teleportAction = resolvePlayerTeleportEventAction(e.detail);
       if (teleportAction.type !== "apply") return;
       const teleportPosition = teleportAction.position;
-      rigidBody.current.setTranslation(teleportPosition, true);
-      rigidBody.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      rigidBody.current.setAngvel({ x: 0, y: 0, z: 0 }, true);
-      camera.position.set(teleportPosition.x, teleportPosition.y + PLAYER_CAMERA_HEIGHT, teleportPosition.z);
+      applyPlayerBodyCameraPlacement({
+        body: rigidBody.current,
+        camera,
+        cameraHeight: PLAYER_CAMERA_HEIGHT,
+        position: teleportPosition,
+        resetAngularVelocity: true,
+      });
       const resolvedYaw = resetLilyCoilCameraState(teleportAction.yaw);
       resetQaWalkSession(teleportPosition);
       const now = getPlayerEventEpochMs();
@@ -1187,10 +1194,13 @@ export function PlayerController() {
     });
     if (spawnOverrideAction.type === "apply") {
       const { x: spawnX, y: spawnY, z: spawnZ } = spawnOverrideAction.position;
-      rigidBody.current.setTranslation(spawnOverrideAction.position, true);
-      rigidBody.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      rigidBody.current.setAngvel({ x: 0, y: 0, z: 0 }, true);
-      camera.position.set(spawnX, spawnY + PLAYER_CAMERA_HEIGHT, spawnZ);
+      applyPlayerBodyCameraPlacement({
+        body: rigidBody.current,
+        camera,
+        cameraHeight: PLAYER_CAMERA_HEIGHT,
+        position: spawnOverrideAction.position,
+        resetAngularVelocity: true,
+      });
       const resolvedYaw = resetLilyCoilCameraState(
         spawnOverrideAction.yaw,
         spawnOverrideAction.pitch,
@@ -1878,9 +1888,12 @@ export function PlayerController() {
         });
         if (recoveryRescuePlan) {
           const rescuePosition = recoveryRescuePlan.position;
-          rigidBody.current?.setTranslation(rescuePosition, true);
-          rigidBody.current?.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(rescuePosition.x, rescuePosition.y + PLAYER_CAMERA_HEIGHT, rescuePosition.z);
+          applyPlayerBodyCameraPlacement({
+            body: rigidBody.current,
+            camera,
+            cameraHeight: PLAYER_CAMERA_HEIGHT,
+            position: rescuePosition,
+          });
           publishLocalPlayerPosition(rescuePosition, { rememberLast: true });
           publishQaPlayerPosition(rescuePosition);
           qaWalkLastUnstickNudgeAt.current = elapsed;
@@ -1908,9 +1921,12 @@ export function PlayerController() {
             stuckStrikes: qaWalkStuckStrikes.current,
           });
           const nudgedPosition = unstickNudgePlan.position;
-          rigidBody.current?.setTranslation(nudgedPosition, true);
-          rigidBody.current?.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          camera.position.set(nudgedPosition.x, nudgedPosition.y + PLAYER_CAMERA_HEIGHT, nudgedPosition.z);
+          applyPlayerBodyCameraPlacement({
+            body: rigidBody.current,
+            camera,
+            cameraHeight: PLAYER_CAMERA_HEIGHT,
+            position: nudgedPosition,
+          });
           publishLocalPlayerPosition(nudgedPosition, { rememberLast: true });
           publishQaPlayerPosition(nudgedPosition);
           qaWalkLastUnstickNudgeAt.current = elapsed;
@@ -3036,9 +3052,12 @@ export function PlayerController() {
     // Fall logic
     if (!vclipActive && pos.y < -50) {
       const [spawnX, spawnY, spawnZ] = getPlayerSpawnPosition(DEFAULT_FALL_RECOVERY_SPAWN_POSITION);
-      rigidBody.current.setTranslation({ x: spawnX, y: spawnY, z: spawnZ }, true);
-      rigidBody.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      camera.position.set(spawnX, spawnY + PLAYER_CAMERA_HEIGHT, spawnZ);
+      applyPlayerBodyCameraPlacement({
+        body: rigidBody.current,
+        camera,
+        cameraHeight: PLAYER_CAMERA_HEIGHT,
+        position: { x: spawnX, y: spawnY, z: spawnZ },
+      });
     }
 
     // Sync network
