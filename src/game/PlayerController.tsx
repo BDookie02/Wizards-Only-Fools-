@@ -308,6 +308,7 @@ import {
   publishPlayerLilyCoilTubeState,
 } from "./systems/player/playerEventBridge";
 import {
+  applyPlayerBlinkTeleport,
   applyFlamethrowerSpreadInto,
   createPlayerGrabProjectileId,
   createPlayerSpellCastNetworkPayload,
@@ -316,7 +317,6 @@ import {
   createQaWalkPracticeProjectileId,
   findAimedRemotePlayerInto,
   findRemotePlayerInAimConeInto,
-  getBlinkTeleportOffset,
   getPlayerSpellLaunch,
   getPlayerSpellLaunchInto,
   WIDE_STATUS_AIM_RADIUS,
@@ -935,13 +935,10 @@ export function PlayerController() {
       const projectileDir = { x: realDir.x, y: realDir.y, z: realDir.z };
       
       if (currentSpell === 'blink') {
-        // Teleports player to a random location nearby
-        const blinkOffset = getBlinkTeleportOffset();
-        r.setTranslation({
-          x: pos.x + blinkOffset.x,
-          y: pos.y + 10, // A bit higher for longer distances
-          z: pos.z + blinkOffset.z
-        }, true);
+        applyPlayerBlinkTeleport({
+          body: r,
+          position: pos,
+        });
       }
 
       emitGameNetworkEvent("castSpell", createPlayerSpellCastNetworkPayload({

@@ -54,6 +54,16 @@ export type PlayerSpellCastNetworkPayload = {
   hand: HandType;
 };
 
+export type PlayerSpellBlinkBody = {
+  setTranslation(position: PlayerSpellVectorPayload, wakeUp?: boolean): void;
+};
+
+export type PlayerSpellBlinkTeleportResult = {
+  applied: boolean;
+  offset: ReturnType<typeof getBlinkTeleportOffset> | null;
+  position: PlayerSpellVectorPayload;
+};
+
 export const WIDE_STATUS_AIM_RADIUS = DIRECT_STATUS_TARGET_RADIUS * 1.35;
 const PROJECTILE_TOKEN_SCALE = 0x100000000;
 
@@ -144,6 +154,30 @@ export function getBlinkTeleportOffset(
     x: Math.cos(angle) * distance,
     z: Math.sin(angle) * distance,
   };
+}
+
+export function applyPlayerBlinkTeleport({
+  body,
+  position,
+  random,
+  upwardOffset = 10,
+}: {
+  body: PlayerSpellBlinkBody | null | undefined;
+  position: PlayerSpellVectorPayload;
+  random?: RandomSource;
+  upwardOffset?: number;
+}): PlayerSpellBlinkTeleportResult {
+  const offset = getBlinkTeleportOffset(random);
+  const teleportPosition = {
+    x: position.x + offset.x,
+    y: position.y + upwardOffset,
+    z: position.z + offset.z,
+  };
+  if (!body) {
+    return { applied: false, offset, position: teleportPosition };
+  }
+  body.setTranslation(teleportPosition, true);
+  return { applied: true, offset, position: teleportPosition };
 }
 
 export function applyFlamethrowerSpreadInto(
