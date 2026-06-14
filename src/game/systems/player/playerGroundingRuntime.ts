@@ -2,6 +2,7 @@ import {
   FLOOR_DEEP_RECOVERY_MAX_LIFT,
   FLOOR_DEEP_RECOVERY_RAY_DOWN,
   FLOOR_DEEP_RECOVERY_RAY_UP,
+  FLOOR_DEEP_RECOVERY_TRIGGER_Y,
   FLOOR_RECOVERY_MAX_LIFT,
   FLOOR_RECOVERY_RAY_DOWN,
   FLOOR_RECOVERY_RAY_UP,
@@ -73,6 +74,52 @@ export type PlayerGroundMotionState = {
   idleGroundedPlanarLock: boolean;
   crouchAllowed: boolean;
 };
+
+export type PlayerFloorRecoveryGate = {
+  shouldRecover: boolean;
+  includeDeepRecovery: boolean;
+  deepRecoveryNeeded: boolean;
+  surfaceRecoveryNeeded: boolean;
+};
+
+export function resolvePlayerFloorRecoveryGate({
+  climbingLadder,
+  grabbedActive,
+  hasGroundHit,
+  jumpHeld,
+  posY,
+  survivalModeActive,
+  vclipActive,
+  velocityY,
+  deepRecoveryTriggerY = FLOOR_DEEP_RECOVERY_TRIGGER_Y,
+}: {
+  climbingLadder: boolean;
+  grabbedActive: boolean;
+  hasGroundHit: boolean;
+  jumpHeld: boolean;
+  posY: number;
+  survivalModeActive: boolean;
+  vclipActive: boolean;
+  velocityY: number;
+  deepRecoveryTriggerY?: number;
+}): PlayerFloorRecoveryGate {
+  const deepRecoveryNeeded = survivalModeActive && posY < deepRecoveryTriggerY;
+  const surfaceRecoveryNeeded = survivalModeActive && !hasGroundHit;
+  const fallingRecoveryNeeded = !hasGroundHit && velocityY < -0.35;
+  const shouldRecover = !vclipActive &&
+    !climbingLadder &&
+    !hasGroundHit &&
+    !jumpHeld &&
+    !grabbedActive &&
+    (fallingRecoveryNeeded || deepRecoveryNeeded || surfaceRecoveryNeeded);
+
+  return {
+    shouldRecover,
+    includeDeepRecovery: deepRecoveryNeeded,
+    deepRecoveryNeeded,
+    surfaceRecoveryNeeded,
+  };
+}
 
 export function samplePlayerGroundToi(options: {
   pos: PlayerGroundingPosition;

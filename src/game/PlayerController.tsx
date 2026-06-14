@@ -153,6 +153,7 @@ import {
   applyPlayerFloorRecovery,
   getPlayerFloorRecoveryTarget,
   hasPlayerGroundHit,
+  resolvePlayerFloorRecoveryGate,
   resolvePlayerGroundMotionState,
   samplePlayerGroundToi,
 } from "./systems/player/playerGroundingRuntime";
@@ -274,7 +275,6 @@ import {
 import {
   BOOST_FORCE,
   CROUCH_HOLD_MS,
-  FLOOR_DEEP_RECOVERY_TRIGGER_Y,
   GRAB_DEFAULT_DISTANCE,
   GRAB_FOLLOW_SPEED,
   GRAB_MAX_DURATION_MS,
@@ -2815,15 +2815,23 @@ export function PlayerController() {
       if (isCrouching) setIsCrouching(false);
     }
 
-    const survivalDeepRecoveryNeeded = survivalModeActive && pos.y < FLOOR_DEEP_RECOVERY_TRIGGER_Y;
-    const survivalSurfaceRecoveryNeeded = survivalModeActive && !hasGroundHit;
-    if (!vclipActive && !climbingLadder && !hasGroundHit && (velocity.y < -0.35 || survivalDeepRecoveryNeeded || survivalSurfaceRecoveryNeeded) && !jumpHeld && !grabbedState.current) {
+    const floorRecoveryGate = resolvePlayerFloorRecoveryGate({
+      climbingLadder,
+      grabbedActive: Boolean(grabbedState.current),
+      hasGroundHit,
+      jumpHeld,
+      posY: pos.y,
+      survivalModeActive,
+      vclipActive,
+      velocityY: velocity.y,
+    });
+    if (floorRecoveryGate.shouldRecover) {
       const recoveryTarget = getPlayerFloorRecoveryTarget({
         pos,
         world,
         rapier,
         queryOptions: playerQueryOptions,
-        includeDeepRecovery: survivalDeepRecoveryNeeded,
+        includeDeepRecovery: floorRecoveryGate.includeDeepRecovery,
       });
       if (recoveryTarget) {
         applyPlayerFloorRecovery({
