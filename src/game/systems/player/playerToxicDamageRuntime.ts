@@ -35,6 +35,14 @@ export type PlayerClearToxicEffectsPlan = {
   } | null;
 };
 
+export type PlayerClearToxicEffectsPlanApplier = {
+  clearToxicEffects: () => void;
+  emitGameNetworkEvent: (
+    eventName: "clearStatusEffect",
+    payload: NonNullable<PlayerClearToxicEffectsPlan["networkPayload"]>,
+  ) => void;
+};
+
 const DEFAULT_TOXIC_DAMAGE_SYNC_INTERVAL_MS = 500;
 const PLAYER_TOXIC_EFFECTS_TO_CLEAR = ["poison", "acid"] as const;
 
@@ -113,4 +121,17 @@ export function createPlayerClearToxicEffectsPlan(
         }
       : null,
   };
+}
+
+export function applyPlayerClearToxicEffectsPlan(
+  plan: PlayerClearToxicEffectsPlan,
+  applier: PlayerClearToxicEffectsPlanApplier,
+) {
+  if (!plan.shouldClear) return false;
+
+  applier.clearToxicEffects();
+  if (plan.networkPayload) {
+    applier.emitGameNetworkEvent("clearStatusEffect", plan.networkPayload);
+  }
+  return true;
 }

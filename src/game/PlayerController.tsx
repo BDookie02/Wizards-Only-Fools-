@@ -179,6 +179,7 @@ import {
   applyPlayerScreenShakeEvent,
 } from "./systems/player/playerScreenShakeRuntime";
 import {
+  applyPlayerClearToxicEffectsPlan,
   createPlayerClearToxicEffectsPlan,
   updatePlayerToxicDamageFrame,
 } from "./systems/player/playerToxicDamageRuntime";
@@ -523,12 +524,10 @@ export function PlayerController() {
       nowMs: getPlayerEventEpochMs(),
       poisonUntil: state.poisonUntil,
     });
-    if (!clearPlan.shouldClear) return;
-
-    state.clearToxicEffects();
-    if (clearPlan.networkPayload) {
-      emitGameNetworkEvent("clearStatusEffect", clearPlan.networkPayload);
-    }
+    applyPlayerClearToxicEffectsPlan(clearPlan, {
+      clearToxicEffects: state.clearToxicEffects,
+      emitGameNetworkEvent,
+    });
   };
 
   const applyCameraLookDelta = (yawDelta: number, pitchDelta: number) => {
