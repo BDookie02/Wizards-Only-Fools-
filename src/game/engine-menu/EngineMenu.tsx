@@ -22,6 +22,8 @@ import {
 } from "./engineMenuRuntime";
 import { EngineMenuCatalogPanel } from "./EngineMenuCatalogPanel";
 import { EngineMenuCategorySidebar } from "./EngineMenuCategorySidebar";
+import { EngineMenuFooter } from "./EngineMenuFooter";
+import { EngineMenuHeader } from "./EngineMenuHeader";
 import { EngineMenuPlacedObjectsPanel } from "./EngineMenuPlacedObjectsPanel";
 import { EngineMenuPlacementPanel } from "./EngineMenuPlacementPanel";
 import { EngineMenuSaveSlotsPanel } from "./EngineMenuSaveSlotsPanel";
@@ -168,19 +170,7 @@ export function EngineMenu({
       onTouchStart={(event) => event.stopPropagation()}
     >
       <div className="engine-menu-panel grid h-[min(92dvh,760px)] w-[min(94vw,1080px)] grid-rows-[auto_1fr_auto] overflow-hidden border-2 border-cyan-100/55 bg-[#071017]/96 shadow-[0_0_42px_rgba(34,211,238,0.28)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-100/25 px-3 py-2">
-          <div>
-            <div className="text-[10px] tracking-[0.3em] text-cyan-100/60">Dev Mode</div>
-            <div className="text-[clamp(1rem,2.5vmin,1.45rem)] tracking-[0.18em] text-cyan-50">Game Engine Menu</div>
-          </div>
-          <button
-            type="button"
-            className="border border-cyan-100/50 bg-cyan-300/10 px-3 py-2 text-[10px] tracking-widest text-cyan-50 hover:bg-cyan-200/20"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
+        <EngineMenuHeader onClose={onClose} />
 
         <div className="grid min-h-0 min-w-0 grid-cols-[160px_minmax(0,1fr)_220px] gap-3 overflow-hidden p-3">
           <EngineMenuCategorySidebar
@@ -238,11 +228,7 @@ export function EngineMenu({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-cyan-100/20 px-3 py-2 text-[8px] tracking-[0.2em] text-cyan-100/45">
-          <span>L toggles this menu when dev mode is on</span>
-          <span>/engine opens it from command console</span>
-          <span>Click an item to preview, then place selected</span>
-        </div>
+        <EngineMenuFooter />
       </div>
     </div>,
     document.body
