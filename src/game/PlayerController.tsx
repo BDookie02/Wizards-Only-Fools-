@@ -153,7 +153,10 @@ import {
 import { usePlayerControllerRuntimeState } from "./systems/player/playerControllerRuntimeState";
 import { applyPlayerBodyCameraPlacement } from "./systems/player/playerBodyPlacementRuntime";
 import { resolvePlayerSpawnOverrideAction } from "./systems/player/playerSpawnOverrideRuntime";
-import { resolvePlayerTeleportEventAction } from "./systems/player/playerTeleportRuntime";
+import {
+  applyPlayerTeleportEventApplication,
+  resolvePlayerTeleportEventAction,
+} from "./systems/player/playerTeleportRuntime";
 import { resolvePlayerPullEventAction } from "./systems/player/playerPullRuntime";
 import {
   readPlayerControllerGamepadLookInput,
@@ -990,35 +993,21 @@ export function PlayerController() {
     });
 
     const onTeleport = (e: any) => {
-      if (!rigidBody.current) return;
-      const teleportAction = resolvePlayerTeleportEventAction(e.detail);
-      if (teleportAction.type !== "apply") return;
-      const teleportPosition = teleportAction.position;
-      applyPlayerBodyCameraPlacement({
+      applyPlayerTeleportEventApplication(resolvePlayerTeleportEventAction(e.detail), {
         body: rigidBody.current,
         camera,
         cameraHeight: PLAYER_CAMERA_HEIGHT,
-        position: teleportPosition,
-        resetAngularVelocity: true,
-      });
-      const resolvedYaw = resetLilyCoilCameraState(teleportAction.yaw);
-      resetQaWalkSession(teleportPosition);
-      const now = getPlayerEventEpochMs();
-      const manualFastTravelSpawn = publishManualFastTravelSpawn({
-        x: teleportPosition.x,
-        y: teleportPosition.y,
-        z: teleportPosition.z,
-        yaw: teleportAction.yaw,
-      }, now);
-      forcedSpawnKey.current = manualFastTravelSpawn.key;
-      publishLocalPlayerPosition(teleportPosition, { rememberLast: true });
-      publishQaPlayerPosition(teleportPosition);
-      publishLastTeleportPosition(teleportPosition);
-      dispatchPlayerMoved({
-        ...teleportPosition,
-        angle: resolvedYaw,
-        isMoving: false,
-        grounded: false,
+        dispatchPlayerMoved,
+        getNowMs: getPlayerEventEpochMs,
+        publishLastTeleportPosition,
+        publishLocalPlayerPosition,
+        publishManualFastTravelSpawn,
+        publishQaPlayerPosition,
+        resetCameraYaw: resetLilyCoilCameraState,
+        resetQaWalkSession,
+        setForcedSpawnKey: key => {
+          forcedSpawnKey.current = key;
+        },
       });
     };
 
