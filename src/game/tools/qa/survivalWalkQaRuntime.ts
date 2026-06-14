@@ -2518,6 +2518,21 @@ export function resolveQaWalkOpenLaneRecoveryRelief({
   };
 }
 
+export type QaWalkOpenLaneRecoveryRelief = ReturnType<typeof resolveQaWalkOpenLaneRecoveryRelief>;
+
+export function applyQaWalkOpenLaneRecoveryRelief({
+  refs,
+  relief,
+}: {
+  refs: QaWalkRecoveryMovementRefs;
+  relief: QaWalkOpenLaneRecoveryRelief;
+}) {
+  if (!relief.changed) return false;
+  refs.stuckStrikes.current = relief.stuckStrikes;
+  refs.recoveryUntil.current = relief.recoveryUntil;
+  return true;
+}
+
 export function resolveQaWalkTelemetryMovement({
   elapsedSeconds,
   lastTelemetryAt,

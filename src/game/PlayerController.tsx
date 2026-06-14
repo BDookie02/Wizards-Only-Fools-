@@ -64,6 +64,7 @@ import {
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
 import {
+  applyQaWalkOpenLaneRecoveryRelief,
   applyQaWalkRecoveryMovementFrame,
   applyQaWalkRecoveryPlacementPlan,
   applyQaWalkRecoveryStartPlan,
@@ -2269,10 +2270,13 @@ export function PlayerController() {
         recoveryUntil: qaWalkRecoveryUntil.current,
         stuckStrikes: qaWalkStuckStrikes.current,
       });
-      if (openLaneRelief.changed) {
-        qaWalkStuckStrikes.current = openLaneRelief.stuckStrikes;
-        qaWalkRecoveryUntil.current = openLaneRelief.recoveryUntil;
-      }
+      applyQaWalkOpenLaneRecoveryRelief({
+        refs: {
+          recoveryUntil: qaWalkRecoveryUntil,
+          stuckStrikes: qaWalkStuckStrikes,
+        },
+        relief: openLaneRelief,
+      });
       const telemetryMovement = resolveQaWalkTelemetryMovement({
         elapsedSeconds: elapsed,
         lastTelemetryAt: qaWalkLastTelemetryAt.current,
