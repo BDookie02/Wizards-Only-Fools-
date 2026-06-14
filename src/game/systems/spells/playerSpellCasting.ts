@@ -73,6 +73,17 @@ export type PlayerSpellProjectileNetworkCastResult = {
   projectile: Projectile;
 };
 
+export type PlayerReleasedSpellLaunchOptions = {
+  type: SpellType;
+  hand: HandType;
+  camera: THREE.Camera;
+  playerPosition: PlayerSpellVectorPayload;
+  direction: THREE.Vector3;
+  flatDirection: THREE.Vector3;
+  target: SpellLaunchScratch;
+  footOffset: number;
+};
+
 export const WIDE_STATUS_AIM_RADIUS = DIRECT_STATUS_TARGET_RADIUS * 1.35;
 const PROJECTILE_TOKEN_SCALE = 0x100000000;
 
@@ -341,6 +352,37 @@ export function getPlayerSpellLaunch(
     aimFromCrosshair,
     lateralOverride,
   );
+}
+
+export function getPlayerReleasedSpellLaunchInto({
+  type,
+  hand,
+  camera,
+  playerPosition,
+  direction,
+  flatDirection,
+  target,
+  footOffset,
+}: PlayerReleasedSpellLaunchOptions): SpellLaunch {
+  camera.getWorldDirection(direction);
+  const launch = getPlayerSpellLaunchInto(hand, camera, direction, target);
+
+  if (type !== "tornado" && type !== "meteorshower") {
+    return launch;
+  }
+
+  const summonDirection = flatDirection.set(direction.x, 0, direction.z);
+  if (summonDirection.lengthSq() < 0.001) {
+    summonDirection.set(0, 0, -1);
+  }
+  summonDirection.normalize();
+
+  const summonDistance = type === "meteorshower" ? 32 : 22;
+  launch.spawnPos.x = playerPosition.x + summonDirection.x * summonDistance;
+  launch.spawnPos.y = playerPosition.y - footOffset + 0.2;
+  launch.spawnPos.z = playerPosition.z + summonDirection.z * summonDistance;
+  launch.realDir.copy(summonDirection);
+  return launch;
 }
 
 export function findAimedRemotePlayer(

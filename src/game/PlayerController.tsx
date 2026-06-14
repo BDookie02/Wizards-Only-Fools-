@@ -324,6 +324,7 @@ import {
   findRemotePlayerInAimConeInto,
   getPlayerSpellLaunch,
   getPlayerSpellLaunchInto,
+  getPlayerReleasedSpellLaunchInto,
   WIDE_STATUS_AIM_RADIUS,
 } from "./systems/spells/playerSpellCasting";
 import {
@@ -889,25 +890,16 @@ export function PlayerController() {
       if (!r) return;
       const pos = r.translation();
       
-      // Calculate forward direction from camera
-      const dir = spellDirection;
-      camera.getWorldDirection(dir);
-      
-      let { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, dir, spellLaunchScratch);
-
-      if (currentSpell === 'tornado' || currentSpell === 'meteorshower') {
-        const flatDir = spellFlatDirection.set(dir.x, 0, dir.z);
-        if (flatDir.lengthSq() < 0.001) flatDir.set(0, 0, -1);
-        flatDir.normalize();
-        const summonDistance = currentSpell === 'meteorshower' ? 32 : 22;
-        const groundY = pos.y - PLAYER_FOOT_OFFSET + 0.2;
-        spawnPos = {
-          x: pos.x + flatDir.x * summonDistance,
-          y: groundY,
-          z: pos.z + flatDir.z * summonDistance,
-        };
-        realDir = flatDir;
-      }
+      const { spawnPos, realDir } = getPlayerReleasedSpellLaunchInto({
+        type: currentSpell,
+        hand,
+        camera,
+        playerPosition: pos,
+        direction: spellDirection,
+        flatDirection: spellFlatDirection,
+        target: spellLaunchScratch,
+        footOffset: PLAYER_FOOT_OFFSET,
+      });
       const projectileOrigin = { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z };
       const projectileDir = { x: realDir.x, y: realDir.y, z: realDir.z };
       
