@@ -4,15 +4,11 @@ import {
   emitEnginePlaceableNetworkSnapshot,
   emitEnginePlaceableNetworkUpsert,
 } from "../../network/gameNetworkClient";
-import { makeRuntimeRandomId } from "../random/runtimeRandom";
 import { dispatchEnginePlaceableEvent } from "./enginePlaceableEvents";
 import { findEnginePlacementCollision } from "./enginePlacementCollision";
 import {
-  appendEnginePlacedObjectBounded,
   findEnginePlacedObjectById,
-  hasEnginePlacedObjectId,
   removeEnginePlacedObjectById,
-  replaceEnginePlacedObjectById,
 } from "./enginePlacedObjectListRuntime";
 import {
   EnginePlacedObjectVisual,
@@ -49,17 +45,13 @@ import { getEnginePlacementGroundResolver } from "./enginePlacementGroundRuntime
 import { getEnginePlacementPlayerSnapshot } from "./enginePlacementPlayerSnapshotRuntime";
 import { planEnginePlacementPreview } from "./enginePlacementPreviewRuntime";
 import {
-  MAX_ENGINE_PLACED_OBJECTS,
   loadStoredEngineObjects,
   saveStoredEngineObjects,
   type EnginePlacedObjectRecord,
 } from "./enginePlacedObjectStorage";
+import { planEnginePlacedObjectPlacementAction } from "./enginePlacedObjectPlacementActionRuntime";
 import { getPlaceableDefinition } from "./placeableCatalog";
-import {
-  planEnginePlaceablePlacement,
-  planTrainingSpellDummySpawn,
-  type EnginePlaceableRequestDetail,
-} from "./placementRules";
+import { type EnginePlaceableRequestDetail } from "./placementRules";
 
 type EnginePlacedObject = EnginePlacedObjectRecord;
 
@@ -131,89 +123,28 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
     };
     const handlePlaceableRequest = (event: { detail: EnginePlaceableRequestDetail | undefined }) => {
       const detail = event.detail;
-      const placeableId = String(detail?.placeableId ?? "");
-      const placeable = getPlaceableDefinition(placeableId);
-      if (!placeable) {
-        publishEnginePlacementResult({ ok: false, reason: "unknown placeable" });
-        return;
-      }
-
       const playerSnapshot = getEnginePlacementPlayerSnapshot(detail);
-
-      if (placeable.id === "training-spell-dummy") {
-        const spawnPlan = planTrainingSpellDummySpawn(detail, playerSnapshot);
-        if (spawnPlan.ok === false) {
-          publishEnginePlacementResult({ ok: false, label: placeable.name, reason: spawnPlan.reason });
-          return;
-        }
+      const result = planEnginePlacedObjectPlacementAction(objectsRef.current, getGroundY, detail, playerSnapshot);
+      if (result.kind === "error") {
+        if (result.preview) setPreview(result.preview);
+        publishEnginePlacementResult(result.result);
+        return;
+      }
+      if (result.kind === "training-dummy") {
         dispatchEnginePlaceableEvent("wof-spawn-spell-dummies", {
-          x: spawnPlan.x,
-          y: spawnPlan.y,
-          z: spawnPlan.z,
-          yaw: spawnPlan.yaw,
-          count: spawnPlan.count,
+          x: result.spawn.x,
+          y: result.spawn.y,
+          z: result.spawn.z,
+          yaw: result.spawn.yaw,
+          count: result.spawn.count,
         });
-        publishEnginePlacementResult({ ok: true, label: placeable.name });
+        publishEnginePlacementResult(result.result);
         return;
       }
-
-      const placementPlan = planEnginePlaceablePlacement(placeable, getGroundY, detail, playerSnapshot);
-      if (placementPlan.ok === false) {
-        publishEnginePlacementResult({ ok: false, label: placeable.name, reason: placementPlan.reason });
-        return;
-      }
-
-      const currentObjects = objectsRef.current;
-      const collision = findEnginePlacementCollision(placeable, placementPlan.x, placementPlan.z, currentObjects, detail?.replaceInstanceId, placementPlan.yaw);
-      if (collision) {
-        publishEnginePlacementResult({ ok: false, label: placeable.name, reason: `overlaps ${collision.label}` });
-        setPreview({
-          ok: false,
-          placeableId: placeable.id,
-          label: placeable.name,
-          x: placementPlan.x,
-          y: placementPlan.y,
-          z: placementPlan.z,
-          yaw: placementPlan.yaw,
-          gridSize: placementPlan.gridSize,
-          snapped: placementPlan.snapped,
-          reason: `overlaps ${collision.label}`,
-        });
-        return;
-      }
-
-      const object: EnginePlacedObject = {
-        instanceId: detail?.replaceInstanceId || makeRuntimeRandomId(`engine-${placeable.id}`, 5),
-        placeableId: placeable.id,
-        label: placeable.name,
-        x: placementPlan.x,
-        y: placementPlan.y,
-        z: placementPlan.z,
-        yaw: placementPlan.yaw,
-      };
-      const replaceInstanceId = detail?.replaceInstanceId;
-      const replacingObject = Boolean(replaceInstanceId && hasEnginePlacedObjectId(currentObjects, replaceInstanceId));
-      const nextObjects = replacingObject
-        ? replaceEnginePlacedObjectById(currentObjects, String(replaceInstanceId), object)
-        : appendEnginePlacedObjectBounded(currentObjects, object);
-      commitEnginePlacedObjects(nextObjects);
-      setPreview({
-        ok: true,
-        placeableId: placeable.id,
-        label: placeable.name,
-        x: placementPlan.x,
-        y: placementPlan.y,
-        z: placementPlan.z,
-        yaw: placementPlan.yaw,
-        gridSize: placementPlan.gridSize,
-        snapped: placementPlan.snapped,
-      });
-      publishEnginePlacementResult({
-        ok: true,
-        label: replacingObject ? `moved ${placeable.name}` : placeable.name,
-        count: replacingObject ? currentObjects.length : Math.min(currentObjects.length + 1, MAX_ENGINE_PLACED_OBJECTS),
-      });
-      emitEnginePlaceableNetworkUpsert(object);
+      commitEnginePlacedObjects(result.objects);
+      setPreview(result.preview);
+      publishEnginePlacementResult(result.result);
+      emitEnginePlaceableNetworkUpsert(result.object);
     };
     const handlePlacedObjectListRequest = () => {
       publishEnginePlacedObjectList(objectsRef.current);
