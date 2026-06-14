@@ -1,4 +1,8 @@
 import { getFullscreenElement, isStandaloneDisplayMode } from "./browserDisplayMode";
+import {
+  resolveDocumentFullscreenState,
+  resolveTouchFullscreenAction,
+} from "./fullscreenRuntimeRules";
 
 type FullscreenRuntimeCallbacks = {
   onFullscreenStateChange: (active: boolean) => void;
@@ -17,7 +21,10 @@ function getDocumentFullscreenState(
   fullscreenMedia?: MediaQueryList | null,
   standaloneMedia?: MediaQueryList | null,
 ) {
-  return Boolean(getFullscreenElement()) || isStandaloneDisplayMode(fullscreenMedia, standaloneMedia);
+  return resolveDocumentFullscreenState({
+    hasFullscreenElement: Boolean(getFullscreenElement()),
+    standaloneDisplayMode: isStandaloneDisplayMode(fullscreenMedia, standaloneMedia),
+  });
 }
 
 export function subscribeDocumentFullscreenState(onFullscreenStateChange: (active: boolean) => void) {
@@ -49,13 +56,24 @@ export function requestTouchFullscreenMode(
 
   const webkitDocument = document as WebkitDocument;
   const fullscreenTarget = document.documentElement as WebkitFullscreenElement;
+  const fullscreenElement = getFullscreenElement();
+  const standaloneDisplayMode = isStandaloneDisplayMode();
+  const exitFullscreen = document.exitFullscreen ?? webkitDocument.webkitExitFullscreen;
+  const requestFullscreen = fullscreenTarget.requestFullscreen;
+  const webkitRequestFullscreen = fullscreenTarget.webkitRequestFullscreen;
   const showHint = () => {
     if (showHintOnFailure) onFullscreenHintChange(true);
   };
 
   try {
-    if (getFullscreenElement()) {
-      const exitRequest = document.exitFullscreen?.() ?? webkitDocument.webkitExitFullscreen?.();
+    const action = resolveTouchFullscreenAction({
+      hasFullscreenElement: Boolean(fullscreenElement),
+      standaloneDisplayMode,
+      canRequestFullscreen: Boolean(requestFullscreen || webkitRequestFullscreen),
+    });
+
+    if (action === "exit") {
+      const exitRequest = exitFullscreen?.call(document);
       onFullscreenHintChange(false);
       if (exitRequest && typeof exitRequest.catch === "function") {
         exitRequest.catch(showHint);
@@ -63,18 +81,20 @@ export function requestTouchFullscreenMode(
       return true;
     }
 
-    if (isStandaloneDisplayMode()) {
+    if (action === "standalone") {
       onFullscreenStateChange(true);
       onFullscreenHintChange(false);
       return true;
     }
 
-    const request = fullscreenTarget.requestFullscreen?.({ navigationUI: "hide" }) ?? fullscreenTarget.webkitRequestFullscreen?.();
-    if (!request) {
+    if (action === "hint") {
       showHint();
       return false;
     }
 
+    const request = requestFullscreen
+      ? requestFullscreen.call(fullscreenTarget, { navigationUI: "hide" })
+      : webkitRequestFullscreen?.call(fullscreenTarget);
     if (request && typeof request.catch === "function") {
       request
         .then(() => {
