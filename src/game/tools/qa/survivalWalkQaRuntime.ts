@@ -1572,6 +1572,35 @@ export function resolveQaWalkIntentChoice({
   };
 }
 
+export type QaWalkIntentChoice = ReturnType<typeof resolveQaWalkIntentChoice>;
+
+export type QaWalkIntentChoiceRefs = {
+  intent: QaWalkMutableRef<QaSurvivalIntent | null>;
+  interestMemory: QaWalkMutableRef<Record<string, number>>;
+  nextIntentAt: QaWalkMutableRef<number>;
+  waypoint: QaWalkMutableRef<QaWalkWaypoint>;
+};
+
+export function applyQaWalkIntentChoice({
+  choice,
+  refs,
+}: {
+  choice: QaWalkIntentChoice;
+  refs: QaWalkIntentChoiceRefs;
+}) {
+  refs.intent.current = choice.intent;
+  if (choice.nextIntentAt !== null) {
+    refs.nextIntentAt.current = choice.nextIntentAt;
+  }
+  if (choice.memoryKey) {
+    refs.interestMemory.current[choice.memoryKey] = choice.memorySeenAt;
+  }
+  if (choice.waypoint) {
+    refs.waypoint.current = choice.waypoint;
+  }
+  return choice.intent;
+}
+
 export function resolveQaWalkActiveIntentRefresh({
   currentIntent,
   elapsedSeconds,

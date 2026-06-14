@@ -72,6 +72,7 @@ import {
   applyQaWalkCombatFocusMovementFrame,
   applyQaWalkInspectionStartPlan,
   applyQaWalkInspectMovementFrame,
+  applyQaWalkIntentChoice,
   applyQaWalkIntentInteractionAction,
   applyQaWalkJumpHoldUntil,
   applyQaWalkLowSpeedRecovery,
@@ -1517,17 +1518,15 @@ export function PlayerController() {
           questTargets: questIntentTargets,
           spellDummies: readQaSpellDummiesScratch(),
         });
-        qaWalkIntent.current = intentChoice.intent;
-        if (intentChoice.nextIntentAt !== null) {
-          qaWalkNextIntentAt.current = intentChoice.nextIntentAt;
-        }
-        if (intentChoice.memoryKey) {
-          qaWalkInterestMemory.current[intentChoice.memoryKey] = intentChoice.memorySeenAt;
-        }
-        if (intentChoice.waypoint) {
-          qaWalkWaypoint.current = intentChoice.waypoint;
-        }
-        return intentChoice.intent;
+        return applyQaWalkIntentChoice({
+          choice: intentChoice,
+          refs: {
+            intent: qaWalkIntent,
+            interestMemory: qaWalkInterestMemory,
+            nextIntentAt: qaWalkNextIntentAt,
+            waypoint: qaWalkWaypoint,
+          },
+        });
       };
       const chooseNewWaypoint = (preferCenter = false) => {
         if (setLilyCoilTubeWaypoint()) return;
