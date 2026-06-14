@@ -12,11 +12,8 @@ import {
   appendQuestEventScriptLine,
   buildQuestEventLine,
   cloneQuestNpcProgram,
-  countQuestScriptPointEvents,
   createQuestScriptPoint,
   duplicateQuestScriptPoint,
-  formatQuestScriptPointEventSummary,
-  getQuestDialogPreviewLine,
   getQuestScriptPointIndex,
   getSelectedQuestScriptPoint,
   insertQuestScriptPointAfter,
@@ -29,6 +26,7 @@ import {
 } from "./questNpcEditorRuntime";
 import { QuestScriptPointFields } from "./QuestScriptPointFields";
 import { QuestScriptPointList } from "./QuestScriptPointList";
+import { QuestScriptPointPreviewPanel } from "./QuestScriptPointPreviewPanel";
 
 export function QuestNpcEditor() {
   const target = useGameStore(s => s.questNpcEditorTarget);
@@ -64,7 +62,6 @@ function ActiveQuestNpcEditor({ target }: { target: QuestNpcEditorTarget }) {
 
   const selectedPoint = getSelectedQuestScriptPoint(draft, selectedPointId);
   const selectedIndex = getQuestScriptPointIndex(draft, selectedPoint);
-  const selectedEventCount = countQuestScriptPointEvents(selectedPoint);
 
   const updateDraft = (updates: Partial<QuestNpcProgram>) => {
     setDraft((current) => current ? { ...current, ...updates } : current);
@@ -244,29 +241,14 @@ function ActiveQuestNpcEditor({ target }: { target: QuestNpcEditorTarget }) {
                   onAppendPresetLine={appendEventLine}
                   onAppendEvent={appendEventFromBuilder}
                 />
-                <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
-                  <div className="border border-cyan-300/25 bg-black/35 p-2">
-                    <div className="text-[9px] tracking-[0.22em] text-cyan-100/60">PREVIEW</div>
-                    <div className="normal-case mt-2 text-sm font-bold tracking-wide text-yellow-100">{draft.displayName || target.defaultName}</div>
-                    <div className="normal-case mt-1 min-h-12 border border-cyan-300/20 bg-cyan-950/10 px-2 py-2 text-xs leading-5 tracking-wide text-cyan-50">
-                      {getQuestDialogPreviewLine(selectedPoint, draft.greeting)}
-                    </div>
-                  </div>
-                  <div className="flex flex-col justify-between gap-2 border border-yellow-200/35 bg-yellow-300/5 p-2">
-                    <div>
-                      <div className="text-[9px] tracking-[0.22em] text-yellow-100/65">SCRIPTPOINT</div>
-                      <div className="normal-case mt-1 text-xs leading-5 text-yellow-50">
-                        {formatQuestScriptPointEventSummary(selectedPoint, selectedIndex, selectedEventCount)}
-                      </div>
-                    </div>
-                    <button
-                      className="border border-yellow-200/70 bg-yellow-300/10 px-3 py-2 text-[10px] tracking-widest text-yellow-50 hover:bg-yellow-200/20"
-                      onClick={runSelectedPoint}
-                    >
-                      TEST POINT
-                    </button>
-                  </div>
-                </div>
+                <QuestScriptPointPreviewPanel
+                  selectedPoint={selectedPoint}
+                  selectedIndex={selectedIndex}
+                  displayName={draft.displayName}
+                  defaultName={target.defaultName}
+                  greeting={draft.greeting}
+                  onRunSelectedPoint={runSelectedPoint}
+                />
               </div>
             )}
           </div>
