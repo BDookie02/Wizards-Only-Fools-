@@ -25,6 +25,20 @@ export type HudKeyboardMenuKeyDownOptions = {
   touchGameplayActive: boolean;
 };
 
+export type HudKeyboardPauseEscapeOptions = {
+  blocked: boolean;
+  code: string;
+  controllerGameplayActive: boolean;
+  isGameLaunched: boolean;
+  isLocked: boolean;
+  isPauseMenuVisible: boolean;
+  isReturningToGame: boolean;
+  isSpellMenuOpen: boolean;
+  showVideoMenu: boolean;
+  startMenuStage: string;
+  touchGameplayActive: boolean;
+};
+
 export type HudKeyboardMenuAction =
   | { type: "none"; preventDefault: false }
   | { type: "cancelVoiceKeyRemap"; preventDefault: true }
@@ -40,6 +54,12 @@ export type HudKeyboardMenuAction =
   | { type: "movePauseMenuFocus"; preventDefault: true; direction: HudKeyboardMenuDirection }
   | { type: "consume"; preventDefault: true }
   | { type: "runPauseMenuAction"; preventDefault: true };
+
+export type HudKeyboardPauseEscapeAction =
+  | { type: "none"; preventDefault: false }
+  | { type: "openPauseFromGameplay"; preventDefault: true; inputMode: GameplayInputMode }
+  | { type: "restorePauseOverlay"; preventDefault: true }
+  | { type: "closeVideoSettingsToPause"; preventDefault: true };
 
 export function isHudKeyboardMenuBlocked({
   commandConsoleOpen,
@@ -135,5 +155,44 @@ export function resolveHudKeyboardMenuKeyDownAction({
 
 export function resolveHudKeyboardMenuKeyUpAction(code: string): HudKeyboardMenuAction {
   if (code === "Tab") return { type: "setKeyboardScoreboard", preventDefault: true, open: false };
+  return { type: "none", preventDefault: false };
+}
+
+export function resolveHudKeyboardPauseEscapeAction({
+  blocked,
+  code,
+  controllerGameplayActive,
+  isGameLaunched,
+  isLocked,
+  isPauseMenuVisible,
+  isReturningToGame,
+  isSpellMenuOpen,
+  showVideoMenu,
+  startMenuStage,
+  touchGameplayActive,
+}: HudKeyboardPauseEscapeOptions): HudKeyboardPauseEscapeAction {
+  if (blocked || code !== "Escape") return { type: "none", preventDefault: false };
+  if (
+    isGameLaunched &&
+    startMenuStage === "resume" &&
+    !isPauseMenuVisible &&
+    !isSpellMenuOpen &&
+    !showVideoMenu
+  ) {
+    return {
+      type: "openPauseFromGameplay",
+      preventDefault: true,
+      inputMode: getHudKeyboardMenuInputMode({ controllerGameplayActive, touchGameplayActive }),
+    };
+  }
+
+  if (!isLocked && !isSpellMenuOpen && isReturningToGame) {
+    return { type: "restorePauseOverlay", preventDefault: true };
+  }
+
+  if (!isLocked && !isSpellMenuOpen && showVideoMenu) {
+    return { type: "closeVideoSettingsToPause", preventDefault: true };
+  }
+
   return { type: "none", preventDefault: false };
 }

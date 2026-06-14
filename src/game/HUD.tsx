@@ -123,7 +123,6 @@ import {
 } from "./ui/hud/hudOverlayRuntime";
 import {
   getHudGameplayModeNowMs,
-  getHudPauseInputMode,
   isHudTouchGameplayTakeoverBlocked,
   resolveHudTouchGameplayTakeoverAction,
   type GameplayInputMode,
@@ -210,6 +209,7 @@ import {
   isHudKeyboardMenuBlocked,
   resolveHudKeyboardMenuKeyDownAction,
   resolveHudKeyboardMenuKeyUpAction,
+  resolveHudKeyboardPauseEscapeAction,
 } from "./ui/hud/hudKeyboardMenuRuntime";
 import {
   createDefaultHudPlayerState,
@@ -771,24 +771,36 @@ export function HUD() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCommandConsoleOpen || questNpcEditorTarget || questDialogSession || isInventoryOpen || isEditableTarget(e.target)) return;
-      if (
-        e.code === "Escape" &&
-        isGameLaunched &&
-        startMenuStage === "resume" &&
-        !isPauseMenuVisible &&
-        !isSpellMenuOpen &&
-        !showVideoMenu
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        openPauseMenuFromGameplay(getHudPauseInputMode({ controllerGameplayActive, touchGameplayActive }));
+      const action = resolveHudKeyboardPauseEscapeAction({
+        blocked: isHudKeyboardMenuBlocked({
+          commandConsoleOpen: isCommandConsoleOpen,
+          editableTarget: isEditableTarget(e.target),
+          inventoryOpen: isInventoryOpen,
+          questDialogActive: Boolean(questDialogSession),
+          questNpcEditorActive: Boolean(questNpcEditorTarget),
+        }),
+        code: e.code,
+        controllerGameplayActive,
+        isGameLaunched,
+        isLocked,
+        isPauseMenuVisible,
+        isReturningToGame,
+        isSpellMenuOpen,
+        showVideoMenu,
+        startMenuStage,
+        touchGameplayActive,
+      });
+      if (!action.preventDefault) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (action.type === "openPauseFromGameplay") {
+        openPauseMenuFromGameplay(action.inputMode);
         return;
       }
 
-      if (e.code === "Escape" && !isLocked && !isSpellMenuOpen && isReturningToGame) {
-        e.preventDefault();
-        e.stopPropagation();
+      if (action.type === "restorePauseOverlay") {
         setIsReturningToGame(false);
         pauseMenuExplicitlyRequestedRef.current = true;
         pauseMenuRequestedRef.current = true;
@@ -797,9 +809,7 @@ export function HUD() {
         return;
       }
 
-      if (e.code === "Escape" && !isLocked && !isSpellMenuOpen && showVideoMenu) {
-        e.preventDefault();
-        e.stopPropagation();
+      if (action.type === "closeVideoSettingsToPause") {
         setShowVideoMenu(false);
         setSettingsPane("video");
         setRemappingAction(null);
