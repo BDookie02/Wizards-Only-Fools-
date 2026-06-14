@@ -15,6 +15,9 @@ type MutableRef<T> = { current: T };
 type PlayerVelocityBody = {
   setLinvel(velocity: { x: number; y: number; z: number }, wakeUp: boolean): void;
 };
+type PlayerJumpThrusterBody = PlayerVelocityBody & {
+  applyImpulse(impulse: { x: number; y: number; z: number }, wakeUp: boolean): void;
+};
 type MovementKeyState = Record<PlayerMovementKeyCode, boolean>;
 type TouchMoveState = { x: number; y: number };
 type QaWalkInputState = { forward: number; strafe: number; sprint: boolean };
@@ -326,6 +329,123 @@ export function applyPlayerGroundSlideFrame({
       result.stoppedSlide = true;
     }
   }
+
+  return result;
+}
+
+export type PlayerJumpThrusterFrameResult = {
+  nextFuel: number;
+  fuelChanged: boolean;
+  jumped: boolean;
+  thrusted: boolean;
+  resetThrusterLock: boolean;
+  lockedThruster: boolean;
+  rechargedFuel: boolean;
+};
+
+export function applyPlayerJumpThrusterFrame({
+  body,
+  climbingLadder,
+  currentFuel,
+  delta,
+  effectiveGrounded,
+  groundJumpMaxUpwardVelocity,
+  grounded,
+  idleGroundedPlanarLock,
+  jumpBoostActive,
+  jumpBoostMultiplier,
+  jumpForce,
+  jumpHeld,
+  jumpRequested,
+  planarVelocityX,
+  planarVelocityZ,
+  setJumps,
+  setThrusterFuel,
+  sleepActive,
+  thrusterFuelDrainPerSecond,
+  thrusterFuelRechargePerSecond,
+  thrusterImpulsePerSecond,
+  thrusterLocked,
+  vclipActive,
+  velocityY,
+}: {
+  body: PlayerJumpThrusterBody;
+  climbingLadder: boolean;
+  currentFuel: number;
+  delta: number;
+  effectiveGrounded: boolean;
+  groundJumpMaxUpwardVelocity: number;
+  grounded: boolean;
+  idleGroundedPlanarLock: boolean;
+  jumpBoostActive: boolean;
+  jumpBoostMultiplier: number;
+  jumpForce: number;
+  jumpHeld: boolean;
+  jumpRequested: boolean;
+  planarVelocityX: number;
+  planarVelocityZ: number;
+  setJumps: (count: number) => void;
+  setThrusterFuel: (fuel: number) => void;
+  sleepActive: boolean;
+  thrusterFuelDrainPerSecond: number;
+  thrusterFuelRechargePerSecond: number;
+  thrusterImpulsePerSecond: number;
+  thrusterLocked: BooleanRef;
+  vclipActive: boolean;
+  velocityY: number;
+}): PlayerJumpThrusterFrameResult {
+  let nextFuel = currentFuel;
+  const result: PlayerJumpThrusterFrameResult = {
+    nextFuel,
+    fuelChanged: false,
+    jumped: false,
+    thrusted: false,
+    resetThrusterLock: false,
+    lockedThruster: false,
+    rechargedFuel: false,
+  };
+
+  if (!jumpHeld) {
+    thrusterLocked.current = false;
+    result.resetThrusterLock = true;
+  }
+
+  const boostMultiplier = jumpBoostActive ? jumpBoostMultiplier : 1;
+  if (!vclipActive && !sleepActive && !climbingLadder && jumpHeld) {
+    if (grounded && velocityY <= groundJumpMaxUpwardVelocity) {
+      if (jumpRequested) {
+        body.setLinvel({
+          x: idleGroundedPlanarLock ? 0 : planarVelocityX,
+          y: jumpForce * boostMultiplier,
+          z: idleGroundedPlanarLock ? 0 : planarVelocityZ,
+        }, true);
+        setJumps(1);
+        thrusterLocked.current = false;
+        result.jumped = true;
+        result.resetThrusterLock = true;
+      }
+    } else if (!grounded && currentFuel > 0 && !thrusterLocked.current) {
+      body.applyImpulse({ x: 0, y: thrusterImpulsePerSecond * boostMultiplier * delta, z: 0 }, true);
+      nextFuel = Math.max(0, currentFuel - delta * thrusterFuelDrainPerSecond);
+      result.thrusted = true;
+      if (nextFuel === 0) {
+        thrusterLocked.current = true;
+        result.lockedThruster = true;
+      }
+    }
+  }
+
+  if (!vclipActive && effectiveGrounded && nextFuel < 1.0) {
+    const rechargedFuel = Math.min(1.0, nextFuel + delta * thrusterFuelRechargePerSecond);
+    result.rechargedFuel = rechargedFuel !== nextFuel;
+    nextFuel = rechargedFuel;
+  }
+
+  if (nextFuel !== currentFuel) {
+    setThrusterFuel(nextFuel);
+    result.fuelChanged = true;
+  }
+  result.nextFuel = nextFuel;
 
   return result;
 }

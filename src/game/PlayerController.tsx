@@ -215,6 +215,7 @@ import {
 import {
   applyPlayerModalBlockedMovementFrame,
   applyPlayerGroundSlideFrame,
+  applyPlayerJumpThrusterFrame,
   resetPlayerCrouchState,
   resetPlayerSlideAndCrouchState,
   resetPlayerSlideState,
@@ -3020,44 +3021,33 @@ export function PlayerController() {
       z: outputVelocityZ
     }, true);
 
-    const fuel = useGameStore.getState().thrusterFuel;
-    let newFuel = fuel;
-
-    if (!jumpHeld) {
-      thrusterLocked.current = false;
-    }
-
-    // Jump & Thruster logic
-    if (!vclipActive && !sleepActive && !climbingLadder && jumpHeld) {
-      if (grounded && velocity.y <= GROUND_JUMP_MAX_UPWARD_VELOCITY) {
-        if (jumpRequested) {
-          rigidBody.current.setLinvel({
-            x: idleGroundedPlanarLock ? 0 : velocity.x,
-            y: JUMP_FORCE * (jumpBoostActive ? JUMP_BOOST_MULTIPLIER : 1),
-            z: idleGroundedPlanarLock ? 0 : velocity.z,
-          }, true);
-          setJumps(1);
-          thrusterLocked.current = false; // reset lock
-        }
-      } else if (!grounded && fuel > 0 && !thrusterLocked.current) {
-        // Continuous thrust!
-        rigidBody.current.applyImpulse({ x: 0, y: 35 * (jumpBoostActive ? JUMP_BOOST_MULTIPLIER : 1) * delta, z: 0 }, true);
-        newFuel = Math.max(0, fuel - delta * 0.8); // 1.25 seconds of continuous thrust
-        if (newFuel === 0) {
-          thrusterLocked.current = true;
-        }
-      }
-    }
-
-    if (!vclipActive && effectiveGrounded) {
-      if (newFuel < 1.0) {
-        newFuel = Math.min(1.0, newFuel + delta * 0.4); // 2.5 seconds to recharge fully
-      }
-    }
-
-    if (newFuel !== fuel) {
-      useGameStore.getState().setThrusterFuel(newFuel);
-    }
+    const thrusterState = useGameStore.getState();
+    applyPlayerJumpThrusterFrame({
+      body: rigidBody.current,
+      climbingLadder,
+      currentFuel: thrusterState.thrusterFuel,
+      delta,
+      effectiveGrounded,
+      groundJumpMaxUpwardVelocity: GROUND_JUMP_MAX_UPWARD_VELOCITY,
+      grounded,
+      idleGroundedPlanarLock,
+      jumpBoostActive,
+      jumpBoostMultiplier: JUMP_BOOST_MULTIPLIER,
+      jumpForce: JUMP_FORCE,
+      jumpHeld,
+      jumpRequested,
+      planarVelocityX: velocity.x,
+      planarVelocityZ: velocity.z,
+      setJumps,
+      setThrusterFuel: thrusterState.setThrusterFuel,
+      sleepActive,
+      thrusterFuelDrainPerSecond: 0.8,
+      thrusterFuelRechargePerSecond: 0.4,
+      thrusterImpulsePerSecond: 35,
+      thrusterLocked,
+      vclipActive,
+      velocityY: velocity.y,
+    });
 
     // Update Camera position (attached to body)
     // Adjust y for crouch
