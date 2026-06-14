@@ -321,12 +321,10 @@ import {
   applyPlayerReleasedSpellProjectile,
   applyPlayerSpellProjectileNetworkCast,
   createPlayerGrabProjectileId,
-  findAimedRemotePlayerInto,
-  findRemotePlayerInAimConeInto,
+  findPlayerDirectStatusTargetInto,
   getPlayerSpellLaunch,
   getPlayerSpellLaunchInto,
   getPlayerReleasedSpellLaunchInto,
-  WIDE_STATUS_AIM_RADIUS,
 } from "./systems/spells/playerSpellCasting";
 import {
   dispatchQaSpellCastAtDummy,
@@ -647,24 +645,22 @@ export function PlayerController() {
 
     const castDirectTungston = (hand: HandType) => {
       const store = useGameStore.getState();
-      const dir = spellDirection;
-      camera.getWorldDirection(dir);
-      dir.normalize();
-      const { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, dir, spellLaunchScratch);
 
       pulsePlayerHandCharging(hand, PLAYER_DIRECT_STATUS_HAND_CHARGE_MS, {
         setHandCharging: (targetHand, charging) => useGameStore.getState().setHandCharging(targetHand, charging),
         setTimeout: (handler, timeoutMs) => window.setTimeout(handler, timeoutMs),
       });
 
-      const target = findAimedRemotePlayerInto(store.players, [
-        { origin: spellAimOrigin.copy(camera.position), dir },
-        {
-          origin: spellLaunchOrigin.set(spawnPos.x, spawnPos.y, spawnPos.z),
-          dir: realDir,
-          radius: WIDE_STATUS_AIM_RADIUS,
-        },
-      ], spellTargetScratch) ?? findRemotePlayerInAimConeInto(store.players, spellAimOrigin, dir, spellTargetScratch);
+      const target = findPlayerDirectStatusTargetInto({
+        players: store.players,
+        hand,
+        camera,
+        direction: spellDirection,
+        launchTarget: spellLaunchScratch,
+        aimOrigin: spellAimOrigin,
+        launchOrigin: spellLaunchOrigin,
+        targetScratch: spellTargetScratch,
+      });
       if (!target) {
         return false;
       }

@@ -97,6 +97,17 @@ export type PlayerImmediateSpellProjectileCastOptions = {
   id?: string;
 };
 
+export type PlayerDirectStatusTargetOptions = {
+  players: Record<string, PlayerState>;
+  hand: HandType;
+  camera: THREE.Camera;
+  direction: THREE.Vector3;
+  launchTarget: SpellLaunchScratch;
+  aimOrigin: THREE.Vector3;
+  launchOrigin: THREE.Vector3;
+  targetScratch: RemoteSpellTargetScratch;
+};
+
 export const WIDE_STATUS_AIM_RADIUS = DIRECT_STATUS_TARGET_RADIUS * 1.35;
 const PROJECTILE_TOKEN_SCALE = 0x100000000;
 
@@ -423,6 +434,30 @@ export function applyPlayerImmediateSpellProjectileCast({
     pos: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
     type,
   });
+}
+
+export function findPlayerDirectStatusTargetInto({
+  players,
+  hand,
+  camera,
+  direction,
+  launchTarget,
+  aimOrigin,
+  launchOrigin,
+  targetScratch,
+}: PlayerDirectStatusTargetOptions): RemoteSpellTarget | null {
+  camera.getWorldDirection(direction);
+  direction.normalize();
+  const { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, direction, launchTarget);
+
+  return findAimedRemotePlayerInto(players, [
+    { origin: aimOrigin.copy(camera.position), dir: direction },
+    {
+      origin: launchOrigin.set(spawnPos.x, spawnPos.y, spawnPos.z),
+      dir: realDir,
+      radius: WIDE_STATUS_AIM_RADIUS,
+    },
+  ], targetScratch) ?? findRemotePlayerInAimConeInto(players, aimOrigin, direction, targetScratch);
 }
 
 export function findAimedRemotePlayer(
