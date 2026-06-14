@@ -5,6 +5,7 @@ import { twMerge } from "tailwind-merge";
 import type { GameMode, LobbyRules, SurvivalRules } from "../../../store/gameStore";
 import { formatCharacterOption } from "./hudSettingsUtils";
 import { PAUSE_FOCUSED_MENU_CLASS, PauseMenuButton } from "./PauseMenuButton";
+import { PauseRuleButton } from "./PauseRuleButton";
 
 export type StartMenuStage = "press-start" | "mode-select" | "multiplayer-select" | "custom-lobby" | "survival-options" | "resume";
 
@@ -102,29 +103,16 @@ export function PauseStartMenuContent({
     hint: string,
     onStep: StepHandler
   ) => (
-    <button
+    <PauseRuleButton
       key={`${startMenuStage}-rule-${index}-${label}`}
-      type="button"
-      data-menu-index={index}
-      onClick={(e) => {
-        e.stopPropagation();
-        onStep(1);
-      }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onStep(-1);
-      }}
-      onMouseEnter={() => setPauseMenuIndex(index)}
-      className={cn(
-        "pause-rule-button grid w-full grid-cols-[minmax(100px,0.75fr)_minmax(110px,1fr)] items-center gap-3 border-2 bg-black/45 px-3 py-2 text-left transition-all hover:border-yellow-200",
-        mainMenuFocus(index) ? "border-yellow-200 shadow-[0_0_18px_rgba(250,204,21,0.35)]" : "border-cyan-100/30"
-      )}
-    >
-      <span className="pause-rule-label text-cyan-100/70">{label}</span>
-      <span className="pause-rule-value font-bold text-white">{value}</span>
-      <span className="pause-rule-hint col-span-2 normal-case text-cyan-100/45">{hint}</span>
-    </button>
+      index={index}
+      label={label}
+      value={value}
+      hint={hint}
+      focused={mainMenuFocus(index)}
+      onFocus={() => setPauseMenuIndex(index)}
+      onStep={onStep}
+    />
   );
 
   const renderInviteCodeForm = (focusIndex: number, className = "pause-invite-form flex w-full flex-col gap-1 border-2 bg-black/45 p-2 text-cyan-50") => (
