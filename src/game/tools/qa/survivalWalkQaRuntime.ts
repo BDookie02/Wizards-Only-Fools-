@@ -910,7 +910,32 @@ export function resolveQaWalkBlockedRecoveryTrigger({
       ? "overhead"
       : viewClearance < viewBlockedClearance
         ? "view-blocked"
-        : "clearance",
+      : "clearance",
+  };
+}
+
+export type QaWalkBlockedRecoveryTrigger = ReturnType<typeof resolveQaWalkBlockedRecoveryTrigger>;
+
+export type QaWalkBlockedRecoveryPublishers = {
+  beginRecovery: (aggressive: boolean) => void;
+};
+
+export function applyQaWalkBlockedRecoveryTrigger({
+  currentRecoveryReason,
+  publishers,
+  trigger,
+}: {
+  currentRecoveryReason: string;
+  publishers: QaWalkBlockedRecoveryPublishers;
+  trigger: QaWalkBlockedRecoveryTrigger;
+}) {
+  if (!trigger) {
+    return { applied: false, recoveryReason: currentRecoveryReason };
+  }
+  publishers.beginRecovery(trigger.aggressive);
+  return {
+    applied: true,
+    recoveryReason: trigger.recoveryReason,
   };
 }
 

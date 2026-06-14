@@ -67,6 +67,7 @@ import {
   applyQaWalkActiveIntentRefresh,
   applyQaWalkActiveIntentMovementFrame,
   applyQaWalkAvoidMovementFrame,
+  applyQaWalkBlockedRecoveryTrigger,
   applyQaWalkCombatFocusMovementFrame,
   applyQaWalkInspectionStartPlan,
   applyQaWalkInspectMovementFrame,
@@ -1820,9 +1821,13 @@ export function PlayerController() {
         routeHardBlocked,
         viewClearance,
       });
-      if (blockedRecoveryTrigger) {
-        recoveryReason = blockedRecoveryTrigger.recoveryReason;
-        beginQaWalkRecovery(blockedRecoveryTrigger.aggressive);
+      const blockedRecoveryApplication = applyQaWalkBlockedRecoveryTrigger({
+        currentRecoveryReason: recoveryReason,
+        publishers: { beginRecovery: beginQaWalkRecovery },
+        trigger: blockedRecoveryTrigger,
+      });
+      if (blockedRecoveryApplication.applied) {
+        recoveryReason = blockedRecoveryApplication.recoveryReason;
       }
 
       const inspectMovement = resolveQaWalkInspectMovement({
