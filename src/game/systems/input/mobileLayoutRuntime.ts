@@ -1,5 +1,11 @@
 import { isIOSLikeDevice, isMobileLikeDevice } from "./performanceMode";
 import {
+  resolveAppViewportCssVarValues,
+  resolveInputLayoutClassState,
+  resolveMobileLayoutDefaultActions,
+  type MobileLayoutAspectRatio,
+} from "./mobileLayoutRulesRuntime";
+import {
   resolveAppViewportSizeFromMetrics,
   type AppViewportCssVarsOptions,
   type AppViewportSize,
@@ -17,7 +23,7 @@ export type MobileLayoutDefaultsConfig = {
   defaultMouseSensitivity: number;
   defaultMobileLookSensitivity: number;
   state: MobileLayoutDefaultState;
-  setAspectRatio: (aspectRatio: "16/9" | "4/3" | "1/1" | "Fill") => void;
+  setAspectRatio: (aspectRatio: MobileLayoutAspectRatio) => void;
   setMouseSensitivity: (sensitivity: number) => void;
 };
 
@@ -60,25 +66,30 @@ export function applyMobileLayoutDefaults({
   setAspectRatio,
   setMouseSensitivity,
 }: MobileLayoutDefaultsConfig) {
-  if (!isMobileLikeDevice()) return;
+  const mobileLikeDevice = isMobileLikeDevice();
+  if (!mobileLikeDevice) return;
 
-  if (state.aspectRatio === "16/9" && !hasStoredAspectRatio(aspectRatioStorageKey)) {
-    setAspectRatio("Fill");
-  }
+  const actions = resolveMobileLayoutDefaultActions({
+    mobileLikeDevice,
+    aspectRatio: state.aspectRatio,
+    hasStoredAspectRatio: hasStoredAspectRatio(aspectRatioStorageKey),
+    mouseSensitivity: state.mouseSensitivity,
+    defaultMouseSensitivity,
+    defaultMobileLookSensitivity,
+  });
 
-  if (state.mouseSensitivity === defaultMouseSensitivity) {
-    setMouseSensitivity(defaultMobileLookSensitivity);
-  }
+  if (actions.aspectRatio) setAspectRatio(actions.aspectRatio);
+  if (actions.mouseSensitivity !== null) setMouseSensitivity(actions.mouseSensitivity);
 }
 
 export function updateInputLayoutClasses(root = typeof document === "undefined" ? null : document.documentElement) {
   if (!root) return false;
-  const touchLayout = isMobileLikeDevice();
-  root.classList.toggle("wizards-touch-layout", touchLayout);
-  if (!touchLayout) {
+  const classState = resolveInputLayoutClassState(isMobileLikeDevice());
+  root.classList.toggle("wizards-touch-layout", classState.touchLayout);
+  if (classState.removeTouchGameplay) {
     root.classList.remove("wizards-touch-gameplay");
   }
-  return touchLayout;
+  return classState.touchLayout;
 }
 
 export function clearInputLayoutClasses(root = typeof document === "undefined" ? null : document.documentElement) {
@@ -119,8 +130,9 @@ export function writeAppViewportCssVars(
   lastAppViewportRoot = root;
   lastAppViewportWidth = width;
   lastAppViewportHeight = height;
-  root.style.setProperty("--app-vw", `${width}px`);
-  root.style.setProperty("--app-vh", `${height}px`);
+  const cssVars = resolveAppViewportCssVarValues({ width, height });
+  root.style.setProperty("--app-vw", cssVars.appVw);
+  root.style.setProperty("--app-vh", cssVars.appVh);
 }
 
 export function installAppViewportCssVars(root = typeof document === "undefined" ? null : document.documentElement) {
