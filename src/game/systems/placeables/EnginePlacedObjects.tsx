@@ -26,6 +26,11 @@ import {
   type EnginePlaceableNetworkUpsertDetail,
 } from "./enginePlacedObjectNetworkRuntime";
 import {
+  deleteEnginePlacedObjectSlotAction,
+  loadEnginePlacedObjectSlotAction,
+  saveEnginePlacedObjectSlotAction,
+} from "./enginePlacedObjectSlotActionsRuntime";
+import {
   getEnginePlacementStorage,
   publishEnginePlacedObjectList,
   publishEnginePlacedObjectSlotList,
@@ -43,11 +48,7 @@ import { getEnginePlacementPlayerSnapshot } from "./enginePlacementPlayerSnapsho
 import { planEnginePlacementPreview } from "./enginePlacementPreviewRuntime";
 import {
   MAX_ENGINE_PLACED_OBJECTS,
-  deleteStoredEngineObjectSlot,
-  getEnginePlacementSlotLabel,
-  loadStoredEngineObjectsFromSlot,
   loadStoredEngineObjects,
-  saveStoredEngineObjectSlot,
   saveStoredEngineObjects,
   type EnginePlacedObjectRecord,
 } from "./enginePlacedObjectStorage";
@@ -219,42 +220,34 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       publishEnginePlacedObjectSlotList();
     };
     const handleSavePlacedObjectSlot = (event: { detail: EnginePlacedObjectSlotActionDetail | undefined }) => {
-      const summary = saveStoredEngineObjectSlot(
-        getEnginePlacementStorage(),
-        event.detail?.slotId,
-        event.detail?.label,
-        objectsRef.current
-      );
-      if (!summary) {
-        publishEnginePlacementResult({ ok: false, reason: "slot save failed" });
+      const result = saveEnginePlacedObjectSlotAction(getEnginePlacementStorage(), event.detail, objectsRef.current);
+      if (result.ok === false) {
+        publishEnginePlacementResult({ ok: false, reason: result.reason });
         return;
       }
-      publishEnginePlacementResult({ ok: true, label: `saved ${summary.label}`, count: summary.count });
+      publishEnginePlacementResult({ ok: true, label: result.label, count: result.count });
       publishEnginePlacedObjectSlotList();
     };
     const handleLoadPlacedObjectSlot = (event: { detail: EnginePlacedObjectSlotActionDetail | undefined }) => {
-      const slotId = event.detail?.slotId;
-      const loadedObjects = loadStoredEngineObjectsFromSlot(getEnginePlacementStorage(), slotId);
-      const label = getEnginePlacementSlotLabel(String(slotId ?? ""), event.detail?.label);
-      if (!loadedObjects) {
-        publishEnginePlacementResult({ ok: false, reason: `${label} is empty` });
+      const result = loadEnginePlacedObjectSlotAction(getEnginePlacementStorage(), event.detail);
+      if (result.ok === false) {
+        publishEnginePlacementResult({ ok: false, reason: result.reason });
         publishEnginePlacedObjectSlotList();
         return;
       }
-      commitEnginePlacedObjects(loadedObjects);
+      commitEnginePlacedObjects(result.objects);
       setPreview(null);
-      publishEnginePlacementResult({ ok: true, label: `loaded ${label}`, count: loadedObjects.length });
+      publishEnginePlacementResult({ ok: true, label: result.label, count: result.count });
       publishEnginePlacedObjectSlotList();
-      emitEnginePlaceableNetworkSnapshot(loadedObjects);
+      emitEnginePlaceableNetworkSnapshot(result.objects);
     };
     const handleDeletePlacedObjectSlot = (event: { detail: EnginePlacedObjectSlotActionDetail | undefined }) => {
-      const slotId = event.detail?.slotId;
-      const label = getEnginePlacementSlotLabel(String(slotId ?? ""), event.detail?.label);
-      if (!deleteStoredEngineObjectSlot(getEnginePlacementStorage(), slotId)) {
-        publishEnginePlacementResult({ ok: false, reason: "slot delete failed" });
+      const result = deleteEnginePlacedObjectSlotAction(getEnginePlacementStorage(), event.detail);
+      if (result.ok === false) {
+        publishEnginePlacementResult({ ok: false, reason: result.reason });
         return;
       }
-      publishEnginePlacementResult({ ok: true, label: `deleted ${label}` });
+      publishEnginePlacementResult({ ok: true, label: result.label });
       publishEnginePlacedObjectSlotList();
     };
     const handleNetworkUpsert = (event: { detail: EnginePlaceableNetworkUpsertDetail | undefined }) => {
