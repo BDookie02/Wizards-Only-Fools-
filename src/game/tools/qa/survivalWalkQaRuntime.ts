@@ -836,6 +836,28 @@ export function resolveQaWalkSteeringDecisionFrame({
   };
 }
 
+export type QaWalkSteeringDecisionFrame = ReturnType<typeof resolveQaWalkSteeringDecisionFrame>;
+
+export type QaWalkSteeringDecisionRefs = {
+  lastDecisionAt: QaWalkMutableRef<number>;
+  nextDecisionAt: QaWalkMutableRef<number>;
+};
+
+export function applyQaWalkSteeringDecisionFrame({
+  frame,
+  refs,
+}: {
+  frame: QaWalkSteeringDecisionFrame;
+  refs: QaWalkSteeringDecisionRefs;
+}): Pick<QaWalkSteeringDecisionFrame, "strafeAmount" | "targetYaw"> {
+  refs.lastDecisionAt.current = frame.lastDecisionAt;
+  refs.nextDecisionAt.current = frame.nextDecisionAt;
+  return {
+    strafeAmount: frame.strafeAmount,
+    targetYaw: frame.targetYaw,
+  };
+}
+
 export function resolveQaWalkEscapeYawCandidate({
   baseYaw,
   preferYaw,

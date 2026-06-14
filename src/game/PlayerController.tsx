@@ -70,6 +70,7 @@ import {
   applyQaWalkRecoveryMovementFrame,
   applyQaWalkRecoveryPlacementPlan,
   applyQaWalkRecoveryStartPlan,
+  applyQaWalkSteeringDecisionFrame,
   getQaWalkIntentDistance,
   isQaWalkBaseVillageArea,
   isQaWalkDarrelGroveArea,
@@ -1768,10 +1769,15 @@ export function PlayerController() {
           qaRouteActive,
           targetYaw,
         });
-        targetYaw = steeringDecisionFrame.targetYaw;
-        strafeAmount = steeringDecisionFrame.strafeAmount;
-        qaWalkLastDecisionAt.current = steeringDecisionFrame.lastDecisionAt;
-        qaWalkNextDecisionAt.current = steeringDecisionFrame.nextDecisionAt;
+        const appliedSteeringDecision = applyQaWalkSteeringDecisionFrame({
+          frame: steeringDecisionFrame,
+          refs: {
+            lastDecisionAt: qaWalkLastDecisionAt,
+            nextDecisionAt: qaWalkNextDecisionAt,
+          },
+        });
+        targetYaw = appliedSteeringDecision.targetYaw;
+        strafeAmount = appliedSteeringDecision.strafeAmount;
       }
 
       const blockedRecoveryTrigger = resolveQaWalkBlockedRecoveryTrigger({
