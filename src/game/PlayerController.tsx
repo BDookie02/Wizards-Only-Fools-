@@ -197,6 +197,7 @@ import {
   QA_LILY_COIL_TUBE_LOOK_AHEAD_T,
   QA_LILY_COIL_TUBE_RESTART_EDGE_T,
   QA_LILY_COIL_TUBE_REVERSE_EDGE_T,
+  applyPlayerLilyCoilTubeJumpThrusterFrame,
   applyPlayerLilyCoilTubeSlideFrame,
   createPlayerLilyCoilTubeMovePayload,
   getPlayerLilyCoilTubeDispatchState,
@@ -2681,42 +2682,26 @@ export function PlayerController() {
         .multiplyScalar(-Math.sin(tubeState.surfaceAngle))
         .addScaledVector(frame.side, Math.cos(tubeState.surfaceAngle))
         .normalize();
-      const tubeGrounded = tubeState.jumpOffset <= 0.025 && tubeState.jumpVelocity <= 0;
-      const fuel = useGameStore.getState().thrusterFuel;
-      let newFuel = fuel;
-      if (!jumpHeld) {
-        thrusterLocked.current = false;
-      }
-      if (jumpRequested && tubeGrounded) {
-        tubeState.jumpVelocity = LILY_COIL_TUBE_JUMP_FORCE * (jumpBoostActive ? JUMP_BOOST_MULTIPLIER : 1);
-        setJumps(1);
-        thrusterLocked.current = false;
-      } else if (jumpHeld && !tubeGrounded && newFuel > 0 && !thrusterLocked.current) {
-        tubeState.jumpVelocity += 35 * (jumpBoostActive ? JUMP_BOOST_MULTIPLIER : 1) * delta;
-        newFuel = Math.max(0, newFuel - delta * 0.8);
-        if (newFuel === 0) {
-          thrusterLocked.current = true;
-        }
-      }
-      if (tubeState.jumpOffset > 0 || tubeState.jumpVelocity > 0) {
-        tubeState.jumpVelocity -= LILY_COIL_TUBE_JUMP_GRAVITY * delta;
-        tubeState.jumpOffset = THREE.MathUtils.clamp(
-          tubeState.jumpOffset + tubeState.jumpVelocity * delta,
-          0,
-          LILY_COIL_TUBE_MAX_JUMP_OFFSET,
-        );
-        if (tubeState.jumpOffset <= 0) {
-          tubeState.jumpOffset = 0;
-          tubeState.jumpVelocity = 0;
-        }
-      }
-      if (tubeGrounded && newFuel < 1.0) {
-        newFuel = Math.min(1.0, newFuel + delta * 0.4);
-      }
-      if (newFuel !== fuel) {
-        useGameStore.getState().setThrusterFuel(newFuel);
-      }
-      const tubeAirborne = tubeState.jumpOffset > 0.025;
+      const tubeThrusterState = useGameStore.getState();
+      const tubeJumpFrame = applyPlayerLilyCoilTubeJumpThrusterFrame({
+        currentFuel: tubeThrusterState.thrusterFuel,
+        delta,
+        jumpBoostActive,
+        jumpBoostMultiplier: JUMP_BOOST_MULTIPLIER,
+        jumpForce: LILY_COIL_TUBE_JUMP_FORCE,
+        jumpGravity: LILY_COIL_TUBE_JUMP_GRAVITY,
+        jumpHeld,
+        jumpRequested,
+        maxJumpOffset: LILY_COIL_TUBE_MAX_JUMP_OFFSET,
+        setJumps,
+        setThrusterFuel: tubeThrusterState.setThrusterFuel,
+        thrusterFuelDrainPerSecond: 0.8,
+        thrusterFuelRechargePerSecond: 0.4,
+        thrusterImpulsePerSecond: 35,
+        thrusterLocked,
+        tubeState,
+      });
+      const tubeAirborne = tubeJumpFrame.tubeAirborne;
       tubeBodyPosition
         .copy(frame.center)
         .addScaledVector(radial, LILY_COIL_TUBE_PLAYER_RADIUS)

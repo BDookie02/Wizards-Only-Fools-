@@ -42,6 +42,23 @@ export type PlayerLilyCoilTubeSlideFrame = {
   tubeSliding: boolean;
 };
 
+type PlayerLilyCoilTubeJumpState = {
+  jumpOffset: number;
+  jumpVelocity: number;
+};
+
+export type PlayerLilyCoilTubeJumpThrusterFrame = {
+  fuelChanged: boolean;
+  jumped: boolean;
+  lockedThruster: boolean;
+  nextFuel: number;
+  rechargedFuel: boolean;
+  resetThrusterLock: boolean;
+  thrusted: boolean;
+  tubeAirborne: boolean;
+  tubeGrounded: boolean;
+};
+
 export function applyPlayerLilyCoilTubeSlideFrame({
   delta,
   hasPlanarMovementInput,
@@ -99,6 +116,102 @@ export function applyPlayerLilyCoilTubeSlideFrame({
     tubeSlideHeld,
     tubeSliding,
   };
+}
+
+export function applyPlayerLilyCoilTubeJumpThrusterFrame({
+  currentFuel,
+  delta,
+  jumpBoostActive,
+  jumpBoostMultiplier,
+  jumpGravity,
+  jumpHeld,
+  jumpRequested,
+  jumpForce,
+  maxJumpOffset,
+  setJumps,
+  setThrusterFuel,
+  thrusterFuelDrainPerSecond,
+  thrusterFuelRechargePerSecond,
+  thrusterImpulsePerSecond,
+  thrusterLocked,
+  tubeState,
+}: {
+  currentFuel: number;
+  delta: number;
+  jumpBoostActive: boolean;
+  jumpBoostMultiplier: number;
+  jumpGravity: number;
+  jumpHeld: boolean;
+  jumpRequested: boolean;
+  jumpForce: number;
+  maxJumpOffset: number;
+  setJumps: (count: number) => void;
+  setThrusterFuel: (fuel: number) => void;
+  thrusterFuelDrainPerSecond: number;
+  thrusterFuelRechargePerSecond: number;
+  thrusterImpulsePerSecond: number;
+  thrusterLocked: MutableRef<boolean>;
+  tubeState: PlayerLilyCoilTubeJumpState;
+}): PlayerLilyCoilTubeJumpThrusterFrame {
+  const tubeGrounded = tubeState.jumpOffset <= 0.025 && tubeState.jumpVelocity <= 0;
+  const boostMultiplier = jumpBoostActive ? jumpBoostMultiplier : 1;
+  let nextFuel = currentFuel;
+  const result: PlayerLilyCoilTubeJumpThrusterFrame = {
+    fuelChanged: false,
+    jumped: false,
+    lockedThruster: false,
+    nextFuel,
+    rechargedFuel: false,
+    resetThrusterLock: false,
+    thrusted: false,
+    tubeAirborne: false,
+    tubeGrounded,
+  };
+
+  if (!jumpHeld) {
+    thrusterLocked.current = false;
+    result.resetThrusterLock = true;
+  }
+
+  if (jumpRequested && tubeGrounded) {
+    tubeState.jumpVelocity = jumpForce * boostMultiplier;
+    setJumps(1);
+    thrusterLocked.current = false;
+    result.jumped = true;
+    result.resetThrusterLock = true;
+  } else if (jumpHeld && !tubeGrounded && nextFuel > 0 && !thrusterLocked.current) {
+    tubeState.jumpVelocity += thrusterImpulsePerSecond * boostMultiplier * delta;
+    nextFuel = Math.max(0, nextFuel - delta * thrusterFuelDrainPerSecond);
+    result.thrusted = true;
+    if (nextFuel === 0) {
+      thrusterLocked.current = true;
+      result.lockedThruster = true;
+    }
+  }
+
+  if (tubeState.jumpOffset > 0 || tubeState.jumpVelocity > 0) {
+    tubeState.jumpVelocity -= jumpGravity * delta;
+    tubeState.jumpOffset = Math.max(0, Math.min(maxJumpOffset, tubeState.jumpOffset + tubeState.jumpVelocity * delta));
+    if (tubeState.jumpOffset <= 0) {
+      tubeState.jumpOffset = 0;
+      tubeState.jumpVelocity = 0;
+    }
+  }
+
+  if (tubeGrounded && nextFuel < 1.0) {
+    const rechargedFuel = Math.min(1.0, nextFuel + delta * thrusterFuelRechargePerSecond);
+    result.rechargedFuel = rechargedFuel !== nextFuel;
+    nextFuel = rechargedFuel;
+  }
+
+  if (nextFuel !== currentFuel) {
+    setThrusterFuel(nextFuel);
+    result.fuelChanged = true;
+  }
+
+  result.nextFuel = nextFuel;
+  result.tubeAirborne = tubeState.jumpOffset > 0.025;
+  return result;
 }
 
 export function isPlayerLilyCoilTubeMoving({
