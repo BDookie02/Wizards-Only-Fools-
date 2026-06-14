@@ -1,8 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
 import { ALL_SPELLS, type HandType, type SpellType, useGameStore } from "../../../store/gameStore";
-import { spellNames } from "../../systems/spells/spellCatalog";
 import {
   createSpellMenuHotbarSlotLookup,
   getSpellMenuAssignedSlot,
@@ -14,7 +11,6 @@ import {
   getSpellMenuNavTarget,
   getSpellMenuSpellNavIndex,
   getVisibleSpellMenuSpells,
-  hotkeyLabels,
   spellFamilyFilters,
   SPELL_MENU_NAV_ATTRIBUTE,
   SPELL_MENU_NAV_CLOSE_INDEX,
@@ -26,12 +22,9 @@ import { SpellMenuBindStatus } from "./SpellMenuBindStatus";
 import { SpellMenuCard } from "./SpellMenuCard";
 import { SpellMenuCloseButton } from "./SpellMenuCloseButton";
 import { SpellMenuFamilyFilterButton } from "./SpellMenuFamilyFilterButton";
+import { SpellMenuFooter } from "./SpellMenuFooter";
 import { SpellMenuHotbarColumn } from "./SpellMenuHotbarColumn";
 import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 export const SpellMenu = memo(function SpellMenu({
   menuSpellIndex,
@@ -316,11 +309,11 @@ export const SpellMenu = memo(function SpellMenu({
           />
         </div>
 
-        <div className="spell-menu-footer relative mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-cyan-300/30 pt-3 text-[9px] tracking-widest text-cyan-100/70">
-          <span>ARROWS/WHEEL/D-PAD SELECT SPELL</span>
-          <span>PRESS 1-0 OR A TO BIND, HOLD Q OR LB/RB CHOOSE HAND</span>
-          <span>HIGHLIGHTED: {bindingHand.toUpperCase()} {hotkeyLabels[bindingSelectedIndex]} / {spellNames[highlightedSpell]}</span>
-        </div>
+        <SpellMenuFooter
+          bindingHand={bindingHand}
+          bindingSelectedIndex={bindingSelectedIndex}
+          highlightedSpell={highlightedSpell}
+        />
       </div>
     </div>
   );
