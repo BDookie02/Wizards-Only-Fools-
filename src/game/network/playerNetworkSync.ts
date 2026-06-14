@@ -45,6 +45,10 @@ export type PlayerNetworkSyncOptions = {
   yaw: number;
 };
 
+export type PlayerNetworkSyncDueOptions = PlayerNetworkSyncOptions & {
+  shouldSyncNetwork: boolean;
+};
+
 export type PlayerNetworkPoseSyncOptions = {
   aimDir?: { x: number; y: number; z: number };
   anim: PlayerNetworkAnimation;
@@ -233,6 +237,14 @@ export function emitPlayerNetworkSync(options: PlayerNetworkSyncOptions) {
     yaw,
     aimDir,
   });
+}
+
+export function emitPlayerNetworkSyncIfDue(
+  { shouldSyncNetwork, ...options }: PlayerNetworkSyncDueOptions,
+  emitSync: (options: PlayerNetworkSyncOptions) => boolean = emitPlayerNetworkSync,
+) {
+  if (!shouldSyncNetwork) return false;
+  return emitSync(options);
 }
 
 export function emitPlayerNetworkPoseSync(options: PlayerNetworkPoseSyncOptions) {

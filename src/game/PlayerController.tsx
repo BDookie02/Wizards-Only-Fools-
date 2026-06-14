@@ -9,7 +9,7 @@ import {
   getLocalNetworkPlayerId,
 } from "./network/gameNetworkClient";
 import {
-  emitPlayerNetworkSync,
+  emitPlayerNetworkSyncIfDue,
   emitPlayerNetworkPoseSyncIfDue,
   resolvePlayerNetworkSyncFrame,
 } from "./network/playerNetworkSync";
@@ -3059,26 +3059,25 @@ export function PlayerController() {
       lastNetworkSync,
       nowMs,
     });
-    if (networkSyncFrame.shouldSyncNetwork) {
-      emitPlayerNetworkSync({
-        activeGrabIds: activeGrabIds.current,
-        camera,
-        characterCustomization: storeState.characterCustomization,
-        chargingHands: storeState.chargingHands,
-        climbingLadder,
-        effectiveGrounded,
-        hasMovementInput,
-        isCrouching,
-        isSliding,
-        isSprinting,
-        isVoiceSpeaking: storeState.isVoiceSpeaking,
-        pos,
-        sleepActive,
-        survivalLevel: storeState.survivalLevel,
-        velocityY: velocity.y,
-        yaw,
-      });
-    }
+    emitPlayerNetworkSyncIfDue({
+      activeGrabIds: activeGrabIds.current,
+      camera,
+      characterCustomization: storeState.characterCustomization,
+      chargingHands: storeState.chargingHands,
+      climbingLadder,
+      effectiveGrounded,
+      hasMovementInput,
+      isCrouching,
+      isSliding,
+      isSprinting,
+      isVoiceSpeaking: storeState.isVoiceSpeaking,
+      pos,
+      shouldSyncNetwork: networkSyncFrame.shouldSyncNetwork,
+      sleepActive,
+      survivalLevel: storeState.survivalLevel,
+      velocityY: velocity.y,
+      yaw,
+    });
   });
 
   return (
