@@ -189,6 +189,7 @@ import {
   installPlayerControllerWindowListeners,
 } from "./systems/player/playerControllerEvents";
 import { startPlayerControllerCastingLoop } from "./systems/player/playerControllerCasting";
+import { applyPlayerDeadCastRespawn } from "./systems/player/playerControllerCastingRuntime";
 import { installPlayerLadderZoneListeners } from "./systems/player/playerLadderZones";
 import { installPlayerMouseLookFallback } from "./systems/player/playerMouseLookRuntime";
 import {
@@ -739,20 +740,17 @@ export function PlayerController() {
       if (!canUseGameplayInput()) return;
       const now = getPlayerEventEpochMs();
       if (useGameStore.getState().sleepUntil > now) return;
-      if (getHealth() <= 0) {
-        if (now - Math.max(lastFire.left, lastFire.right) > 1000) { // simple debounce so they don't instarespawn
-          useGameStore.getState().respawn();
-          
-          if (rigidBody.current) {
-            const [spawnX, spawnY, spawnZ] = getPlayerSpawnPosition();
-            applyPlayerBodyCameraPlacement({
-              body: rigidBody.current,
-              camera,
-              cameraHeight: PLAYER_CAMERA_HEIGHT,
-              position: { x: spawnX, y: spawnY, z: spawnZ },
-            });
-          }
-        }
+      const deadRespawn = applyPlayerDeadCastRespawn({
+        body: rigidBody.current,
+        camera,
+        cameraHeight: PLAYER_CAMERA_HEIGHT,
+        getSpawnPosition: getPlayerSpawnPosition,
+        health: getHealth(),
+        lastFire,
+        nowMs: now,
+        respawn: useGameStore.getState().respawn,
+      });
+      if (deadRespawn.blocked) {
         return;
       }
 

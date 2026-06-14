@@ -1,4 +1,10 @@
 import type { HandType } from "../../../store/gameStore";
+import {
+  applyPlayerBodyCameraPlacement,
+  type PlayerPlacementBody,
+  type PlayerPlacementCamera,
+  type PlayerBodyPlacementVector,
+} from "./playerBodyPlacementRuntime";
 
 export type PlayerControllerButtonDownState = Record<string, boolean>;
 export type PlayerControllerButtonRepeatState = Record<string, number>;
@@ -20,6 +26,15 @@ export type PlayerControllerCastButtonResolutionOptions = {
   pressed: boolean;
   questInteractionHandled: boolean;
   wasPressed: boolean;
+};
+
+export type PlayerCastRespawnLastFire = Record<HandType, number>;
+
+export type PlayerDeadCastRespawnResult = {
+  blocked: boolean;
+  placed: boolean;
+  position: PlayerBodyPlacementVector | null;
+  respawned: boolean;
 };
 
 export function resolvePlayerControllerCastButtonAction({
@@ -66,6 +81,70 @@ export function handlePlayerControllerCastButtonForHand(
   }
   controllerCastingDown[hand] = pressed;
   return action.interactionHandled;
+}
+
+export function applyPlayerDeadCastRespawn({
+  body,
+  camera,
+  cameraHeight,
+  getSpawnPosition,
+  health,
+  lastFire,
+  nowMs,
+  respawn,
+  respawnDebounceMs = 1000,
+}: {
+  body: PlayerPlacementBody | null | undefined;
+  camera: PlayerPlacementCamera;
+  cameraHeight: number;
+  getSpawnPosition: () => readonly [number, number, number];
+  health: number;
+  lastFire: PlayerCastRespawnLastFire;
+  nowMs: number;
+  respawn: () => void;
+  respawnDebounceMs?: number;
+}): PlayerDeadCastRespawnResult {
+  if (health > 0) {
+    return {
+      blocked: false,
+      placed: false,
+      position: null,
+      respawned: false,
+    };
+  }
+
+  if (nowMs - Math.max(lastFire.left, lastFire.right) <= respawnDebounceMs) {
+    return {
+      blocked: true,
+      placed: false,
+      position: null,
+      respawned: false,
+    };
+  }
+
+  respawn();
+  if (!body) {
+    return {
+      blocked: true,
+      placed: false,
+      position: null,
+      respawned: true,
+    };
+  }
+
+  const [x, y, z] = getSpawnPosition();
+  const position = { x, y, z };
+  return {
+    blocked: true,
+    placed: applyPlayerBodyCameraPlacement({
+      body,
+      camera,
+      cameraHeight,
+      position,
+    }),
+    position,
+    respawned: true,
+  };
 }
 
 export function consumePlayerControllerHotbarPress(
