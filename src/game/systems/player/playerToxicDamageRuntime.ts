@@ -20,6 +20,18 @@ export type PlayerToxicDamageFrameResult = {
   syncDamage: number;
 };
 
+export type PlayerToxicDamageFrameApplication = {
+  applied: boolean;
+  health: number;
+  shouldStopFrame: boolean;
+};
+
+export type PlayerToxicDamageFrameApplier = {
+  connectedPlayerId: string | null;
+  emitGameNetworkEvent: (eventName: "damageHealth", playerId: string, amount: number) => unknown;
+  setHealth: (health: number) => void;
+};
+
 export type PlayerClearToxicEffectsPlanInput = {
   acidUntil: number;
   connectedPlayerId: string | null;
@@ -99,6 +111,29 @@ export function updatePlayerToxicDamageFrame(
     active: true,
     health,
     syncDamage,
+  };
+}
+
+export function applyPlayerToxicDamageFrameResult(
+  frame: PlayerToxicDamageFrameResult,
+  applier: PlayerToxicDamageFrameApplier,
+): PlayerToxicDamageFrameApplication {
+  if (!frame.active) {
+    return {
+      applied: false,
+      health: frame.health,
+      shouldStopFrame: false,
+    };
+  }
+
+  applier.setHealth(frame.health);
+  if (applier.connectedPlayerId && frame.syncDamage > 0) {
+    applier.emitGameNetworkEvent("damageHealth", applier.connectedPlayerId, frame.syncDamage);
+  }
+  return {
+    applied: true,
+    health: frame.health,
+    shouldStopFrame: frame.health <= 0,
   };
 }
 

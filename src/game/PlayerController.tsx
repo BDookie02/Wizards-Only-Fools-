@@ -185,6 +185,7 @@ import {
 } from "./systems/player/playerScreenShakeRuntime";
 import {
   applyPlayerClearToxicEffectsPlan,
+  applyPlayerToxicDamageFrameResult,
   createPlayerClearToxicEffectsPlan,
   updatePlayerToxicDamageFrame,
 } from "./systems/player/playerToxicDamageRuntime";
@@ -1196,12 +1197,13 @@ export function PlayerController() {
       toxicDamagePerSecond: TOXIC_DAMAGE_PER_SECOND,
     });
     if (toxicDamageFrame.active) {
-      health = toxicDamageFrame.health;
-      useGameStore.getState().setHealth(health);
-      if (connectedPlayerId && toxicDamageFrame.syncDamage > 0) {
-        emitGameNetworkEvent("damageHealth", connectedPlayerId, toxicDamageFrame.syncDamage);
-      }
-      if (health <= 0) return;
+      const toxicDamageApplication = applyPlayerToxicDamageFrameResult(toxicDamageFrame, {
+        connectedPlayerId,
+        emitGameNetworkEvent,
+        setHealth: useGameStore.getState().setHealth,
+      });
+      health = toxicDamageApplication.health;
+      if (toxicDamageApplication.shouldStopFrame) return;
     }
 
     const activeGrab = grabbedState.current;
