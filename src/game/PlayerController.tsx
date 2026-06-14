@@ -214,6 +214,7 @@ import {
 } from "./systems/player/playerAstralMeditationRuntime";
 import {
   applyPlayerModalBlockedMovementFrame,
+  applyPlayerGroundSlideFrame,
   resetPlayerCrouchState,
   resetPlayerSlideAndCrouchState,
   resetPlayerSlideState,
@@ -2991,24 +2992,23 @@ export function PlayerController() {
       }), nowMs);
     }
 
-    if (!vclipActive && effectiveGrounded) {
-      setJumps(0);
-      const planarVelocitySq = velocity.x * velocity.x + velocity.z * velocity.z;
-      if (slideHeld && !isSliding && (hasPlanarMovementInput || planarVelocitySq > SLIDE_START_MIN_SPEED_SQ)) {
-        if (nowMs - lastSlideTime.current >= SLIDE_RESTART_COOLDOWN_MS) {
-          setIsSliding(true);
-          slideTimer.current = 1.0; // slide for up to 1s
-          lastSlideTime.current = nowMs;
-        }
-      }
-    }
-
-    if (!vclipActive && isSliding) {
-      slideTimer.current -= delta;
-      if (slideTimer.current <= 0 || !slideHeld) {
-        setIsSliding(false);
-      }
-    }
+    applyPlayerGroundSlideFrame({
+      delta,
+      effectiveGrounded,
+      hasPlanarMovementInput,
+      isSliding,
+      lastSlideTime,
+      nowMs,
+      planarVelocityX: velocity.x,
+      planarVelocityZ: velocity.z,
+      resetJumps: () => setJumps(0),
+      setIsSliding,
+      slideHeld,
+      slideRestartCooldownMs: SLIDE_RESTART_COOLDOWN_MS,
+      slideStartMinSpeedSq: SLIDE_START_MIN_SPEED_SQ,
+      slideTimer,
+      vclipActive,
+    });
 
     // Applying x/z movement
     const ladderVelocityY = ladderVerticalInput === 0 ? LADDER_IDLE_HOLD_SPEED : ladderVerticalInput * LADDER_CLIMB_SPEED;

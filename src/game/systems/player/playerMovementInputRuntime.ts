@@ -259,6 +259,77 @@ export function stopPlayerPlanarVelocity({
   body.setLinvel({ x: 0, y: vclipActive ? 0 : currentVelocityY, z: 0 }, true);
 }
 
+export type PlayerGroundSlideFrameResult = {
+  resetJumps: boolean;
+  startedSlide: boolean;
+  stoppedSlide: boolean;
+};
+
+export function applyPlayerGroundSlideFrame({
+  delta,
+  effectiveGrounded,
+  hasPlanarMovementInput,
+  isSliding,
+  lastSlideTime,
+  nowMs,
+  planarVelocityX,
+  planarVelocityZ,
+  resetJumps,
+  setIsSliding,
+  slideHeld,
+  slideRestartCooldownMs,
+  slideStartMinSpeedSq,
+  slideTimer,
+  vclipActive,
+}: {
+  delta: number;
+  effectiveGrounded: boolean;
+  hasPlanarMovementInput: boolean;
+  isSliding: boolean;
+  lastSlideTime: MutableRef<number>;
+  nowMs: number;
+  planarVelocityX: number;
+  planarVelocityZ: number;
+  resetJumps: () => void;
+  setIsSliding: (active: boolean) => void;
+  slideHeld: boolean;
+  slideRestartCooldownMs: number;
+  slideStartMinSpeedSq: number;
+  slideTimer: MutableRef<number>;
+  vclipActive: boolean;
+}): PlayerGroundSlideFrameResult {
+  const result: PlayerGroundSlideFrameResult = {
+    resetJumps: false,
+    startedSlide: false,
+    stoppedSlide: false,
+  };
+
+  if (!vclipActive && effectiveGrounded) {
+    resetJumps();
+    result.resetJumps = true;
+
+    const planarVelocitySq = planarVelocityX * planarVelocityX + planarVelocityZ * planarVelocityZ;
+    if (slideHeld && !isSliding && (hasPlanarMovementInput || planarVelocitySq > slideStartMinSpeedSq)) {
+      if (nowMs - lastSlideTime.current >= slideRestartCooldownMs) {
+        setIsSliding(true);
+        slideTimer.current = 1.0;
+        lastSlideTime.current = nowMs;
+        result.startedSlide = true;
+      }
+    }
+  }
+
+  if (!vclipActive && isSliding) {
+    slideTimer.current -= delta;
+    if (slideTimer.current <= 0 || !slideHeld) {
+      setIsSliding(false);
+      result.stoppedSlide = true;
+    }
+  }
+
+  return result;
+}
+
 export function applyPlayerModalBlockedMovementFrame({
   body,
   crouchHoldStartedAt,
