@@ -1246,6 +1246,65 @@ export function resolveQaWalkManaFlowerCollectionAction({
   };
 }
 
+export type QaWalkIntentInteractionAction = ReturnType<typeof resolveQaWalkIntentInteractionAction>;
+
+export type QaWalkIntentInteractionRefs = {
+  lastInteractionAt: QaWalkMutableRef<number>;
+};
+
+export type QaWalkIntentInteractionPublishers = {
+  dispatchQuestVillagerInteraction: (source: string) => { handled: boolean };
+  publishSurvivalWalkAction: (label: string) => void;
+};
+
+export function applyQaWalkIntentInteractionAction({
+  action,
+  elapsedSeconds,
+  publishers,
+  refs,
+}: {
+  action: QaWalkIntentInteractionAction;
+  elapsedSeconds: number;
+  publishers: QaWalkIntentInteractionPublishers;
+  refs: QaWalkIntentInteractionRefs;
+}) {
+  if (!action) return { applied: false, actionLabel: null as string | null, handled: false };
+  const detail = publishers.dispatchQuestVillagerInteraction("qa-walk");
+  const actionLabel = detail.handled
+    ? `interact:${action.kind}:${action.id}`
+    : `observe:${action.kind}:${action.id}`;
+  refs.lastInteractionAt.current = elapsedSeconds;
+  publishers.publishSurvivalWalkAction(actionLabel);
+  return { applied: true, actionLabel, handled: detail.handled };
+}
+
+export type QaWalkManaFlowerCollectionAction = ReturnType<typeof resolveQaWalkManaFlowerCollectionAction>;
+
+export type QaWalkManaFlowerCollectionRefs = {
+  intent: QaWalkMutableRef<QaSurvivalIntent | null>;
+  nextIntentAt: QaWalkMutableRef<number>;
+};
+
+export type QaWalkManaFlowerCollectionPublishers = {
+  publishSurvivalWalkAction: (label: string) => void;
+};
+
+export function applyQaWalkManaFlowerCollectionAction({
+  action,
+  publishers,
+  refs,
+}: {
+  action: QaWalkManaFlowerCollectionAction;
+  publishers: QaWalkManaFlowerCollectionPublishers;
+  refs: QaWalkManaFlowerCollectionRefs;
+}) {
+  if (!action) return false;
+  publishers.publishSurvivalWalkAction(action.actionLabel);
+  refs.intent.current = null;
+  refs.nextIntentAt.current = action.nextIntentAt;
+  return true;
+}
+
 export function resolveQaWalkIntentWaypoint({
   elapsedSeconds,
   intent,

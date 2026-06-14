@@ -70,8 +70,10 @@ import {
   applyQaWalkCombatFocusMovementFrame,
   applyQaWalkInspectionStartPlan,
   applyQaWalkInspectMovementFrame,
+  applyQaWalkIntentInteractionAction,
   applyQaWalkJumpHoldUntil,
   applyQaWalkLowSpeedRecovery,
+  applyQaWalkManaFlowerCollectionAction,
   applyQaWalkOpenLaneRecoveryRelief,
   applyQaWalkProgressRecovery,
   applyQaWalkRecoveryMovementFrame,
@@ -2038,23 +2040,28 @@ export function PlayerController() {
           elapsedSeconds: elapsed,
           lastInteractionAt: qaWalkLastInteractionAt.current,
         });
-        if (interactionAction) {
-          const detail = dispatchQuestVillagerInteraction("qa-walk");
-          qaWalkLastInteractionAt.current = elapsed;
-          publishSurvivalWalkAction(detail.handled
-            ? `interact:${interactionAction.kind}:${interactionAction.id}`
-            : `observe:${interactionAction.kind}:${interactionAction.id}`);
-        }
+        applyQaWalkIntentInteractionAction({
+          action: interactionAction,
+          elapsedSeconds: elapsed,
+          publishers: {
+            dispatchQuestVillagerInteraction,
+            publishSurvivalWalkAction,
+          },
+          refs: { lastInteractionAt: qaWalkLastInteractionAt },
+        });
         const collectionAction = resolveQaWalkManaFlowerCollectionAction({
           activeIntent,
           collected: activeIntent.kind === "mana-flower" && wasSurvivalWalkManaFlowerCollected(activeIntent.id),
           elapsedSeconds: elapsed,
         });
-        if (collectionAction) {
-          publishSurvivalWalkAction(collectionAction.actionLabel);
-          qaWalkIntent.current = null;
-          qaWalkNextIntentAt.current = collectionAction.nextIntentAt;
-        }
+        applyQaWalkManaFlowerCollectionAction({
+          action: collectionAction,
+          publishers: { publishSurvivalWalkAction },
+          refs: {
+            intent: qaWalkIntent,
+            nextIntentAt: qaWalkNextIntentAt,
+          },
+        });
       }
 
       const scheduleNextCombatCast = (minimumSeconds = QA_SURVIVAL_COMBAT_CAST_MIN_INTERVAL) => {
