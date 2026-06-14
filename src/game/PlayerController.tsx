@@ -65,6 +65,7 @@ import {
 } from "./tools/qa/survivalWalkQa";
 import {
   applyQaWalkActiveIntentRefresh,
+  applyQaWalkActiveIntentMovementFrame,
   applyQaWalkAvoidMovementFrame,
   applyQaWalkCombatFocusMovementFrame,
   applyQaWalkInspectionStartPlan,
@@ -2010,11 +2011,14 @@ export function PlayerController() {
           qaSpellDummyRunActive,
           strafeAmount,
         });
-        targetYaw = activeIntentMovement.targetYaw;
-        mode = activeIntentMovement.mode;
-        forwardAmount = activeIntentMovement.forwardAmount;
-        strafeAmount = activeIntentMovement.strafeAmount;
-        sprint = activeIntentMovement.sprint;
+        const activeIntentMovementApplication = applyQaWalkActiveIntentMovementFrame({
+          frame: activeIntentMovement,
+        });
+        targetYaw = activeIntentMovementApplication.targetYaw;
+        mode = activeIntentMovementApplication.mode;
+        forwardAmount = activeIntentMovementApplication.forwardAmount;
+        strafeAmount = activeIntentMovementApplication.strafeAmount;
+        sprint = activeIntentMovementApplication.sprint;
         const intentJumpHoldUntil = resolveQaWalkIntentJumpHoldUntil({
           activeIntentDistance,
           activeIntentKind: activeIntent.kind,

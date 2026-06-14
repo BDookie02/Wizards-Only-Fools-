@@ -2103,6 +2103,32 @@ export function resolveQaWalkActiveIntentMovement({
   };
 }
 
+export type QaWalkActiveIntentMovementFrame = ReturnType<typeof resolveQaWalkActiveIntentMovement>;
+
+export type QaWalkActiveIntentMovementApplication = {
+  closeEnough: boolean;
+  forwardAmount: number;
+  mode: QaSurvivalWalkMode;
+  sprint: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+};
+
+export function applyQaWalkActiveIntentMovementFrame({
+  frame,
+}: {
+  frame: QaWalkActiveIntentMovementFrame;
+}): QaWalkActiveIntentMovementApplication {
+  return {
+    closeEnough: frame.closeEnough,
+    forwardAmount: frame.forwardAmount,
+    mode: frame.mode,
+    sprint: frame.sprint,
+    strafeAmount: frame.strafeAmount,
+    targetYaw: frame.targetYaw,
+  };
+}
+
 export type QaWalkRecoveryRescueReason =
   | "darrel-route-assist"
   | "darrel-grove-rescue"
