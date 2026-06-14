@@ -56,6 +56,10 @@ export type PlayerNetworkPoseSyncOptions = {
   yaw: number;
 };
 
+export type PlayerNetworkPoseSyncDueOptions = PlayerNetworkPoseSyncOptions & {
+  shouldSyncNetwork: boolean;
+};
+
 export function getPlayerNetworkSyncInterval(activeGrabIds: Record<HandType, string | null>) {
   const isControllingGrab = activeGrabIds.left !== null || activeGrabIds.right !== null;
   return getMultiplayerPoseIntervalMs(isControllingGrab);
@@ -280,4 +284,12 @@ export function emitPlayerNetworkPoseSync(options: PlayerNetworkPoseSyncOptions)
     }
   }
   return emitted;
+}
+
+export function emitPlayerNetworkPoseSyncIfDue(
+  { shouldSyncNetwork, ...options }: PlayerNetworkPoseSyncDueOptions,
+  emitPoseSync: (options: PlayerNetworkPoseSyncOptions) => boolean = emitPlayerNetworkPoseSync,
+) {
+  if (!shouldSyncNetwork) return false;
+  return emitPoseSync(options);
 }

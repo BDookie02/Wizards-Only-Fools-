@@ -10,7 +10,7 @@ import {
 } from "./network/gameNetworkClient";
 import {
   emitPlayerNetworkSync,
-  emitPlayerNetworkPoseSync,
+  emitPlayerNetworkPoseSyncIfDue,
   resolvePlayerNetworkSyncFrame,
 } from "./network/playerNetworkSync";
 import { getPrimaryGamepad } from "./systems/input/controllerInput";
@@ -1273,17 +1273,16 @@ export function PlayerController() {
         return;
       }
 
-      if (grabbedFollowFrame.shouldSyncNetwork) {
-        emitPlayerNetworkPoseSync({
-          anim: "grabbed",
-          camera,
-          characterCustomization: storeState.characterCustomization,
-          isVoiceSpeaking: storeState.isVoiceSpeaking,
-          pos: grabbedFollowFrame.position,
-          survivalLevel: storeState.survivalLevel,
-          yaw: grabbedFollowFrame.yaw,
-        });
-      }
+      emitPlayerNetworkPoseSyncIfDue({
+        anim: "grabbed",
+        camera,
+        characterCustomization: storeState.characterCustomization,
+        isVoiceSpeaking: storeState.isVoiceSpeaking,
+        pos: grabbedFollowFrame.position,
+        shouldSyncNetwork: grabbedFollowFrame.shouldSyncNetwork,
+        survivalLevel: storeState.survivalLevel,
+        yaw: grabbedFollowFrame.yaw,
+      });
       return;
     }
 
@@ -1326,17 +1325,16 @@ export function PlayerController() {
         publishLocalPlayerPosition,
       });
 
-      if (astralFrame.shouldSyncNetwork) {
-        emitPlayerNetworkPoseSync({
-          anim: "meditate",
-          camera,
-          characterCustomization: storeState.characterCustomization,
-          isVoiceSpeaking: storeState.isVoiceSpeaking,
-          pos: astralFrame.position,
-          survivalLevel: storeState.survivalLevel,
-          yaw: astralFrame.yaw,
-        });
-      }
+      emitPlayerNetworkPoseSyncIfDue({
+        anim: "meditate",
+        camera,
+        characterCustomization: storeState.characterCustomization,
+        isVoiceSpeaking: storeState.isVoiceSpeaking,
+        pos: astralFrame.position,
+        shouldSyncNetwork: astralFrame.shouldSyncNetwork,
+        survivalLevel: storeState.survivalLevel,
+        yaw: astralFrame.yaw,
+      });
       return;
     }
 
@@ -2800,18 +2798,17 @@ export function PlayerController() {
         tubeMoving,
         tubeSliding,
       });
-      if (tubeNetworkFrame.shouldSyncNetwork) {
-        emitPlayerNetworkPoseSync({
-          anim: tubeNetworkFrame.anim,
-          camera,
-          characterCustomization: storeState.characterCustomization,
-          isVoiceSpeaking: storeState.isVoiceSpeaking,
-          pos: { x: tubeBodyPosition.x, y: tubeBodyPosition.y, z: tubeBodyPosition.z },
-          survivalLevel: storeState.survivalLevel,
-          yaw: tubeYaw,
-          aimDir: frameForward,
-        });
-      }
+      emitPlayerNetworkPoseSyncIfDue({
+        aimDir: frameForward,
+        anim: tubeNetworkFrame.anim,
+        camera,
+        characterCustomization: storeState.characterCustomization,
+        isVoiceSpeaking: storeState.isVoiceSpeaking,
+        pos: { x: tubeBodyPosition.x, y: tubeBodyPosition.y, z: tubeBodyPosition.z },
+        shouldSyncNetwork: tubeNetworkFrame.shouldSyncNetwork,
+        survivalLevel: storeState.survivalLevel,
+        yaw: tubeYaw,
+      });
       return;
     }
 
