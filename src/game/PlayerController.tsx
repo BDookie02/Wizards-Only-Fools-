@@ -193,6 +193,9 @@ import {
   QA_LILY_COIL_TUBE_LOOK_AHEAD_T,
   QA_LILY_COIL_TUBE_RESTART_EDGE_T,
   QA_LILY_COIL_TUBE_REVERSE_EDGE_T,
+  createPlayerLilyCoilTubeMovePayload,
+  getPlayerLilyCoilTubeDispatchState,
+  isPlayerLilyCoilTubeMoving,
   resolvePlayerLilyCoilTubeNetworkFrame,
 } from "./systems/player/playerLilyCoilTubeRuntime";
 import {
@@ -2751,24 +2754,32 @@ export function PlayerController() {
         surfaceAngle: tubeState.surfaceAngle,
       };
 
-      const tubeMoving = hasMovementInput || Math.abs(tubeSurfaceInput) > 0.05 || Math.abs(forwardInput) > 0.05;
+      const tubeMoving = isPlayerLilyCoilTubeMoving({
+        forwardInput,
+        hasMovementInput,
+        tubeSurfaceInput,
+      });
+      const tubeDispatchState = getPlayerLilyCoilTubeDispatchState({
+        isSprinting,
+        tubeAirborne,
+        tubeMoving,
+        tubeSliding,
+      });
       dispatchPlayerStateIfChanged(
         lastDispatchedPlayerStateRef.current,
-        tubeMoving,
-        isSprinting && !tubeSliding,
-        tubeSliding,
+        tubeDispatchState.moving,
+        tubeDispatchState.sprinting,
+        tubeDispatchState.sliding,
         false,
-        !tubeAirborne,
+        tubeDispatchState.grounded,
         false,
       );
-      dispatchPlayerMoved({
-        x: tubeBodyPosition.x,
-        y: tubeBodyPosition.y,
-        z: tubeBodyPosition.z,
-        angle: tubeYaw,
-        isMoving: tubeMoving,
-        grounded: !tubeAirborne,
-      });
+      dispatchPlayerMoved(createPlayerLilyCoilTubeMovePayload({
+        position: tubeBodyPosition,
+        tubeAirborne,
+        tubeMoving,
+        yaw: tubeYaw,
+      }));
       if (isNavigationRecordingActive()) {
         recordNavigationSample({
           gameMode: storeState.gameMode,
