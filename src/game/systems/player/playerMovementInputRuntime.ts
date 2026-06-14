@@ -11,6 +11,7 @@ import {
 } from "./playerMovementConfig";
 
 type BooleanRef = { current: boolean };
+type MutableRef<T> = { current: T };
 type MovementKeyState = Record<PlayerMovementKeyCode, boolean>;
 type TouchMoveState = { x: number; y: number };
 type QaWalkInputState = { forward: number; strafe: number; sprint: boolean };
@@ -168,6 +169,79 @@ export function resolvePlayerMovementInputIntent({
     hasPlanarMovementInput,
     hasMovementInput,
   };
+}
+
+export function resetPlayerCrouchState({
+  crouchHoldStartedAt,
+  isCrouching,
+  setIsCrouching,
+}: {
+  crouchHoldStartedAt: MutableRef<number | null>;
+  isCrouching: boolean;
+  setIsCrouching: (active: boolean) => void;
+}) {
+  if (isCrouching) setIsCrouching(false);
+  crouchHoldStartedAt.current = null;
+}
+
+export function resetPlayerSlideState({
+  isSliding,
+  setIsSliding,
+}: {
+  isSliding: boolean;
+  setIsSliding: (active: boolean) => void;
+}) {
+  if (isSliding) setIsSliding(false);
+}
+
+export function resetPlayerSlideAndCrouchState({
+  crouchHoldStartedAt,
+  isCrouching,
+  isSliding,
+  setIsCrouching,
+  setIsSliding,
+}: {
+  crouchHoldStartedAt: MutableRef<number | null>;
+  isCrouching: boolean;
+  isSliding: boolean;
+  setIsCrouching: (active: boolean) => void;
+  setIsSliding: (active: boolean) => void;
+}) {
+  resetPlayerSlideState({ isSliding, setIsSliding });
+  resetPlayerCrouchState({ crouchHoldStartedAt, isCrouching, setIsCrouching });
+}
+
+export function updatePlayerCrouchHoldState({
+  crouchAllowed,
+  crouchHoldMs,
+  crouchHoldStartedAt,
+  isCrouching,
+  nowMs,
+  setIsCrouching,
+}: {
+  crouchAllowed: boolean;
+  crouchHoldMs: number;
+  crouchHoldStartedAt: MutableRef<number | null>;
+  isCrouching: boolean;
+  nowMs: number;
+  setIsCrouching: (active: boolean) => void;
+}) {
+  if (!crouchAllowed) {
+    resetPlayerCrouchState({ crouchHoldStartedAt, isCrouching, setIsCrouching });
+    return "reset" as const;
+  }
+
+  if (crouchHoldStartedAt.current === null) {
+    crouchHoldStartedAt.current = nowMs;
+    return "started" as const;
+  }
+
+  if (!isCrouching && nowMs - crouchHoldStartedAt.current >= crouchHoldMs) {
+    setIsCrouching(true);
+    return "activated" as const;
+  }
+
+  return "held" as const;
 }
 
 export function resolvePlayerMovementMotionState({

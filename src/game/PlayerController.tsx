@@ -203,8 +203,12 @@ import {
   updatePlayerMeditationExitHold,
 } from "./systems/player/playerAstralMeditationRuntime";
 import {
+  resetPlayerCrouchState,
+  resetPlayerSlideAndCrouchState,
+  resetPlayerSlideState,
   resolvePlayerMovementInputIntent,
   resolvePlayerMovementMotionState,
+  updatePlayerCrouchHoldState,
 } from "./systems/player/playerMovementInputRuntime";
 import {
   applyPlayerLookInputFrame,
@@ -1212,8 +1216,7 @@ export function PlayerController() {
 
     const activeGrab = grabbedState.current;
     if (activeGrab) {
-      if (isCrouching) setIsCrouching(false);
-      crouchHoldStartedAt.current = null;
+      resetPlayerCrouchState({ crouchHoldStartedAt, isCrouching, setIsCrouching });
       if (nowMs >= activeGrab.until) {
         throwGrabbedPlayer();
         return;
@@ -1261,9 +1264,13 @@ export function PlayerController() {
     }
 
     if (astralActive) {
-      if (isSliding) setIsSliding(false);
-      if (isCrouching) setIsCrouching(false);
-      crouchHoldStartedAt.current = null;
+      resetPlayerSlideAndCrouchState({
+        crouchHoldStartedAt,
+        isCrouching,
+        isSliding,
+        setIsCrouching,
+        setIsSliding,
+      });
       resetPlayerCastingHandsRuntime({
         activeCastingHands,
         chargingHands: storeState.chargingHands,
@@ -2378,8 +2385,7 @@ export function PlayerController() {
     }
 
     if (storeState.isSpellMenuOpen || storeState.questDialogSession || storeState.isInventoryOpen) {
-      if (isCrouching) setIsCrouching(false);
-      crouchHoldStartedAt.current = null;
+      resetPlayerCrouchState({ crouchHoldStartedAt, isCrouching, setIsCrouching });
       rigidBody.current.setLinvel({ x: 0, y: vclipActive ? 0 : velocity.y, z: 0 }, true);
       dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, true, false);
       return;
@@ -2446,9 +2452,13 @@ export function PlayerController() {
     publishLastPlayerYaw(yaw);
 
     if (sleepActive) {
-      if (isSliding) setIsSliding(false);
-      if (isCrouching) setIsCrouching(false);
-      crouchHoldStartedAt.current = null;
+      resetPlayerSlideAndCrouchState({
+        crouchHoldStartedAt,
+        isCrouching,
+        isSliding,
+        setIsCrouching,
+        setIsSliding,
+      });
       resetPlayerCastingHandsRuntime({
         activeCastingHands,
         chargingHands: storeState.chargingHands,
@@ -2706,8 +2716,7 @@ export function PlayerController() {
         controllerLookEuler.current.setFromQuaternion(camera.quaternion);
       }
       if (!tubeAirborne) setJumps(0);
-      if (isCrouching) setIsCrouching(false);
-      crouchHoldStartedAt.current = null;
+      resetPlayerCrouchState({ crouchHoldStartedAt, isCrouching, setIsCrouching });
 
       camera.getWorldDirection(frameForward);
       const tubeYaw = Math.atan2(frameForward.x, -frameForward.z);
@@ -2796,7 +2805,7 @@ export function PlayerController() {
     }
 
     if (vclipActive) {
-      if (isSliding) setIsSliding(false);
+      resetPlayerSlideState({ isSliding, setIsSliding });
       direction.y += verticalInput * VCLIP_VERTICAL_SPEED * (isSprinting ? VCLIP_SPRINT_MULTIPLIER : 1);
     }
 
@@ -2842,16 +2851,14 @@ export function PlayerController() {
     });
     lastGroundedAt.current = nextLastGroundedAt;
 
-    if (crouchAllowed) {
-      if (crouchHoldStartedAt.current === null) {
-        crouchHoldStartedAt.current = nowMs;
-      } else if (!isCrouching && nowMs - crouchHoldStartedAt.current >= CROUCH_HOLD_MS) {
-        setIsCrouching(true);
-      }
-    } else {
-      crouchHoldStartedAt.current = null;
-      if (isCrouching) setIsCrouching(false);
-    }
+    updatePlayerCrouchHoldState({
+      crouchAllowed,
+      crouchHoldMs: CROUCH_HOLD_MS,
+      crouchHoldStartedAt,
+      isCrouching,
+      nowMs,
+      setIsCrouching,
+    });
 
     const floorRecoveryGate = resolvePlayerFloorRecoveryGate({
       climbingLadder,
