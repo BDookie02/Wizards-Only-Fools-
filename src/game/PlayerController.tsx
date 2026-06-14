@@ -75,6 +75,7 @@ import {
   applyQaWalkIntentChoice,
   applyQaWalkIntentInteractionAction,
   applyQaWalkJumpHoldUntil,
+  applyQaWalkLilyCoilTubeDirection,
   applyQaWalkLowSpeedRecovery,
   applyQaWalkManaFlowerCollectionAction,
   applyQaWalkOpenLaneRecoveryRelief,
@@ -235,8 +236,6 @@ import {
 import {
   LILY_COIL_TUBE_PLAYER_RADIUS,
   QA_LILY_COIL_TUBE_LOOK_AHEAD_T,
-  QA_LILY_COIL_TUBE_RESTART_EDGE_T,
-  QA_LILY_COIL_TUBE_REVERSE_EDGE_T,
   applyPlayerLilyCoilTubeJumpThrusterFrame,
   applyPlayerLilyCoilTubePlacementFrame,
   applyPlayerLilyCoilTubeSlideFrame,
@@ -1388,13 +1387,10 @@ export function PlayerController() {
           return;
         }
       }
-      if (lilyCoilTubeTravelState) {
-        if (qaWalkLilyTubeDirection.current >= 0 && lilyCoilTubeTravelState.t > QA_LILY_COIL_TUBE_REVERSE_EDGE_T) {
-          qaWalkLilyTubeDirection.current = -1;
-        } else if (qaWalkLilyTubeDirection.current < 0 && lilyCoilTubeTravelState.t < QA_LILY_COIL_TUBE_RESTART_EDGE_T) {
-          qaWalkLilyTubeDirection.current = 1;
-        }
-      }
+      applyQaWalkLilyCoilTubeDirection({
+        refs: { tubeDirection: qaWalkLilyTubeDirection },
+        tubeT: lilyCoilTubeTravelState?.t ?? null,
+      });
       const setLilyCoilTubeWaypoint = () => {
         if (!lilyCoilTubeQaActive) return false;
         const nearestTube = lilyCoilTubeTravelState ?? getNearestLilyCoilTubeState(qaPosition, lilyCoilNearestScratch);

@@ -1,6 +1,8 @@
 import {
   QA_LILY_COIL_TUBE_FORWARD,
   QA_LILY_COIL_TUBE_LOOK_AHEAD_T,
+  QA_LILY_COIL_TUBE_RESTART_EDGE_T,
+  QA_LILY_COIL_TUBE_REVERSE_EDGE_T,
   QA_LILY_COIL_TUBE_STRAFE,
 } from "../../systems/player/playerLilyCoilTubeRuntime";
 import {
@@ -1886,6 +1888,42 @@ export function resolveQaWalkForwardWaypoint({
     z: position.z - Math.cos(yaw) * distance,
     expiresAt: elapsedSeconds + 5.8,
   };
+}
+
+export function resolveQaWalkLilyCoilTubeDirection({
+  currentDirection,
+  reverseEdgeT = QA_LILY_COIL_TUBE_REVERSE_EDGE_T,
+  restartEdgeT = QA_LILY_COIL_TUBE_RESTART_EDGE_T,
+  tubeT,
+}: {
+  currentDirection: number;
+  reverseEdgeT?: number;
+  restartEdgeT?: number;
+  tubeT: number | null;
+}) {
+  if (tubeT === null || !Number.isFinite(tubeT)) return currentDirection;
+  if (currentDirection >= 0 && tubeT > reverseEdgeT) return -1;
+  if (currentDirection < 0 && tubeT < restartEdgeT) return 1;
+  return currentDirection;
+}
+
+export type QaWalkLilyCoilTubeDirectionRefs = {
+  tubeDirection: QaWalkMutableRef<number>;
+};
+
+export function applyQaWalkLilyCoilTubeDirection({
+  refs,
+  tubeT,
+}: {
+  refs: QaWalkLilyCoilTubeDirectionRefs;
+  tubeT: number | null;
+}) {
+  const nextDirection = resolveQaWalkLilyCoilTubeDirection({
+    currentDirection: refs.tubeDirection.current,
+    tubeT,
+  });
+  refs.tubeDirection.current = nextDirection;
+  return nextDirection;
 }
 
 export function resolveQaWalkLilyCoilTubeWaypoint({
