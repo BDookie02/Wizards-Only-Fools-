@@ -4,10 +4,6 @@ import {
   emitEnginePlaceableNetworkSnapshot,
   emitEnginePlaceableNetworkUpsert,
 } from "../../network/gameNetworkClient";
-import {
-  getLastKnownLocalPlayerPosition,
-  getPublishedLastPlayerYaw,
-} from "../player/playerEventBridge";
 import { makeRuntimeRandomId } from "../random/runtimeRandom";
 import { getBaseVillageTerrainHeight } from "../world/terrain/BaseVillageTerrain";
 import { getSurvivalGrassSurfaceHeightAtWorld } from "../world/survival/survivalGrassSurface";
@@ -39,6 +35,7 @@ import {
   publishEnginePlacementResult,
   type WindowWithEnginePlaceables,
 } from "./enginePlacedObjectPublishRuntime";
+import { getEnginePlacementPlayerSnapshot } from "./enginePlacementPlayerSnapshotRuntime";
 import { planEnginePlacementPreview } from "./enginePlacementPreviewRuntime";
 import {
   MAX_ENGINE_PLACED_OBJECTS,
@@ -58,12 +55,6 @@ import {
 } from "./placementRules";
 
 type EnginePlacedObject = EnginePlacedObjectRecord;
-
-function getPlayerSnapshot(detail?: EnginePlaceableRequestDetail) {
-  const playerPosition = getLastKnownLocalPlayerPosition();
-  const playerYaw = Number(getPublishedLastPlayerYaw() ?? detail?.yaw ?? 0);
-  return { position: playerPosition, yaw: playerYaw };
-}
 
 export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolean }) {
   const [objects, setObjects] = useState<EnginePlacedObject[]>(() => loadStoredEngineObjects(getEnginePlacementStorage()));
@@ -94,7 +85,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
         return;
       }
 
-      const playerSnapshot = getPlayerSnapshot(detail);
+      const playerSnapshot = getEnginePlacementPlayerSnapshot(detail);
       const previewPlan = planEnginePlacementPreview(placeable, getGroundY, detail, playerSnapshot);
       if (previewPlan.ok) {
         const collision = findEnginePlacementCollision(placeable, previewPlan.x, previewPlan.z, objectsRef.current, detail?.replaceInstanceId, previewPlan.yaw);
@@ -140,7 +131,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
         return;
       }
 
-      const playerSnapshot = getPlayerSnapshot(detail);
+      const playerSnapshot = getEnginePlacementPlayerSnapshot(detail);
 
       if (placeable.id === "training-spell-dummy") {
         const spawnPlan = planTrainingSpellDummySpawn(detail, playerSnapshot);
