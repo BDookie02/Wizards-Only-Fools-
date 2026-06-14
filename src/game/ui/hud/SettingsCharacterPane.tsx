@@ -1,4 +1,4 @@
-import { lazy, Suspense, type CSSProperties, type RefObject } from "react";
+import { type CSSProperties, type RefObject } from "react";
 import { type CharacterCustomization } from "../../../store/gameStore";
 import { characterColorRows, characterMouthRows, characterStyleRows } from "./characterCustomizationConfig";
 import {
@@ -19,12 +19,7 @@ import {
 } from "./settingsPanelRuntime";
 import { SettingsCharacterColorRow } from "./SettingsCharacterColorRow";
 import { SettingsCharacterOptionButton } from "./SettingsCharacterOptionButton";
-import {
-  cn,
-  settingsHintClass,
-} from "./settingsPanelClassNames";
-
-const LazyCharacterPreview = lazy(() => import("./CharacterPreview").then((module) => ({ default: module.CharacterPreview })));
+import { SettingsCharacterPreviewCard } from "./SettingsCharacterPreviewCard";
 
 type SettingsCharacterPaneProps = {
   settingsScrollRef: RefObject<HTMLDivElement | null>;
@@ -60,23 +55,10 @@ export function SettingsCharacterPane({
     <div ref={settingsScrollRef} className="menu-scroll-panel w-full overflow-y-auto pr-1" style={settingsScrollPanelStyle}>
       <div className="settings-section-title mb-2 tracking-widest text-pink-100/65">CHARACTER CUSTOMIZATION / BASE SPRITE</div>
       <div className="character-menu-grid grid gap-3">
-        <div className="settings-card character-preview-card border border-pink-300/25 bg-pink-400/5 p-2">
-          <div className="mb-2 flex items-center justify-between gap-2 border-b border-pink-300/20 pb-1">
-            <div className="settings-section-title tracking-[0.2em] text-pink-100">Live Character View</div>
-            <button
-              className="settings-mini-button border border-yellow-200/40 bg-yellow-200/10 px-2 py-1 tracking-widest text-yellow-100 hover:bg-yellow-200/20"
-              onClick={() => setCharacterCustomization(getDefaultCharacterCustomization())}
-            >
-              Reset Base
-            </button>
-          </div>
-          <Suspense fallback={null}>
-            <LazyCharacterPreview character={characterCustomization} />
-          </Suspense>
-          <div className={cn("mt-2 text-pink-100/50", settingsHintClass)}>
-            Placeholder clothes and hair are procedural today; later sprite sheets can slot into these same style categories.
-          </div>
-        </div>
+        <SettingsCharacterPreviewCard
+          characterCustomization={characterCustomization}
+          onReset={() => setCharacterCustomization(getDefaultCharacterCustomization())}
+        />
 
         <div className="flex flex-col gap-2">
           <div className="settings-card border border-pink-300/25 bg-pink-400/5 p-2">
