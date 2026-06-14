@@ -148,6 +148,18 @@ export function applyPlayerHealSpellFrame({
   };
 }
 
+export function consumePlayerHandFrameTimer(
+  timers: PlayerHandTimersRef,
+  hand: HandType,
+  deltaSeconds: number,
+  intervalSeconds: number,
+) {
+  timers.current[hand] += deltaSeconds;
+  if (timers.current[hand] <= intervalSeconds) return false;
+  timers.current[hand] = 0;
+  return true;
+}
+
 export function clearPlayerCastingHandState(
   activeCastingHands: PlayerCastingHandsRef,
   hand: HandType,

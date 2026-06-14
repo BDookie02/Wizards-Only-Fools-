@@ -222,6 +222,7 @@ import {
   applyPlayerHealSpellFrame,
   canPlayerHandCastNow,
   clearPlayerCastingHandState,
+  consumePlayerHandFrameTimer,
   getPlayerSpellForHand,
   hasPlayerRunePowerForHand,
   isPlayerReleaseSelfBuffSpell,
@@ -2435,10 +2436,7 @@ export function PlayerController() {
       health = healFrame.health;
 
       if (handSpell === 'flamethrower' && chargingHands[hand] && gameplayInputActive) {
-        flamethrowerTimers.current[hand] += delta;
-        if (flamethrowerTimers.current[hand] <= 0.05) continue;
-
-        flamethrowerTimers.current[hand] = 0;
+        if (!consumePlayerHandFrameTimer(flamethrowerTimers, hand, delta, 0.05)) continue;
         const dir = spellDirection;
         camera.getWorldDirection(dir);
         const lateral = spellLateral.crossVectors(camera.up, dir).normalize();
