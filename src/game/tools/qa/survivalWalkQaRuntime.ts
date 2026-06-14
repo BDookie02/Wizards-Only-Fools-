@@ -732,6 +732,40 @@ export function resolveQaWalkInspectMovement({
   };
 }
 
+export type QaWalkInspectMovementFrame = ReturnType<typeof resolveQaWalkInspectMovement>;
+
+export type QaWalkInspectMovementState = {
+  forwardAmount: number;
+  mode: QaSurvivalWalkMode;
+  sprint: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+};
+
+export type QaWalkInspectMovementApplication = QaWalkInspectMovementState & {
+  applied: boolean;
+};
+
+export function applyQaWalkInspectMovementFrame({
+  current,
+  frame,
+}: {
+  current: QaWalkInspectMovementState;
+  frame: QaWalkInspectMovementFrame;
+}): QaWalkInspectMovementApplication {
+  if (!frame) {
+    return { ...current, applied: false };
+  }
+  return {
+    applied: true,
+    forwardAmount: frame.forwardAmount,
+    mode: frame.mode,
+    sprint: frame.sprint,
+    strafeAmount: frame.strafeAmount,
+    targetYaw: frame.targetYaw,
+  };
+}
+
 export function resolveQaWalkTubeMovementFrame({
   elapsedSeconds,
   positionX,

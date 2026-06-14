@@ -67,6 +67,7 @@ import {
   applyQaWalkActiveIntentRefresh,
   applyQaWalkCombatFocusMovementFrame,
   applyQaWalkInspectionStartPlan,
+  applyQaWalkInspectMovementFrame,
   applyQaWalkJumpHoldUntil,
   applyQaWalkLowSpeedRecovery,
   applyQaWalkOpenLaneRecoveryRelief,
@@ -1826,12 +1827,22 @@ export function PlayerController() {
         inspectUntil: qaWalkInspectUntil.current,
         inspectYaw: qaWalkInspectYaw.current,
       });
-      if (inspectMovement) {
-        mode = inspectMovement.mode;
-        targetYaw = inspectMovement.targetYaw;
-        forwardAmount = inspectMovement.forwardAmount;
-        strafeAmount = inspectMovement.strafeAmount;
-        sprint = inspectMovement.sprint;
+      const inspectMovementApplication = applyQaWalkInspectMovementFrame({
+        current: {
+          forwardAmount,
+          mode,
+          sprint,
+          strafeAmount,
+          targetYaw,
+        },
+        frame: inspectMovement,
+      });
+      if (inspectMovementApplication.applied) {
+        mode = inspectMovementApplication.mode;
+        targetYaw = inspectMovementApplication.targetYaw;
+        forwardAmount = inspectMovementApplication.forwardAmount;
+        strafeAmount = inspectMovementApplication.strafeAmount;
+        sprint = inspectMovementApplication.sprint;
       } else if (
         elapsed < qaWalkRecoveryUntil.current ||
         (
