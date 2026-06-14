@@ -244,6 +244,7 @@ import {
   resolvePlayerMouseReleaseAction,
 } from "./systems/player/playerMouseCastInputRuntime";
 import {
+  applyPlayerGrabStartEventAction,
   applyPlayerGrabControlEventAction,
   resolvePlayerGrabControlEventAction,
   resolvePlayerGrabReleaseDirectionInto,
@@ -1050,24 +1051,21 @@ export function PlayerController() {
       });
       if (grabAction.type !== "apply") return;
 
-      const grabbed = grabbedState.current ?? {
-        casterId: grabAction.casterId,
-        grabId: grabAction.grabId,
-        dir: new THREE.Vector3(),
-        origin: new THREE.Vector3(),
-        distance: GRAB_DEFAULT_DISTANCE,
-        lastControlAt: 0,
-        until: 0,
-      };
-      grabbed.casterId = grabAction.casterId;
-      grabbed.grabId = grabAction.grabId;
-      grabbed.dir.set(grabAction.direction.x, grabAction.direction.y, grabAction.direction.z).normalize();
-      grabbed.origin.set(grabAction.origin.x, grabAction.origin.y, grabAction.origin.z);
-      grabbed.distance = grabAction.distance;
-      const now = getPlayerEventEpochMs();
-      grabbed.lastControlAt = now;
-      grabbed.until = now + GRAB_MAX_DURATION_MS;
-      grabbedState.current = grabbed;
+      grabbedState.current = applyPlayerGrabStartEventAction(
+        grabAction,
+        grabbedState.current,
+        () => ({
+          casterId: grabAction.casterId,
+          grabId: grabAction.grabId,
+          dir: new THREE.Vector3(),
+          origin: new THREE.Vector3(),
+          distance: GRAB_DEFAULT_DISTANCE,
+          lastControlAt: 0,
+          until: 0,
+        }),
+        getPlayerEventEpochMs(),
+        GRAB_MAX_DURATION_MS,
+      );
     };
 
     const onGrabControl = (e: any) => {

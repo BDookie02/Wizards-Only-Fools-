@@ -49,7 +49,9 @@ type PlayerGrabIdentity = {
 export type PlayerGrabbedEventState = PlayerGrabIdentity & {
   dir: PlayerGrabMutableVector;
   origin: PlayerGrabMutableOrigin;
+  distance: number;
   lastControlAt: number;
+  until: number;
 };
 
 type PlayerGrabStartEventOptions = {
@@ -159,6 +161,26 @@ export function resolvePlayerGrabReleaseEventAction(
       options.fallbackDirection ?? PLAYER_GRAB_DEFAULT_DIRECTION,
     ),
   };
+}
+
+export function applyPlayerGrabStartEventAction<TState extends PlayerGrabbedEventState>(
+  action: PlayerGrabStartEventAction,
+  current: TState | null,
+  createState: () => TState,
+  nowMs: number,
+  maxDurationMs: number,
+) {
+  if (action.type !== "apply") return null;
+
+  const grabbed = current ?? createState();
+  grabbed.casterId = action.casterId;
+  grabbed.grabId = action.grabId;
+  grabbed.dir.set(action.direction.x, action.direction.y, action.direction.z).normalize();
+  grabbed.origin.set(action.origin.x, action.origin.y, action.origin.z);
+  grabbed.distance = action.distance;
+  grabbed.lastControlAt = nowMs;
+  grabbed.until = nowMs + maxDurationMs;
+  return grabbed;
 }
 
 export function applyPlayerGrabControlEventAction(
