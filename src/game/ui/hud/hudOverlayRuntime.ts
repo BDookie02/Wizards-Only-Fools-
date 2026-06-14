@@ -44,6 +44,22 @@ export type HudMenuOverlayState = {
   shouldShowMenuOverlay: boolean;
 };
 
+export type HudOverlayResumeClickOptions = {
+  canLock: boolean;
+  isInventoryOpen: boolean;
+  isTouchDevice: boolean;
+  questDialogActive: boolean;
+  showVideoMenu: boolean;
+  startMenuStage: StartMenuStage;
+  targetBlocksResume: boolean;
+  targetEditable: boolean;
+};
+
+export type HudOverlayResumeClickAction =
+  | { type: "none" }
+  | { type: "startTouchGameplay" }
+  | { type: "closePauseMenuWithMouse" };
+
 export function getHudFillSafeFrameStyle(aspectRatio: string) {
   return aspectRatio === "Fill" ? HUD_FILL_SAFE_FRAME_STYLE : undefined;
 }
@@ -128,4 +144,21 @@ export function getHudMainMenuActionCount(startMenuStage: StartMenuStage, resume
     default:
       return resumeMenuActionCount;
   }
+}
+
+export function resolveHudOverlayResumeClickAction({
+  canLock,
+  isInventoryOpen,
+  isTouchDevice,
+  questDialogActive,
+  showVideoMenu,
+  startMenuStage,
+  targetBlocksResume,
+  targetEditable,
+}: HudOverlayResumeClickOptions): HudOverlayResumeClickAction {
+  if (questDialogActive || isInventoryOpen) return { type: "none" };
+  if (showVideoMenu || startMenuStage !== "resume" || !canLock) return { type: "none" };
+  if (targetEditable || targetBlocksResume) return { type: "none" };
+  if (isTouchDevice) return { type: "startTouchGameplay" };
+  return { type: "closePauseMenuWithMouse" };
 }

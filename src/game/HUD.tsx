@@ -120,6 +120,7 @@ import {
   HUD_ROOT_STYLE,
   resolveHudDeveloperToolAccess,
   resolveHudMenuOverlayState,
+  resolveHudOverlayResumeClickAction,
 } from "./ui/hud/hudOverlayRuntime";
 import {
   getHudGameplayModeNowMs,
@@ -2922,18 +2923,23 @@ export function HUD() {
   const survivalDifficulty = getSurvivalDifficultyMultiplier(survivalPlayerEstimate, survivalRules.enemyDifficulty);
 
   const requestResumeFromOverlay = (target: EventTarget | null) => {
-    if (questDialogSession || isInventoryOpen) return;
-    if (showVideoMenu || startMenuStage !== "resume" || !canLock) return;
-    if (isEditableTarget(target)) return;
     const element = target instanceof HTMLElement ? target : null;
-    if (element?.closest("button,form,input,select,textarea,[data-no-resume-click]")) return;
+    const action = resolveHudOverlayResumeClickAction({
+      canLock,
+      isInventoryOpen,
+      isTouchDevice,
+      questDialogActive: Boolean(questDialogSession),
+      showVideoMenu,
+      startMenuStage,
+      targetBlocksResume: Boolean(element?.closest("button,form,input,select,textarea,[data-no-resume-click]")),
+      targetEditable: isEditableTarget(target),
+    });
 
-    if (isTouchDevice) {
+    if (action.type === "startTouchGameplay") {
       startTouchGameplay();
-      return;
+    } else if (action.type === "closePauseMenuWithMouse") {
+      closePauseMenu("mouse");
     }
-
-    closePauseMenu("mouse");
   };
 
   const {
