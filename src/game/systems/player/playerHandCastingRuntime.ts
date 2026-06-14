@@ -41,6 +41,11 @@ export type PlayerHandChargingState = Record<HandType, boolean>;
 
 export type PlayerCastingHandResetMode = "charging-or-active" | "charging-only";
 
+export type PlayerHandChargePulseScheduler = {
+  setHandCharging: (hand: HandType, charging: boolean) => void;
+  setTimeout: (handler: () => void, timeoutMs: number) => number;
+};
+
 const PLAYER_QUICK_CAST_COOLDOWN_MS = 400;
 const PLAYER_DEFAULT_CAST_COOLDOWN_MS = 1000;
 const PLAYER_RELEASE_SUPPRESSED_SPELLS = new Set<SpellType>([
@@ -94,6 +99,17 @@ export function resetPlayerControllerAfterCastRelease(refs: PlayerCastReleaseRef
   refs.controllerJumpWasPressed.current = false;
   refs.controllerSprintWasPressed.current = false;
   refs.controllerSprintLatched.current = false;
+}
+
+export function pulsePlayerHandCharging(
+  hand: HandType,
+  durationMs: number,
+  scheduler: PlayerHandChargePulseScheduler,
+) {
+  scheduler.setHandCharging(hand, true);
+  return scheduler.setTimeout(() => {
+    scheduler.setHandCharging(hand, false);
+  }, Math.max(0, durationMs));
 }
 
 export function clearPlayerCastingHandState(

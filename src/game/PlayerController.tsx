@@ -220,6 +220,7 @@ import {
   isPlayerReleaseSelfBuffSpell,
   isPlayerReleaseSuppressedSpell,
   isPlayerSelfBuffSpell,
+  pulsePlayerHandCharging,
   resetPlayerCastingHandRuntime,
   resetPlayerCastingHandsRuntime,
   resetPlayerControllerAfterCastRelease,
@@ -618,10 +619,10 @@ export function PlayerController() {
       dir.normalize();
       const { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, dir, spellLaunchScratch);
 
-      store.setHandCharging(hand, true);
-      window.setTimeout(() => {
-        useGameStore.getState().setHandCharging(hand, false);
-      }, PLAYER_DIRECT_STATUS_HAND_CHARGE_MS);
+      pulsePlayerHandCharging(hand, PLAYER_DIRECT_STATUS_HAND_CHARGE_MS, {
+        setHandCharging: (targetHand, charging) => useGameStore.getState().setHandCharging(targetHand, charging),
+        setTimeout: (handler, timeoutMs) => window.setTimeout(handler, timeoutMs),
+      });
 
       const target = findAimedRemotePlayerInto(store.players, [
         { origin: spellAimOrigin.copy(camera.position), dir },
@@ -2083,10 +2084,10 @@ export function PlayerController() {
         });
 
         const store = useGameStore.getState();
-        store.setHandCharging(hand, true);
-        window.setTimeout(() => {
-          useGameStore.getState().setHandCharging(hand, false);
-        }, getQaWalkPracticeCastChargeMs(spell));
+        pulsePlayerHandCharging(hand, getQaWalkPracticeCastChargeMs(spell), {
+          setHandCharging: (targetHand, charging) => useGameStore.getState().setHandCharging(targetHand, charging),
+          setTimeout: (handler, timeoutMs) => window.setTimeout(handler, timeoutMs),
+        });
         emitGameNetworkEvent("castSpell", projectile);
         store.addProjectile(projectile);
         publishSurvivalWalkPracticeCast(spell);
