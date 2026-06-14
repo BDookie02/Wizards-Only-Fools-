@@ -281,6 +281,7 @@ import {
 import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
+  dispatchPlayerMovementFrame,
   dispatchPlayerState,
   dispatchPlayerStateIfChanged,
   dispatchDirectStatusCast,
@@ -2950,16 +2951,17 @@ export function PlayerController() {
       }
     }
     
-    dispatchPlayerStateIfChanged(
-      lastDispatchedPlayerStateRef.current,
-      hasMovementInput,
-      isSprinting,
-      isSliding,
+    dispatchPlayerMovementFrame({
       isCrouching,
-      effectiveGrounded,
-      false,
-    );
-    dispatchPlayerMoved({ x: pos.x, y: pos.y, z: pos.z, angle: yaw, isMoving: hasMovementInput, grounded: effectiveGrounded });
+      isGrounded: effectiveGrounded,
+      isMeditating: false,
+      isMoving: hasMovementInput,
+      isSliding,
+      isSprinting,
+      position: pos,
+      snapshot: lastDispatchedPlayerStateRef.current,
+      yaw,
+    });
 
     if (isNavigationRecordingActive()) {
       camera.getWorldDirection(navigationAimDirection);

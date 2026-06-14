@@ -140,6 +140,48 @@ export function dispatchPlayerMoved(detail: PlayerMovedEventDetail) {
   window.dispatchEvent(new CustomEvent("player-moved", { detail }));
 }
 
+export function dispatchPlayerMovementFrame({
+  isCrouching,
+  isGrounded,
+  isMeditating,
+  isMoving,
+  isSliding,
+  isSprinting,
+  position,
+  snapshot,
+  yaw,
+}: {
+  isCrouching: boolean;
+  isGrounded: boolean;
+  isMeditating: boolean;
+  isMoving: boolean;
+  isSliding: boolean;
+  isSprinting: boolean;
+  position: PlayerPositionLike;
+  snapshot: PlayerStateDispatchSnapshot;
+  yaw: number;
+}) {
+  const stateChanged = dispatchPlayerStateIfChanged(
+    snapshot,
+    isMoving,
+    isSprinting,
+    isSliding,
+    isCrouching,
+    isGrounded,
+    isMeditating,
+  );
+  const moved: PlayerMovedEventDetail = {
+    x: position.x,
+    y: position.y,
+    z: position.z,
+    angle: yaw,
+    isMoving,
+    grounded: isGrounded,
+  };
+  dispatchPlayerMoved(moved);
+  return { moved, stateChanged };
+}
+
 export function dispatchSelfBuffCast(detail: SelfBuffCastEventDetail) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("self-buff-cast", { detail }));
