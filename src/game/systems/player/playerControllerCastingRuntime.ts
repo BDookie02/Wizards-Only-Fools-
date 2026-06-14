@@ -126,6 +126,7 @@ export type PlayerControllerHotbarResolutionOptions = {
   buttonDown: PlayerControllerButtonDownState;
   repeatAt: PlayerControllerButtonRepeatState;
   now: number;
+  target?: PlayerControllerHotbarAction[];
   leftBumperHeld: boolean;
   rightBumperHeld: boolean;
   dpadLeft: boolean;
@@ -136,12 +137,14 @@ export function resolvePlayerControllerHotbarActions({
   buttonDown,
   repeatAt,
   now,
+  target,
   leftBumperHeld,
   rightBumperHeld,
   dpadLeft,
   dpadRight,
 }: PlayerControllerHotbarResolutionOptions) {
-  const actions: PlayerControllerHotbarAction[] = [];
+  const actions = target ?? [];
+  actions.length = 0;
   const leftBumperPressed = consumePlayerControllerHotbarPress(buttonDown, "leftBumperHotbar", leftBumperHeld);
   const rightBumperPressed = consumePlayerControllerHotbarPress(buttonDown, "rightBumperHotbar", rightBumperHeld);
   const leftHotbarPrevPressed = consumePlayerControllerHotbarRepeat(buttonDown, repeatAt, "leftHotbarPrev", leftBumperHeld && dpadLeft, now);

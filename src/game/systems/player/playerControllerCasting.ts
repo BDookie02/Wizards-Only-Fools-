@@ -10,6 +10,7 @@ import {
 import {
   handlePlayerControllerCastButtonForHand,
   resetPlayerControllerHotbarTracking,
+  type PlayerControllerHotbarAction,
   resolvePlayerControllerHotbarActions,
 } from "./playerControllerCastingRuntime";
 
@@ -31,6 +32,7 @@ export function startPlayerControllerCastingLoop({
   const controllerCastingDown: Record<HandType, boolean> = { left: false, right: false };
   const controllerHotbarDown: Record<string, boolean> = {};
   const controllerHotbarRepeatAt: Record<string, number> = {};
+  const controllerHotbarActions: PlayerControllerHotbarAction[] = [];
 
   const scrollControllerHand = (hand: HandType, direction: 1 | -1) => {
     const store = useGameStore.getState();
@@ -83,6 +85,7 @@ export function startPlayerControllerCastingLoop({
         buttonDown: controllerHotbarDown,
         repeatAt: controllerHotbarRepeatAt,
         now,
+        target: controllerHotbarActions,
         leftBumperHeld,
         rightBumperHeld,
         dpadLeft,
