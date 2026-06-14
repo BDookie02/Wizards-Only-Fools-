@@ -216,6 +216,7 @@ import {
   applyPlayerModalBlockedMovementFrame,
   applyPlayerGroundSlideFrame,
   applyPlayerJumpThrusterFrame,
+  applyPlayerMovementModifierFrame,
   applyPlayerMovementVelocityFrame,
   resetPlayerCrouchState,
   resetPlayerSlideAndCrouchState,
@@ -2860,23 +2861,23 @@ export function PlayerController() {
       direction.set(0, 0, 0);
     }
 
-    if (vclipActive) {
-      resetPlayerSlideState({ isSliding, setIsSliding });
-      direction.y += verticalInput * VCLIP_VERTICAL_SPEED * (isSprinting ? VCLIP_SPRINT_MULTIPLIER : 1);
-    }
-
-    if (ladderActive && ladderVerticalInput !== 0) {
-      direction.x *= 0.22;
-      direction.z *= 0.22;
-    }
-    
-    const hasActiveExternalPull = pullFrames.current > 0;
-    if (hasActiveExternalPull) {
-      direction.x += pullVelocity.current.x;
-      direction.z += pullVelocity.current.z;
-      velocity.y = pullVelocity.current.y;
-      pullFrames.current--;
-    }
+    const movementModifierFrame = applyPlayerMovementModifierFrame({
+      direction,
+      isSliding,
+      isSprinting,
+      ladderActive,
+      ladderPlanarDamping: 0.22,
+      ladderVerticalInput,
+      pullFrames,
+      pullVelocity,
+      setIsSliding,
+      vclipActive,
+      vclipSprintMultiplier: VCLIP_SPRINT_MULTIPLIER,
+      vclipVerticalSpeed: VCLIP_VERTICAL_SPEED,
+      velocity,
+      verticalInput,
+    });
+    const hasActiveExternalPull = movementModifierFrame.hasActiveExternalPull;
     
     const nearestGroundToi = vclipActive
       ? Number.POSITIVE_INFINITY

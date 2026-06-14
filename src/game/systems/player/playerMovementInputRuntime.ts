@@ -18,6 +18,7 @@ type PlayerVelocityBody = {
 type PlayerJumpThrusterBody = PlayerVelocityBody & {
   applyImpulse(impulse: { x: number; y: number; z: number }, wakeUp: boolean): void;
 };
+type PlayerMutableVector = { x: number; y: number; z: number };
 type MovementKeyState = Record<PlayerMovementKeyCode, boolean>;
 type TouchMoveState = { x: number; y: number };
 type QaWalkInputState = { forward: number; strafe: number; sprint: boolean };
@@ -304,6 +305,75 @@ export function applyPlayerMovementVelocityFrame({
 
   body.setLinvel({ x: frame.x, y: frame.y, z: frame.z }, true);
   return frame;
+}
+
+export type PlayerMovementModifierFrameResult = {
+  hasActiveExternalPull: boolean;
+  ladderDamped: boolean;
+  pullFramesRemaining: number;
+  vclipApplied: boolean;
+};
+
+export function applyPlayerMovementModifierFrame({
+  direction,
+  isSliding,
+  isSprinting,
+  ladderActive,
+  ladderPlanarDamping,
+  ladderVerticalInput,
+  pullFrames,
+  pullVelocity,
+  setIsSliding,
+  vclipActive,
+  vclipSprintMultiplier,
+  vclipVerticalSpeed,
+  velocity,
+  verticalInput,
+}: {
+  direction: PlayerMutableVector;
+  isSliding: boolean;
+  isSprinting: boolean;
+  ladderActive: boolean;
+  ladderPlanarDamping: number;
+  ladderVerticalInput: number;
+  pullFrames: MutableRef<number>;
+  pullVelocity: MutableRef<PlayerMutableVector>;
+  setIsSliding: (active: boolean) => void;
+  vclipActive: boolean;
+  vclipSprintMultiplier: number;
+  vclipVerticalSpeed: number;
+  velocity: PlayerMutableVector;
+  verticalInput: number;
+}): PlayerMovementModifierFrameResult {
+  const result: PlayerMovementModifierFrameResult = {
+    hasActiveExternalPull: false,
+    ladderDamped: false,
+    pullFramesRemaining: pullFrames.current,
+    vclipApplied: false,
+  };
+
+  if (vclipActive) {
+    resetPlayerSlideState({ isSliding, setIsSliding });
+    direction.y += verticalInput * vclipVerticalSpeed * (isSprinting ? vclipSprintMultiplier : 1);
+    result.vclipApplied = true;
+  }
+
+  if (ladderActive && ladderVerticalInput !== 0) {
+    direction.x *= ladderPlanarDamping;
+    direction.z *= ladderPlanarDamping;
+    result.ladderDamped = true;
+  }
+
+  if (pullFrames.current > 0) {
+    direction.x += pullVelocity.current.x;
+    direction.z += pullVelocity.current.z;
+    velocity.y = pullVelocity.current.y;
+    pullFrames.current -= 1;
+    result.hasActiveExternalPull = true;
+    result.pullFramesRemaining = pullFrames.current;
+  }
+
+  return result;
 }
 
 export type PlayerGroundSlideFrameResult = {
