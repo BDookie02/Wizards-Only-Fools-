@@ -84,6 +84,19 @@ export type PlayerReleasedSpellLaunchOptions = {
   footOffset: number;
 };
 
+export type PlayerImmediateSpellProjectileCastOptions = {
+  type: SpellType;
+  hand: HandType;
+  camera: THREE.Camera;
+  direction: THREE.Vector3;
+  target: SpellLaunchScratch;
+  addProjectile: (projectile: Projectile) => void;
+  createdAt: number;
+  creatorId: string;
+  emitGameNetworkEvent: (eventName: string, ...args: unknown[]) => unknown;
+  id?: string;
+};
+
 export const WIDE_STATUS_AIM_RADIUS = DIRECT_STATUS_TARGET_RADIUS * 1.35;
 const PROJECTILE_TOKEN_SCALE = 0x100000000;
 
@@ -383,6 +396,33 @@ export function getPlayerReleasedSpellLaunchInto({
   launch.spawnPos.z = playerPosition.z + summonDirection.z * summonDistance;
   launch.realDir.copy(summonDirection);
   return launch;
+}
+
+export function applyPlayerImmediateSpellProjectileCast({
+  type,
+  hand,
+  camera,
+  direction,
+  target,
+  addProjectile,
+  createdAt,
+  creatorId,
+  emitGameNetworkEvent,
+  id,
+}: PlayerImmediateSpellProjectileCastOptions): PlayerSpellProjectileNetworkCastResult {
+  camera.getWorldDirection(direction);
+  const { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, direction, target);
+  return applyPlayerSpellProjectileNetworkCast({
+    addProjectile,
+    createdAt,
+    creatorId,
+    dir: { x: realDir.x, y: realDir.y, z: realDir.z },
+    emitGameNetworkEvent,
+    hand,
+    id,
+    pos: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
+    type,
+  });
 }
 
 export function findAimedRemotePlayer(
