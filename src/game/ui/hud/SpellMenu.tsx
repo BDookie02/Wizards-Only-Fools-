@@ -7,7 +7,6 @@ import {
   createSpellMenuHotbarSlotLookup,
   getSpellMenuAssignedSlot,
   getSpellMenuFamilyNavIndex,
-  getSpellMenuHotbarNavIndex,
   getFirstSpellInFamily,
   getSpellMenuIndex,
   getSpellMenuFamilyCounts,
@@ -24,6 +23,7 @@ import {
   SPELL_MENU_NAV_SELECTOR,
   type SpellFamilyFilter,
 } from "./spellMenuRuntime";
+import { SpellMenuHotbarColumn } from "./SpellMenuHotbarColumn";
 import { SpellThumbnail } from "./SpellThumbnail";
 import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
 
@@ -199,57 +199,6 @@ export const SpellMenu = memo(function SpellMenu({
     };
   }, [activateControllerFocus, applyControllerFocus, controllerFocusIndex]);
 
-  const renderHotbarColumn = (hand: HandType, spells: SpellType[], selectedIndex: number) => (
-    <div
-      className={cn(
-        "spell-menu-hotbar-column relative min-w-0 border p-1.5 shadow-[0_0_22px_rgba(8,47,73,0.75),inset_0_0_20px_rgba(34,211,238,0.12)]",
-        hand === "right"
-          ? "border-fuchsia-300/55 bg-fuchsia-950/55"
-          : "border-yellow-200/55 bg-yellow-950/45",
-        bindingHand === hand ? "ring-1 ring-white/70" : ""
-      )}
-    >
-      <div className={cn(
-        "border-b pb-1 text-center text-[8px] tracking-[0.25em]",
-        hand === "right" ? "border-fuchsia-300/35 text-fuchsia-100" : "border-yellow-200/35 text-yellow-100"
-      )}>
-        {hand === "left" ? "LEFT" : "RIGHT"}
-      </div>
-      <div className="mt-1.5 flex flex-col gap-1">
-        {spells.map((spell, index) => {
-          const navIndex = getSpellMenuHotbarNavIndex(hand, index);
-          const isControllerFocused = controllerFocusIndex === navIndex;
-          return (
-            <button
-              key={`${hand}-${spell}-${index}`}
-              data-spell-menu-nav-index={navIndex}
-              className={cn(
-                "spell-menu-hotbar-slot grid h-8 min-w-0 grid-cols-[16px_1fr] items-center gap-1 border bg-black/45 px-1 text-left transition-all",
-                selectedIndex === index
-                  ? hand === "right"
-                    ? "border-fuchsia-200 bg-fuchsia-300/20 text-fuchsia-50 shadow-[0_0_14px_rgba(217,70,239,0.65)]"
-                    : "border-yellow-200 bg-yellow-200/20 text-yellow-50 shadow-[0_0_14px_rgba(253,224,71,0.55)]"
-                  : hand === "right"
-                    ? "border-fuchsia-300/25 text-fuchsia-100/75 hover:border-fuchsia-200/80"
-                    : "border-yellow-200/25 text-yellow-100/75 hover:border-yellow-100/80",
-                bindingHand === hand ? "brightness-125" : "",
-                isControllerFocused ? "ring-2 ring-white shadow-[0_0_16px_rgba(255,255,255,0.65)]" : ""
-              )}
-              onMouseEnter={() => applyControllerFocus(navIndex)}
-              onFocus={() => applyControllerFocus(navIndex)}
-              onClick={() => {
-                applyControllerFocus(navIndex);
-              }}
-            >
-              <div className="text-center text-[9px] text-white/80">{hotkeyLabels[index]}</div>
-              <div className="truncate text-[7px] leading-3">{spellNames[spell]}</div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-
   return (
     <div className="absolute inset-0 z-[130] flex items-center justify-center pointer-events-auto">
       <div className="absolute inset-0 bg-[#02040c]/55 pointer-events-none" />
@@ -285,7 +234,14 @@ export const SpellMenu = memo(function SpellMenu({
         </div>
 
         <div className="spell-menu-layout relative mt-3 grid grid-cols-[78px_minmax(0,1fr)_78px] gap-2">
-          {renderHotbarColumn("left", leftHotbarSpells, leftSelectedHotbarIndex)}
+          <SpellMenuHotbarColumn
+            hand="left"
+            spells={leftHotbarSpells}
+            selectedIndex={leftSelectedHotbarIndex}
+            bindingHand={bindingHand}
+            controllerFocusIndex={controllerFocusIndex}
+            onFocusSlot={applyControllerFocus}
+          />
 
           <div className="spell-menu-spell-panel min-w-0 border border-cyan-300/20 bg-black/10 p-2">
             <div className="spell-menu-bind-status mb-2 grid grid-cols-3 gap-2 text-[8px] tracking-widest text-cyan-100/70">
@@ -407,7 +363,14 @@ export const SpellMenu = memo(function SpellMenu({
             </div>
           </div>
 
-          {renderHotbarColumn("right", rightHotbarSpells, rightSelectedHotbarIndex)}
+          <SpellMenuHotbarColumn
+            hand="right"
+            spells={rightHotbarSpells}
+            selectedIndex={rightSelectedHotbarIndex}
+            bindingHand={bindingHand}
+            controllerFocusIndex={controllerFocusIndex}
+            onFocusSlot={applyControllerFocus}
+          />
         </div>
 
         <div className="spell-menu-footer relative mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-cyan-300/30 pt-3 text-[9px] tracking-widest text-cyan-100/70">
