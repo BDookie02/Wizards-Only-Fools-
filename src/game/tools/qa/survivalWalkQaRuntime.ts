@@ -671,6 +671,38 @@ export function resolveQaWalkAvoidMovement({
   };
 }
 
+export type QaWalkAvoidMovementFrame = ReturnType<typeof resolveQaWalkAvoidMovement>;
+
+export type QaWalkAvoidMovementState = {
+  forwardAmount: number;
+  mode: QaSurvivalWalkMode;
+  sprint: boolean;
+  strafeAmount: number;
+};
+
+export type QaWalkAvoidMovementApplication = QaWalkAvoidMovementState & {
+  applied: boolean;
+};
+
+export function applyQaWalkAvoidMovementFrame({
+  current,
+  frame,
+}: {
+  current: QaWalkAvoidMovementState;
+  frame: QaWalkAvoidMovementFrame;
+}): QaWalkAvoidMovementApplication {
+  if (!frame) {
+    return { ...current, applied: false };
+  }
+  return {
+    applied: true,
+    forwardAmount: frame.forwardAmount,
+    mode: frame.mode,
+    sprint: frame.sprint,
+    strafeAmount: frame.strafeAmount,
+  };
+}
+
 export function resolveQaWalkTravelMovementFrame({
   desiredYaw,
   elapsedSeconds,

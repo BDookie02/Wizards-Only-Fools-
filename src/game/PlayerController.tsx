@@ -65,6 +65,7 @@ import {
 } from "./tools/qa/survivalWalkQa";
 import {
   applyQaWalkActiveIntentRefresh,
+  applyQaWalkAvoidMovementFrame,
   applyQaWalkCombatFocusMovementFrame,
   applyQaWalkInspectionStartPlan,
   applyQaWalkInspectMovementFrame,
@@ -1821,7 +1822,6 @@ export function PlayerController() {
         beginQaWalkRecovery(blockedRecoveryTrigger.aggressive);
       }
 
-      let avoidMovement: ReturnType<typeof resolveQaWalkAvoidMovement> | null = null;
       const inspectMovement = resolveQaWalkInspectMovement({
         elapsedSeconds: elapsed,
         inspectUntil: qaWalkInspectUntil.current,
@@ -1963,8 +1963,8 @@ export function PlayerController() {
           jumpHoldUntil: recoveryJumpHoldUntil,
           refs: { jumpHeldUntil: qaWalkJumpHeldUntil },
         });
-      } else if (
-        (avoidMovement = resolveQaWalkAvoidMovement({
+      } else {
+        const avoidMovement = resolveQaWalkAvoidMovement({
           currentYaw: qaWalkYaw.current ?? currentYaw,
           elapsedSeconds: elapsed,
           forwardClearance,
@@ -1974,12 +1974,22 @@ export function PlayerController() {
           strafeAmount,
           targetYaw,
           viewClearance,
-        })) !== null
-      ) {
-        mode = avoidMovement.mode;
-        forwardAmount = avoidMovement.forwardAmount;
-        strafeAmount = avoidMovement.strafeAmount;
-        sprint = avoidMovement.sprint;
+        });
+        const avoidMovementApplication = applyQaWalkAvoidMovementFrame({
+          current: {
+            forwardAmount,
+            mode,
+            sprint,
+            strafeAmount,
+          },
+          frame: avoidMovement,
+        });
+        if (avoidMovementApplication.applied) {
+          mode = avoidMovementApplication.mode;
+          forwardAmount = avoidMovementApplication.forwardAmount;
+          strafeAmount = avoidMovementApplication.strafeAmount;
+          sprint = avoidMovementApplication.sprint;
+        }
       }
 
       if (activeIntent && mode === "travel") {
