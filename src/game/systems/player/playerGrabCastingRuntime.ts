@@ -117,6 +117,69 @@ export function createPlayerGrabReleaseProjectilePayload({
   };
 }
 
+export function applyPlayerGrabCast({
+  activeGrabIds,
+  addProjectile,
+  clearTimeoutFn,
+  controlAimDir,
+  controlOrigin,
+  createdAt,
+  creatorId,
+  direction,
+  emitGameNetworkEvent,
+  grabId,
+  grabTimeouts,
+  hand,
+  maxDurationMs,
+  onTimeout,
+  origin,
+  setTimeoutFn,
+}: {
+  activeGrabIds: PlayerGrabActiveIds;
+  addProjectile: (projectile: PlayerGrabProjectilePayload) => void;
+  clearTimeoutFn?: (timeoutId: number) => void;
+  controlAimDir: PlayerGrabVectorPayload;
+  controlOrigin: PlayerGrabVectorPayload;
+  createdAt: number;
+  creatorId: string;
+  direction: PlayerGrabVectorPayload;
+  emitGameNetworkEvent: (eventName: string, ...args: unknown[]) => unknown;
+  grabId: string;
+  grabTimeouts: PlayerGrabTimeouts;
+  hand: HandType;
+  maxDurationMs: number;
+  onTimeout: () => void;
+  origin: PlayerGrabVectorPayload;
+  setTimeoutFn: (handler: () => void, timeoutMs: number) => number;
+}) {
+  const projectile = createPlayerGrabCastProjectilePayload({
+    grabId,
+    creatorId,
+    hand,
+    origin,
+    direction,
+    createdAt,
+  });
+
+  activeGrabIds[hand] = grabId;
+  setPlayerGrabTimeout(
+    grabTimeouts,
+    hand,
+    setTimeoutFn(onTimeout, maxDurationMs),
+    clearTimeoutFn,
+  );
+
+  emitGameNetworkEvent("castSpell", projectile);
+  emitGameNetworkEvent("grabControl", {
+    grabId,
+    hand,
+    origin: controlOrigin,
+    aimDir: controlAimDir,
+  });
+  addProjectile(projectile);
+  return projectile;
+}
+
 export function applyPlayerGrabRelease({
   activeGrabIds,
   addProjectile,

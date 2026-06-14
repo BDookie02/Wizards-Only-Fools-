@@ -253,10 +253,9 @@ import {
   stopPlayerCastingHands,
 } from "./systems/player/playerHandCastingRuntime";
 import {
+  applyPlayerGrabCast,
   applyPlayerGrabRelease,
   clearPlayerGrabTimeouts,
-  createPlayerGrabCastProjectilePayload,
-  setPlayerGrabTimeout,
 } from "./systems/player/playerGrabCastingRuntime";
 import {
   applyPlayerKeyboardHotbarAction,
@@ -780,33 +779,26 @@ export function PlayerController() {
         const { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, d, spellLaunchScratch);
         const projectileOrigin = { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z };
         const grabId = createPlayerGrabProjectileId(getLocalNetworkPlayerId(), hand, now);
-        const projectile = createPlayerGrabCastProjectilePayload({
-          grabId,
-          creatorId: getLocalNetworkPlayerId(),
-          hand,
-          origin: projectileOrigin,
-          direction: { x: realDir.x, y: realDir.y, z: realDir.z },
+        applyPlayerGrabCast({
+          activeGrabIds: activeGrabIds.current,
+          addProjectile: useGameStore.getState().addProjectile,
+          controlAimDir: { x: d.x, y: d.y, z: d.z },
+          controlOrigin: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
           createdAt: now,
-        });
-
-        activeGrabIds.current[hand] = grabId;
-        setPlayerGrabTimeout(
-          grabTimeouts.current,
+          creatorId: getLocalNetworkPlayerId(),
+          direction: { x: realDir.x, y: realDir.y, z: realDir.z },
+          emitGameNetworkEvent,
+          grabId,
+          grabTimeouts: grabTimeouts.current,
           hand,
-          window.setTimeout(() => {
+          maxDurationMs: GRAB_MAX_DURATION_MS,
+          onTimeout: () => {
             emitGrabRelease(hand);
             stopHandCasting(hand);
-          }, GRAB_MAX_DURATION_MS),
-        );
-
-        emitGameNetworkEvent("castSpell", projectile);
-        emitGameNetworkEvent("grabControl", {
-          grabId,
-          hand,
-          origin: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
-          aimDir: { x: d.x, y: d.y, z: d.z },
+          },
+          origin: projectileOrigin,
+          setTimeoutFn: (handler, timeoutMs) => window.setTimeout(handler, timeoutMs),
         });
-        useGameStore.getState().addProjectile(projectile);
         return;
       }
 
