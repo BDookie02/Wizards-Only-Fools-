@@ -9,6 +9,7 @@ export const LazyPlayerNamePrompt = lazy(() => import("./PlayerNamePrompt").then
 export const LazyLobbyChatBox = lazy(() => import("./LobbyChatBox").then((module) => ({ default: module.LobbyChatBox })));
 export const LazyCommandConsole = lazy(() => import("./CommandConsole").then((module) => ({ default: module.CommandConsole })));
 export const LazyCharacterPreview = lazy(() => import("./CharacterPreview").then((module) => ({ default: module.CharacterPreview })));
+export const LazyGameplayHudOverlay = lazy(() => import("./GameplayHudOverlay").then((module) => ({ default: module.GameplayHudOverlay })));
 export const LazyHudSettingsPanel = lazy(() => import("./SettingsPanel").then((module) => ({ default: module.SettingsPanel })));
 export const LazySpellMenu = lazy(() => import("./SpellMenu").then((module) => ({ default: module.SpellMenu })));
 export const LazyMobileTouchControls = lazy(() => import("./MobileTouchControls").then((module) => ({ default: module.MobileTouchControls })));

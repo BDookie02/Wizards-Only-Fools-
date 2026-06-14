@@ -79,6 +79,7 @@ import {
   LazyDevFastTravelMenu,
   LazyEngineMenu,
   LazyFullscreenHelpModal,
+  LazyGameplayHudOverlay,
   LazyHudLayoutQaMetricsProbe,
   LazyHudStateQaRuntimeProbe,
   LazyHudSettingsPanel,
@@ -195,7 +196,6 @@ import {
   updateHudControllerInventoryHold,
   updateHudControllerMagicHold,
 } from "./ui/hud/hudControllerRuntime";
-import { GameplayHudOverlay } from "./ui/hud/GameplayHudOverlay";
 import { PauseStartMenuContent, type StartMenuStage } from "./ui/hud/PauseStartMenuContent";
 import {
   getCurrentInviteRoomCode,
@@ -3320,28 +3320,30 @@ export function HUD() {
       )}
 
       {shouldShowGameplayOverlay && (
-        <GameplayHudOverlay
-          activeHand={activeHand}
-          isMagicArmed={isMagicArmed}
-          leftCurrentSpell={leftCurrentSpell}
-          rightCurrentSpell={rightCurrentSpell}
-          leftHotbarSpells={leftHotbarSpells}
-          rightHotbarSpells={rightHotbarSpells}
-          leftSelectedHotbarIndex={leftSelectedHotbarIndex}
-          rightSelectedHotbarIndex={rightSelectedHotbarIndex}
-          leftRunePower={leftRunePower}
-          rightRunePower={rightRunePower}
-          health={health}
-          armor={armor}
-          thrusterFuel={thrusterFuel}
-          speedBoostUntil={speedBoostUntil}
-          jumpBoostUntil={jumpBoostUntil}
-          slowUntil={slowUntil}
-          sleepUntil={sleepUntil}
-          poisonUntil={poisonUntil}
-          acidUntil={acidUntil}
-          magicGlassOrbUntil={magicGlassOrbUntil}
-        />
+        <Suspense fallback={null}>
+          <LazyGameplayHudOverlay
+            activeHand={activeHand}
+            isMagicArmed={isMagicArmed}
+            leftCurrentSpell={leftCurrentSpell}
+            rightCurrentSpell={rightCurrentSpell}
+            leftHotbarSpells={leftHotbarSpells}
+            rightHotbarSpells={rightHotbarSpells}
+            leftSelectedHotbarIndex={leftSelectedHotbarIndex}
+            rightSelectedHotbarIndex={rightSelectedHotbarIndex}
+            leftRunePower={leftRunePower}
+            rightRunePower={rightRunePower}
+            health={health}
+            armor={armor}
+            thrusterFuel={thrusterFuel}
+            speedBoostUntil={speedBoostUntil}
+            jumpBoostUntil={jumpBoostUntil}
+            slowUntil={slowUntil}
+            sleepUntil={sleepUntil}
+            poisonUntil={poisonUntil}
+            acidUntil={acidUntil}
+            magicGlassOrbUntil={magicGlassOrbUntil}
+          />
+        </Suspense>
       )}
     </div>
   );
