@@ -12,6 +12,14 @@ export type PlayerPullEventAction =
       frames: number;
     };
 
+export type PlayerPullVelocityTarget = {
+  set(x: number, y: number, z: number): unknown;
+};
+
+export type PlayerPullFramesRef = {
+  current: number;
+};
+
 export const PLAYER_PULL_EVENT_FRAMES = 15;
 
 function readObject(value: unknown): Record<string, unknown> | null {
@@ -36,4 +44,16 @@ export function resolvePlayerPullEventAction(detail: unknown): PlayerPullEventAc
     },
     frames: PLAYER_PULL_EVENT_FRAMES,
   };
+}
+
+export function applyPlayerPullEventAction(
+  action: PlayerPullEventAction,
+  pullVelocity: PlayerPullVelocityTarget,
+  pullFrames: PlayerPullFramesRef,
+) {
+  if (action.type !== "apply") return false;
+
+  pullVelocity.set(action.velocity.x, action.velocity.y, action.velocity.z);
+  pullFrames.current = action.frames;
+  return true;
 }

@@ -157,7 +157,10 @@ import {
   applyPlayerTeleportEventApplication,
   resolvePlayerTeleportEventAction,
 } from "./systems/player/playerTeleportRuntime";
-import { resolvePlayerPullEventAction } from "./systems/player/playerPullRuntime";
+import {
+  applyPlayerPullEventAction,
+  resolvePlayerPullEventAction,
+} from "./systems/player/playerPullRuntime";
 import {
   readPlayerControllerGamepadLookInput,
   readPlayerControllerGamepadMovementInput,
@@ -1012,11 +1015,11 @@ export function PlayerController() {
     };
 
     const onPull = (e: any) => {
-      const pullAction = resolvePlayerPullEventAction(e.detail);
-      if (pullAction.type !== "apply") return;
-
-      pullVelocity.current.set(pullAction.velocity.x, pullAction.velocity.y, pullAction.velocity.z);
-      pullFrames.current = pullAction.frames;
+      applyPlayerPullEventAction(
+        resolvePlayerPullEventAction(e.detail),
+        pullVelocity.current,
+        pullFrames,
+      );
     };
 
     const onScreenShake = (e: any) => {
