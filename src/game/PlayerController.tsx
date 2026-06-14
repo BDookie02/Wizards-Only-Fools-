@@ -255,7 +255,10 @@ import {
   applyPlayerDirectStatusCastPlan,
   createPlayerDirectStatusCastPlan,
 } from "./systems/player/playerDirectStatusCastingRuntime";
-import { resolvePlayerSelfBuffCastPlan } from "./systems/player/playerSelfBuffCastingRuntime";
+import {
+  applyPlayerSelfBuffCastPlan,
+  resolvePlayerSelfBuffCastPlan,
+} from "./systems/player/playerSelfBuffCastingRuntime";
 import {
   createPlayerStateDispatchSnapshot,
   dispatchPlayerMoved,
@@ -587,37 +590,23 @@ export function PlayerController() {
         armorMax: ARMOR_MAX,
         jumpVelocityFloor: JUMP_FORCE * JUMP_BOOST_MULTIPLIER,
       });
-      if (!selfBuffPlan) return false;
-
       const store = useGameStore.getState();
-      store.setHandCharging(hand, true);
-      window.setTimeout(() => {
-        useGameStore.getState().setHandCharging(hand, false);
-      }, selfBuffPlan.chargeMs);
-
-      if (selfBuffPlan.effect === "magicArmor") {
-        store.activateMagicArmor();
-      } else if (selfBuffPlan.effect === "speedBoost") {
-        store.activateSpeedBoost();
-      } else if (selfBuffPlan.effect === "jumpBoost") {
-        store.activateJumpBoost();
-        const velocity = rigidBody.current?.linvel();
-        if (velocity && rigidBody.current) {
-          rigidBody.current.setLinvel({
-            x: velocity.x,
-            y: Math.max(velocity.y, selfBuffPlan.jumpVelocityFloor ?? velocity.y),
-            z: velocity.z,
-          }, true);
-        }
-      } else {
-        store.activateMagicGlassOrb();
-      }
-
-      if (typeof selfBuffPlan.armorNetworkValue === "number") {
-        emitGameNetworkEvent("setArmor", selfBuffPlan.armorNetworkValue);
-      }
-      dispatchSelfBuffCast(selfBuffPlan.eventDetail);
-      return true;
+      return applyPlayerSelfBuffCastPlan(selfBuffPlan, {
+        setHandCharging: (targetHand, charging) => {
+          useGameStore.getState().setHandCharging(targetHand, charging);
+        },
+        setTimeout: (handler, timeoutMs) => window.setTimeout(handler, timeoutMs),
+        activateMagicArmor: store.activateMagicArmor,
+        activateSpeedBoost: store.activateSpeedBoost,
+        activateJumpBoost: store.activateJumpBoost,
+        activateMagicGlassOrb: store.activateMagicGlassOrb,
+        getJumpVelocity: () => rigidBody.current?.linvel(),
+        setJumpVelocity: velocity => {
+          rigidBody.current?.setLinvel(velocity, true);
+        },
+        emitGameNetworkEvent,
+        dispatchSelfBuffCast,
+      });
     };
 
     const castDirectTungston = (hand: HandType) => {

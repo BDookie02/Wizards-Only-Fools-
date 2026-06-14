@@ -22,6 +22,25 @@ export type PlayerSelfBuffCastPlan = {
   jumpVelocityFloor?: number;
 };
 
+export type PlayerSelfBuffVelocity = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+export type PlayerSelfBuffCastPlanApplier = {
+  setHandCharging: (hand: HandType, charging: boolean) => void;
+  setTimeout: (handler: () => void, timeoutMs: number) => unknown;
+  activateMagicArmor: () => void;
+  activateSpeedBoost: () => void;
+  activateJumpBoost: () => void;
+  activateMagicGlassOrb: () => void;
+  getJumpVelocity?: () => PlayerSelfBuffVelocity | null | undefined;
+  setJumpVelocity?: (velocity: PlayerSelfBuffVelocity) => void;
+  emitGameNetworkEvent: (eventName: "setArmor", value: number) => void;
+  dispatchSelfBuffCast: (detail: SelfBuffCastEventDetail) => void;
+};
+
 export function resolvePlayerSelfBuffCastPlan({
   spell,
   hand,
@@ -76,4 +95,40 @@ export function resolvePlayerSelfBuffCastPlan({
   }
 
   return null;
+}
+
+export function applyPlayerSelfBuffCastPlan(
+  plan: PlayerSelfBuffCastPlan | null,
+  applier: PlayerSelfBuffCastPlanApplier,
+) {
+  if (!plan) return false;
+
+  applier.setHandCharging(plan.hand, true);
+  applier.setTimeout(() => {
+    applier.setHandCharging(plan.hand, false);
+  }, plan.chargeMs);
+
+  if (plan.effect === "magicArmor") {
+    applier.activateMagicArmor();
+  } else if (plan.effect === "speedBoost") {
+    applier.activateSpeedBoost();
+  } else if (plan.effect === "jumpBoost") {
+    applier.activateJumpBoost();
+    const velocity = applier.getJumpVelocity?.();
+    if (velocity && applier.setJumpVelocity) {
+      applier.setJumpVelocity({
+        x: velocity.x,
+        y: Math.max(velocity.y, plan.jumpVelocityFloor ?? velocity.y),
+        z: velocity.z,
+      });
+    }
+  } else {
+    applier.activateMagicGlassOrb();
+  }
+
+  if (typeof plan.armorNetworkValue === "number") {
+    applier.emitGameNetworkEvent("setArmor", plan.armorNetworkValue);
+  }
+  applier.dispatchSelfBuffCast(plan.eventDetail);
+  return true;
 }
