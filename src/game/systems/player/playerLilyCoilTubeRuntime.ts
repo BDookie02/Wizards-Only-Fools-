@@ -34,12 +34,57 @@ export type PlayerLilyCoilTubeMovePayload = {
 
 type MutableRef<T> = { current: T };
 
+type PlayerLilyCoilTubeVector3Like = {
+  x: number;
+  y: number;
+  z: number;
+  add(vector: PlayerLilyCoilTubeVector3Like): PlayerLilyCoilTubeVector3Like;
+  addScaledVector(vector: PlayerLilyCoilTubeVector3Like, scale: number): PlayerLilyCoilTubeVector3Like;
+  copy(vector: PlayerLilyCoilTubeVector3Like): PlayerLilyCoilTubeVector3Like;
+  lengthSq(): number;
+  multiplyScalar(scale: number): PlayerLilyCoilTubeVector3Like;
+  normalize(): PlayerLilyCoilTubeVector3Like;
+};
+
+type PlayerLilyCoilTubeCameraLike = {
+  position: PlayerLilyCoilTubeVector3Like;
+  quaternion: PlayerLilyCoilTubeQuaternionLike;
+  up: PlayerLilyCoilTubeVector3Like;
+  lookAt(target: PlayerLilyCoilTubeVector3Like): void;
+};
+
+type PlayerLilyCoilTubeBodyLike = {
+  setLinvel(velocity: PlayerLilyCoilTubePosition, wakeUp?: boolean): void;
+  setTranslation(position: PlayerLilyCoilTubePosition, wakeUp?: boolean): void;
+};
+
+type PlayerLilyCoilTubeEulerLike = {
+  setFromQuaternion(quaternion: PlayerLilyCoilTubeQuaternionLike): void;
+};
+
+type PlayerLilyCoilTubeUpRotationLike = {
+  setFromUnitVectors(from: PlayerLilyCoilTubeVector3Like, to: PlayerLilyCoilTubeVector3Like): PlayerLilyCoilTubeUpRotationLike;
+};
+
+type PlayerLilyCoilTubeQuaternionLike = {
+  premultiply(rotation: PlayerLilyCoilTubeUpRotationLike): unknown;
+};
+
+type PlayerLilyCoilTubeCameraState = {
+  lastUp: PlayerLilyCoilTubeVector3Like;
+};
+
 export type PlayerLilyCoilTubeSlideFrame = {
   startedSlide: boolean;
   stoppedSlide: boolean;
   tubeGroundedBeforeMove: boolean;
   tubeSlideHeld: boolean;
   tubeSliding: boolean;
+};
+
+export type PlayerLilyCoilTubePlacementFrame = {
+  alignedView: boolean;
+  autoPilotView: boolean;
 };
 
 type PlayerLilyCoilTubeJumpState = {
@@ -212,6 +257,79 @@ export function applyPlayerLilyCoilTubeJumpThrusterFrame({
   result.nextFuel = nextFuel;
   result.tubeAirborne = tubeState.jumpOffset > 0.025;
   return result;
+}
+
+export function applyPlayerLilyCoilTubePlacementFrame({
+  aroundSurface,
+  body,
+  bodyPosition,
+  camera,
+  cameraPosition,
+  controllerLookEuler,
+  elapsedSeconds,
+  frameTangent,
+  playerUp,
+  qaTubeAutoPilot,
+  shouldAlignTubeView,
+  tubeForward,
+  tubeLookDirection,
+  tubePathInput,
+  tubeState,
+  tubeSurfaceInput,
+  tubeUpRotation,
+}: {
+  aroundSurface: PlayerLilyCoilTubeVector3Like;
+  body: PlayerLilyCoilTubeBodyLike;
+  bodyPosition: PlayerLilyCoilTubeVector3Like;
+  camera: PlayerLilyCoilTubeCameraLike;
+  cameraPosition: PlayerLilyCoilTubeVector3Like;
+  controllerLookEuler: PlayerLilyCoilTubeEulerLike;
+  elapsedSeconds: number;
+  frameTangent: PlayerLilyCoilTubeVector3Like;
+  playerUp: PlayerLilyCoilTubeVector3Like;
+  qaTubeAutoPilot: boolean;
+  shouldAlignTubeView: boolean;
+  tubeForward: PlayerLilyCoilTubeVector3Like;
+  tubeLookDirection: PlayerLilyCoilTubeVector3Like;
+  tubePathInput: number;
+  tubeState: PlayerLilyCoilTubeCameraState;
+  tubeSurfaceInput: number;
+  tubeUpRotation: PlayerLilyCoilTubeUpRotationLike;
+}): PlayerLilyCoilTubePlacementFrame {
+  body.setTranslation({ x: bodyPosition.x, y: bodyPosition.y, z: bodyPosition.z }, true);
+  body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+
+  if (qaTubeAutoPilot) {
+    const qaTubeLook = tubeLookDirection
+      .copy(frameTangent)
+      .multiplyScalar(tubePathInput >= -0.05 ? 1 : -1)
+      .addScaledVector(aroundSurface, tubeSurfaceInput * 0.18)
+      .addScaledVector(playerUp, -0.035 + Math.sin(elapsedSeconds * 0.73) * 0.035);
+    if (qaTubeLook.lengthSq() < 0.001) qaTubeLook.copy(frameTangent);
+    qaTubeLook.normalize();
+    tubeState.lastUp.copy(playerUp);
+    camera.up.copy(playerUp);
+    camera.position.copy(cameraPosition);
+    camera.lookAt(qaTubeLook.add(cameraPosition));
+    controllerLookEuler.setFromQuaternion(camera.quaternion);
+    return { alignedView: false, autoPilotView: true };
+  }
+
+  if (!shouldAlignTubeView) {
+    tubeUpRotation.setFromUnitVectors(tubeState.lastUp, playerUp);
+    camera.quaternion.premultiply(tubeUpRotation);
+    controllerLookEuler.setFromQuaternion(camera.quaternion);
+  }
+  tubeState.lastUp.copy(playerUp);
+  camera.up.copy(playerUp);
+  camera.position.copy(cameraPosition);
+
+  if (shouldAlignTubeView) {
+    camera.lookAt(tubeLookDirection.copy(cameraPosition).add(tubeForward));
+    controllerLookEuler.setFromQuaternion(camera.quaternion);
+  }
+
+  return { alignedView: shouldAlignTubeView, autoPilotView: false };
 }
 
 export function isPlayerLilyCoilTubeMoving({

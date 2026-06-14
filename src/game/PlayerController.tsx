@@ -199,6 +199,7 @@ import {
   QA_LILY_COIL_TUBE_RESTART_EDGE_T,
   QA_LILY_COIL_TUBE_REVERSE_EDGE_T,
   applyPlayerLilyCoilTubeJumpThrusterFrame,
+  applyPlayerLilyCoilTubePlacementFrame,
   applyPlayerLilyCoilTubeSlideFrame,
   createPlayerLilyCoilTubeMovePayload,
   getPlayerLilyCoilTubeDispatchState,
@@ -2706,35 +2707,25 @@ export function PlayerController() {
       tubeCameraPosition.copy(tubeBodyPosition).addScaledVector(playerUp, tubeCameraHeight);
       tubeForward.copy(frame.tangent).multiplyScalar(forwardInput < -0.1 ? -1 : 1).normalize();
 
-      rigidBody.current.setTranslation({ x: tubeBodyPosition.x, y: tubeBodyPosition.y, z: tubeBodyPosition.z }, true);
-      rigidBody.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      if (qaTubeAutoPilot) {
-        const qaTubeLook = tubeLookDirection
-          .copy(frame.tangent)
-          .multiplyScalar(tubePathInput >= -0.05 ? 1 : -1)
-          .addScaledVector(aroundSurface, tubeSurfaceInput * 0.18)
-          .addScaledVector(playerUp, -0.035 + Math.sin(state.clock.elapsedTime * 0.73) * 0.035);
-        if (qaTubeLook.lengthSq() < 0.001) qaTubeLook.copy(frame.tangent);
-        qaTubeLook.normalize();
-        tubeState.lastUp.copy(playerUp);
-        camera.up.copy(playerUp);
-        camera.position.copy(tubeCameraPosition);
-        camera.lookAt(qaTubeLook.add(tubeCameraPosition));
-        controllerLookEuler.current.setFromQuaternion(camera.quaternion);
-      } else {
-        if (!shouldAlignTubeView) {
-          tubeUpRotation.setFromUnitVectors(tubeState.lastUp, playerUp);
-          camera.quaternion.premultiply(tubeUpRotation);
-          controllerLookEuler.current.setFromQuaternion(camera.quaternion);
-        }
-        tubeState.lastUp.copy(playerUp);
-        camera.up.copy(playerUp);
-        camera.position.copy(tubeCameraPosition);
-      }
-      if (shouldAlignTubeView && !qaTubeAutoPilot) {
-        camera.lookAt(tubeLookDirection.copy(tubeCameraPosition).add(tubeForward));
-        controllerLookEuler.current.setFromQuaternion(camera.quaternion);
-      }
+      applyPlayerLilyCoilTubePlacementFrame({
+        aroundSurface,
+        body: rigidBody.current,
+        bodyPosition: tubeBodyPosition,
+        camera,
+        cameraPosition: tubeCameraPosition,
+        controllerLookEuler: controllerLookEuler.current,
+        elapsedSeconds: state.clock.elapsedTime,
+        frameTangent: frame.tangent,
+        playerUp,
+        qaTubeAutoPilot,
+        shouldAlignTubeView,
+        tubeForward,
+        tubeLookDirection,
+        tubePathInput,
+        tubeState,
+        tubeSurfaceInput,
+        tubeUpRotation,
+      });
       if (!tubeAirborne) setJumps(0);
       resetPlayerCrouchState({ crouchHoldStartedAt, isCrouching, setIsCrouching });
 
