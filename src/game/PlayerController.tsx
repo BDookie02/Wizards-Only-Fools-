@@ -220,6 +220,8 @@ import {
   isPlayerReleaseSelfBuffSpell,
   isPlayerReleaseSuppressedSpell,
   isPlayerSelfBuffSpell,
+  resetPlayerCastingHandRuntime,
+  resetPlayerCastingHandsRuntime,
   resetPlayerControllerAfterCastRelease,
 } from "./systems/player/playerHandCastingRuntime";
 import {
@@ -1282,13 +1284,13 @@ export function PlayerController() {
       if (isSliding) setIsSliding(false);
       if (isCrouching) setIsCrouching(false);
       crouchHoldStartedAt.current = null;
-      for (let handIndex = 0; handIndex < PLAYER_CASTING_HANDS.length; handIndex += 1) {
-        const hand = PLAYER_CASTING_HANDS[handIndex];
-        if (activeCastingHands.current[hand] || storeState.chargingHands[hand]) {
-          clearPlayerCastingHandState(activeCastingHands, hand, useGameStore.getState().setHandCharging);
-        }
-        flamethrowerTimers.current[hand] = 0;
-      }
+      resetPlayerCastingHandsRuntime({
+        activeCastingHands,
+        chargingHands: storeState.chargingHands,
+        flamethrowerTimers,
+        hands: PLAYER_CASTING_HANDS,
+        setHandCharging: useGameStore.getState().setHandCharging,
+      });
 
       rigidBody.current.setLinvel({ x: 0, y: vclipActive ? 0 : velocity.y, z: 0 }, true);
       camera.position.lerp(cameraTargetPosition.current.set(pos.x, pos.y + PLAYER_MEDITATION_CAMERA_HEIGHT, pos.z), 0.18);
@@ -2411,18 +2413,25 @@ export function PlayerController() {
       const runeReady = hasPlayerRunePowerForHand(storeState, hand);
 
       if (!storeState.isMagicArmed) {
-        if (chargingHands[hand] || activeCastingHands.current[hand]) {
-          clearPlayerCastingHandState(activeCastingHands, hand, useGameStore.getState().setHandCharging);
-        }
-        flamethrowerTimers.current[hand] = 0;
+        resetPlayerCastingHandRuntime({
+          activeCastingHands,
+          chargingHands,
+          flamethrowerTimers,
+          hand,
+          setHandCharging: useGameStore.getState().setHandCharging,
+        });
         continue;
       }
 
       if (!runeReady) {
-        if (chargingHands[hand]) {
-          clearPlayerCastingHandState(activeCastingHands, hand, useGameStore.getState().setHandCharging);
-        }
-        flamethrowerTimers.current[hand] = 0;
+        resetPlayerCastingHandRuntime({
+          activeCastingHands,
+          chargingHands,
+          flamethrowerTimers,
+          hand,
+          mode: "charging-only",
+          setHandCharging: useGameStore.getState().setHandCharging,
+        });
         continue;
       }
 
@@ -2469,13 +2478,13 @@ export function PlayerController() {
       if (isSliding) setIsSliding(false);
       if (isCrouching) setIsCrouching(false);
       crouchHoldStartedAt.current = null;
-      for (let handIndex = 0; handIndex < PLAYER_CASTING_HANDS.length; handIndex += 1) {
-        const hand = PLAYER_CASTING_HANDS[handIndex];
-        if (activeCastingHands.current[hand] || storeState.chargingHands[hand]) {
-          clearPlayerCastingHandState(activeCastingHands, hand, useGameStore.getState().setHandCharging);
-        }
-        flamethrowerTimers.current[hand] = 0;
-      }
+      resetPlayerCastingHandsRuntime({
+        activeCastingHands,
+        chargingHands: storeState.chargingHands,
+        flamethrowerTimers,
+        hands: PLAYER_CASTING_HANDS,
+        setHandCharging: useGameStore.getState().setHandCharging,
+      });
     }
 
     // Movement calculation

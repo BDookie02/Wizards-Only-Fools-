@@ -33,6 +33,14 @@ export type PlayerCastingHandsRef = {
   current: Record<HandType, boolean>;
 };
 
+export type PlayerHandTimersRef = {
+  current: Record<HandType, number>;
+};
+
+export type PlayerHandChargingState = Record<HandType, boolean>;
+
+export type PlayerCastingHandResetMode = "charging-or-active" | "charging-only";
+
 const PLAYER_QUICK_CAST_COOLDOWN_MS = 400;
 const PLAYER_DEFAULT_CAST_COOLDOWN_MS = 1000;
 const PLAYER_RELEASE_SUPPRESSED_SPELLS = new Set<SpellType>([
@@ -95,4 +103,55 @@ export function clearPlayerCastingHandState(
 ) {
   activeCastingHands.current[hand] = false;
   setHandCharging(hand, false);
+}
+
+export function resetPlayerCastingHandRuntime({
+  activeCastingHands,
+  chargingHands,
+  flamethrowerTimers,
+  hand,
+  setHandCharging,
+  mode = "charging-or-active",
+}: {
+  activeCastingHands: PlayerCastingHandsRef;
+  chargingHands: PlayerHandChargingState;
+  flamethrowerTimers: PlayerHandTimersRef;
+  hand: HandType;
+  setHandCharging: (hand: HandType, charging: boolean) => void;
+  mode?: PlayerCastingHandResetMode;
+}) {
+  const shouldClear =
+    chargingHands[hand] || (mode === "charging-or-active" && activeCastingHands.current[hand]);
+  if (shouldClear) {
+    clearPlayerCastingHandState(activeCastingHands, hand, setHandCharging);
+  }
+  flamethrowerTimers.current[hand] = 0;
+  return shouldClear;
+}
+
+export function resetPlayerCastingHandsRuntime({
+  activeCastingHands,
+  chargingHands,
+  flamethrowerTimers,
+  hands,
+  setHandCharging,
+  mode = "charging-or-active",
+}: {
+  activeCastingHands: PlayerCastingHandsRef;
+  chargingHands: PlayerHandChargingState;
+  flamethrowerTimers: PlayerHandTimersRef;
+  hands: readonly HandType[];
+  setHandCharging: (hand: HandType, charging: boolean) => void;
+  mode?: PlayerCastingHandResetMode;
+}) {
+  for (let handIndex = 0; handIndex < hands.length; handIndex += 1) {
+    resetPlayerCastingHandRuntime({
+      activeCastingHands,
+      chargingHands,
+      flamethrowerTimers,
+      hand: hands[handIndex],
+      setHandCharging,
+      mode,
+    });
+  }
 }
