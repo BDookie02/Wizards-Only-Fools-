@@ -4,6 +4,11 @@ import {
   QA_LILY_COIL_TUBE_STRAFE,
 } from "../../systems/player/playerLilyCoilTubeRuntime";
 import {
+  applyPlayerBodyCameraPlacement,
+  type PlayerPlacementBody,
+  type PlayerPlacementCamera,
+} from "../../systems/player/playerBodyPlacementRuntime";
+import {
   getLilyCoilTubeFrameInto,
   type LilyCoilTubeFrame,
 } from "../../systems/world/villages/lilyCoilTubeMotion";
@@ -98,6 +103,12 @@ import {
 } from "../../../store/gameStore";
 
 type QaWalkPosition = { x: number; y: number; z: number };
+type QaWalkMutableRef<T> = { current: T };
+type QaWalkRecoveryStartPositionRef = {
+  current: {
+    set(x: number, y: number, z: number): unknown;
+  };
+};
 type QaWalkWaypoint = { x: number; z: number; expiresAt: number };
 type QaWalkQuestIntentTarget = { id: string; label: string; x: number; y: number; z: number };
 
@@ -1818,6 +1829,35 @@ export type QaWalkRecoveryRescueReason =
   | "darrel-grove-rescue"
   | "base-road-rescue";
 
+export type QaWalkRecoveryPlacementPlan = {
+  position: QaWalkPosition;
+  reason: QaWalkRecoveryRescueReason | "unstick-nudge";
+  recoveryUntil: number;
+  yaw: number;
+};
+
+export type QaWalkRecoveryPlacementResult = {
+  forwardAmount: 0;
+  placed: boolean;
+  recoveryReason: QaWalkRecoveryPlacementPlan["reason"];
+  strafeAmount: 0;
+  targetYaw: number;
+};
+
+export type QaWalkRecoveryPlacementRefs = {
+  lastUnstickNudgeAt: QaWalkMutableRef<number>;
+  recoveryStartedAt: QaWalkMutableRef<number>;
+  recoveryStartPos: QaWalkRecoveryStartPositionRef;
+  recoveryUntil: QaWalkMutableRef<number>;
+  recoveryYaw: QaWalkMutableRef<number>;
+};
+
+export type QaWalkRecoveryPlacementPublishers = {
+  publishLocalPlayerPosition: (position: QaWalkPosition, options: { rememberLast: boolean }) => void;
+  publishQaPlayerPosition: (position: QaWalkPosition) => void;
+  setForwardQaWaypoint: (yaw: number) => void;
+};
+
 export function resolveQaWalkRecoveryRescuePlan({
   baseRoadRescuePosition,
   currentPosition,
@@ -1930,6 +1970,47 @@ export function resolveQaWalkUnstickNudgePlan({
     reason: "unstick-nudge" as const,
     recoveryUntil: elapsedSeconds + minRecoverySeconds,
     yaw: escapeYaw,
+  };
+}
+
+export function applyQaWalkRecoveryPlacementPlan({
+  body,
+  camera,
+  cameraHeight,
+  elapsedSeconds,
+  plan,
+  publishers,
+  refs,
+}: {
+  body: PlayerPlacementBody | null | undefined;
+  camera: PlayerPlacementCamera;
+  cameraHeight: number;
+  elapsedSeconds: number;
+  plan: QaWalkRecoveryPlacementPlan;
+  publishers: QaWalkRecoveryPlacementPublishers;
+  refs: QaWalkRecoveryPlacementRefs;
+}): QaWalkRecoveryPlacementResult {
+  const { position } = plan;
+  const placed = applyPlayerBodyCameraPlacement({
+    body,
+    camera,
+    cameraHeight,
+    position,
+  });
+  publishers.publishLocalPlayerPosition(position, { rememberLast: true });
+  publishers.publishQaPlayerPosition(position);
+  refs.lastUnstickNudgeAt.current = elapsedSeconds;
+  refs.recoveryStartPos.current.set(position.x, position.y, position.z);
+  refs.recoveryStartedAt.current = elapsedSeconds;
+  refs.recoveryUntil.current = plan.recoveryUntil;
+  refs.recoveryYaw.current = plan.yaw;
+  publishers.setForwardQaWaypoint(plan.yaw);
+  return {
+    forwardAmount: 0,
+    placed,
+    recoveryReason: plan.reason,
+    strafeAmount: 0,
+    targetYaw: plan.yaw,
   };
 }
 

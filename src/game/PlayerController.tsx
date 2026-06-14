@@ -64,6 +64,7 @@ import {
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
 import {
+  applyQaWalkRecoveryPlacementPlan,
   getQaWalkIntentDistance,
   isQaWalkBaseVillageArea,
   isQaWalkDarrelGroveArea,
@@ -154,7 +155,6 @@ import {
   usePlayerControllerRuntimeState,
   type GrabbedPlayerState,
 } from "./systems/player/playerControllerRuntimeState";
-import { applyPlayerBodyCameraPlacement } from "./systems/player/playerBodyPlacementRuntime";
 import {
   applyPlayerSpawnOverrideAction,
   resolvePlayerSpawnOverrideAction,
@@ -1820,26 +1820,32 @@ export function PlayerController() {
           lastUnstickNudgeAt: qaWalkLastUnstickNudgeAt.current,
           targetYaw,
         });
+        const recoveryPlacementRefs = {
+          lastUnstickNudgeAt: qaWalkLastUnstickNudgeAt,
+          recoveryStartPos: qaWalkRecoveryStartPos,
+          recoveryStartedAt: qaWalkRecoveryStartedAt,
+          recoveryUntil: qaWalkRecoveryUntil,
+          recoveryYaw: qaWalkRecoveryYaw,
+        };
+        const recoveryPlacementPublishers = {
+          publishLocalPlayerPosition,
+          publishQaPlayerPosition,
+          setForwardQaWaypoint,
+        };
         if (recoveryRescuePlan) {
-          const rescuePosition = recoveryRescuePlan.position;
-          applyPlayerBodyCameraPlacement({
+          const placement = applyQaWalkRecoveryPlacementPlan({
             body: rigidBody.current,
             camera,
             cameraHeight: PLAYER_CAMERA_HEIGHT,
-            position: rescuePosition,
+            elapsedSeconds: elapsed,
+            plan: recoveryRescuePlan,
+            publishers: recoveryPlacementPublishers,
+            refs: recoveryPlacementRefs,
           });
-          publishLocalPlayerPosition(rescuePosition, { rememberLast: true });
-          publishQaPlayerPosition(rescuePosition);
-          qaWalkLastUnstickNudgeAt.current = elapsed;
-          qaWalkRecoveryStartPos.current.set(rescuePosition.x, rescuePosition.y, rescuePosition.z);
-          qaWalkRecoveryStartedAt.current = elapsed;
-          qaWalkRecoveryUntil.current = recoveryRescuePlan.recoveryUntil;
-          qaWalkRecoveryYaw.current = recoveryRescuePlan.yaw;
-          setForwardQaWaypoint(qaWalkRecoveryYaw.current);
-          targetYaw = qaWalkRecoveryYaw.current;
-          forwardAmount = 0;
-          strafeAmount = 0;
-          recoveryReason = recoveryRescuePlan.reason;
+          targetYaw = placement.targetYaw;
+          forwardAmount = placement.forwardAmount;
+          strafeAmount = placement.strafeAmount;
+          recoveryReason = placement.recoveryReason;
         } else if (shouldResolveQaWalkUnstickNudgePlan({
           elapsedSeconds: elapsed,
           lastUnstickNudgeAt: qaWalkLastUnstickNudgeAt.current,
@@ -1854,25 +1860,19 @@ export function PlayerController() {
             escapeYaw: escape.yaw,
             stuckStrikes: qaWalkStuckStrikes.current,
           });
-          const nudgedPosition = unstickNudgePlan.position;
-          applyPlayerBodyCameraPlacement({
+          const placement = applyQaWalkRecoveryPlacementPlan({
             body: rigidBody.current,
             camera,
             cameraHeight: PLAYER_CAMERA_HEIGHT,
-            position: nudgedPosition,
+            elapsedSeconds: elapsed,
+            plan: unstickNudgePlan,
+            publishers: recoveryPlacementPublishers,
+            refs: recoveryPlacementRefs,
           });
-          publishLocalPlayerPosition(nudgedPosition, { rememberLast: true });
-          publishQaPlayerPosition(nudgedPosition);
-          qaWalkLastUnstickNudgeAt.current = elapsed;
-          qaWalkRecoveryStartPos.current.set(nudgedPosition.x, nudgedPosition.y, nudgedPosition.z);
-          qaWalkRecoveryStartedAt.current = elapsed;
-          qaWalkRecoveryUntil.current = unstickNudgePlan.recoveryUntil;
-          qaWalkRecoveryYaw.current = unstickNudgePlan.yaw;
-          setForwardQaWaypoint(unstickNudgePlan.yaw);
-          targetYaw = unstickNudgePlan.yaw;
-          forwardAmount = 0;
-          strafeAmount = 0;
-          recoveryReason = unstickNudgePlan.reason;
+          targetYaw = placement.targetYaw;
+          forwardAmount = placement.forwardAmount;
+          strafeAmount = placement.strafeAmount;
+          recoveryReason = placement.recoveryReason;
         } else {
           const recoveryMovementFrame = resolveQaWalkRecoveryMovementFrame({
             elapsedSeconds: elapsed,
