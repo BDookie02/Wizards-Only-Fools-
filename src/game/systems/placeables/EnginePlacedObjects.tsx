@@ -15,6 +15,14 @@ import { getSurvivalGrassSurfaceHeightAtWorld } from "../world/survival/survival
 import { dispatchEnginePlaceableEvent, subscribeEnginePlaceableEvent } from "./enginePlaceableEvents";
 import { findEnginePlacementCollision } from "./enginePlacementCollision";
 import {
+  appendEnginePlacedObjectBounded,
+  cloneEnginePlacedObjects,
+  findEnginePlacedObjectById,
+  hasEnginePlacedObjectId,
+  removeEnginePlacedObjectById,
+  replaceEnginePlacedObjectById,
+} from "./enginePlacedObjectListRuntime";
+import {
   EnginePlacedObjectVisual,
   EnginePlacementPreviewVisual,
   type EnginePlacementPreview,
@@ -96,75 +104,6 @@ function publishEnginePlacementPreviewResult(detail: EnginePlacementPreviewResul
   const playerWindow = window as WindowWithPlayerSnapshot;
   playerWindow.wofEnginePlacementPreview = detail;
   dispatchEnginePlaceableEvent("wof-engine-placeable-preview-result", detail);
-}
-
-function cloneEnginePlacedObjects(objects: EnginePlacedObject[]) {
-  const cloned = new Array<EnginePlacedObject>(objects.length);
-  for (let index = 0; index < objects.length; index += 1) {
-    cloned[index] = { ...objects[index] };
-  }
-  return cloned;
-}
-
-function hasEnginePlacedObjectId(objects: EnginePlacedObject[], instanceId: string) {
-  for (let index = 0; index < objects.length; index += 1) {
-    if (objects[index].instanceId === instanceId) return true;
-  }
-  return false;
-}
-
-function findEnginePlacedObjectById(objects: EnginePlacedObject[], instanceId: string) {
-  for (let index = 0; index < objects.length; index += 1) {
-    const object = objects[index];
-    if (object.instanceId === instanceId) return object;
-  }
-  return undefined;
-}
-
-function removeEnginePlacedObjectById(objects: EnginePlacedObject[], instanceId: string) {
-  let removeIndex = -1;
-  for (let index = 0; index < objects.length; index += 1) {
-    if (objects[index].instanceId === instanceId) {
-      removeIndex = index;
-      break;
-    }
-  }
-  if (removeIndex < 0) return objects;
-
-  const next = new Array<EnginePlacedObject>(objects.length - 1);
-  for (let index = 0; index < removeIndex; index += 1) {
-    next[index] = objects[index];
-  }
-  for (let index = removeIndex + 1; index < objects.length; index += 1) {
-    next[index - 1] = objects[index];
-  }
-  return next;
-}
-
-function replaceEnginePlacedObjectById(objects: EnginePlacedObject[], instanceId: string, replacement: EnginePlacedObject) {
-  let replaced = false;
-  const next = new Array<EnginePlacedObject>(objects.length);
-  for (let index = 0; index < objects.length; index += 1) {
-    const object = objects[index];
-    if (object.instanceId === instanceId) {
-      next[index] = replacement;
-      replaced = true;
-    } else {
-      next[index] = object;
-    }
-  }
-  return replaced ? next : objects;
-}
-
-function appendEnginePlacedObjectBounded(objects: EnginePlacedObject[], object: EnginePlacedObject) {
-  const existingCount = Math.min(objects.length, MAX_ENGINE_PLACED_OBJECTS - 1);
-  const next = new Array<EnginePlacedObject>(existingCount + 1);
-  const startIndex = Math.max(0, objects.length - existingCount);
-  for (let index = 0; index < existingCount; index += 1) {
-    next[index] = objects[startIndex + index];
-  }
-  next[existingCount] = object;
-  return next;
 }
 
 function publishEnginePlacedObjectList(objects: EnginePlacedObject[]) {
