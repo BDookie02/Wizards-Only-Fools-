@@ -990,7 +990,7 @@ export function PlayerController() {
     };
 
     const onScreenShake = (e: any) => {
-      applyPlayerScreenShakeEvent(screenShake.current, e.detail ?? {}, getPlayerEventEpochMs());
+      applyPlayerScreenShakeEvent(screenShake.current, e.detail, getPlayerEventEpochMs());
     };
 
     const onGrabPlayer = (e: any) => {

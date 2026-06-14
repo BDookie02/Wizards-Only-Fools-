@@ -11,6 +11,11 @@ type PlayerScreenShakeEventDetail = {
   duration?: unknown;
 };
 
+export type PlayerScreenShakeEventAction = {
+  strength: number;
+  duration: number;
+};
+
 function clampNumber(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -51,9 +56,17 @@ export function applyPlayerScreenShakeEvent(
   detail: PlayerScreenShakeEventDetail | null | undefined,
   nowMs: number,
 ) {
-  const strength = clampNumber(Number(detail?.strength) || 0.25, 0.02, 1.2);
-  const duration = clampNumber(Number(detail?.duration) || 320, 80, 1200);
+  const { strength, duration } = resolvePlayerScreenShakeEventAction(detail);
   screenShake.strength = Math.max(screenShake.strength, strength);
   screenShake.until = nowMs + duration;
   screenShake.duration = duration;
+}
+
+export function resolvePlayerScreenShakeEventAction(
+  detail: PlayerScreenShakeEventDetail | null | undefined,
+): PlayerScreenShakeEventAction {
+  return {
+    strength: clampNumber(Number(detail?.strength) || 0.25, 0.02, 1.2),
+    duration: clampNumber(Number(detail?.duration) || 320, 80, 1200),
+  };
 }
