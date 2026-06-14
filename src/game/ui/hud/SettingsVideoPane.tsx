@@ -1,6 +1,6 @@
 import type { AspectRatioOption } from "../../../store/gameStore";
 import { aspectRatioOptions, videoAspectStartIndex } from "./hudSettingsPanelConfig";
-import { cn, focusedMenuClass } from "./settingsPanelClassNames";
+import { SettingsAspectRatioButton } from "./SettingsAspectRatioButton";
 
 type SettingsVideoPaneProps = {
   aspectRatio: AspectRatioOption;
@@ -22,25 +22,15 @@ export function SettingsVideoPane({
         {aspectRatioOptions.map((ratio, index) => {
           const settingIndex = index + videoAspectStartIndex;
           return (
-            <button
+            <SettingsAspectRatioButton
               key={ratio}
-              data-settings-index={settingIndex}
-              className={cn(
-                "settings-choice-button border px-2 py-0.5 text-left font-mono transition-all",
-                aspectRatio === ratio ? "border-yellow-400 bg-yellow-400/10 text-yellow-400" : "border-gray-600 text-gray-300 hover:border-gray-400",
-                settingsFocus(settingIndex) ? focusedMenuClass : ""
-              )}
-              style={{ fontSize: "var(--settings-body-font-size)" }}
-              onMouseEnter={() => setPauseMenuIndex(settingIndex)}
-              onMouseDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                if (aspectRatio !== ratio) setAspectRatio(ratio);
-              }}
-            >
-              {ratio}
-            </button>
+              index={settingIndex}
+              ratio={ratio}
+              active={aspectRatio === ratio}
+              focused={settingsFocus(settingIndex)}
+              onFocus={() => setPauseMenuIndex(settingIndex)}
+              onSelect={setAspectRatio}
+            />
           );
         })}
       </div>
