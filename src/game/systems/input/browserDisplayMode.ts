@@ -1,13 +1,22 @@
+import {
+  getPointerLockReasonMessage,
+  isPermanentPointerLockRejectionMessage,
+  isPointerLockSecurityErrorMessage,
+  resolvePointerLockFramePermission,
+  resolveRemoteMouseLookFallbackFromParams,
+  resolveStandaloneDisplayMode,
+} from "./browserDisplayModeRuntime";
+
 let cachedRemoteMouseLookSearch: string | null = null;
 let cachedRemoteMouseLookFallback = false;
 
 export function canRequestPointerLockHere() {
   try {
-    if (window.self === window.top) return true;
-
     const frame = window.frameElement as HTMLIFrameElement | null;
-    const allow = frame?.allow ?? "";
-    return /\bpointer-lock\b/i.test(allow);
+    return resolvePointerLockFramePermission({
+      sameWindow: window.self === window.top,
+      frameAllow: frame?.allow ?? "",
+    });
   } catch {
     return false;
   }
@@ -17,10 +26,7 @@ export function shouldUseRemoteMouseLookFallbackFromSearch(search: string) {
   if (search === cachedRemoteMouseLookSearch) return cachedRemoteMouseLookFallback;
   const params = new URLSearchParams(search);
   cachedRemoteMouseLookSearch = search;
-  cachedRemoteMouseLookFallback =
-    params.get("remoteInput") === "1" ||
-    params.get("rustdesk") === "1" ||
-    params.get("qaHideMenu") === "1";
+  cachedRemoteMouseLookFallback = resolveRemoteMouseLookFallbackFromParams(params);
   return cachedRemoteMouseLookFallback;
 }
 
@@ -39,35 +45,19 @@ export function isStandaloneDisplayMode(
   standaloneMedia?: MediaQueryList | null,
 ) {
   const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
-  return (
-    navigatorWithStandalone.standalone === true ||
-    (fullscreenMedia ?? window.matchMedia?.("(display-mode: fullscreen)"))?.matches ||
-    (standaloneMedia ?? window.matchMedia?.("(display-mode: standalone)"))?.matches
-  );
+  return resolveStandaloneDisplayMode({
+    navigatorStandalone: navigatorWithStandalone.standalone === true,
+    fullscreenMatches: Boolean((fullscreenMedia ?? window.matchMedia?.("(display-mode: fullscreen)"))?.matches),
+    standaloneMatches: Boolean((standaloneMedia ?? window.matchMedia?.("(display-mode: standalone)"))?.matches),
+  });
 }
 
 export function isPointerLockSecurityError(reason: unknown) {
-  if (!reason) return false;
-
-  const message = typeof reason === "string"
-    ? reason
-    : reason instanceof Error
-      ? `${reason.name}: ${reason.message}`
-      : String(reason);
-
-  return /pointer lock|pointerlock/i.test(message);
+  return isPointerLockSecurityErrorMessage(getPointerLockReasonMessage(reason));
 }
 
 export function isPermanentPointerLockRejection(reason: unknown) {
-  if (!reason) return false;
-
-  const message = typeof reason === "string"
-    ? reason
-    : reason instanceof Error
-      ? `${reason.name}: ${reason.message}`
-      : String(reason);
-
-  return /pointer lock|pointerlock/i.test(message) && /sandbox|permission|policy|iframe|frame|allow/i.test(message);
+  return isPermanentPointerLockRejectionMessage(getPointerLockReasonMessage(reason));
 }
 
 export function setMouseLookFallbackActive(active: boolean) {
