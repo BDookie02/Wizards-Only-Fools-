@@ -23,6 +23,7 @@ import {
 } from "./settingsPanelClassNames";
 import { SettingsCharacterPane } from "./SettingsCharacterPane";
 import { SettingsKeybindsPane } from "./SettingsKeybindsPane";
+import { SettingsTabButton } from "./SettingsTabButton";
 import { SettingsVideoPane } from "./SettingsVideoPane";
 import { SettingsVoicePane } from "./SettingsVoicePane";
 
@@ -62,39 +63,6 @@ type SettingsPanelProps = {
   setCharacterCustomization: (updates: Partial<CharacterCustomization>) => void;
   onBack: () => void;
 };
-
-type TabButtonProps = {
-  index: number;
-  label: string;
-  active: boolean;
-  activeClassName: string;
-  onSelect: () => void;
-  isFocused: boolean;
-  onFocus: () => void;
-};
-
-function TabButton({ index, label, active, activeClassName, onSelect, isFocused, onFocus }: TabButtonProps) {
-  return (
-    <button
-      data-settings-index={index}
-      className={cn(
-        "settings-tab-button border px-2 py-1 text-left font-mono tracking-widest uppercase transition-all",
-        active ? activeClassName : "border-gray-600 text-gray-300 hover:border-gray-400",
-        isFocused ? focusedMenuClass : ""
-      )}
-      style={{ fontSize: "var(--settings-tab-font-size)" }}
-      onMouseEnter={onFocus}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onSelect();
-      }}
-    >
-      {label}
-    </button>
-  );
-}
 
 export function SettingsPanel({
   settingsPane,
@@ -155,7 +123,7 @@ export function SettingsPanel({
         {settingsTabButtons.map(({ pane, label, activeClassName }) => {
           const tabIndex = settingsPaneMetadata[pane].tabIndex;
           return (
-            <TabButton
+            <SettingsTabButton
               key={pane}
               index={tabIndex}
               label={label}
