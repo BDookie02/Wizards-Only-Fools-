@@ -2,7 +2,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ALL_SPELLS, type HandType, type SpellType, useGameStore } from "../../../store/gameStore";
 import {
   createSpellMenuHotbarSlotLookup,
-  getSpellMenuAssignedSlot,
   getSpellMenuFamilyNavIndex,
   getFirstSpellInFamily,
   getSpellMenuIndex,
@@ -17,9 +16,9 @@ import {
   type SpellFamilyFilter,
 } from "./spellMenuRuntime";
 import { SpellMenuBindStatus } from "./SpellMenuBindStatus";
-import { SpellMenuCard } from "./SpellMenuCard";
 import { SpellMenuFilterRow } from "./SpellMenuFilterRow";
 import { SpellMenuFooter } from "./SpellMenuFooter";
+import { SpellMenuGrid } from "./SpellMenuGrid";
 import { SpellMenuHeader } from "./SpellMenuHeader";
 import { SpellMenuHotbarColumn } from "./SpellMenuHotbarColumn";
 import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
@@ -242,39 +241,20 @@ export const SpellMenu = memo(function SpellMenu({
               }}
             />
 
-            <div className="spell-menu-grid grid grid-cols-3 gap-2 md:grid-cols-5">
-              {visibleSpells.map((spell) => {
-                const index = getSpellMenuIndex(spell);
-                const navIndex = getSpellMenuSpellNavIndex(index);
-                const isHighlighted = index === menuSpellIndex;
-                const isControllerFocused = controllerFocusIndex === navIndex;
-                const leftAssignedSlot = getSpellMenuAssignedSlot(leftHotbarSlotLookup, spell);
-                const rightAssignedSlot = getSpellMenuAssignedSlot(rightHotbarSlotLookup, spell);
-                const assignedSlot = getSpellMenuAssignedSlot(bindingHotbarSlotLookup, spell);
-                const isCurrent = spell === leftCurrentSpell || spell === rightCurrentSpell;
-
-                return (
-                  <SpellMenuCard
-                    key={spell}
-                    spell={spell}
-                    spellIndex={index}
-                    navIndex={navIndex}
-                    bindingHand={bindingHand}
-                    assignedSlot={assignedSlot}
-                    leftAssignedSlot={leftAssignedSlot}
-                    rightAssignedSlot={rightAssignedSlot}
-                    highlighted={isHighlighted}
-                    focused={isControllerFocused}
-                    current={isCurrent}
-                    onFocusCard={() => applyControllerFocus(navIndex)}
-                    onSelectCard={() => {
-                      applyControllerFocus(navIndex);
-                      assignSpellToSlot(bindingSelectedIndex, spell);
-                    }}
-                  />
-                );
-              })}
-            </div>
+            <SpellMenuGrid
+              visibleSpells={visibleSpells}
+              menuSpellIndex={menuSpellIndex}
+              controllerFocusIndex={controllerFocusIndex}
+              bindingHand={bindingHand}
+              bindingSelectedIndex={bindingSelectedIndex}
+              leftHotbarSlotLookup={leftHotbarSlotLookup}
+              rightHotbarSlotLookup={rightHotbarSlotLookup}
+              bindingHotbarSlotLookup={bindingHotbarSlotLookup}
+              leftCurrentSpell={leftCurrentSpell}
+              rightCurrentSpell={rightCurrentSpell}
+              onFocusNav={applyControllerFocus}
+              onAssignSpell={assignSpellToSlot}
+            />
           </div>
 
           <SpellMenuHotbarColumn
