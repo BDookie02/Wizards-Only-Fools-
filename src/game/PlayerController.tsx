@@ -312,7 +312,6 @@ import {
   applyPlayerReleasedSpellProjectile,
   applyPlayerSpellProjectileNetworkCast,
   createPlayerGrabProjectileId,
-  createPlayerSpellProjectileId,
   createPlayerSpellProjectilePayload,
   createQaWalkPracticeProjectileId,
   findAimedRemotePlayerInto,
@@ -2450,18 +2449,16 @@ export function PlayerController() {
 
         const { spawnPos } = getPlayerSpellLaunchInto(hand, camera, dir, spellLaunchScratch, true, lateral);
 
-        const projectile = createPlayerSpellProjectilePayload({
-          id: createPlayerSpellProjectileId(),
-          creatorId: getLocalNetworkPlayerId(),
-          type: 'flamethrower',
-          pos: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
-          dir: { x: dir.x, y: dir.y, z: dir.z },
+        applyPlayerSpellProjectileNetworkCast({
+          addProjectile: useGameStore.getState().addProjectile,
           createdAt: nowMs,
+          creatorId: getLocalNetworkPlayerId(),
+          dir: { x: dir.x, y: dir.y, z: dir.z },
+          emitGameNetworkEvent,
           hand,
+          pos: { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z },
+          type: 'flamethrower',
         });
-        
-        emitGameNetworkEvent("castSpell", projectile);
-        useGameStore.getState().addProjectile(projectile);
       }
     }
 
