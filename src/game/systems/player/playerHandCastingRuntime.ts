@@ -155,3 +155,17 @@ export function resetPlayerCastingHandsRuntime({
     });
   }
 }
+
+export function stopPlayerCastingHands(
+  hands: readonly HandType[],
+  handlers: {
+    emitGrabRelease: (hand: HandType) => void;
+    stopHandCasting: (hand: HandType) => void;
+  },
+) {
+  for (let handIndex = 0; handIndex < hands.length; handIndex += 1) {
+    const hand = hands[handIndex];
+    handlers.emitGrabRelease(hand);
+    handlers.stopHandCasting(hand);
+  }
+}

@@ -223,6 +223,7 @@ import {
   resetPlayerCastingHandRuntime,
   resetPlayerCastingHandsRuntime,
   resetPlayerControllerAfterCastRelease,
+  stopPlayerCastingHands,
 } from "./systems/player/playerHandCastingRuntime";
 import {
   clearPlayerGrabTimeout,
@@ -685,11 +686,7 @@ export function PlayerController() {
     };
 
     const stopAllCasting = () => {
-      for (let handIndex = 0; handIndex < PLAYER_CASTING_HANDS.length; handIndex += 1) {
-        const hand = PLAYER_CASTING_HANDS[handIndex];
-        emitGrabRelease(hand);
-        stopHandCasting(hand);
-      }
+      stopPlayerCastingHands(PLAYER_CASTING_HANDS, { emitGrabRelease, stopHandCasting });
     };
 
     const requestQuestVillagerInteraction = () => {
