@@ -23,6 +23,7 @@ import {
   SPELL_MENU_NAV_SELECTOR,
   type SpellFamilyFilter,
 } from "./spellMenuRuntime";
+import { SpellMenuBindStatus } from "./SpellMenuBindStatus";
 import { SpellMenuFamilyFilterButton } from "./SpellMenuFamilyFilterButton";
 import { SpellMenuHotbarColumn } from "./SpellMenuHotbarColumn";
 import { SpellThumbnail } from "./SpellThumbnail";
@@ -245,20 +246,12 @@ export const SpellMenu = memo(function SpellMenu({
           />
 
           <div className="spell-menu-spell-panel min-w-0 border border-cyan-300/20 bg-black/10 p-2">
-            <div className="spell-menu-bind-status mb-2 grid grid-cols-3 gap-2 text-[8px] tracking-widest text-cyan-100/70">
-              <div className="min-w-0 border border-cyan-300/20 bg-cyan-300/5 px-2 py-1.5">
-                <div className="text-cyan-200/60">BINDING</div>
-                <div className="truncate text-cyan-50">{bindingHand.toUpperCase()} SLOT {hotkeyLabels[bindingSelectedIndex]}</div>
-              </div>
-              <div className="min-w-0 border border-yellow-200/20 bg-yellow-200/5 px-2 py-1.5">
-                <div className="text-yellow-100/60">LEFT</div>
-                <div className="truncate text-yellow-50">{spellNames[leftCurrentSpell]}</div>
-              </div>
-              <div className="min-w-0 border border-fuchsia-200/20 bg-fuchsia-200/5 px-2 py-1.5">
-                <div className="text-fuchsia-100/60">RIGHT</div>
-                <div className="truncate text-fuchsia-50">{spellNames[rightCurrentSpell]}</div>
-              </div>
-            </div>
+            <SpellMenuBindStatus
+              bindingHand={bindingHand}
+              bindingSelectedIndex={bindingSelectedIndex}
+              leftCurrentSpell={leftCurrentSpell}
+              rightCurrentSpell={rightCurrentSpell}
+            />
 
             <div
               className="spell-menu-family-filters mb-2 grid grid-cols-4 gap-1.5 md:grid-cols-[repeat(8,minmax(0,1fr))]"
