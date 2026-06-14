@@ -21,13 +21,13 @@ import {
   getSelectedQuestScriptPoint,
   insertQuestScriptPointAfter,
   moveQuestScriptPointById,
-  questEventPresetButtons,
   questNpcRoles,
   removeQuestScriptPointById,
   sanitizeQuestNpcProgramDraft,
   updateQuestScriptPointDraft,
   type QuestEventBuilderKind,
 } from "./questNpcEditorRuntime";
+import { QuestEventBuilder } from "./QuestEventBuilder";
 import { QuestScriptPointList } from "./QuestScriptPointList";
 
 export function QuestNpcEditor() {
@@ -261,53 +261,16 @@ function ActiveQuestNpcEditor({ target }: { target: QuestNpcEditorTarget }) {
                       placeholder={"unlockSpell blink\nunlockRandomLockedSpell\nstartQuest town_01_fetch\ncompleteQuest town_01_fetch\nsetFlag town_01_quests=1\nmessage Good work, wizard."}
                     />
                   </label>
-                  <div className="border border-cyan-300/30 bg-cyan-950/15 p-2">
-                    <div className="text-[9px] tracking-[0.22em] text-cyan-100/60">EVENT BUILDER</div>
-                    <div className="mt-2 grid grid-cols-2 gap-1 text-[9px] tracking-widest">
-                      {questEventPresetButtons.map((preset) => (
-                        <button
-                          key={preset.label}
-                          className="border border-cyan-200/40 bg-black/35 px-2 py-2 text-cyan-50 hover:bg-cyan-200/15"
-                          onClick={() => appendEventLine(preset.line)}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
-                    </div>
-                    <label className="mt-3 block text-[8px] tracking-[0.18em] text-cyan-100/55">
-                      MESSAGE
-                      <input
-                        className="normal-case mt-1 w-full border border-cyan-300/35 bg-black/60 px-2 py-1.5 text-[11px] tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                        maxLength={120}
-                        value={eventMessage}
-                        onChange={(e) => setEventMessage(e.currentTarget.value)}
-                      />
-                    </label>
-                    <button className="mt-1 w-full border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 text-[9px] tracking-widest hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("message")}>ADD MESSAGE</button>
-                    <label className="mt-2 block text-[8px] tracking-[0.18em] text-cyan-100/55">
-                      QUEST ID
-                      <input
-                        className="normal-case mt-1 w-full border border-cyan-300/35 bg-black/60 px-2 py-1.5 text-[11px] tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                        maxLength={80}
-                        value={eventQuestId}
-                        onChange={(e) => setEventQuestId(e.currentTarget.value)}
-                      />
-                    </label>
-                    <div className="mt-1 grid grid-cols-2 gap-1 text-[9px] tracking-widest">
-                      <button className="border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("startQuest")}>START</button>
-                      <button className="border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("completeQuest")}>COMPLETE</button>
-                    </div>
-                    <label className="mt-2 block text-[8px] tracking-[0.18em] text-cyan-100/55">
-                      FLAG
-                      <input
-                        className="normal-case mt-1 w-full border border-cyan-300/35 bg-black/60 px-2 py-1.5 text-[11px] tracking-wide text-cyan-50 outline-none focus:border-yellow-200"
-                        maxLength={120}
-                        value={eventFlag}
-                        onChange={(e) => setEventFlag(e.currentTarget.value)}
-                      />
-                    </label>
-                    <button className="mt-1 w-full border border-cyan-200/40 bg-cyan-300/10 px-2 py-1.5 text-[9px] tracking-widest hover:bg-cyan-200/20" onClick={() => appendEventFromBuilder("setFlag")}>SET FLAG</button>
-                  </div>
+                  <QuestEventBuilder
+                    eventMessage={eventMessage}
+                    eventQuestId={eventQuestId}
+                    eventFlag={eventFlag}
+                    onEventMessageChange={setEventMessage}
+                    onEventQuestIdChange={setEventQuestId}
+                    onEventFlagChange={setEventFlag}
+                    onAppendPresetLine={appendEventLine}
+                    onAppendEvent={appendEventFromBuilder}
+                  />
                 </div>
                 <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
                   <div className="border border-cyan-300/25 bg-black/35 p-2">
