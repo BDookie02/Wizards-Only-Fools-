@@ -4,6 +4,10 @@ import {
   getSpellThumbnail,
   isAnimatedThumbnailSource,
 } from "./spellMenuRuntime";
+import {
+  getSpellThumbnailPortalMask,
+  usesCanvasOnlySpellThumbnail,
+} from "./spellThumbnailRuntime";
 import { SpellThumbnailImageProbe } from "./SpellThumbnailImageProbe";
 
 type SpellThumbnailBlock = [number, number, number, number, string, number?];
@@ -15,31 +19,6 @@ const GRAB_THUMBNAIL_FINGER_LINES: readonly [number, number, number, number][] =
   [43, 34, 49, 45],
   [35, 19, 29, 8],
 ];
-
-function usesCanvasOnlySpellThumbnail(spell: SpellType) {
-  switch (spell) {
-    case "portal":
-    case "blink":
-    case "smokebomb":
-    case "kunai":
-    case "healingcrystals":
-    case "orbshield":
-    case "grab":
-    case "tornado":
-    case "meteorshower":
-    case "magicarmor":
-    case "jumpboost":
-    case "speedboost":
-    case "tungstonballsack":
-    case "sleep":
-    case "poison":
-    case "acid":
-    case "magicglassorb":
-      return true;
-    default:
-      return false;
-  }
-}
 
 export const SpellThumbnail = memo(function SpellThumbnail({
   spell,
@@ -708,14 +687,7 @@ export const SpellThumbnail = memo(function SpellThumbnail({
     return scheduleDraw(draw, true);
   }, [spell, src, animate, deferRank, imageFrameVersion]);
 
-  const portalMask = spell === "portal" && !canvasOnlyThumbnail
-    ? {
-        mixBlendMode: "screen" as const,
-        filter: "brightness(1.45) contrast(1.25) saturate(1.35)",
-        WebkitMaskImage: "radial-gradient(circle at center, transparent 0 28%, black 34%, black 51%, transparent 61%)",
-        maskImage: "radial-gradient(circle at center, transparent 0 28%, black 34%, black 51%, transparent 61%)",
-      }
-    : {};
+  const portalMask = getSpellThumbnailPortalMask(spell, canvasOnlyThumbnail);
 
   return (
     <>
