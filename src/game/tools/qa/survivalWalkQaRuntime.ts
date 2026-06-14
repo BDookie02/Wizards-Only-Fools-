@@ -198,6 +198,34 @@ export function resolveQaWalkRouteWaypoint({
   };
 }
 
+export type QaWalkRouteWaypointSelection = ReturnType<typeof resolveQaWalkRouteWaypoint>;
+
+export type QaWalkRouteWaypointRefs = {
+  intent: QaWalkMutableRef<QaSurvivalIntent | null>;
+  inspectUntil: QaWalkMutableRef<number>;
+  nextInspectAt: QaWalkMutableRef<number>;
+  routeIndex: QaWalkMutableRef<number>;
+  waypoint: QaWalkMutableRef<QaWalkWaypoint>;
+};
+
+export function applyQaWalkRouteWaypointSelection({
+  elapsedSeconds,
+  refs,
+  selection,
+}: {
+  elapsedSeconds: number;
+  refs: QaWalkRouteWaypointRefs;
+  selection: QaWalkRouteWaypointSelection;
+}) {
+  if (!selection) return false;
+  refs.intent.current = null;
+  refs.inspectUntil.current = 0;
+  refs.nextInspectAt.current = elapsedSeconds + 999;
+  refs.routeIndex.current = selection.routeIndex;
+  refs.waypoint.current = selection.waypoint;
+  return true;
+}
+
 export function resolveQaWalkWaypointRefreshState({
   blockSize,
   elapsedSeconds,

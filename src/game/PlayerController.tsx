@@ -81,6 +81,7 @@ import {
   applyQaWalkRecoveryMovementFrame,
   applyQaWalkRecoveryPlacementPlan,
   applyQaWalkRecoveryStartPlan,
+  applyQaWalkRouteWaypointSelection,
   applyQaWalkRouteSteeringState,
   applyQaWalkSteeringDecisionFrame,
   applyQaWalkTubeMovementFrame,
@@ -1475,13 +1476,17 @@ export function PlayerController() {
           routeIndex: qaWalkRouteIndex.current,
           waypoints: qaRouteWaypoints,
         });
-        if (!routeSelection) return false;
-        qaWalkIntent.current = null;
-        qaWalkInspectUntil.current = 0;
-        qaWalkNextInspectAt.current = elapsed + 999;
-        qaWalkRouteIndex.current = routeSelection.routeIndex;
-        qaWalkWaypoint.current = routeSelection.waypoint;
-        return true;
+        return applyQaWalkRouteWaypointSelection({
+          elapsedSeconds: elapsed,
+          refs: {
+            intent: qaWalkIntent,
+            inspectUntil: qaWalkInspectUntil,
+            nextInspectAt: qaWalkNextInspectAt,
+            routeIndex: qaWalkRouteIndex,
+            waypoint: qaWalkWaypoint,
+          },
+          selection: routeSelection,
+        });
       };
       const intentDistance = (intent: QaSurvivalIntent | null) => getQaWalkIntentDistance(intent, pos);
       const questIntentTargets = getQuestNavigationIntentTargets();
