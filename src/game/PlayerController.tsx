@@ -64,6 +64,7 @@ import {
   type QaSurvivalWalkMode,
 } from "./tools/qa/survivalWalkQa";
 import {
+  applyQaWalkActiveIntentRefresh,
   applyQaWalkInspectionStartPlan,
   applyQaWalkOpenLaneRecoveryRelief,
   applyQaWalkRecoveryMovementFrame,
@@ -1547,26 +1548,21 @@ export function PlayerController() {
       if (waypointRefresh.shouldRefresh) {
         chooseNewWaypoint(waypointRefresh.preferCenter);
       }
-      let activeIntentRefresh = resolveQaWalkActiveIntentRefresh({
+      const activeIntentRefresh = resolveQaWalkActiveIntentRefresh({
         currentIntent: qaWalkIntent.current,
         elapsedSeconds: elapsed,
         qaRouteActive,
         qaSpellDummyRunActive,
         spellDummies: readQaSpellDummiesScratch(),
       });
-      if (activeIntentRefresh.clearIntent) {
-        qaWalkIntent.current = null;
-      }
-      if (activeIntentRefresh.resetNextIntentAt) {
-        qaWalkNextIntentAt.current = 0;
-      }
-      let activeIntent = activeIntentRefresh.activeIntent;
-      if (activeIntentRefresh.shouldChooseIntent) {
-        activeIntent = maybeChooseIntent(true);
-      }
-      if (activeIntent && activeIntent !== qaWalkIntent.current) {
-        qaWalkIntent.current = activeIntent;
-      }
+      const activeIntent = applyQaWalkActiveIntentRefresh({
+        chooseIntent: () => maybeChooseIntent(true),
+        refs: {
+          intent: qaWalkIntent,
+          nextIntentAt: qaWalkNextIntentAt,
+        },
+        refresh: activeIntentRefresh,
+      });
       const activeIntentDistance = intentDistance(activeIntent);
 
       const inspectionStart = resolveQaWalkInspectionStart({

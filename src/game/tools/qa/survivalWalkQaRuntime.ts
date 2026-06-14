@@ -1311,6 +1311,38 @@ export function resolveQaWalkActiveIntentRefresh({
   };
 }
 
+export type QaWalkActiveIntentRefresh = ReturnType<typeof resolveQaWalkActiveIntentRefresh>;
+
+export type QaWalkActiveIntentRefs = {
+  intent: QaWalkMutableRef<QaSurvivalIntent | null>;
+  nextIntentAt: QaWalkMutableRef<number>;
+};
+
+export function applyQaWalkActiveIntentRefresh({
+  chooseIntent,
+  refs,
+  refresh,
+}: {
+  chooseIntent: () => QaSurvivalIntent | null;
+  refs: QaWalkActiveIntentRefs;
+  refresh: QaWalkActiveIntentRefresh;
+}) {
+  if (refresh.clearIntent) {
+    refs.intent.current = null;
+  }
+  if (refresh.resetNextIntentAt) {
+    refs.nextIntentAt.current = 0;
+  }
+  let activeIntent = refresh.activeIntent;
+  if (refresh.shouldChooseIntent) {
+    activeIntent = chooseIntent();
+  }
+  if (activeIntent && activeIntent !== refs.intent.current) {
+    refs.intent.current = activeIntent;
+  }
+  return activeIntent;
+}
+
 export function resolveQaWalkInspectionStart({
   currentYaw,
   elapsedSeconds,
