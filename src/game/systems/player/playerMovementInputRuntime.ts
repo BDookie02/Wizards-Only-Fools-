@@ -12,6 +12,9 @@ import {
 
 type BooleanRef = { current: boolean };
 type MutableRef<T> = { current: T };
+type PlayerVelocityBody = {
+  setLinvel(velocity: { x: number; y: number; z: number }, wakeUp: boolean): void;
+};
 type MovementKeyState = Record<PlayerMovementKeyCode, boolean>;
 type TouchMoveState = { x: number; y: number };
 type QaWalkInputState = { forward: number; strafe: number; sprint: boolean };
@@ -242,6 +245,18 @@ export function updatePlayerCrouchHoldState({
   }
 
   return "held" as const;
+}
+
+export function stopPlayerPlanarVelocity({
+  body,
+  currentVelocityY,
+  vclipActive,
+}: {
+  body: PlayerVelocityBody;
+  currentVelocityY: number;
+  vclipActive: boolean;
+}) {
+  body.setLinvel({ x: 0, y: vclipActive ? 0 : currentVelocityY, z: 0 }, true);
 }
 
 export function resolvePlayerMovementMotionState({

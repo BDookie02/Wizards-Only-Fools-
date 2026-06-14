@@ -209,6 +209,7 @@ import {
   resetPlayerSlideState,
   resolvePlayerMovementInputIntent,
   resolvePlayerMovementMotionState,
+  stopPlayerPlanarVelocity,
   updatePlayerCrouchHoldState,
 } from "./systems/player/playerMovementInputRuntime";
 import {
@@ -1278,7 +1279,11 @@ export function PlayerController() {
         setHandCharging: useGameStore.getState().setHandCharging,
       });
 
-      rigidBody.current.setLinvel({ x: 0, y: vclipActive ? 0 : velocity.y, z: 0 }, true);
+      stopPlayerPlanarVelocity({
+        body: rigidBody.current,
+        currentVelocityY: velocity.y,
+        vclipActive,
+      });
       camera.position.lerp(cameraTargetPosition.current.set(pos.x, pos.y + PLAYER_MEDITATION_CAMERA_HEIGHT, pos.z), 0.18);
       applyScreenShake();
       publishLocalPlayerPosition(pos);
@@ -2385,7 +2390,11 @@ export function PlayerController() {
 
     if (storeState.isSpellMenuOpen || storeState.questDialogSession || storeState.isInventoryOpen) {
       resetPlayerCrouchState({ crouchHoldStartedAt, isCrouching, setIsCrouching });
-      rigidBody.current.setLinvel({ x: 0, y: vclipActive ? 0 : velocity.y, z: 0 }, true);
+      stopPlayerPlanarVelocity({
+        body: rigidBody.current,
+        currentVelocityY: velocity.y,
+        vclipActive,
+      });
       dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, true, false);
       return;
     }
