@@ -146,6 +146,7 @@ import {
 import { usePlayerControllerRuntimeState } from "./systems/player/playerControllerRuntimeState";
 import { resolvePlayerSpawnOverrideAction } from "./systems/player/playerSpawnOverrideRuntime";
 import { resolvePlayerTeleportEventAction } from "./systems/player/playerTeleportRuntime";
+import { resolvePlayerPullEventAction } from "./systems/player/playerPullRuntime";
 import {
   readPlayerControllerGamepadLookInput,
   readPlayerControllerGamepadMovementInput,
@@ -990,8 +991,11 @@ export function PlayerController() {
     };
 
     const onPull = (e: any) => {
-      pullVelocity.current.copy(e.detail);
-      pullFrames.current = 15; // apply for 15 frames
+      const pullAction = resolvePlayerPullEventAction(e.detail);
+      if (pullAction.type !== "apply") return;
+
+      pullVelocity.current.set(pullAction.velocity.x, pullAction.velocity.y, pullAction.velocity.z);
+      pullFrames.current = pullAction.frames;
     };
 
     const onScreenShake = (e: any) => {
