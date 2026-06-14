@@ -155,7 +155,10 @@ import {
   type GrabbedPlayerState,
 } from "./systems/player/playerControllerRuntimeState";
 import { applyPlayerBodyCameraPlacement } from "./systems/player/playerBodyPlacementRuntime";
-import { resolvePlayerSpawnOverrideAction } from "./systems/player/playerSpawnOverrideRuntime";
+import {
+  applyPlayerSpawnOverrideAction,
+  resolvePlayerSpawnOverrideAction,
+} from "./systems/player/playerSpawnOverrideRuntime";
 import {
   applyPlayerTeleportEventApplication,
   resolvePlayerTeleportEventAction,
@@ -1131,24 +1134,20 @@ export function PlayerController() {
       forcedSpawnKey: forcedSpawnKey.current,
       spawnOverride: getPlayerSpawnOverride(),
     });
-    if (spawnOverrideAction.type === "apply") {
-      const { x: spawnX, y: spawnY, z: spawnZ } = spawnOverrideAction.position;
-      applyPlayerBodyCameraPlacement({
-        body: rigidBody.current,
-        camera,
-        cameraHeight: PLAYER_CAMERA_HEIGHT,
-        position: spawnOverrideAction.position,
-        resetAngularVelocity: true,
-      });
-      const resolvedYaw = resetLilyCoilCameraState(
-        spawnOverrideAction.yaw,
-        spawnOverrideAction.pitch,
-      );
-      resetQaWalkSession(spawnOverrideAction.position);
-      forcedSpawnKey.current = spawnOverrideAction.key;
-      publishLocalPlayerPosition(spawnOverrideAction.position, { rememberLast: true });
-      publishQaPlayerPosition(spawnOverrideAction.position);
-      dispatchPlayerMoved({ x: spawnX, y: spawnY, z: spawnZ, angle: resolvedYaw, isMoving: false, grounded: false });
+    const spawnOverrideApplication = applyPlayerSpawnOverrideAction(spawnOverrideAction, {
+      body: rigidBody.current,
+      camera,
+      cameraHeight: PLAYER_CAMERA_HEIGHT,
+      dispatchPlayerMoved,
+      publishLocalPlayerPosition,
+      publishQaPlayerPosition,
+      resetCameraState: resetLilyCoilCameraState,
+      resetQaWalkSession,
+      setForcedSpawnKey: key => {
+        forcedSpawnKey.current = key;
+      },
+    });
+    if (spawnOverrideApplication.applied) {
       return;
     }
 
