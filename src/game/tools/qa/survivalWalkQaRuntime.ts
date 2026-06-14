@@ -2181,6 +2181,40 @@ export function resolveQaWalkRecoveryStartPlan({
   };
 }
 
+export type QaWalkRecoveryStartPlan = ReturnType<typeof resolveQaWalkRecoveryStartPlan>;
+
+export type QaWalkRecoveryStartRefs = {
+  inspectUntil: QaWalkMutableRef<number>;
+  lastDecisionAt: QaWalkMutableRef<number>;
+  nextDecisionAt: QaWalkMutableRef<number>;
+  recoveryStartedAt: QaWalkMutableRef<number>;
+  recoveryStartPos: QaWalkRecoveryStartPositionRef;
+  recoveryStrafe: QaWalkMutableRef<number>;
+  recoveryUntil: QaWalkMutableRef<number>;
+  recoveryYaw: QaWalkMutableRef<number>;
+};
+
+export function applyQaWalkRecoveryStartPlan({
+  elapsedSeconds,
+  plan,
+  position,
+  refs,
+}: {
+  elapsedSeconds: number;
+  plan: QaWalkRecoveryStartPlan;
+  position: QaWalkPosition;
+  refs: QaWalkRecoveryStartRefs;
+}) {
+  refs.recoveryStartedAt.current = plan.recoveryStartedAt;
+  refs.recoveryStartPos.current.set(position.x, position.y, position.z);
+  refs.recoveryUntil.current = plan.recoveryUntil;
+  refs.recoveryYaw.current = plan.recoveryYaw;
+  refs.recoveryStrafe.current = plan.recoveryStrafe;
+  refs.inspectUntil.current = 0;
+  refs.lastDecisionAt.current = elapsedSeconds;
+  refs.nextDecisionAt.current = plan.nextDecisionAt;
+}
+
 export function resolveQaWalkLookInputFrame({
   currentYaw,
   deltaSeconds,

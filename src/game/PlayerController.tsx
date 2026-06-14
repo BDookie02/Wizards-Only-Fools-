@@ -66,6 +66,7 @@ import {
 import {
   applyQaWalkRecoveryMovementFrame,
   applyQaWalkRecoveryPlacementPlan,
+  applyQaWalkRecoveryStartPlan,
   getQaWalkIntentDistance,
   isQaWalkBaseVillageArea,
   isQaWalkDarrelGroveArea,
@@ -1657,14 +1658,21 @@ export function PlayerController() {
           positionZ: pos.z,
           stuckStrikes: qaWalkStuckStrikes.current,
         });
-        qaWalkRecoveryStartedAt.current = recoveryStartPlan.recoveryStartedAt;
-        qaWalkRecoveryStartPos.current.set(pos.x, pos.y, pos.z);
-        qaWalkRecoveryUntil.current = recoveryStartPlan.recoveryUntil;
-        qaWalkRecoveryYaw.current = recoveryStartPlan.recoveryYaw;
-        qaWalkRecoveryStrafe.current = recoveryStartPlan.recoveryStrafe;
-        qaWalkInspectUntil.current = 0;
-        qaWalkLastDecisionAt.current = elapsed;
-        qaWalkNextDecisionAt.current = recoveryStartPlan.nextDecisionAt;
+        applyQaWalkRecoveryStartPlan({
+          elapsedSeconds: elapsed,
+          plan: recoveryStartPlan,
+          position: pos,
+          refs: {
+            inspectUntil: qaWalkInspectUntil,
+            lastDecisionAt: qaWalkLastDecisionAt,
+            nextDecisionAt: qaWalkNextDecisionAt,
+            recoveryStartedAt: qaWalkRecoveryStartedAt,
+            recoveryStartPos: qaWalkRecoveryStartPos,
+            recoveryStrafe: qaWalkRecoveryStrafe,
+            recoveryUntil: qaWalkRecoveryUntil,
+            recoveryYaw: qaWalkRecoveryYaw,
+          },
+        });
       };
 
       const measuredForwardClearance = probeClearance(qaWalkYaw.current, QA_SURVIVAL_WALK_PROBE_DISTANCE);
