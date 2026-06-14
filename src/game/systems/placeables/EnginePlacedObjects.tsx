@@ -15,7 +15,6 @@ import { dispatchEnginePlaceableEvent, subscribeEnginePlaceableEvent } from "./e
 import { findEnginePlacementCollision } from "./enginePlacementCollision";
 import {
   appendEnginePlacedObjectBounded,
-  cloneEnginePlacedObjects,
   findEnginePlacedObjectById,
   hasEnginePlacedObjectId,
   removeEnginePlacedObjectById,
@@ -32,18 +31,24 @@ import {
   type EnginePlaceableNetworkSnapshotDetail,
   type EnginePlaceableNetworkUpsertDetail,
 } from "./enginePlacedObjectNetworkRuntime";
+import {
+  getEnginePlacementStorage,
+  publishEnginePlacedObjectList,
+  publishEnginePlacedObjectSlotList,
+  publishEnginePlacementPreviewResult,
+  publishEnginePlacementResult,
+  type WindowWithEnginePlaceables,
+} from "./enginePlacedObjectPublishRuntime";
 import { planEnginePlacementPreview } from "./enginePlacementPreviewRuntime";
 import {
   MAX_ENGINE_PLACED_OBJECTS,
   deleteStoredEngineObjectSlot,
   getEnginePlacementSlotLabel,
-  loadStoredEngineObjectSlotSummaries,
   loadStoredEngineObjectsFromSlot,
   loadStoredEngineObjects,
   saveStoredEngineObjectSlot,
   saveStoredEngineObjects,
   type EnginePlacedObjectRecord,
-  type EnginePlacedObjectSlotSummary,
 } from "./enginePlacedObjectStorage";
 import { getPlaceableDefinition } from "./placeableCatalog";
 import {
@@ -54,75 +59,10 @@ import {
 
 type EnginePlacedObject = EnginePlacedObjectRecord;
 
-type EnginePlacementResultDetail = {
-  ok: boolean;
-  label?: string;
-  reason?: string;
-  count?: number;
-};
-
-type EnginePlacementPreviewResultDetail = EnginePlacementResultDetail & {
-  x?: number;
-  y?: number;
-  z?: number;
-  yaw?: number;
-  gridSize?: number;
-  snapped?: boolean;
-};
-
-type EnginePlacedObjectListDetail = {
-  objects: EnginePlacedObject[];
-};
-
-type EnginePlacedObjectSlotListDetail = {
-  slots: EnginePlacedObjectSlotSummary[];
-};
-
-type WindowWithPlayerSnapshot = Window & {
-  wofEnginePlacedObjectCount?: number;
-  wofEnginePlacedObjectSummary?: EnginePlacedObject[];
-  wofEnginePlacedObjectSlots?: EnginePlacedObjectSlotSummary[];
-  wofEnginePlaceableNetworkSnapshot?: EnginePlaceableNetworkSnapshotDetail;
-  wofEnginePlacementPreview?: EnginePlacementPreviewResultDetail | null;
-};
-
-function publishEnginePlacementResult(detail: EnginePlacementResultDetail) {
-  dispatchEnginePlaceableEvent("wof-engine-placeable-result", detail);
-}
-
-function publishEnginePlacementPreviewResult(detail: EnginePlacementPreviewResultDetail) {
-  const playerWindow = window as WindowWithPlayerSnapshot;
-  playerWindow.wofEnginePlacementPreview = detail;
-  dispatchEnginePlaceableEvent("wof-engine-placeable-preview-result", detail);
-}
-
-function publishEnginePlacedObjectList(objects: EnginePlacedObject[]) {
-  const playerWindow = window as WindowWithPlayerSnapshot;
-  const summary = cloneEnginePlacedObjects(objects);
-  playerWindow.wofEnginePlacedObjectCount = summary.length;
-  playerWindow.wofEnginePlacedObjectSummary = summary;
-  dispatchEnginePlaceableEvent<EnginePlacedObjectListDetail>("wof-engine-placeable-list", { objects: summary });
-}
-
-function publishEnginePlacedObjectSlotList() {
-  const playerWindow = window as WindowWithPlayerSnapshot;
-  const slots = loadStoredEngineObjectSlotSummaries(getEnginePlacementStorage());
-  playerWindow.wofEnginePlacedObjectSlots = slots;
-  dispatchEnginePlaceableEvent<EnginePlacedObjectSlotListDetail>("wof-engine-placeable-slots", { slots });
-}
-
 function getPlayerSnapshot(detail?: EnginePlaceableRequestDetail) {
   const playerPosition = getLastKnownLocalPlayerPosition();
   const playerYaw = Number(getPublishedLastPlayerYaw() ?? detail?.yaw ?? 0);
   return { position: playerPosition, yaw: playerYaw };
-}
-
-function getEnginePlacementStorage() {
-  try {
-    return typeof window !== "undefined" ? window.localStorage : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolean }) {
@@ -355,7 +295,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
       setPreview(null);
       publishEnginePlacementResult({ ok: true, label: "synced placement snapshot", count: nextObjects.length });
     };
-    const pendingNetworkSnapshot = (window as WindowWithPlayerSnapshot).wofEnginePlaceableNetworkSnapshot;
+    const pendingNetworkSnapshot = (window as WindowWithEnginePlaceables).wofEnginePlaceableNetworkSnapshot;
     if (
       Number.isFinite(pendingNetworkSnapshot?.receivedAt) &&
       Number(pendingNetworkSnapshot?.receivedAt) !== appliedNetworkSnapshotAtRef.current
