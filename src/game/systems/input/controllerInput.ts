@@ -7,10 +7,9 @@ import {
   GAMEPAD_STICK_DEADZONE,
   GAMEPAD_TRIGGER_THRESHOLD,
   getGamepadScanNowMs,
-  readGamepadStickAxesInto,
-  type GamepadStickAxes,
 } from "./controllerInputRuntime";
 
+export { hasGamepadInput } from "./controllerGamepadActivityRuntime";
 export {
   GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS,
   GAMEPAD_STICK_DEADZONE,
@@ -24,9 +23,6 @@ export {
   type GamepadStickAxes,
   type GamepadStickName,
 } from "./controllerInputRuntime";
-
-const GAMEPAD_ACTIVITY_LEFT_STICK_SCRATCH: GamepadStickAxes = { x: 0, y: 0 };
-const GAMEPAD_ACTIVITY_RIGHT_STICK_SCRATCH: GamepadStickAxes = { x: 0, y: 0 };
 
 const NO_GAMEPAD_SCAN_CACHE_MS = GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS;
 const PRIMARY_GAMEPAD_SCAN_CACHE_MS = 8;
@@ -59,35 +55,6 @@ function ensureGamepadCacheResetListeners() {
   window.addEventListener("gamepadconnected", clearGamepadSelectionCache);
   window.addEventListener("gamepaddisconnected", clearGamepadSelectionCache);
   gamepadCacheResetListenersInstalled = true;
-}
-
-export function hasGamepadInput(gamepad: Gamepad | null, axisDeadzone = GAMEPAD_STICK_DEADZONE) {
-  if (!gamepad) return false;
-
-  readGamepadStickAxesInto(gamepad, "left", GAMEPAD_ACTIVITY_LEFT_STICK_SCRATCH, axisDeadzone);
-  if (
-    Math.abs(GAMEPAD_ACTIVITY_LEFT_STICK_SCRATCH.x) > 0 ||
-    Math.abs(GAMEPAD_ACTIVITY_LEFT_STICK_SCRATCH.y) > 0
-  ) {
-    return true;
-  }
-
-  readGamepadStickAxesInto(gamepad, "right", GAMEPAD_ACTIVITY_RIGHT_STICK_SCRATCH, axisDeadzone);
-  if (
-    Math.abs(GAMEPAD_ACTIVITY_RIGHT_STICK_SCRATCH.x) > 0 ||
-    Math.abs(GAMEPAD_ACTIVITY_RIGHT_STICK_SCRATCH.y) > 0
-  ) {
-    return true;
-  }
-
-  for (let index = 0; index < gamepad.buttons.length; index += 1) {
-    const button = gamepad.buttons[index];
-    if (button?.pressed || (button?.value ?? 0) >= GAMEPAD_TRIGGER_THRESHOLD) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 export function getPrimaryGamepad() {

@@ -1,7 +1,4 @@
-import {
-  GAMEPAD_TRIGGER_THRESHOLD,
-  applyGamepadDeadzone,
-} from "./controllerInputRuntime";
+import { getGamepadActivity } from "./controllerGamepadActivityRuntime";
 
 export type GamepadSelectionSnapshot = {
   connectedCount: number;
@@ -66,23 +63,6 @@ export function getGamepadSelectionSnapshot(gamepads: readonly (Gamepad | null)[
     hasUsefulTimestamp,
     signature,
   };
-}
-
-export function getGamepadActivity(gamepad: Gamepad) {
-  let axisActivity = 0;
-  for (let index = 0; index < gamepad.axes.length; index += 1) {
-    axisActivity += Math.abs(applyGamepadDeadzone(gamepad.axes[index] ?? 0, 0.18));
-  }
-
-  let buttonActivity = 0;
-  for (let index = 0; index < gamepad.buttons.length; index += 1) {
-    const button = gamepad.buttons[index];
-    if (button.pressed || button.value >= GAMEPAD_TRIGGER_THRESHOLD) {
-      buttonActivity += 1;
-    }
-  }
-
-  return axisActivity + buttonActivity;
 }
 
 export function selectPrimaryGamepad({
