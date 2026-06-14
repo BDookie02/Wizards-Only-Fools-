@@ -256,6 +256,7 @@ import {
   resolvePlayerGrabReleaseDirectionInto,
   resolvePlayerGrabReleaseEventAction,
   resolvePlayerGrabStartEventAction,
+  throwPlayerGrabbedState,
 } from "./systems/player/playerGrabEventRuntime";
 import {
   PLAYER_DIRECT_STATUS_HAND_CHARGE_MS,
@@ -547,16 +548,15 @@ export function PlayerController() {
   }, [camera]);
 
   const throwGrabbedPlayer = (overrideDir?: THREE.Vector3) => {
-    const grabbed = grabbedState.current;
-    if (!rigidBody.current || !grabbed) return;
-
-    const throwDir = throwDirection.copy(overrideDir ?? grabbed.dir).normalize();
-    rigidBody.current.setLinvel({
-      x: throwDir.x * GRAB_THROW_SPEED,
-      y: THREE.MathUtils.clamp(throwDir.y * GRAB_THROW_SPEED, -18, 26),
-      z: throwDir.z * GRAB_THROW_SPEED,
-    }, true);
-    grabbedState.current = null;
+    throwPlayerGrabbedState({
+      body: rigidBody.current,
+      grabbedState,
+      maxVerticalSpeed: 26,
+      minVerticalSpeed: -18,
+      overrideDirection: overrideDir,
+      speed: GRAB_THROW_SPEED,
+      throwDirection,
+    });
   };
 
   const applyScreenShake = () => {

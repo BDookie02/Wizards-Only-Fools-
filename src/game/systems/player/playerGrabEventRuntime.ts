@@ -5,6 +5,9 @@ export type PlayerGrabEventVector = {
 };
 
 export type PlayerGrabMutableVector = {
+  x: number;
+  y: number;
+  z: number;
   set(x: number, y: number, z: number): PlayerGrabMutableVector;
   normalize(): PlayerGrabMutableVector;
 };
@@ -52,6 +55,14 @@ export type PlayerGrabbedEventState = PlayerGrabIdentity & {
   distance: number;
   lastControlAt: number;
   until: number;
+};
+
+export type PlayerGrabbedStateRef<TState extends PlayerGrabbedEventState> = {
+  current: TState | null;
+};
+
+export type PlayerGrabThrowBody = {
+  setLinvel(velocity: PlayerGrabEventVector, wakeUp: boolean): void;
 };
 
 type PlayerGrabStartEventOptions = {
@@ -209,4 +220,35 @@ export function resolvePlayerGrabReleaseDirectionInto<TVector extends PlayerGrab
   if (action.type !== "throw") return null;
   target.set(action.direction.x, action.direction.y, action.direction.z).normalize();
   return target;
+}
+
+export function throwPlayerGrabbedState<TState extends PlayerGrabbedEventState>({
+  body,
+  grabbedState,
+  maxVerticalSpeed,
+  minVerticalSpeed,
+  overrideDirection,
+  speed,
+  throwDirection,
+}: {
+  body: PlayerGrabThrowBody | null | undefined;
+  grabbedState: PlayerGrabbedStateRef<TState>;
+  maxVerticalSpeed: number;
+  minVerticalSpeed: number;
+  overrideDirection?: PlayerGrabEventVector | null;
+  speed: number;
+  throwDirection: PlayerGrabMutableVector;
+}) {
+  const grabbed = grabbedState.current;
+  if (!body || !grabbed) return false;
+
+  const direction = overrideDirection ?? grabbed.dir;
+  throwDirection.set(direction.x, direction.y, direction.z).normalize();
+  body.setLinvel({
+    x: throwDirection.x * speed,
+    y: clampNumber(throwDirection.y * speed, minVerticalSpeed, maxVerticalSpeed),
+    z: throwDirection.z * speed,
+  }, true);
+  grabbedState.current = null;
+  return true;
 }
