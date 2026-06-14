@@ -11,7 +11,6 @@ import {
   getSpellMenuNavTarget,
   getSpellMenuSpellNavIndex,
   getVisibleSpellMenuSpells,
-  spellFamilyFilters,
   SPELL_MENU_NAV_ATTRIBUTE,
   SPELL_MENU_NAV_COUNT,
   SPELL_MENU_NAV_SELECTOR,
@@ -19,11 +18,10 @@ import {
 } from "./spellMenuRuntime";
 import { SpellMenuBindStatus } from "./SpellMenuBindStatus";
 import { SpellMenuCard } from "./SpellMenuCard";
-import { SpellMenuFamilyFilterButton } from "./SpellMenuFamilyFilterButton";
+import { SpellMenuFilterRow } from "./SpellMenuFilterRow";
 import { SpellMenuFooter } from "./SpellMenuFooter";
 import { SpellMenuHeader } from "./SpellMenuHeader";
 import { SpellMenuHotbarColumn } from "./SpellMenuHotbarColumn";
-import { SpellMenuVisibleCount } from "./SpellMenuVisibleCount";
 import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
 
 export const SpellMenu = memo(function SpellMenu({
@@ -232,26 +230,17 @@ export const SpellMenu = memo(function SpellMenu({
               rightCurrentSpell={rightCurrentSpell}
             />
 
-            <div
-              className="spell-menu-family-filters mb-2 grid grid-cols-4 gap-1.5 md:grid-cols-[repeat(8,minmax(0,1fr))]"
-              data-testid="spell-menu-family-filters"
-            >
-              {spellFamilyFilters.map((family) => (
-                <SpellMenuFamilyFilterButton
-                  key={family}
-                  family={family}
-                  active={activeFamily === family}
-                  count={familyCounts[family]}
-                  controllerFocusIndex={controllerFocusIndex}
-                  onFocusNav={setControllerFocusIndex}
-                  onSelectFamily={(selectedFamily, navIndex) => {
-                    setControllerFocusIndex(navIndex);
-                    selectFamily(selectedFamily);
-                  }}
-                />
-              ))}
-              <SpellMenuVisibleCount count={visibleSpells.length} />
-            </div>
+            <SpellMenuFilterRow
+              activeFamily={activeFamily}
+              familyCounts={familyCounts}
+              controllerFocusIndex={controllerFocusIndex}
+              visibleCount={visibleSpells.length}
+              onFocusNav={setControllerFocusIndex}
+              onSelectFamily={(selectedFamily, navIndex) => {
+                setControllerFocusIndex(navIndex);
+                selectFamily(selectedFamily);
+              }}
+            />
 
             <div className="spell-menu-grid grid grid-cols-3 gap-2 md:grid-cols-5">
               {visibleSpells.map((spell) => {
