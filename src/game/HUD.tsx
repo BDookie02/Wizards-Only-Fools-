@@ -105,10 +105,10 @@ import { getCharacterCustomizationStep } from "./ui/hud/characterCustomizationRu
 import { resolveHudFocusedSettingAdjustment } from "./ui/hud/hudSettingsAdjustmentRuntime";
 import { closeHudCommandConsole, openHudCommandConsole } from "./ui/hud/hudCommandConsoleRuntime";
 import {
-  getHudFillSafeFrameStyle,
   getHudMainMenuActionCount,
   HUD_ROOT_STYLE,
   resolveHudDeveloperToolAccess,
+  resolveHudMagicHandsSafeFrame,
   resolveHudMenuOverlayState,
   resolveHudOverlayResumeClickAction,
 } from "./ui/hud/hudOverlayRuntime";
@@ -331,8 +331,7 @@ export function HUD() {
 
   const aspectRatio = useGameStore(s => s.aspectRatio);
   const setAspectRatio = useGameStore(s => s.setAspectRatio);
-  const isFillAspect = aspectRatio === "Fill";
-  const fillSafeFrameStyle = getHudFillSafeFrameStyle(aspectRatio);
+  const magicHandsSafeFrame = resolveHudMagicHandsSafeFrame(aspectRatio);
   const hudRootStyle = HUD_ROOT_STYLE;
   const [showVideoMenu, setShowVideoMenu] = useState(false);
 
@@ -3250,11 +3249,8 @@ export function HUD() {
       {/* Player Hands (DOOM Style) */}
       {shouldExpectMagicHands && (
         <div
-          className={isFillAspect
-            ? "absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-            : "absolute inset-0 pointer-events-none"
-          }
-          style={fillSafeFrameStyle}
+          className={magicHandsSafeFrame.className}
+          style={magicHandsSafeFrame.style}
         >
           <Suspense fallback={null}>
             <LazyMagicHands playerState={playerState} leftSpell={leftCurrentSpell} rightSpell={rightCurrentSpell} />

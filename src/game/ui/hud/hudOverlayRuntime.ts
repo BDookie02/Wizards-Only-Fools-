@@ -10,6 +10,9 @@ const HUD_FILL_SAFE_FRAME_STYLE = {
   height: "min(100cqh, calc(100cqw * 9 / 16))",
 } as CSSProperties;
 
+const HUD_MAGIC_HANDS_FILL_FRAME_CLASS = "absolute left-1/2 top-1/2 max-h-full max-w-full -translate-x-1/2 -translate-y-1/2 pointer-events-none";
+const HUD_MAGIC_HANDS_DEFAULT_FRAME_CLASS = "absolute inset-0 pointer-events-none";
+
 const HUD_MENU_OVERLAY_BASE_STYLE = {
   containerType: "size",
   width: "var(--app-vw, 100dvw)",
@@ -62,6 +65,13 @@ export type HudOverlayResumeClickAction =
 
 export function getHudFillSafeFrameStyle(aspectRatio: string) {
   return aspectRatio === "Fill" ? HUD_FILL_SAFE_FRAME_STYLE : undefined;
+}
+
+export function resolveHudMagicHandsSafeFrame(aspectRatio: string) {
+  return {
+    className: aspectRatio === "Fill" ? HUD_MAGIC_HANDS_FILL_FRAME_CLASS : HUD_MAGIC_HANDS_DEFAULT_FRAME_CLASS,
+    style: getHudFillSafeFrameStyle(aspectRatio),
+  };
 }
 
 export function resolveHudMenuOverlayState(input: HudMenuOverlayStateInput): HudMenuOverlayState {
