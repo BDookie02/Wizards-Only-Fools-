@@ -5,8 +5,6 @@ import {
   emitEnginePlaceableNetworkUpsert,
 } from "../../network/gameNetworkClient";
 import { makeRuntimeRandomId } from "../random/runtimeRandom";
-import { getBaseVillageTerrainHeight } from "../world/terrain/BaseVillageTerrain";
-import { getSurvivalGrassSurfaceHeightAtWorld } from "../world/survival/survivalGrassSurface";
 import { dispatchEnginePlaceableEvent, subscribeEnginePlaceableEvent } from "./enginePlaceableEvents";
 import { findEnginePlacementCollision } from "./enginePlacementCollision";
 import {
@@ -35,6 +33,7 @@ import {
   publishEnginePlacementResult,
   type WindowWithEnginePlaceables,
 } from "./enginePlacedObjectPublishRuntime";
+import { getEnginePlacementGroundResolver } from "./enginePlacementGroundRuntime";
 import { getEnginePlacementPlayerSnapshot } from "./enginePlacementPlayerSnapshotRuntime";
 import { planEnginePlacementPreview } from "./enginePlacementPreviewRuntime";
 import {
@@ -74,7 +73,7 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
   }, [objects]);
 
   useEffect(() => {
-    const getGroundY = isSurvivalMode ? getSurvivalGrassSurfaceHeightAtWorld : getBaseVillageTerrainHeight;
+    const getGroundY = getEnginePlacementGroundResolver(isSurvivalMode);
     const handlePreviewRequest = (event: { detail: EnginePlaceableRequestDetail | undefined }) => {
       const detail = event.detail;
       const placeableId = String(detail?.placeableId ?? "");
