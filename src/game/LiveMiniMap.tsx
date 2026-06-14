@@ -15,7 +15,9 @@ import {
   getLiveMiniMapToggleDelayMs,
   getLiveMiniMapViewSize,
   hideMiniMapObjectsForRender,
+  resolveLiveMiniMapPlayerMoveDetail,
   shouldRenderLiveMiniMapFrame,
+  syncLiveMiniMapPlayerFromPublishedStateInto,
   restoreMiniMapObjectsAfterRender,
 } from "./systems/rendering/minimap/liveMiniMapRuntime";
 import { getPublishedLastPlayerYaw, getPublishedLocalPlayerPosition } from "./systems/player/playerEventBridge";
@@ -24,16 +26,11 @@ import { isMapUiBlockedByModal } from "./ui/hud/mapVisibilityRuntime";
 type LiveMiniMapPlayerPositionRef = MutableRefObject<{ x: number; z: number; angle: number; offsetX: number; offsetZ: number }>;
 
 function syncLiveMiniMapPlayerFromPublishedState(playerPos: LiveMiniMapPlayerPositionRef["current"]) {
-  const publishedPosition = getPublishedLocalPlayerPosition();
-  if (publishedPosition) {
-    playerPos.x = publishedPosition.x;
-    playerPos.z = publishedPosition.z;
-  }
-
-  const publishedYaw = getPublishedLastPlayerYaw();
-  if (publishedYaw !== undefined) {
-    playerPos.angle = publishedYaw;
-  }
+  syncLiveMiniMapPlayerFromPublishedStateInto(
+    playerPos,
+    getPublishedLocalPlayerPosition(),
+    getPublishedLastPlayerYaw(),
+  );
 }
 
 export function LiveMiniMap() {
@@ -108,9 +105,10 @@ export function LiveMiniMap() {
     syncLiveMiniMapPlayerFromPublishedState(playerPos.current);
 
     const fn = (e: any) => {
-       playerPos.current.x = e.detail.x;
-       playerPos.current.z = e.detail.z;
-       playerPos.current.angle = e.detail.angle ?? playerPos.current.angle;
+       const nextPlayerPos = resolveLiveMiniMapPlayerMoveDetail(e.detail, playerPos.current);
+       playerPos.current.x = nextPlayerPos.x;
+       playerPos.current.z = nextPlayerPos.z;
+       playerPos.current.angle = nextPlayerPos.angle;
     };
     window.addEventListener('player-moved', fn);
     return () => window.removeEventListener('player-moved', fn);

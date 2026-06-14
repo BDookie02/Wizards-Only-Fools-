@@ -6,6 +6,15 @@ export type LiveMiniMapPlayerSnapshot = {
   z: number;
 };
 
+export type LiveMiniMapPlayerState = LiveMiniMapPlayerSnapshot & {
+  angle: number;
+};
+
+export type PublishedLiveMiniMapPosition = {
+  x: number;
+  z: number;
+} | null | undefined;
+
 export type LiveMiniMapRenderCheckpoint = LiveMiniMapPlayerSnapshot & {
   expanded: boolean;
 };
@@ -30,6 +39,10 @@ export type LiveMiniMapHiddenObjectCache = {
 export const COMPACT_MINIMAP_VIEW_SIZE = 80;
 export const EXPANDED_BLOCK_MAP_VIEW_SIZE = SURVIVAL_BLOCK_SIZE / 2;
 const HIDDEN_OBJECT_CACHE_REFRESH_MS = 2400;
+
+export function toFiniteLiveMiniMapNumber(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
 
 export function shouldHideForMiniMap(object: THREE.Object3D) {
   return (
@@ -157,6 +170,34 @@ export function getLiveMiniMapCameraCenterInto(
 
 export function getLiveMiniMapCameraCenter(player: LiveMiniMapPlayerSnapshot, isExpanded: boolean) {
   return getLiveMiniMapCameraCenterInto(player, isExpanded, { x: 0, z: 0 });
+}
+
+export function syncLiveMiniMapPlayerFromPublishedStateInto(
+  target: LiveMiniMapPlayerState,
+  publishedPosition: PublishedLiveMiniMapPosition,
+  publishedYaw: number | undefined,
+) {
+  if (publishedPosition) {
+    target.x = toFiniteLiveMiniMapNumber(publishedPosition.x, target.x);
+    target.z = toFiniteLiveMiniMapNumber(publishedPosition.z, target.z);
+  }
+
+  if (publishedYaw !== undefined) {
+    target.angle = toFiniteLiveMiniMapNumber(publishedYaw, target.angle);
+  }
+
+  return target;
+}
+
+export function resolveLiveMiniMapPlayerMoveDetail(
+  detail: Record<string, unknown> | null | undefined,
+  previous: LiveMiniMapPlayerState,
+): LiveMiniMapPlayerState {
+  return {
+    x: toFiniteLiveMiniMapNumber(detail?.x, previous.x),
+    z: toFiniteLiveMiniMapNumber(detail?.z, previous.z),
+    angle: toFiniteLiveMiniMapNumber(detail?.angle, previous.angle),
+  };
 }
 
 export function getLiveMiniMapRenderIntervalMs(isExpanded: boolean, mobilePerformanceMode: boolean) {
