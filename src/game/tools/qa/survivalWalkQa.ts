@@ -75,6 +75,10 @@ export const QA_SURVIVAL_LONG_HAUL_ROUTE: QaSurvivalRouteWaypoint[] = [
   { id: "long-haul-point-a", x: SURVIVAL_BLOCK_SIZE * 2 - 240, z: SURVIVAL_BLOCK_SIZE * -2 + 180 },
 ];
 
+const EMPTY_QA_SURVIVAL_ROUTE: QaSurvivalRouteWaypoint[] = [];
+let cachedQaSurvivalRouteSearch = "";
+let cachedQaSurvivalRouteWaypoints = EMPTY_QA_SURVIVAL_ROUTE;
+
 export const QA_SURVIVAL_WALK_DECISION_MIN_SECONDS = 1.55;
 export const QA_SURVIVAL_WALK_DECISION_MAX_SECONDS = 4.25;
 export const QA_SURVIVAL_WALK_PROBE_DISTANCE = 13.5;
@@ -193,14 +197,24 @@ export function getQaSurvivalWalkStartDelaySeconds() {
   return Math.min(60, Math.max(0, delayMs / 1000));
 }
 
-export function getQaSurvivalRouteWaypoints() {
-  if (!import.meta.env.DEV) return [] as QaSurvivalRouteWaypoint[];
-  const route = (getCurrentQaRouteParam("qaSurvivalRoute") || getCurrentQaRouteParam("qaRoute") || "").toLowerCase();
-  if (!route || route === "off" || route === "0") return [];
+export function resolveQaSurvivalRouteWaypoints(rawRoute: string | null | undefined) {
+  const route = (rawRoute ?? "").toLowerCase();
+  if (!route || route === "off" || route === "0") return EMPTY_QA_SURVIVAL_ROUTE;
   if (route.includes("long") || route.includes("point") || route === "ab" || route === "a-b") {
     return QA_SURVIVAL_LONG_HAUL_ROUTE;
   }
   return QA_SURVIVAL_CROSS_MAP_ROUTE;
+}
+
+export function getQaSurvivalRouteWaypoints() {
+  if (!import.meta.env.DEV || typeof window === "undefined") return EMPTY_QA_SURVIVAL_ROUTE;
+  const search = window.location.search;
+  if (search === cachedQaSurvivalRouteSearch) return cachedQaSurvivalRouteWaypoints;
+  cachedQaSurvivalRouteSearch = search;
+  cachedQaSurvivalRouteWaypoints = resolveQaSurvivalRouteWaypoints(
+    getCurrentQaRouteParam("qaSurvivalRoute") ?? getCurrentQaRouteParam("qaRoute"),
+  );
+  return cachedQaSurvivalRouteWaypoints;
 }
 
 export function survivalishTurnNoise(x: number, z: number, time: number) {
