@@ -143,6 +143,7 @@ import {
   resolveQaWalkPracticeProjectilePosition,
 } from "./tools/qa/survivalWalkQaPracticeCasting";
 import {
+  applyQaWalkSpellDummyReanchorPlan,
   getQaWalkNextCombatCastAt,
   getQaWalkNextPracticeCastAt,
   applyQaWalkSpellDummyRunMotionBrake,
@@ -2090,7 +2091,7 @@ export function PlayerController() {
       const combatSpellDummy = spellDummyTargets.combatSpellDummy;
       const qaSpellDummyHits = getSurvivalWalkSpellDummyHitCount();
 
-      if (shouldReanchorQaWalkSpellDummy({
+      const shouldReanchorSpellDummy = shouldReanchorQaWalkSpellDummy({
         activeDummyTooFar: spellDummyTargets.activeDummyTooFar,
         elapsedSeconds: elapsed,
         lastDummyReanchorAt: qaWalkLastDummyReanchorAt.current,
@@ -2099,25 +2100,34 @@ export function PlayerController() {
         nearestAnySpellDummyDistanceSq: spellDummyTargets.nearestAnySpellDummyDistanceSq,
         qaSpellDummyHits,
         qaSpellDummyRunActive,
-      })) {
-        const reanchorPlan = resolveQaWalkSpellDummyReanchorPlan({
-          currentYaw: qaWalkYaw.current ?? currentYaw,
-          elapsedSeconds: elapsed,
-          mode,
-          nearestAnySpellDummyDistanceSq: spellDummyTargets.nearestAnySpellDummyDistanceSq,
-          nextCombatCastAt: qaWalkNextCombatCastAt.current,
-          playerPosition: pos,
-          qaSpellDummyHits,
-          recoveryYaw: qaWalkRecoveryYaw.current,
-        });
-        dispatchQaSpellDummySpawn(reanchorPlan.spawn);
-        qaWalkLastDummyReanchorAt.current = elapsed;
-        qaWalkIntent.current = null;
-        qaWalkNextIntentAt.current = 0;
-        qaWalkNextCombatCastAt.current = reanchorPlan.nextCombatCastAt;
-        qaWalkStuckStrikes.current = 0;
-        publishSurvivalWalkAction(reanchorPlan.actionLabel);
-      }
+      });
+      const reanchorPlan = shouldReanchorSpellDummy
+        ? resolveQaWalkSpellDummyReanchorPlan({
+            currentYaw: qaWalkYaw.current ?? currentYaw,
+            elapsedSeconds: elapsed,
+            mode,
+            nearestAnySpellDummyDistanceSq: spellDummyTargets.nearestAnySpellDummyDistanceSq,
+            nextCombatCastAt: qaWalkNextCombatCastAt.current,
+            playerPosition: pos,
+            qaSpellDummyHits,
+            recoveryYaw: qaWalkRecoveryYaw.current,
+          })
+        : null;
+      applyQaWalkSpellDummyReanchorPlan({
+        elapsedSeconds: elapsed,
+        plan: reanchorPlan,
+        publishers: {
+          dispatchQaSpellDummySpawn,
+          publishSurvivalWalkAction,
+        },
+        refs: {
+          intent: qaWalkIntent,
+          lastDummyReanchorAt: qaWalkLastDummyReanchorAt,
+          nextCombatCastAt: qaWalkNextCombatCastAt,
+          nextIntentAt: qaWalkNextIntentAt,
+          stuckStrikes: qaWalkStuckStrikes,
+        },
+      });
 
       const combatCastDecision = resolveQaWalkCombatCastDecision({
         combatSpellDummy,

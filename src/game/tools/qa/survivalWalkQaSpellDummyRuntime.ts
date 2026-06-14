@@ -258,3 +258,42 @@ export function resolveQaWalkSpellDummyReanchorPlan({
     },
   };
 }
+
+type QaWalkMutableRef<T> = { current: T };
+
+export type QaWalkSpellDummyReanchorPlan = ReturnType<typeof resolveQaWalkSpellDummyReanchorPlan>;
+
+export type QaWalkSpellDummyReanchorRefs = {
+  intent: QaWalkMutableRef<QaSurvivalIntent | null>;
+  lastDummyReanchorAt: QaWalkMutableRef<number>;
+  nextCombatCastAt: QaWalkMutableRef<number>;
+  nextIntentAt: QaWalkMutableRef<number>;
+  stuckStrikes: QaWalkMutableRef<number>;
+};
+
+export type QaWalkSpellDummyReanchorPublishers = {
+  dispatchQaSpellDummySpawn: (spawn: QaWalkSpellDummyReanchorPlan["spawn"]) => void;
+  publishSurvivalWalkAction: (label: string) => void;
+};
+
+export function applyQaWalkSpellDummyReanchorPlan({
+  elapsedSeconds,
+  plan,
+  publishers,
+  refs,
+}: {
+  elapsedSeconds: number;
+  plan: QaWalkSpellDummyReanchorPlan | null;
+  publishers: QaWalkSpellDummyReanchorPublishers;
+  refs: QaWalkSpellDummyReanchorRefs;
+}) {
+  if (!plan) return false;
+  publishers.dispatchQaSpellDummySpawn(plan.spawn);
+  refs.lastDummyReanchorAt.current = elapsedSeconds;
+  refs.intent.current = null;
+  refs.nextIntentAt.current = 0;
+  refs.nextCombatCastAt.current = plan.nextCombatCastAt;
+  refs.stuckStrikes.current = 0;
+  publishers.publishSurvivalWalkAction(plan.actionLabel);
+  return true;
+}
