@@ -122,6 +122,12 @@ import {
   resolveHudMenuOverlayState,
 } from "./ui/hud/hudOverlayRuntime";
 import {
+  getHudPauseInputMode,
+  isHudTouchGameplayTakeoverBlocked,
+  resolveHudTouchGameplayTakeoverAction,
+  type GameplayInputMode,
+} from "./ui/hud/hudGameplayModeRuntime";
+import {
   countOwnRecordEntries,
   getHudScoreboardSourceUpdate,
   type HudScoreboardSource,
@@ -217,8 +223,6 @@ function loadDevFastTravelModule() {
   devFastTravelModulePromise ??= import("./tools/devFastTravel");
   return devFastTravelModulePromise;
 }
-
-type GameplayInputMode = "mouse" | "touch" | "controller";
 
 export function HUD() {
   const health = useGameStore(s => s.health);
@@ -756,11 +760,7 @@ export function HUD() {
       ) {
         e.preventDefault();
         e.stopPropagation();
-        openPauseMenuFromGameplay(touchGameplayActive
-          ? "touch"
-          : controllerGameplayActive
-            ? "controller"
-            : "mouse");
+        openPauseMenuFromGameplay(getHudPauseInputMode({ controllerGameplayActive, touchGameplayActive }));
         return;
       }
 
@@ -1015,40 +1015,45 @@ export function HUD() {
     if (!isTouchDevice || !isGameLaunched || !localPlayerName) return;
 
     let lastTouchTakeoverAt = 0;
-    const shouldBlockTouchTakeover = () => {
+    const isTouchTakeoverBlocked = () => {
       const state = useGameStore.getState();
-      return (
-        !state.isGameLaunched ||
-        !state.localPlayerName ||
-        state.health <= 0 ||
-        state.isSpellMenuOpen ||
-        state.isInventoryOpen ||
-        state.isMapExpanded ||
-        state.isScoreboardOpen ||
-        Boolean(state.questNpcEditorTarget) ||
-        Boolean(state.questDialogSession) ||
-        isCommandConsoleOpen ||
-        isDevFastTravelOpen ||
-        isEngineMenuOpen ||
-        isPauseMenuVisible ||
-        isReturningToGame ||
-        showVideoMenu ||
-        remappingAction !== null ||
-        remappingVoiceKey
-      );
+      return isHudTouchGameplayTakeoverBlocked({
+        commandConsoleOpen: isCommandConsoleOpen,
+        devFastTravelOpen: isDevFastTravelOpen,
+        engineMenuOpen: isEngineMenuOpen,
+        hasLocalPlayerName: Boolean(state.localPlayerName),
+        health: state.health,
+        inventoryOpen: state.isInventoryOpen,
+        isGameLaunched: state.isGameLaunched,
+        mapExpanded: state.isMapExpanded,
+        pauseMenuVisible: isPauseMenuVisible,
+        questDialogOpen: Boolean(state.questDialogSession),
+        questNpcEditorOpen: Boolean(state.questNpcEditorTarget),
+        remappingActionActive: remappingAction !== null,
+        remappingVoiceKey,
+        returningToGame: isReturningToGame,
+        scoreboardOpen: state.isScoreboardOpen,
+        showVideoMenu,
+        spellMenuOpen: state.isSpellMenuOpen,
+      });
     };
 
     const handleTouchGameplayTakeover = (event: PointerEvent | TouchEvent) => {
       if ("pointerType" in event && event.pointerType !== "touch") return;
-      if (isEditableTarget(event.target)) return;
-      if (shouldBlockTouchTakeover()) return;
 
       const state = useGameStore.getState();
-      if (state.isTouchControlsActive && lastGameplayInputModeRef.current === "touch") return;
-
       const now = window.performance.now();
-      if (now - lastTouchTakeoverAt < 48) return;
-      lastTouchTakeoverAt = now;
+      const takeoverAction = resolveHudTouchGameplayTakeoverAction({
+        blocked: isTouchTakeoverBlocked(),
+        lastGameplayInputMode: lastGameplayInputModeRef.current,
+        lastTouchTakeoverAtMs: lastTouchTakeoverAt,
+        nowMs: now,
+        targetEditable: isEditableTarget(event.target),
+        touchControlsActive: state.isTouchControlsActive,
+      });
+      if (takeoverAction.type !== "start") return;
+
+      lastTouchTakeoverAt = takeoverAction.nextLastTouchTakeoverAtMs;
       startTouchGameplay();
     };
 
