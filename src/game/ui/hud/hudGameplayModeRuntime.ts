@@ -50,6 +50,10 @@ export function getHudPauseInputMode({
   return "mouse";
 }
 
+export function getHudGameplayModeNowMs() {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
 export function isHudTouchGameplayTakeoverBlocked({
   commandConsoleOpen,
   devFastTravelOpen,

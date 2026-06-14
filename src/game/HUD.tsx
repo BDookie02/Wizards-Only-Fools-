@@ -122,6 +122,7 @@ import {
   resolveHudMenuOverlayState,
 } from "./ui/hud/hudOverlayRuntime";
 import {
+  getHudGameplayModeNowMs,
   getHudPauseInputMode,
   isHudTouchGameplayTakeoverBlocked,
   resolveHudTouchGameplayTakeoverAction,
@@ -1042,7 +1043,7 @@ export function HUD() {
       if ("pointerType" in event && event.pointerType !== "touch") return;
 
       const state = useGameStore.getState();
-      const now = window.performance.now();
+      const now = getHudGameplayModeNowMs();
       const takeoverAction = resolveHudTouchGameplayTakeoverAction({
         blocked: isTouchTakeoverBlocked(),
         lastGameplayInputMode: lastGameplayInputModeRef.current,
