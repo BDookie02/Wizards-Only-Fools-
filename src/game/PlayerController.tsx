@@ -197,6 +197,7 @@ import {
   QA_LILY_COIL_TUBE_LOOK_AHEAD_T,
   QA_LILY_COIL_TUBE_RESTART_EDGE_T,
   QA_LILY_COIL_TUBE_REVERSE_EDGE_T,
+  applyPlayerLilyCoilTubeSlideFrame,
   createPlayerLilyCoilTubeMovePayload,
   getPlayerLilyCoilTubeDispatchState,
   isPlayerLilyCoilTubeMoving,
@@ -2600,24 +2601,20 @@ export function PlayerController() {
         tubeState.active = true;
       }
 
-      let tubeSliding = isSliding;
-      const tubeSlideHeld = slideInputHeld && hasPlanarMovementInput;
-      const tubeGroundedBeforeMove = tubeState.jumpOffset <= 0.025 && tubeState.jumpVelocity <= 0;
-      if (tubeGroundedBeforeMove && tubeSlideHeld && !tubeSliding) {
-        if (nowMs - lastSlideTime.current >= SLIDE_RESTART_COOLDOWN_MS) {
-          tubeSliding = true;
-          setIsSliding(true);
-          slideTimer.current = 1.0;
-          lastSlideTime.current = nowMs;
-        }
-      }
-      if (tubeSliding) {
-        slideTimer.current -= delta;
-        if (slideTimer.current <= 0 || !tubeSlideHeld) {
-          tubeSliding = false;
-          setIsSliding(false);
-        }
-      }
+      const tubeSlideFrame = applyPlayerLilyCoilTubeSlideFrame({
+        delta,
+        hasPlanarMovementInput,
+        isSliding,
+        lastSlideTime,
+        nowMs,
+        setIsSliding,
+        slideInputHeld,
+        slideRestartCooldownMs: SLIDE_RESTART_COOLDOWN_MS,
+        slideTimer,
+        tubeJumpOffset: tubeState.jumpOffset,
+        tubeJumpVelocity: tubeState.jumpVelocity,
+      });
+      const { tubeSlideHeld, tubeSliding } = tubeSlideFrame;
 
       const tubeMoveSpeed = (tubeSliding ? slideSpeed : currentSpeed) * 4.8;
       const tubeStrafeInput = strafeInput;

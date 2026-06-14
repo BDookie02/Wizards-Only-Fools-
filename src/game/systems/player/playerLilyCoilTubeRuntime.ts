@@ -32,6 +32,75 @@ export type PlayerLilyCoilTubeMovePayload = {
   grounded: boolean;
 };
 
+type MutableRef<T> = { current: T };
+
+export type PlayerLilyCoilTubeSlideFrame = {
+  startedSlide: boolean;
+  stoppedSlide: boolean;
+  tubeGroundedBeforeMove: boolean;
+  tubeSlideHeld: boolean;
+  tubeSliding: boolean;
+};
+
+export function applyPlayerLilyCoilTubeSlideFrame({
+  delta,
+  hasPlanarMovementInput,
+  isSliding,
+  lastSlideTime,
+  nowMs,
+  setIsSliding,
+  slideInputHeld,
+  slideRestartCooldownMs,
+  slideTimer,
+  tubeJumpOffset,
+  tubeJumpVelocity,
+}: {
+  delta: number;
+  hasPlanarMovementInput: boolean;
+  isSliding: boolean;
+  lastSlideTime: MutableRef<number>;
+  nowMs: number;
+  setIsSliding: (active: boolean) => void;
+  slideInputHeld: boolean;
+  slideRestartCooldownMs: number;
+  slideTimer: MutableRef<number>;
+  tubeJumpOffset: number;
+  tubeJumpVelocity: number;
+}): PlayerLilyCoilTubeSlideFrame {
+  let tubeSliding = isSliding;
+  const tubeSlideHeld = slideInputHeld && hasPlanarMovementInput;
+  const tubeGroundedBeforeMove = tubeJumpOffset <= 0.025 && tubeJumpVelocity <= 0;
+  let startedSlide = false;
+  let stoppedSlide = false;
+
+  if (tubeGroundedBeforeMove && tubeSlideHeld && !tubeSliding) {
+    if (nowMs - lastSlideTime.current >= slideRestartCooldownMs) {
+      tubeSliding = true;
+      setIsSliding(true);
+      slideTimer.current = 1.0;
+      lastSlideTime.current = nowMs;
+      startedSlide = true;
+    }
+  }
+
+  if (tubeSliding) {
+    slideTimer.current -= delta;
+    if (slideTimer.current <= 0 || !tubeSlideHeld) {
+      tubeSliding = false;
+      setIsSliding(false);
+      stoppedSlide = true;
+    }
+  }
+
+  return {
+    startedSlide,
+    stoppedSlide,
+    tubeGroundedBeforeMove,
+    tubeSlideHeld,
+    tubeSliding,
+  };
+}
+
 export function isPlayerLilyCoilTubeMoving({
   forwardInput,
   hasMovementInput,
