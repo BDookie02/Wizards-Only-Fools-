@@ -82,8 +82,8 @@ function ActiveMagicHands({ playerState, leftSpell, rightSpell }: { playerState:
     rightRuneReady,
     leftHandUsesFiringSprite,
     rightHandUsesFiringSprite,
-    leftHandTranslate,
-    rightHandTranslate,
+    leftHandFrameStyle,
+    rightHandFrameStyle,
     aspectOffsetClass,
   } = useMagicHandsPose(leftSpell, rightSpell);
 
@@ -91,14 +91,14 @@ function ActiveMagicHands({ playerState, leftSpell, rightSpell }: { playerState:
     <>
       {/* Left Half (Left Hand & Spells) */}
       <div data-wof-hud-qa="magic-hand-left" className="magic-hand-mask magic-hand-mask-left absolute top-0 left-0 w-1/2 h-full overflow-hidden pointer-events-none z-[60]">
-        <div className="magic-hands-frame magic-hands-frame-left absolute top-0 left-0 h-full aspect-video" style={{ transform: `translateX(calc(${leftHandTranslate} + var(--magic-hands-left-x-nudge, 0%)))` }}>
+        <div className="magic-hands-frame magic-hands-frame-left absolute top-0 left-0 h-full aspect-video" style={leftHandFrameStyle}>
           <MagicHandsContent playerState={playerState} currentSpell={leftSpell} frame={frame} isChargingSpell={leftRuneReady && isLeftCharging} align="left" showFiringPose={leftHandUsesFiringSprite} showSpellEffects={leftRuneReady} />
         </div>
       </div>
       
       {/* Right Half (Right Hand) */}
       <div data-wof-hud-qa="magic-hand-right" className="magic-hand-mask magic-hand-mask-right absolute top-0 right-0 w-1/2 h-full overflow-hidden pointer-events-none z-[60]">
-        <div className="magic-hands-frame magic-hands-frame-right absolute top-0 right-0 h-full aspect-video" style={{ transform: `translateX(calc(${rightHandTranslate} + var(--magic-hands-right-x-nudge, 0%)))`, transformOrigin: 'bottom right' }}>
+        <div className="magic-hands-frame magic-hands-frame-right absolute top-0 right-0 h-full aspect-video" style={rightHandFrameStyle}>
           <MagicHandsContent playerState={playerState} currentSpell={rightSpell} frame={frame} isChargingSpell={rightRuneReady && isRightCharging} align="right" showFiringPose={rightHandUsesFiringSprite} showSpellEffects={rightRuneReady} />
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { type SpellType, hasRunePower, useGameStore } from "../../../store/gameStore";
-import { getMagicHandsAspectOffsetClass, getMagicHandTranslate, resolveMagicHandPoseFlags } from "./magicHandsPoseRuntime";
+import { getMagicHandFrameStyle, getMagicHandsAspectOffsetClass, resolveMagicHandPoseFlags } from "./magicHandsPoseRuntime";
 import { useLoopedFrameTimer } from "./useLoopedFrameTimer";
 
 export function useMagicHandsPose(leftSpell: SpellType, rightSpell: SpellType) {
@@ -110,8 +110,8 @@ export function useMagicHandsPose(leftSpell: SpellType, rightSpell: SpellType) {
     rightRuneReady,
     leftHandUsesFiringSprite,
     rightHandUsesFiringSprite,
-    leftHandTranslate: getMagicHandTranslate(leftHandUsesFiringSprite, "left"),
-    rightHandTranslate: getMagicHandTranslate(rightHandUsesFiringSprite, "right"),
+    leftHandFrameStyle: getMagicHandFrameStyle(leftHandUsesFiringSprite, "left"),
+    rightHandFrameStyle: getMagicHandFrameStyle(rightHandUsesFiringSprite, "right"),
     aspectOffsetClass,
   };
 }

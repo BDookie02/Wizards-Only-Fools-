@@ -45,6 +45,15 @@ export function getMagicHandTranslate(usesFiringSprite: boolean, hand: MagicHand
   return usesFiringSprite ? "8%" : "8.5%";
 }
 
+export function getMagicHandFrameStyle(usesFiringSprite: boolean, hand: MagicHandSide) {
+  const translate = getMagicHandTranslate(usesFiringSprite, hand);
+  const nudgeVariable = hand === "left" ? "--magic-hands-left-x-nudge" : "--magic-hands-right-x-nudge";
+  return {
+    transform: `translateX(calc(${translate} + var(${nudgeVariable}, 0%)))`,
+    ...(hand === "right" ? { transformOrigin: "bottom right" } : {}),
+  };
+}
+
 export function resolveMagicHandPoseFlags(input: MagicHandPoseInput): MagicHandPoseFlags {
   const canShowHandPose = input.isMagicArmed && !input.isSpellMenuOpen;
   const leftFiringPoseActive =
