@@ -144,6 +144,7 @@ import {
   resetLilyCoilCameraState as resetPlayerLilyCoilCameraState,
 } from "./systems/player/playerCameraRuntime";
 import { usePlayerControllerRuntimeState } from "./systems/player/playerControllerRuntimeState";
+import { resolvePlayerSpawnOverrideAction } from "./systems/player/playerSpawnOverrideRuntime";
 import {
   readPlayerControllerGamepadLookInput,
   readPlayerControllerGamepadMovementInput,
@@ -1136,23 +1137,24 @@ export function PlayerController() {
     publishLocalPlayerRigidBody(rigidBody.current);
     publishQaPlayerPosition(pos);
 
-    const spawnOverride = getPlayerSpawnOverride();
-    if (spawnOverride && forcedSpawnKey.current !== spawnOverride.key) {
-      const [spawnX, spawnY, spawnZ] = spawnOverride.position;
-      rigidBody.current.setTranslation({ x: spawnX, y: spawnY, z: spawnZ }, true);
+    const spawnOverrideAction = resolvePlayerSpawnOverrideAction({
+      forcedSpawnKey: forcedSpawnKey.current,
+      spawnOverride: getPlayerSpawnOverride(),
+    });
+    if (spawnOverrideAction.type === "apply") {
+      const { x: spawnX, y: spawnY, z: spawnZ } = spawnOverrideAction.position;
+      rigidBody.current.setTranslation(spawnOverrideAction.position, true);
       rigidBody.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       rigidBody.current.setAngvel({ x: 0, y: 0, z: 0 }, true);
       camera.position.set(spawnX, spawnY + PLAYER_CAMERA_HEIGHT, spawnZ);
-      const spawnYaw = Number(spawnOverride.yaw);
-      const spawnPitch = Number(spawnOverride.pitch);
       const resolvedYaw = resetLilyCoilCameraState(
-        Number.isFinite(spawnYaw) ? spawnYaw : undefined,
-        Number.isFinite(spawnPitch) ? spawnPitch : undefined,
+        spawnOverrideAction.yaw,
+        spawnOverrideAction.pitch,
       );
-      resetQaWalkSession({ x: spawnX, y: spawnY, z: spawnZ });
-      forcedSpawnKey.current = spawnOverride.key;
-      publishLocalPlayerPosition({ x: spawnX, y: spawnY, z: spawnZ }, { rememberLast: true });
-      publishQaPlayerPosition({ x: spawnX, y: spawnY, z: spawnZ });
+      resetQaWalkSession(spawnOverrideAction.position);
+      forcedSpawnKey.current = spawnOverrideAction.key;
+      publishLocalPlayerPosition(spawnOverrideAction.position, { rememberLast: true });
+      publishQaPlayerPosition(spawnOverrideAction.position);
       dispatchPlayerMoved({ x: spawnX, y: spawnY, z: spawnZ, angle: resolvedYaw, isMoving: false, grounded: false });
       return;
     }
