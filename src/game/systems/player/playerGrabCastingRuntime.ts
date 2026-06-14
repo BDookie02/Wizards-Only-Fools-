@@ -20,6 +20,15 @@ export type PlayerGrabProjectilePayload = {
 
 export type PlayerGrabTimeouts = Record<HandType, number | null>;
 
+export type PlayerGrabActiveIds = Record<HandType, string | null>;
+
+export type PlayerGrabReleaseEventDetail = {
+  casterId: string;
+  grabId: string;
+  dir: PlayerGrabVectorPayload;
+  origin: PlayerGrabVectorPayload;
+};
+
 export function clearPlayerGrabTimeout(
   grabTimeouts: PlayerGrabTimeouts,
   hand: HandType,
@@ -106,4 +115,60 @@ export function createPlayerGrabReleaseProjectilePayload({
     grabId,
     grabPhase: "release",
   };
+}
+
+export function applyPlayerGrabRelease({
+  activeGrabIds,
+  addProjectile,
+  clearTimeoutFn,
+  creatorId,
+  direction,
+  dispatchReleaseGrabPlayer,
+  emitGameNetworkEvent,
+  grabTimeouts,
+  hand,
+  origin,
+  releasedAt,
+}: {
+  activeGrabIds: PlayerGrabActiveIds;
+  addProjectile: (projectile: PlayerGrabProjectilePayload) => void;
+  clearTimeoutFn?: (timeoutId: number) => void;
+  creatorId: string;
+  direction: PlayerGrabVectorPayload;
+  dispatchReleaseGrabPlayer: (detail: PlayerGrabReleaseEventDetail) => void;
+  emitGameNetworkEvent: (eventName: string, ...args: unknown[]) => unknown;
+  grabTimeouts: PlayerGrabTimeouts;
+  hand: HandType;
+  origin: PlayerGrabVectorPayload;
+  releasedAt: number;
+}) {
+  const grabId = activeGrabIds[hand];
+  if (!grabId) return null;
+
+  clearPlayerGrabTimeout(grabTimeouts, hand, clearTimeoutFn);
+  const projectile = createPlayerGrabReleaseProjectilePayload({
+    grabId,
+    creatorId,
+    hand,
+    origin,
+    direction,
+    releasedAt,
+  });
+
+  activeGrabIds[hand] = null;
+  emitGameNetworkEvent("castSpell", projectile);
+  emitGameNetworkEvent("grabRelease", {
+    grabId,
+    hand,
+    origin,
+    aimDir: projectile.dir,
+  });
+  addProjectile(projectile);
+  dispatchReleaseGrabPlayer({
+    casterId: creatorId,
+    grabId,
+    dir: projectile.dir,
+    origin,
+  });
+  return projectile;
 }

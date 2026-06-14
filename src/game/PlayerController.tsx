@@ -253,10 +253,9 @@ import {
   stopPlayerCastingHands,
 } from "./systems/player/playerHandCastingRuntime";
 import {
-  clearPlayerGrabTimeout,
+  applyPlayerGrabRelease,
   clearPlayerGrabTimeouts,
   createPlayerGrabCastProjectilePayload,
-  createPlayerGrabReleaseProjectilePayload,
   setPlayerGrabTimeout,
 } from "./systems/player/playerGrabCastingRuntime";
 import {
@@ -683,35 +682,23 @@ export function PlayerController() {
     };
 
     const emitGrabRelease = (hand: HandType) => {
-      const grabId = activeGrabIds.current[hand];
-      if (!grabId) return;
-
-      clearPlayerGrabTimeout(grabTimeouts.current, hand);
-
       const dir = spellDirection;
       camera.getWorldDirection(dir);
       const { spawnPos, realDir } = getPlayerSpellLaunchInto(hand, camera, dir, spellLaunchScratch);
       const releaseOrigin = { x: spawnPos.x, y: spawnPos.y, z: spawnPos.z };
-      const releasedAt = getPlayerEventEpochMs();
-      const releaseProjectile = createPlayerGrabReleaseProjectilePayload({
-        grabId,
-        creatorId: getLocalNetworkPlayerId(),
-        hand,
-        origin: releaseOrigin,
-        direction: { x: realDir.x, y: realDir.y, z: realDir.z },
-        releasedAt,
-      });
 
-      activeGrabIds.current[hand] = null;
-      emitGameNetworkEvent("castSpell", releaseProjectile);
-      emitGameNetworkEvent("grabRelease", {
-        grabId,
+      applyPlayerGrabRelease({
+        activeGrabIds: activeGrabIds.current,
+        addProjectile: useGameStore.getState().addProjectile,
+        creatorId: getLocalNetworkPlayerId(),
+        direction: { x: realDir.x, y: realDir.y, z: realDir.z },
+        dispatchReleaseGrabPlayer,
+        emitGameNetworkEvent,
+        grabTimeouts: grabTimeouts.current,
         hand,
         origin: releaseOrigin,
-        aimDir: releaseProjectile.dir,
+        releasedAt: getPlayerEventEpochMs(),
       });
-      useGameStore.getState().addProjectile(releaseProjectile);
-      dispatchReleaseGrabPlayer({ casterId: getLocalNetworkPlayerId(), grabId, dir: releaseProjectile.dir, origin: releaseOrigin });
     };
 
     const stopAllCasting = () => {
