@@ -1,5 +1,8 @@
 import type { EnginePlacementPreview } from "./EnginePlacedObjectVisuals";
-import type { PlaceableDefinition } from "./placeableCatalog";
+import { findEnginePlacementCollision } from "./enginePlacementCollision";
+import type { EnginePlacementPreviewResultDetail } from "./enginePlacedObjectPublishRuntime";
+import type { EnginePlacedObjectRecord } from "./enginePlacedObjectStorage";
+import { getPlaceableDefinition, type PlaceableDefinition } from "./placeableCatalog";
 import {
   planEnginePlaceablePlacement,
   planTrainingSpellDummySpawn,
@@ -76,4 +79,49 @@ export function planEnginePlacementPreview(
     gridSize: placementPlan.gridSize,
     snapped: placementPlan.snapped,
   };
+}
+
+export type EnginePlacementPreviewActionResult = {
+  preview: EnginePlacementPreview | null;
+  result: EnginePlacementPreviewResultDetail;
+};
+
+export function planEnginePlacementPreviewAction(
+  currentObjects: EnginePlacedObjectRecord[],
+  getGroundY: EngineGroundHeightResolver,
+  detail: EnginePlaceableRequestDetail | undefined,
+  playerSnapshot: EnginePlacementPlayerSnapshot
+): EnginePlacementPreviewActionResult {
+  const placeableId = String(detail?.placeableId ?? "");
+  const placeable = getPlaceableDefinition(placeableId);
+  if (!placeable) {
+    return {
+      preview: null,
+      result: { ok: false, reason: "unknown placeable" },
+    };
+  }
+
+  const preview = planEnginePlacementPreview(placeable, getGroundY, detail, playerSnapshot);
+  if (!preview.ok) {
+    return { preview, result: preview };
+  }
+
+  const collision = findEnginePlacementCollision(
+    placeable,
+    preview.x,
+    preview.z,
+    currentObjects,
+    detail?.replaceInstanceId,
+    preview.yaw
+  );
+  if (!collision) {
+    return { preview, result: preview };
+  }
+
+  const blockedPreview: EnginePlacementPreview = {
+    ...preview,
+    ok: false,
+    reason: `overlaps ${collision.label}`,
+  };
+  return { preview: blockedPreview, result: blockedPreview };
 }

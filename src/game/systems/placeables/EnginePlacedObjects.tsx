@@ -5,7 +5,6 @@ import {
   emitEnginePlaceableNetworkUpsert,
 } from "../../network/gameNetworkClient";
 import { dispatchEnginePlaceableEvent } from "./enginePlaceableEvents";
-import { findEnginePlacementCollision } from "./enginePlacementCollision";
 import {
   findEnginePlacedObjectById,
   removeEnginePlacedObjectById,
@@ -43,14 +42,13 @@ import {
 } from "./enginePlacedObjectSubscriptions";
 import { getEnginePlacementGroundResolver } from "./enginePlacementGroundRuntime";
 import { getEnginePlacementPlayerSnapshot } from "./enginePlacementPlayerSnapshotRuntime";
-import { planEnginePlacementPreview } from "./enginePlacementPreviewRuntime";
+import { planEnginePlacementPreviewAction } from "./enginePlacementPreviewRuntime";
 import {
   loadStoredEngineObjects,
   saveStoredEngineObjects,
   type EnginePlacedObjectRecord,
 } from "./enginePlacedObjectStorage";
 import { planEnginePlacedObjectPlacementAction } from "./enginePlacedObjectPlacementActionRuntime";
-import { getPlaceableDefinition } from "./placeableCatalog";
 import { type EnginePlaceableRequestDetail } from "./placementRules";
 
 type EnginePlacedObject = EnginePlacedObjectRecord;
@@ -76,25 +74,10 @@ export function EnginePlacedObjects({ isSurvivalMode }: { isSurvivalMode: boolea
     const getGroundY = getEnginePlacementGroundResolver(isSurvivalMode);
     const handlePreviewRequest = (event: { detail: EnginePlaceableRequestDetail | undefined }) => {
       const detail = event.detail;
-      const placeableId = String(detail?.placeableId ?? "");
-      const placeable = getPlaceableDefinition(placeableId);
-      if (!placeable) {
-        setPreview(null);
-        publishEnginePlacementPreviewResult({ ok: false, reason: "unknown placeable" });
-        return;
-      }
-
       const playerSnapshot = getEnginePlacementPlayerSnapshot(detail);
-      const previewPlan = planEnginePlacementPreview(placeable, getGroundY, detail, playerSnapshot);
-      if (previewPlan.ok) {
-        const collision = findEnginePlacementCollision(placeable, previewPlan.x, previewPlan.z, objectsRef.current, detail?.replaceInstanceId, previewPlan.yaw);
-        if (collision) {
-          previewPlan.ok = false;
-          previewPlan.reason = `overlaps ${collision.label}`;
-        }
-      }
-      setPreview(previewPlan);
-      publishEnginePlacementPreviewResult(previewPlan);
+      const result = planEnginePlacementPreviewAction(objectsRef.current, getGroundY, detail, playerSnapshot);
+      setPreview(result.preview);
+      publishEnginePlacementPreviewResult(result.result);
     };
     const handlePreviewClear = () => {
       setPreview(null);
