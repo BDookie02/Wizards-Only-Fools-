@@ -24,6 +24,7 @@ import { SpellMenuCloseButton } from "./SpellMenuCloseButton";
 import { SpellMenuFamilyFilterButton } from "./SpellMenuFamilyFilterButton";
 import { SpellMenuFooter } from "./SpellMenuFooter";
 import { SpellMenuHotbarColumn } from "./SpellMenuHotbarColumn";
+import { SpellMenuVisibleCount } from "./SpellMenuVisibleCount";
 import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
 
 export const SpellMenu = memo(function SpellMenu({
@@ -256,12 +257,7 @@ export const SpellMenu = memo(function SpellMenu({
                   }}
                 />
               ))}
-              <div
-                data-testid="spell-menu-visible-count"
-                className="spell-menu-visible-count border border-cyan-300/20 bg-black/20 px-2 py-1 text-center text-[8px] tracking-widest text-cyan-100/60"
-              >
-                {visibleSpells.length} SHOWN
-              </div>
+              <SpellMenuVisibleCount count={visibleSpells.length} />
             </div>
 
             <div className="spell-menu-grid grid grid-cols-3 gap-2 md:grid-cols-5">
