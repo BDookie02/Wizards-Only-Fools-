@@ -209,6 +209,7 @@ import {
   updatePlayerMeditationExitHold,
 } from "./systems/player/playerAstralMeditationRuntime";
 import {
+  applyPlayerModalBlockedMovementFrame,
   resetPlayerCrouchState,
   resetPlayerSlideAndCrouchState,
   resetPlayerSlideState,
@@ -2404,13 +2405,17 @@ export function PlayerController() {
     }
 
     if (storeState.isSpellMenuOpen || storeState.questDialogSession || storeState.isInventoryOpen) {
-      resetPlayerCrouchState({ crouchHoldStartedAt, isCrouching, setIsCrouching });
-      stopPlayerPlanarVelocity({
+      applyPlayerModalBlockedMovementFrame({
         body: rigidBody.current,
+        crouchHoldStartedAt,
         currentVelocityY: velocity.y,
+        dispatchStationaryPlayerState: () => {
+          dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, true, false);
+        },
+        isCrouching,
+        setIsCrouching,
         vclipActive,
       });
-      dispatchPlayerStateIfChanged(lastDispatchedPlayerStateRef.current, false, false, false, false, true, false);
       return;
     }
 

@@ -259,6 +259,28 @@ export function stopPlayerPlanarVelocity({
   body.setLinvel({ x: 0, y: vclipActive ? 0 : currentVelocityY, z: 0 }, true);
 }
 
+export function applyPlayerModalBlockedMovementFrame({
+  body,
+  crouchHoldStartedAt,
+  currentVelocityY,
+  dispatchStationaryPlayerState,
+  isCrouching,
+  setIsCrouching,
+  vclipActive,
+}: {
+  body: PlayerVelocityBody;
+  crouchHoldStartedAt: MutableRef<number | null>;
+  currentVelocityY: number;
+  dispatchStationaryPlayerState: () => void;
+  isCrouching: boolean;
+  setIsCrouching: (active: boolean) => void;
+  vclipActive: boolean;
+}) {
+  resetPlayerCrouchState({ crouchHoldStartedAt, isCrouching, setIsCrouching });
+  stopPlayerPlanarVelocity({ body, currentVelocityY, vclipActive });
+  dispatchStationaryPlayerState();
+}
+
 export function resolvePlayerMovementMotionState({
   nowMs,
   speedBoostUntil,
