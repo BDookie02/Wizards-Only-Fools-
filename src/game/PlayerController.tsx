@@ -101,6 +101,7 @@ import {
   resolveQaWalkTravelMovementFrame,
   resolveQaWalkUnstickNudgePlan,
   resolveQaWalkWaypointRefreshState,
+  setQaSurvivalWalkStationaryInput,
   shouldResolveQaWalkSteeringDecision,
   shouldResolveQaWalkUnstickNudgePlan,
   useQaSurvivalWalkRuntimeState,
@@ -1378,7 +1379,7 @@ export function PlayerController() {
       const elapsed = state.clock.elapsedTime - qaWalkStartTime.current;
       const qaTravelElapsed = Math.max(0, elapsed - qaSurvivalWalkStartDelaySeconds);
       if (qaSurvivalWalkStartDelaySeconds > 0 && elapsed < qaSurvivalWalkStartDelaySeconds) {
-        qaWalkInputState.current = { forward: 0, strafe: 0, sprint: false, mode: "travel" };
+        setQaSurvivalWalkStationaryInput(qaWalkInputState.current);
         publishSurvivalWalkStationaryInput("delay", `delay:${Math.max(0, qaSurvivalWalkStartDelaySeconds - elapsed).toFixed(1)}`);
         return;
       }
@@ -1403,7 +1404,7 @@ export function PlayerController() {
       const qaRouteActive = qaRouteWaypoints.length > 0 && !lilyCoilTubeQaActive && !qaSpellDummyRunActive;
       if (qaRouteActive) {
         if (!isSurvivalWalkBotwGrassUploadReady() && qaTravelElapsed < 12) {
-          qaWalkInputState.current = { forward: 0, strafe: 0, sprint: false, mode: "travel" };
+          setQaSurvivalWalkStationaryInput(qaWalkInputState.current);
           publishSurvivalWalkStationaryInput("warmup", "grass-warmup");
           return;
         }

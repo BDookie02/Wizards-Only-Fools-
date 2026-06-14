@@ -116,6 +116,17 @@ const DEFAULT_QA_WALK_INPUT: QaSurvivalWalkInputState = {
 
 const QA_WALK_MAX_STUCK_STRIKES = 6;
 
+export function setQaSurvivalWalkStationaryInput(
+  target: QaSurvivalWalkInputState,
+  mode: QaSurvivalWalkMode = DEFAULT_QA_WALK_INPUT.mode,
+) {
+  target.forward = DEFAULT_QA_WALK_INPUT.forward;
+  target.strafe = DEFAULT_QA_WALK_INPUT.strafe;
+  target.sprint = DEFAULT_QA_WALK_INPUT.sprint;
+  target.mode = mode;
+  return target;
+}
+
 export type QaWalkProgressRecoveryReason = "progress" | "blocked-progress";
 
 export type QaWalkProgressRecoveryAction =
@@ -2512,7 +2523,7 @@ export function useQaSurvivalWalkRuntimeState() {
     } else {
       qaWalkWaypoint.current.expiresAt = 0;
     }
-    qaWalkInputState.current = { ...DEFAULT_QA_WALK_INPUT };
+    setQaSurvivalWalkStationaryInput(qaWalkInputState.current);
     qaWalkNextDecisionAt.current = 0;
     qaWalkInspectUntil.current = 0;
     qaWalkCombatFocusUntil.current = 0;
