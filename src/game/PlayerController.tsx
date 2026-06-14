@@ -67,6 +67,7 @@ import {
   applyQaWalkActiveIntentRefresh,
   applyQaWalkInspectionStartPlan,
   applyQaWalkJumpHoldUntil,
+  applyQaWalkLowSpeedRecovery,
   applyQaWalkOpenLaneRecoveryRelief,
   applyQaWalkRecoveryMovementFrame,
   applyQaWalkRecoveryPlacementPlan,
@@ -2201,17 +2202,23 @@ export function PlayerController() {
         planarSpeedSq,
         stuckStrikes: qaWalkStuckStrikes.current,
       });
-      const expectingMovement = lowSpeedRecovery.expectingMovement;
-      qaWalkLowSpeedStartedAt.current = lowSpeedRecovery.lowSpeedStartedAt;
-      if (lowSpeedRecovery.shouldRecover) {
-        qaWalkStuckStrikes.current = lowSpeedRecovery.stuckStrikes;
-        mode = "recover";
-        recoveryReason = "low-speed";
-        beginQaWalkRecovery(true);
-        targetYaw = qaWalkRecoveryYaw.current;
-        strafeAmount = 0;
-        forwardAmount = -0.24;
-        sprint = false;
+      const lowSpeedRecoveryApplication = applyQaWalkLowSpeedRecovery({
+        beginRecovery: beginQaWalkRecovery,
+        recovery: lowSpeedRecovery,
+        refs: {
+          lowSpeedStartedAt: qaWalkLowSpeedStartedAt,
+          recoveryYaw: qaWalkRecoveryYaw,
+          stuckStrikes: qaWalkStuckStrikes,
+        },
+      });
+      const expectingMovement = lowSpeedRecoveryApplication.expectingMovement;
+      if (lowSpeedRecoveryApplication.recovered) {
+        mode = lowSpeedRecoveryApplication.mode;
+        recoveryReason = lowSpeedRecoveryApplication.recoveryReason;
+        targetYaw = lowSpeedRecoveryApplication.targetYaw;
+        strafeAmount = lowSpeedRecoveryApplication.strafeAmount;
+        forwardAmount = lowSpeedRecoveryApplication.forwardAmount;
+        sprint = lowSpeedRecoveryApplication.sprint;
       }
 
       const progressRecovery = resolveQaWalkProgressRecovery({

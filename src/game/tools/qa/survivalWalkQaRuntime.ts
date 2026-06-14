@@ -2416,6 +2416,57 @@ export function resolveQaWalkLowSpeedRecovery({
   };
 }
 
+export type QaWalkLowSpeedRecovery = ReturnType<typeof resolveQaWalkLowSpeedRecovery>;
+
+export type QaWalkLowSpeedRecoveryRefs = {
+  lowSpeedStartedAt: QaWalkMutableRef<number>;
+  recoveryYaw: QaWalkMutableRef<number>;
+  stuckStrikes: QaWalkMutableRef<number>;
+};
+
+export type QaWalkLowSpeedRecoveryApplication =
+  | { expectingMovement: boolean; recovered: false }
+  | {
+    expectingMovement: boolean;
+    forwardAmount: -0.24;
+    mode: "recover";
+    recovered: true;
+    recoveryReason: "low-speed";
+    sprint: false;
+    strafeAmount: 0;
+    targetYaw: number;
+  };
+
+export function applyQaWalkLowSpeedRecovery({
+  beginRecovery,
+  recovery,
+  refs,
+}: {
+  beginRecovery: (aggressive: true) => void;
+  recovery: QaWalkLowSpeedRecovery;
+  refs: QaWalkLowSpeedRecoveryRefs;
+}): QaWalkLowSpeedRecoveryApplication {
+  refs.lowSpeedStartedAt.current = recovery.lowSpeedStartedAt;
+  if (!recovery.shouldRecover) {
+    return {
+      expectingMovement: recovery.expectingMovement,
+      recovered: false,
+    };
+  }
+  refs.stuckStrikes.current = recovery.stuckStrikes;
+  beginRecovery(true);
+  return {
+    expectingMovement: recovery.expectingMovement,
+    forwardAmount: -0.24,
+    mode: "recover",
+    recovered: true,
+    recoveryReason: "low-speed",
+    sprint: false,
+    strafeAmount: 0,
+    targetYaw: refs.recoveryYaw.current,
+  };
+}
+
 export function resolveQaWalkProgressRecovery({
   elapsedSeconds,
   forwardClearance,
