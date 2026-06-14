@@ -24,6 +24,7 @@ import {
 } from "./spellMenuRuntime";
 import { SpellMenuBindStatus } from "./SpellMenuBindStatus";
 import { SpellMenuCard } from "./SpellMenuCard";
+import { SpellMenuCloseButton } from "./SpellMenuCloseButton";
 import { SpellMenuFamilyFilterButton } from "./SpellMenuFamilyFilterButton";
 import { SpellMenuHotbarColumn } from "./SpellMenuHotbarColumn";
 import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
@@ -219,19 +220,11 @@ export const SpellMenu = memo(function SpellMenu({
             <div className="spell-menu-kicker text-[10px] tracking-[0.4em] text-cyan-300/80">ARCANE LOADOUT</div>
             <div className="spell-menu-title mt-2 text-2xl text-white drop-shadow-[0_0_8px_rgba(103,232,249,0.9)]">SPELL BOOK</div>
           </div>
-          <button
-            data-testid="spell-menu-close"
-            data-spell-menu-nav-index={SPELL_MENU_NAV_CLOSE_INDEX}
-            className={cn(
-              "spell-menu-close-button border border-cyan-300/70 bg-cyan-300/10 px-3 py-2 text-[10px] tracking-widest text-cyan-100 hover:bg-cyan-200/20",
-              controllerFocusIndex === SPELL_MENU_NAV_CLOSE_INDEX ? "ring-2 ring-white shadow-[0_0_16px_rgba(255,255,255,0.65)]" : ""
-            )}
-            onFocus={() => setControllerFocusIndex(SPELL_MENU_NAV_CLOSE_INDEX)}
-            onMouseEnter={() => setControllerFocusIndex(SPELL_MENU_NAV_CLOSE_INDEX)}
-            onClick={onClose}
-          >
-            E CLOSE
-          </button>
+          <SpellMenuCloseButton
+            focused={controllerFocusIndex === SPELL_MENU_NAV_CLOSE_INDEX}
+            onFocusClose={() => setControllerFocusIndex(SPELL_MENU_NAV_CLOSE_INDEX)}
+            onClose={onClose}
+          />
         </div>
 
         <div className="spell-menu-layout relative mt-3 grid grid-cols-[78px_minmax(0,1fr)_78px] gap-2">
