@@ -195,3 +195,75 @@ export function resolveQaWalkPracticeCastDecision({
     spell: spellSequence[practiceSpellIndex % spellSequence.length],
   };
 }
+
+type QaWalkMutableRef<T> = { current: T };
+
+export type QaWalkCombatCastDecision = ReturnType<typeof resolveQaWalkCombatCastDecision>;
+
+export type QaWalkCombatCastRefs = {
+  combatFocusUntil: QaWalkMutableRef<number>;
+  combatSpellIndex: QaWalkMutableRef<number>;
+  combatTargetYaw: QaWalkMutableRef<number>;
+  lastCombatCastAt: QaWalkMutableRef<number>;
+};
+
+export type QaWalkCombatCastPublishers = {
+  dispatchQaSpellCastAtDummy: (payload: { spell: SpellType; targetId: string }) => void;
+  publishSurvivalWalkAction: (label: string) => void;
+  scheduleNextCombatCast: () => void;
+};
+
+export function applyQaWalkCombatCastDecision({
+  decision,
+  elapsedSeconds,
+  publishers,
+  refs,
+}: {
+  decision: QaWalkCombatCastDecision;
+  elapsedSeconds: number;
+  publishers: QaWalkCombatCastPublishers;
+  refs: QaWalkCombatCastRefs;
+}) {
+  if (!decision) return false;
+  const { spell } = decision;
+  refs.combatSpellIndex.current = decision.nextCombatSpellIndex;
+  refs.lastCombatCastAt.current = elapsedSeconds;
+  refs.combatFocusUntil.current = decision.combatFocusUntil;
+  refs.combatTargetYaw.current = decision.aimYaw;
+  publishers.dispatchQaSpellCastAtDummy({ spell, targetId: decision.targetId });
+  publishers.publishSurvivalWalkAction(`cast:${spell}:${decision.targetId}`);
+  publishers.scheduleNextCombatCast();
+  return true;
+}
+
+export type QaWalkPracticeCastDecision = ReturnType<typeof resolveQaWalkPracticeCastDecision>;
+
+export type QaWalkPracticeCastRefs = {
+  combatFocusUntil: QaWalkMutableRef<number>;
+  combatTargetYaw: QaWalkMutableRef<number>;
+  practiceSpellIndex: QaWalkMutableRef<number>;
+};
+
+export type QaWalkPracticeCastPublishers = {
+  castQaPracticeSpell: (spell: SpellType) => void;
+  scheduleNextPracticeCast: () => void;
+};
+
+export function applyQaWalkPracticeCastDecision({
+  decision,
+  publishers,
+  refs,
+}: {
+  decision: QaWalkPracticeCastDecision;
+  publishers: QaWalkPracticeCastPublishers;
+  refs: QaWalkPracticeCastRefs;
+}) {
+  if (!decision) return false;
+  const { spell } = decision;
+  refs.practiceSpellIndex.current = decision.nextPracticeSpellIndex;
+  publishers.castQaPracticeSpell(spell);
+  refs.combatFocusUntil.current = decision.combatFocusUntil;
+  refs.combatTargetYaw.current = decision.combatTargetYaw;
+  publishers.scheduleNextPracticeCast();
+  return true;
+}

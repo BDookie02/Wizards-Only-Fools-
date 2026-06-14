@@ -134,7 +134,9 @@ import {
   wasSurvivalWalkManaFlowerCollected,
 } from "./tools/qa/survivalWalkQaTelemetry";
 import {
+  applyQaWalkCombatCastDecision,
   applyQaWalkPracticeCast,
+  applyQaWalkPracticeCastDecision,
   getQaWalkPracticeCastHand,
   resolveQaWalkCombatCastDecision,
   resolveQaWalkPracticeCastDecision,
@@ -2126,16 +2128,21 @@ export function PlayerController() {
         nextCombatCastAt: qaWalkNextCombatCastAt.current,
         playerPosition: pos,
       });
-      if (combatCastDecision) {
-        const spell = combatCastDecision.spell;
-        qaWalkCombatSpellIndex.current = combatCastDecision.nextCombatSpellIndex;
-        qaWalkLastCombatCastAt.current = elapsed;
-        qaWalkCombatFocusUntil.current = combatCastDecision.combatFocusUntil;
-        qaWalkCombatTargetYaw.current = combatCastDecision.aimYaw;
-        dispatchQaSpellCastAtDummy({ spell, targetId: combatCastDecision.targetId });
-        publishSurvivalWalkAction(`cast:${spell}:${combatCastDecision.targetId}`);
-        scheduleNextCombatCast();
-      }
+      applyQaWalkCombatCastDecision({
+        decision: combatCastDecision,
+        elapsedSeconds: elapsed,
+        publishers: {
+          dispatchQaSpellCastAtDummy,
+          publishSurvivalWalkAction,
+          scheduleNextCombatCast,
+        },
+        refs: {
+          combatFocusUntil: qaWalkCombatFocusUntil,
+          combatSpellIndex: qaWalkCombatSpellIndex,
+          combatTargetYaw: qaWalkCombatTargetYaw,
+          lastCombatCastAt: qaWalkLastCombatCastAt,
+        },
+      });
 
       applyQaWalkSpellDummyRunMotionBrake({
         activeIntentKind: activeIntent?.kind ?? null,
@@ -2154,14 +2161,18 @@ export function PlayerController() {
         practiceSpellIndex: qaWalkPracticeSpellIndex.current,
         viewClearance,
       });
-      if (practiceCastDecision) {
-        const spell = practiceCastDecision.spell;
-        qaWalkPracticeSpellIndex.current = practiceCastDecision.nextPracticeSpellIndex;
-        castQaPracticeSpell(spell);
-        qaWalkCombatFocusUntil.current = practiceCastDecision.combatFocusUntil;
-        qaWalkCombatTargetYaw.current = practiceCastDecision.combatTargetYaw;
-        scheduleNextPracticeCast();
-      }
+      applyQaWalkPracticeCastDecision({
+        decision: practiceCastDecision,
+        publishers: {
+          castQaPracticeSpell,
+          scheduleNextPracticeCast,
+        },
+        refs: {
+          combatFocusUntil: qaWalkCombatFocusUntil,
+          combatTargetYaw: qaWalkCombatTargetYaw,
+          practiceSpellIndex: qaWalkPracticeSpellIndex,
+        },
+      });
 
       const combatFocusMovement = resolveQaWalkCombatFocusMovement({
         activeIntentKind: activeIntent?.kind ?? null,
