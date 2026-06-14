@@ -46,6 +46,11 @@ export type PlayerHandChargePulseScheduler = {
   setTimeout: (handler: () => void, timeoutMs: number) => number;
 };
 
+export type PlayerHealSpellFrameApplier = {
+  clearToxicEffects: () => void;
+  setHealth: (health: number) => void;
+};
+
 const PLAYER_QUICK_CAST_COOLDOWN_MS = 400;
 const PLAYER_DEFAULT_CAST_COOLDOWN_MS = 1000;
 const PLAYER_RELEASE_SUPPRESSED_SPELLS = new Set<SpellType>([
@@ -110,6 +115,37 @@ export function pulsePlayerHandCharging(
   return scheduler.setTimeout(() => {
     scheduler.setHandCharging(hand, false);
   }, Math.max(0, durationMs));
+}
+
+export function applyPlayerHealSpellFrame({
+  applier,
+  charging,
+  deltaSeconds,
+  health,
+  healPerSecond = 2,
+  spell,
+}: {
+  applier: PlayerHealSpellFrameApplier;
+  charging: boolean;
+  deltaSeconds: number;
+  health: number;
+  healPerSecond?: number;
+  spell: SpellType;
+}) {
+  if (spell !== "healspell" || !charging) {
+    return {
+      applied: false,
+      health,
+    };
+  }
+
+  const nextHealth = Math.min(100, health + healPerSecond * deltaSeconds);
+  applier.clearToxicEffects();
+  applier.setHealth(nextHealth);
+  return {
+    applied: true,
+    health: nextHealth,
+  };
 }
 
 export function clearPlayerCastingHandState(

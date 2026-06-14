@@ -219,6 +219,7 @@ import {
 } from "./systems/player/playerLookInputRuntime";
 import {
   PLAYER_CASTING_HANDS,
+  applyPlayerHealSpellFrame,
   canPlayerHandCastNow,
   clearPlayerCastingHandState,
   getPlayerSpellForHand,
@@ -2400,6 +2401,10 @@ export function PlayerController() {
     }
 
     const chargingHands = storeState.chargingHands;
+    const healSpellFrameApplier = {
+      clearToxicEffects: clearToxicEffectsWithNetwork,
+      setHealth: useGameStore.getState().setHealth,
+    };
 
     for (let handIndex = 0; handIndex < PLAYER_CASTING_HANDS.length; handIndex += 1) {
       const hand = PLAYER_CASTING_HANDS[handIndex];
@@ -2420,11 +2425,14 @@ export function PlayerController() {
         continue;
       }
 
-      if (handSpell === 'healspell' && chargingHands[hand]) {
-        clearToxicEffectsWithNetwork();
-        health = Math.min(100, health + (2 * delta));
-        useGameStore.getState().setHealth(health);
-      }
+      const healFrame = applyPlayerHealSpellFrame({
+        applier: healSpellFrameApplier,
+        charging: chargingHands[hand],
+        deltaSeconds: delta,
+        health,
+        spell: handSpell,
+      });
+      health = healFrame.health;
 
       if (handSpell === 'flamethrower' && chargingHands[hand] && gameplayInputActive) {
         flamethrowerTimers.current[hand] += delta;
