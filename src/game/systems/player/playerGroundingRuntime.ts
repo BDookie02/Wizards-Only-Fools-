@@ -48,6 +48,15 @@ export type PlayerFloorRecoveryCameraPosition = {
   set: (x: number, y: number, z: number) => unknown;
 };
 
+export type PlayerFallRecoveryCamera = {
+  position: PlayerFloorRecoveryCameraPosition;
+};
+
+export type PlayerFallRecoveryResult = {
+  applied: boolean;
+  position: PlayerGroundingPosition | null;
+};
+
 export type PlayerFloorRecoveryStatePayload = {
   isMoving: boolean;
   isSprinting: boolean;
@@ -372,4 +381,39 @@ export function applyPlayerFloorRecovery(options: {
   });
   if (isSliding) setSliding(false);
   resetJumps();
+}
+
+export function applyPlayerFallRecovery({
+  body,
+  camera,
+  cameraHeight,
+  getSpawnPosition,
+  posY,
+  triggerY = -50,
+  vclipActive,
+}: {
+  body: PlayerFloorRecoveryBody | null | undefined;
+  camera: PlayerFallRecoveryCamera;
+  cameraHeight: number;
+  getSpawnPosition: () => readonly [number, number, number];
+  posY: number;
+  triggerY?: number;
+  vclipActive: boolean;
+}): PlayerFallRecoveryResult {
+  if (vclipActive || posY >= triggerY || !body) {
+    return {
+      applied: false,
+      position: null,
+    };
+  }
+
+  const [x, y, z] = getSpawnPosition();
+  const position = { x, y, z };
+  body.setTranslation(position, true);
+  body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  camera.position.set(position.x, position.y + cameraHeight, position.z);
+  return {
+    applied: true,
+    position,
+  };
 }

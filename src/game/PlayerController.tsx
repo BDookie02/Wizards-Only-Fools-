@@ -174,6 +174,7 @@ import {
 } from "./systems/player/playerControllerGamepadRuntime";
 import {
   applyPlayerFloorRecovery,
+  applyPlayerFallRecovery,
   getPlayerFloorRecoveryTarget,
   hasPlayerGroundHit,
   resolvePlayerFloorRecoveryGate,
@@ -2970,15 +2971,14 @@ export function PlayerController() {
     applyScreenShake();
 
     // Fall logic
-    if (!vclipActive && pos.y < -50) {
-      const [spawnX, spawnY, spawnZ] = getPlayerSpawnPosition(DEFAULT_FALL_RECOVERY_SPAWN_POSITION);
-      applyPlayerBodyCameraPlacement({
-        body: rigidBody.current,
-        camera,
-        cameraHeight: PLAYER_CAMERA_HEIGHT,
-        position: { x: spawnX, y: spawnY, z: spawnZ },
-      });
-    }
+    applyPlayerFallRecovery({
+      body: rigidBody.current,
+      camera,
+      cameraHeight: PLAYER_CAMERA_HEIGHT,
+      getSpawnPosition: () => getPlayerSpawnPosition(DEFAULT_FALL_RECOVERY_SPAWN_POSITION),
+      posY: pos.y,
+      vclipActive,
+    });
 
     // Sync network
     const networkSyncFrame = resolvePlayerNetworkSyncFrame({
