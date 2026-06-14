@@ -1518,6 +1518,7 @@ export function PlayerController() {
         return true;
       };
       const intentDistance = (intent: QaSurvivalIntent | null) => getQaWalkIntentDistance(intent, pos);
+      const questIntentTargets = getQuestNavigationIntentTargets();
       const getIntentMoveTarget = (intent: QaSurvivalIntent) => resolveQaWalkIntentMoveTarget({
         chunkCenterX,
         chunkCenterZ,
@@ -1542,7 +1543,7 @@ export function PlayerController() {
           manaFlowers: readReadyQaManaFlowersScratch(),
           position: pos,
           qaSpellDummyRunActive,
-          questTargets: getQuestNavigationIntentTargets(),
+          questTargets: questIntentTargets,
           spellDummies: readQaSpellDummiesScratch(),
         });
         qaWalkIntent.current = intentChoice.intent;
@@ -2371,7 +2372,7 @@ export function PlayerController() {
         observed: {
           mana: readReadyQaManaFlowersScratch().length,
           dummies: spellDummies.length,
-          quests: getQuestNavigationIntentTargets().length,
+          quests: questIntentTargets.length,
         },
         abnormality,
         lilyTube: lilyCoilTubeTravelState
