@@ -203,6 +203,36 @@ export function dispatchPlayerMovementFrame({
   return { moved, stateChanged };
 }
 
+export function dispatchPlayerLilyCoilTubeMovementFrame({
+  isGrounded,
+  isMoving,
+  isSliding,
+  isSprinting,
+  position,
+  snapshot,
+  yaw,
+}: {
+  isGrounded: boolean;
+  isMoving: boolean;
+  isSliding: boolean;
+  isSprinting: boolean;
+  position: PlayerPositionLike;
+  snapshot: PlayerStateDispatchSnapshot;
+  yaw: number;
+}) {
+  return dispatchPlayerMovementFrame({
+    isCrouching: false,
+    isGrounded,
+    isMeditating: false,
+    isMoving,
+    isSliding,
+    isSprinting,
+    position,
+    snapshot,
+    yaw,
+  });
+}
+
 export function dispatchSelfBuffCast(detail: SelfBuffCastEventDetail) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("self-buff-cast", { detail }));

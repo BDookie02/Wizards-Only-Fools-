@@ -201,7 +201,6 @@ import {
   applyPlayerLilyCoilTubeJumpThrusterFrame,
   applyPlayerLilyCoilTubePlacementFrame,
   applyPlayerLilyCoilTubeSlideFrame,
-  createPlayerLilyCoilTubeMovePayload,
   getPlayerLilyCoilTubeDispatchState,
   isPlayerLilyCoilTubeMoving,
   resolvePlayerLilyCoilTubeNetworkFrame,
@@ -293,10 +292,10 @@ import {
 } from "./systems/player/playerSelfBuffCastingRuntime";
 import {
   createPlayerStateDispatchSnapshot,
+  dispatchPlayerLilyCoilTubeMovementFrame,
   dispatchPlayerMoved,
   dispatchPlayerMovementFrame,
   dispatchPlayerState,
-  dispatchPlayerStateIfChanged,
   dispatchStationaryPlayerState,
   dispatchDirectStatusCast,
   dispatchQuestVillagerInteraction,
@@ -2748,21 +2747,15 @@ export function PlayerController() {
         tubeMoving,
         tubeSliding,
       });
-      dispatchPlayerStateIfChanged(
-        lastDispatchedPlayerStateRef.current,
-        tubeDispatchState.moving,
-        tubeDispatchState.sprinting,
-        tubeDispatchState.sliding,
-        false,
-        tubeDispatchState.grounded,
-        false,
-      );
-      dispatchPlayerMoved(createPlayerLilyCoilTubeMovePayload({
+      dispatchPlayerLilyCoilTubeMovementFrame({
+        isGrounded: tubeDispatchState.grounded,
+        isMoving: tubeDispatchState.moving,
+        isSliding: tubeDispatchState.sliding,
+        isSprinting: tubeDispatchState.sprinting,
         position: tubeBodyPosition,
-        tubeAirborne,
-        tubeMoving,
+        snapshot: lastDispatchedPlayerStateRef.current,
         yaw: tubeYaw,
-      }));
+      });
       if (isNavigationRecordingActive()) {
         recordNavigationSample(createPlayerLilyCoilTubeNavigationSampleInput({
           aimDirection: frameForward,

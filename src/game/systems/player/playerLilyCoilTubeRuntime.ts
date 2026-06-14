@@ -23,15 +23,6 @@ export type PlayerLilyCoilTubeDispatchState = {
   sprinting: boolean;
 };
 
-export type PlayerLilyCoilTubeMovePayload = {
-  x: number;
-  y: number;
-  z: number;
-  angle: number;
-  isMoving: boolean;
-  grounded: boolean;
-};
-
 type MutableRef<T> = { current: T };
 
 type PlayerLilyCoilTubeVector3Like = {
@@ -360,27 +351,6 @@ export function getPlayerLilyCoilTubeDispatchState({
     moving: tubeMoving,
     sliding: tubeSliding,
     sprinting: isSprinting && !tubeSliding,
-  };
-}
-
-export function createPlayerLilyCoilTubeMovePayload({
-  position,
-  tubeAirborne,
-  tubeMoving,
-  yaw,
-}: {
-  position: PlayerLilyCoilTubePosition;
-  tubeAirborne: boolean;
-  tubeMoving: boolean;
-  yaw: number;
-}): PlayerLilyCoilTubeMovePayload {
-  return {
-    x: position.x,
-    y: position.y,
-    z: position.z,
-    angle: yaw,
-    isMoving: tubeMoving,
-    grounded: !tubeAirborne,
   };
 }
 
