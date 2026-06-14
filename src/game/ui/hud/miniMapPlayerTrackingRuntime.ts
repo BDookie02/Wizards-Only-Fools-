@@ -25,8 +25,8 @@ export function getRoundedMiniMapDisplayCoords(position: LiveMapPosition): MiniM
   };
 }
 
-export function getMiniMapPlayerAngleCssValue(angle: number) {
-  return `${angle}rad`;
+export function getMiniMapPlayerAngleCssValue(angle: number, fallback = 0) {
+  return `${toFiniteMiniMapNumber(angle, fallback)}rad`;
 }
 
 export function syncMiniMapPositionWithPublishedState(
@@ -35,12 +35,12 @@ export function syncMiniMapPositionWithPublishedState(
   publishedYaw: number | undefined,
 ) {
   if (publishedPosition) {
-    target.x = publishedPosition.x;
-    target.z = publishedPosition.z;
+    target.x = toFiniteMiniMapNumber(publishedPosition.x, target.x);
+    target.z = toFiniteMiniMapNumber(publishedPosition.z, target.z);
   }
 
   if (publishedYaw !== undefined) {
-    target.angle = publishedYaw;
+    target.angle = toFiniteMiniMapNumber(publishedYaw, target.angle);
   }
 
   return target;
