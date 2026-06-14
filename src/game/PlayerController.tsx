@@ -22,6 +22,7 @@ import {
   resetMovementKeys,
 } from "./systems/input/playerInputState";
 import {
+  createPlayerLilyCoilTubeNavigationSampleInput,
   createPlayerNavigationSampleInput,
   isNavigationRecordingActive,
   recordNavigationSample,
@@ -2778,32 +2779,30 @@ export function PlayerController() {
         yaw: tubeYaw,
       }));
       if (isNavigationRecordingActive()) {
-        recordNavigationSample({
+        recordNavigationSample(createPlayerLilyCoilTubeNavigationSampleInput({
+          aimDirection: frameForward,
+          aroundSurface,
+          cameraRotationX: camera.rotation.x,
+          cameraRotationZ: camera.rotation.z,
+          forwardInput,
           gameMode: storeState.gameMode,
-          pos: [tubeBodyPosition.x, tubeBodyPosition.y, tubeBodyPosition.z],
-          rot: [camera.rotation.x, tubeYaw, camera.rotation.z],
-          aimDir: [frameForward.x, frameForward.y, frameForward.z],
-          velocity: [
-            frame.tangent.x * tubePathInput * tubeMoveSpeed + aroundSurface.x * tubeSurfaceInput * tubeMoveSpeed,
-            frame.tangent.y * tubePathInput * tubeMoveSpeed + aroundSurface.y * tubeSurfaceInput * tubeMoveSpeed + playerUp.y * tubeState.jumpVelocity,
-            frame.tangent.z * tubePathInput * tubeMoveSpeed + aroundSurface.z * tubeSurfaceInput * tubeMoveSpeed,
-          ],
-          input: {
-            forward: forwardInput,
-            strafe: tubeStrafeInput,
-            sprint: isSprinting,
-            jump: jumpHeld,
-            slide: tubeSlideHeld,
-            vclip: false,
-          },
-          state: {
-            grounded: !tubeAirborne,
-            moving: tubeMoving,
-            sliding: tubeSliding,
-            sprinting: isSprinting && !tubeSliding,
-            spellMenuOpen: storeState.isSpellMenuOpen,
-          },
-        }, nowMs);
+          isSprinting,
+          jumpHeld,
+          playerPosition: tubeBodyPosition,
+          playerUp,
+          spellMenuOpen: storeState.isSpellMenuOpen,
+          tubeAirborne,
+          tubeJumpVelocity: tubeState.jumpVelocity,
+          tubeMoveSpeed,
+          tubeMoving,
+          tubePathInput,
+          tubeSlideHeld,
+          tubeSliding,
+          tubeStrafeInput,
+          tubeSurfaceInput,
+          tubeTangent: frame.tangent,
+          yaw: tubeYaw,
+        }), nowMs);
       }
 
       const tubeNetworkFrame = resolvePlayerLilyCoilTubeNetworkFrame({

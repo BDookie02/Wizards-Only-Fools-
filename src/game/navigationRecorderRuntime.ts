@@ -191,6 +191,81 @@ export function createPlayerNavigationSampleInput({
   };
 }
 
+export function createPlayerLilyCoilTubeNavigationSampleInput({
+  aimDirection,
+  aroundSurface,
+  cameraRotationX,
+  cameraRotationZ,
+  forwardInput,
+  gameMode,
+  isSprinting,
+  jumpHeld,
+  playerPosition,
+  playerUp,
+  spellMenuOpen,
+  tubeAirborne,
+  tubeJumpVelocity,
+  tubeMoveSpeed,
+  tubeMoving,
+  tubePathInput,
+  tubeSlideHeld,
+  tubeSliding,
+  tubeStrafeInput,
+  tubeSurfaceInput,
+  tubeTangent,
+  yaw,
+}: {
+  aimDirection: NavigationFrameVector;
+  aroundSurface: NavigationFrameVector;
+  cameraRotationX: number;
+  cameraRotationZ: number;
+  forwardInput: number;
+  gameMode: GameMode;
+  isSprinting: boolean;
+  jumpHeld: boolean;
+  playerPosition: NavigationFrameVector;
+  playerUp: NavigationFrameVector;
+  spellMenuOpen: boolean;
+  tubeAirborne: boolean;
+  tubeJumpVelocity: number;
+  tubeMoveSpeed: number;
+  tubeMoving: boolean;
+  tubePathInput: number;
+  tubeSlideHeld: boolean;
+  tubeSliding: boolean;
+  tubeStrafeInput: number;
+  tubeSurfaceInput: number;
+  tubeTangent: NavigationFrameVector;
+  yaw: number;
+}): NavigationSampleInput {
+  return {
+    gameMode,
+    pos: [playerPosition.x, playerPosition.y, playerPosition.z],
+    rot: [cameraRotationX, yaw, cameraRotationZ],
+    aimDir: [aimDirection.x, aimDirection.y, aimDirection.z],
+    velocity: [
+      tubeTangent.x * tubePathInput * tubeMoveSpeed + aroundSurface.x * tubeSurfaceInput * tubeMoveSpeed,
+      tubeTangent.y * tubePathInput * tubeMoveSpeed + aroundSurface.y * tubeSurfaceInput * tubeMoveSpeed + playerUp.y * tubeJumpVelocity,
+      tubeTangent.z * tubePathInput * tubeMoveSpeed + aroundSurface.z * tubeSurfaceInput * tubeMoveSpeed,
+    ],
+    input: {
+      forward: forwardInput,
+      strafe: tubeStrafeInput,
+      sprint: isSprinting,
+      jump: jumpHeld,
+      slide: tubeSlideHeld,
+      vclip: false,
+    },
+    state: {
+      grounded: !tubeAirborne,
+      moving: tubeMoving,
+      sliding: tubeSliding,
+      sprinting: isSprinting && !tubeSliding,
+      spellMenuOpen,
+    },
+  };
+}
+
 export function startNavigationRecordingRuntime(label?: string): NavigationRecorderResult {
   if (activeRecording) {
     return {
