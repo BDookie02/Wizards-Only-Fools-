@@ -23,6 +23,7 @@ import {
   SPELL_MENU_NAV_SELECTOR,
   type SpellFamilyFilter,
 } from "./spellMenuRuntime";
+import { SpellMenuFamilyFilterButton } from "./SpellMenuFamilyFilterButton";
 import { SpellMenuHotbarColumn } from "./SpellMenuHotbarColumn";
 import { SpellThumbnail } from "./SpellThumbnail";
 import { findDirectionalMenuIndex, type MenuDirection } from "./hudMenuNavigation";
@@ -263,35 +264,20 @@ export const SpellMenu = memo(function SpellMenu({
               className="spell-menu-family-filters mb-2 grid grid-cols-4 gap-1.5 md:grid-cols-[repeat(8,minmax(0,1fr))]"
               data-testid="spell-menu-family-filters"
             >
-              {spellFamilyFilters.map((family) => {
-                const navIndex = getSpellMenuFamilyNavIndex(family);
-                const isControllerFocused = controllerFocusIndex === navIndex;
-                return (
-                  <button
-                    key={family}
-                    type="button"
-                    data-testid={`spell-family-${family}`}
-                    data-spell-menu-nav-index={navIndex}
-                    aria-pressed={activeFamily === family}
-                    className={cn(
-                      "spell-menu-family-filter min-w-0 border px-2 py-1 text-[8px] tracking-widest transition-all",
-                      activeFamily === family
-                        ? "border-yellow-200 bg-yellow-200/15 text-yellow-50 shadow-[0_0_12px_rgba(250,204,21,0.28)]"
-                        : "border-cyan-300/25 bg-cyan-300/5 text-cyan-100/75 hover:border-cyan-200/70 hover:text-cyan-50",
-                      isControllerFocused ? "ring-2 ring-white shadow-[0_0_16px_rgba(255,255,255,0.65)]" : ""
-                    )}
-                    onFocus={() => setControllerFocusIndex(navIndex)}
-                    onMouseEnter={() => setControllerFocusIndex(navIndex)}
-                    onClick={() => {
-                      setControllerFocusIndex(navIndex);
-                      selectFamily(family);
-                    }}
-                  >
-                    <span>{spellFamilyLabels[family]}</span>
-                    <span className="spell-menu-family-count ml-1 text-cyan-100/45">{familyCounts[family]}</span>
-                  </button>
-                );
-              })}
+              {spellFamilyFilters.map((family) => (
+                <SpellMenuFamilyFilterButton
+                  key={family}
+                  family={family}
+                  active={activeFamily === family}
+                  count={familyCounts[family]}
+                  controllerFocusIndex={controllerFocusIndex}
+                  onFocusNav={setControllerFocusIndex}
+                  onSelectFamily={(selectedFamily, navIndex) => {
+                    setControllerFocusIndex(navIndex);
+                    selectFamily(selectedFamily);
+                  }}
+                />
+              ))}
               <div
                 data-testid="spell-menu-visible-count"
                 className="spell-menu-visible-count border border-cyan-300/20 bg-black/20 px-2 py-1 text-center text-[8px] tracking-widest text-cyan-100/60"
