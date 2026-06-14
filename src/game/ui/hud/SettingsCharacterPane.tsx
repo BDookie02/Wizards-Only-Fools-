@@ -12,12 +12,12 @@ import {
   characterMouthStartIndex,
   characterStyleStartIndex,
 } from "./hudSettingsPanelConfig";
-import { formatCharacterOption } from "./hudSettingsUtils";
 import {
   getCharacterColorInputState,
   getCharacterOptionValue,
   getDefaultCharacterCustomization,
 } from "./settingsPanelRuntime";
+import { SettingsCharacterOptionButton } from "./SettingsCharacterOptionButton";
 import {
   cn,
   focusedMenuClass,
@@ -166,18 +166,18 @@ export function SettingsCharacterPane({
                 const settingIndex = characterStyleStartIndex + index;
                 const currentValue = getCharacterOptionValue(characterCustomization, row.key, row.options[0]);
                 return (
-                  <button
+                  <SettingsCharacterOptionButton
                     key={row.key}
-                    data-settings-index={settingIndex}
-                    className={cn("settings-control-row grid grid-cols-[1fr_auto] gap-2 border px-2 py-1.5 text-left leading-4 transition-all", settingsFocus(settingIndex) ? focusedMenuClass : "border-cyan-300/20 bg-black/25 text-cyan-100/85 hover:border-cyan-200/60")}
-                    onMouseEnter={() => setPauseMenuIndex(settingIndex)}
-                    onClick={() => cycleCharacterStyle(row.key, row.options, 1)}
-                  >
-                    <span className="truncate text-cyan-50">{row.label}</span>
-                    <span className="border border-yellow-200/50 bg-yellow-200/10 px-2 py-0.5 text-yellow-100">
-                      {formatCharacterOption(currentValue)}
-                    </span>
-                  </button>
+                    row={row}
+                    index={settingIndex}
+                    value={currentValue}
+                    focused={settingsFocus(settingIndex)}
+                    idleClassName="border-cyan-300/20 bg-black/25 text-cyan-100/85 hover:border-cyan-200/60"
+                    labelClassName="text-cyan-50"
+                    valueClassName="border-yellow-200/50 bg-yellow-200/10 text-yellow-100"
+                    onFocus={() => setPauseMenuIndex(settingIndex)}
+                    onSelect={() => cycleCharacterStyle(row.key, row.options, 1)}
+                  />
                 );
               })}
             </div>
@@ -190,18 +190,18 @@ export function SettingsCharacterPane({
                 const settingIndex = characterMouthStartIndex + index;
                 const currentValue = getCharacterOptionValue(characterCustomization, row.key, row.options[0]);
                 return (
-                  <button
+                  <SettingsCharacterOptionButton
                     key={row.key}
-                    data-settings-index={settingIndex}
-                    className={cn("settings-control-row grid grid-cols-[1fr_auto] gap-2 border px-2 py-1.5 text-left leading-4 transition-all", settingsFocus(settingIndex) ? focusedMenuClass : "border-yellow-200/25 bg-black/30 text-yellow-100/85 hover:border-yellow-100/70")}
-                    onMouseEnter={() => setPauseMenuIndex(settingIndex)}
-                    onClick={() => cycleCharacterStyle(row.key, row.options, 1)}
-                  >
-                    <span className="truncate text-yellow-50">{row.label}</span>
-                    <span className="border border-pink-200/50 bg-pink-200/10 px-2 py-0.5 text-pink-100">
-                      {formatCharacterOption(currentValue)}
-                    </span>
-                  </button>
+                    row={row}
+                    index={settingIndex}
+                    value={currentValue}
+                    focused={settingsFocus(settingIndex)}
+                    idleClassName="border-yellow-200/25 bg-black/30 text-yellow-100/85 hover:border-yellow-100/70"
+                    labelClassName="text-yellow-50"
+                    valueClassName="border-pink-200/50 bg-pink-200/10 text-pink-100"
+                    onFocus={() => setPauseMenuIndex(settingIndex)}
+                    onSelect={() => cycleCharacterStyle(row.key, row.options, 1)}
+                  />
                 );
               })}
             </div>
