@@ -1,16 +1,14 @@
 import {
+  getGamepadSelectionSnapshot,
+  selectPrimaryGamepad,
+} from "./controllerGamepadSelectionRuntime";
+import {
   GAMEPAD_NO_DEVICE_POLL_INTERVAL_MS,
   GAMEPAD_STICK_DEADZONE,
   GAMEPAD_TRIGGER_THRESHOLD,
-  applyGamepadDeadzone,
-  getGamepadAxis,
-  getGamepadButtonValue,
   getGamepadScanNowMs,
-  isGamepadButtonPressed,
   readGamepadStickAxesInto,
-  type GamepadButtonName,
   type GamepadStickAxes,
-  type GamepadStickName,
 } from "./controllerInputRuntime";
 
 export {
@@ -63,23 +61,6 @@ function ensureGamepadCacheResetListeners() {
   gamepadCacheResetListenersInstalled = true;
 }
 
-function getGamepadActivity(gamepad: Gamepad) {
-  let axisActivity = 0;
-  for (let index = 0; index < gamepad.axes.length; index += 1) {
-    axisActivity += Math.abs(applyGamepadDeadzone(gamepad.axes[index] ?? 0, 0.18));
-  }
-
-  let buttonActivity = 0;
-  for (let index = 0; index < gamepad.buttons.length; index += 1) {
-    const button = gamepad.buttons[index];
-    if (button.pressed || button.value >= GAMEPAD_TRIGGER_THRESHOLD) {
-      buttonActivity += 1;
-    }
-  }
-
-  return axisActivity + buttonActivity;
-}
-
 export function hasGamepadInput(gamepad: Gamepad | null, axisDeadzone = GAMEPAD_STICK_DEADZONE) {
   if (!gamepad) return false;
 
@@ -109,48 +90,6 @@ export function hasGamepadInput(gamepad: Gamepad | null, axisDeadzone = GAMEPAD_
   return false;
 }
 
-function getConnectedGamepadByIndex(gamepads: readonly (Gamepad | null)[], gamepadIndex: number) {
-  for (let index = 0; index < gamepads.length; index += 1) {
-    const gamepad = gamepads[index];
-    if (gamepad?.connected && gamepad.index === gamepadIndex) return gamepad;
-  }
-  return null;
-}
-
-function getGamepadSignature(gamepads: readonly (Gamepad | null)[]) {
-  let connectedCount = 0;
-  let connectedGamepad: Gamepad | null = null;
-  let hasUsefulTimestamp = false;
-
-  for (let index = 0; index < gamepads.length; index += 1) {
-    const gamepad = gamepads[index];
-    if (!gamepad?.connected) continue;
-
-    connectedCount += 1;
-    connectedGamepad = gamepad;
-
-    const timestamp = Number.isFinite(gamepad.timestamp) ? gamepad.timestamp : 0;
-    if (timestamp > 0) hasUsefulTimestamp = true;
-  }
-
-  let signature = "";
-  if (connectedCount > 1) {
-    for (let index = 0; index < gamepads.length; index += 1) {
-      const gamepad = gamepads[index];
-      if (!gamepad?.connected) continue;
-      const timestamp = Number.isFinite(gamepad.timestamp) ? gamepad.timestamp : 0;
-      signature += `${gamepad.index}:${gamepad.mapping}:${timestamp};`;
-    }
-  }
-
-  return {
-    connectedCount,
-    connectedGamepad,
-    hasUsefulTimestamp,
-    signature,
-  };
-}
-
 export function getPrimaryGamepad() {
   if (typeof navigator === "undefined" || typeof navigator.getGamepads !== "function") {
     return null;
@@ -167,7 +106,7 @@ export function getPrimaryGamepad() {
   }
 
   const gamepads = navigator.getGamepads();
-  const snapshot = getGamepadSignature(gamepads);
+  const snapshot = getGamepadSelectionSnapshot(gamepads);
   if (snapshot.connectedCount === 0) {
     clearGamepadSelectionCache();
     lastNoGamepadScanAtMs = now;
@@ -176,57 +115,17 @@ export function getPrimaryGamepad() {
 
   lastNoGamepadScanAtMs = Number.NEGATIVE_INFINITY;
 
-  if (snapshot.connectedCount === 1 && snapshot.connectedGamepad) {
-    preferredGamepadIndex = snapshot.connectedGamepad.index;
-    cachedPrimaryGamepadIndex = snapshot.connectedGamepad.index;
-    cachedGamepadSignature = snapshot.signature;
-    return cachePrimaryGamepadScan(snapshot.connectedGamepad, now);
-  }
-
-  if (
-    snapshot.hasUsefulTimestamp &&
-    cachedPrimaryGamepadIndex !== null &&
-    cachedGamepadSignature === snapshot.signature
-  ) {
-    const cachedGamepad = getConnectedGamepadByIndex(gamepads, cachedPrimaryGamepadIndex);
-    if (cachedGamepad) return cachePrimaryGamepadScan(cachedGamepad, now);
-  }
-
-  let fallbackGamepad: Gamepad | null = null;
-  let standardGamepad: Gamepad | null = null;
-  let preferredGamepad: Gamepad | null = null;
-  let activeGamepad: Gamepad | null = null;
-  let activeGamepadActivity = 0.02;
-
-  for (let index = 0; index < gamepads.length; index += 1) {
-    const gamepad = gamepads[index];
-    if (!gamepad?.connected) continue;
-
-    fallbackGamepad ??= gamepad;
-    if (gamepad.mapping === "standard") {
-      standardGamepad ??= gamepad;
-    }
-    if (preferredGamepadIndex !== null && gamepad.index === preferredGamepadIndex) {
-      preferredGamepad = gamepad;
-    }
-
-    const activity = getGamepadActivity(gamepad);
-    if (activity > activeGamepadActivity) {
-      activeGamepadActivity = activity;
-      activeGamepad = gamepad;
-    }
-  }
-
-  const selectedGamepad = activeGamepad ?? preferredGamepad ?? standardGamepad ?? fallbackGamepad;
-  if (activeGamepad) {
-    preferredGamepadIndex = activeGamepad.index;
-  } else if (selectedGamepad) {
-    preferredGamepadIndex = selectedGamepad.index;
-  }
-
-  cachedPrimaryGamepadIndex = selectedGamepad?.index ?? null;
-  cachedGamepadSignature = snapshot.hasUsefulTimestamp ? snapshot.signature : "";
-  return cachePrimaryGamepadScan(selectedGamepad, now);
+  const selection = selectPrimaryGamepad({
+    gamepads,
+    snapshot,
+    preferredGamepadIndex,
+    cachedPrimaryGamepadIndex,
+    cachedGamepadSignature,
+  });
+  preferredGamepadIndex = selection.preferredGamepadIndex;
+  cachedPrimaryGamepadIndex = selection.cachedPrimaryGamepadIndex;
+  cachedGamepadSignature = selection.cachedGamepadSignature;
+  return cachePrimaryGamepadScan(selection.selectedGamepad, now);
 }
 
 export type ControllerPollScheduler = {
