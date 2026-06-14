@@ -11,7 +11,7 @@ import {
 import {
   emitPlayerNetworkSync,
   emitPlayerNetworkPoseSync,
-  getPlayerNetworkSyncInterval,
+  resolvePlayerNetworkSyncFrame,
 } from "./network/playerNetworkSync";
 import { getPrimaryGamepad } from "./systems/input/controllerInput";
 import {
@@ -3091,9 +3091,12 @@ export function PlayerController() {
     }
 
     // Sync network
-    const syncInterval = getPlayerNetworkSyncInterval(activeGrabIds.current);
-    if (nowMs - lastNetworkSync.current > syncInterval) {
-      lastNetworkSync.current = nowMs;
+    const networkSyncFrame = resolvePlayerNetworkSyncFrame({
+      activeGrabIds: activeGrabIds.current,
+      lastNetworkSync,
+      nowMs,
+    });
+    if (networkSyncFrame.shouldSyncNetwork) {
       emitPlayerNetworkSync({
         activeGrabIds: activeGrabIds.current,
         camera,

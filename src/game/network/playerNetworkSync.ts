@@ -61,6 +61,26 @@ export function getPlayerNetworkSyncInterval(activeGrabIds: Record<HandType, str
   return getMultiplayerPoseIntervalMs(isControllingGrab);
 }
 
+export function resolvePlayerNetworkSyncFrame({
+  activeGrabIds,
+  lastNetworkSync,
+  nowMs,
+}: {
+  activeGrabIds: Record<HandType, string | null>;
+  lastNetworkSync: { current: number };
+  nowMs: number;
+}) {
+  const syncInterval = getPlayerNetworkSyncInterval(activeGrabIds);
+  const shouldSyncNetwork = nowMs - lastNetworkSync.current > syncInterval;
+  if (shouldSyncNetwork) {
+    lastNetworkSync.current = nowMs;
+  }
+  return {
+    shouldSyncNetwork,
+    syncInterval,
+  };
+}
+
 export function getPlayerNetworkAnimation(options: {
   chargingHands: Record<HandType, boolean>;
   climbingLadder: boolean;
