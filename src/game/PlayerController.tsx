@@ -216,6 +216,7 @@ import {
   applyPlayerModalBlockedMovementFrame,
   applyPlayerGroundSlideFrame,
   applyPlayerJumpThrusterFrame,
+  applyPlayerMovementVelocityFrame,
   resetPlayerCrouchState,
   resetPlayerSlideAndCrouchState,
   resetPlayerSlideState,
@@ -3011,15 +3012,19 @@ export function PlayerController() {
       vclipActive,
     });
 
-    // Applying x/z movement
-    const ladderVelocityY = ladderVerticalInput === 0 ? LADDER_IDLE_HOLD_SPEED : ladderVerticalInput * LADDER_CLIMB_SPEED;
-    const outputVelocityX = idleGroundedPlanarLock ? 0 : direction.x;
-    const outputVelocityZ = idleGroundedPlanarLock ? 0 : direction.z;
-    rigidBody.current.setLinvel({
-      x: outputVelocityX,
-      y: vclipActive ? direction.y : climbingLadder ? ladderVelocityY : velocity.y,
-      z: outputVelocityZ
-    }, true);
+    applyPlayerMovementVelocityFrame({
+      body: rigidBody.current,
+      climbingLadder,
+      directionX: direction.x,
+      directionY: direction.y,
+      directionZ: direction.z,
+      idleGroundedPlanarLock,
+      ladderClimbSpeed: LADDER_CLIMB_SPEED,
+      ladderIdleHoldSpeed: LADDER_IDLE_HOLD_SPEED,
+      ladderVerticalInput,
+      vclipActive,
+      velocityY: velocity.y,
+    });
 
     const thrusterState = useGameStore.getState();
     applyPlayerJumpThrusterFrame({

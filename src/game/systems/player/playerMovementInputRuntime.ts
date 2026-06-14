@@ -262,6 +262,50 @@ export function stopPlayerPlanarVelocity({
   body.setLinvel({ x: 0, y: vclipActive ? 0 : currentVelocityY, z: 0 }, true);
 }
 
+export type PlayerMovementVelocityFrame = {
+  x: number;
+  y: number;
+  z: number;
+  ladderVelocityY: number;
+};
+
+export function applyPlayerMovementVelocityFrame({
+  body,
+  climbingLadder,
+  directionX,
+  directionY,
+  directionZ,
+  idleGroundedPlanarLock,
+  ladderClimbSpeed,
+  ladderIdleHoldSpeed,
+  ladderVerticalInput,
+  vclipActive,
+  velocityY,
+}: {
+  body: PlayerVelocityBody;
+  climbingLadder: boolean;
+  directionX: number;
+  directionY: number;
+  directionZ: number;
+  idleGroundedPlanarLock: boolean;
+  ladderClimbSpeed: number;
+  ladderIdleHoldSpeed: number;
+  ladderVerticalInput: number;
+  vclipActive: boolean;
+  velocityY: number;
+}): PlayerMovementVelocityFrame {
+  const ladderVelocityY = ladderVerticalInput === 0 ? ladderIdleHoldSpeed : ladderVerticalInput * ladderClimbSpeed;
+  const frame = {
+    x: idleGroundedPlanarLock ? 0 : directionX,
+    y: vclipActive ? directionY : climbingLadder ? ladderVelocityY : velocityY,
+    z: idleGroundedPlanarLock ? 0 : directionZ,
+    ladderVelocityY,
+  };
+
+  body.setLinvel({ x: frame.x, y: frame.y, z: frame.z }, true);
+  return frame;
+}
+
 export type PlayerGroundSlideFrameResult = {
   resetJumps: boolean;
   startedSlide: boolean;
