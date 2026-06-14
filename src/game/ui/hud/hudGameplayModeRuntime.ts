@@ -7,6 +7,10 @@ export type HudPauseInputModeOptions = {
   touchGameplayActive: boolean;
 };
 
+export type HudResumeInputModeOptions = HudPauseInputModeOptions & {
+  lastGameplayInputMode: GameplayInputMode;
+};
+
 export type HudTouchGameplayTakeoverBlockOptions = {
   commandConsoleOpen: boolean;
   devFastTravelOpen: boolean;
@@ -48,6 +52,16 @@ export function getHudPauseInputMode({
   if (touchGameplayActive) return "touch";
   if (controllerGameplayActive) return "controller";
   return "mouse";
+}
+
+export function getHudResumeInputMode({
+  controllerGameplayActive,
+  lastGameplayInputMode,
+  touchGameplayActive,
+}: HudResumeInputModeOptions): GameplayInputMode {
+  if (controllerGameplayActive) return "controller";
+  if (touchGameplayActive) return "touch";
+  return lastGameplayInputMode;
 }
 
 export function getHudGameplayModeNowMs() {

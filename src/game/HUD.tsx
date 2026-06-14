@@ -124,6 +124,7 @@ import {
 } from "./ui/hud/hudOverlayRuntime";
 import {
   getHudGameplayModeNowMs,
+  getHudResumeInputMode,
   isHudTouchGameplayTakeoverBlocked,
   resolveHudTouchGameplayTakeoverAction,
   type GameplayInputMode,
@@ -1721,11 +1722,11 @@ export function HUD() {
   };
 
   const closeSpellMenuAndResume = () => {
-    const inputMode = controllerGameplayActive
-      ? "controller"
-      : touchGameplayActive
-        ? "touch"
-        : lastGameplayInputModeRef.current;
+    const inputMode = getHudResumeInputMode({
+      controllerGameplayActive,
+      lastGameplayInputMode: lastGameplayInputModeRef.current,
+      touchGameplayActive,
+    });
 
     setSpellMenuOpen(false);
 
@@ -1767,11 +1768,11 @@ export function HUD() {
   };
 
   const closeInventoryAndResume = () => {
-    const inputMode = controllerGameplayActive
-      ? "controller"
-      : touchGameplayActive
-        ? "touch"
-        : lastGameplayInputModeRef.current;
+    const inputMode = getHudResumeInputMode({
+      controllerGameplayActive,
+      lastGameplayInputMode: lastGameplayInputModeRef.current,
+      touchGameplayActive,
+    });
 
     setInventoryOpen(false);
 
