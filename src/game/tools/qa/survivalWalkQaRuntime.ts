@@ -463,6 +463,19 @@ export function resolveQaWalkClearanceThrottle({
   return { forwardAmount, sprint };
 }
 
+export type QaWalkClearanceThrottle = ReturnType<typeof resolveQaWalkClearanceThrottle>;
+
+export function applyQaWalkClearanceThrottle({
+  throttle,
+}: {
+  throttle: QaWalkClearanceThrottle;
+}) {
+  return {
+    forwardAmount: throttle.forwardAmount,
+    sprint: throttle.sprint,
+  };
+}
+
 export function resolveQaWalkCombatFocusMovement({
   activeIntentKind,
   combatFocusActive,

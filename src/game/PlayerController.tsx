@@ -68,6 +68,7 @@ import {
   applyQaWalkActiveIntentMovementFrame,
   applyQaWalkAvoidMovementFrame,
   applyQaWalkBlockedRecoveryTrigger,
+  applyQaWalkClearanceThrottle,
   applyQaWalkCombatFocusMovementFrame,
   applyQaWalkInspectionStartPlan,
   applyQaWalkInspectMovementFrame,
@@ -2274,8 +2275,9 @@ export function PlayerController() {
           sprint,
           viewClearance,
         });
-        forwardAmount = throttle.forwardAmount;
-        sprint = throttle.sprint;
+        const throttleApplication = applyQaWalkClearanceThrottle({ throttle });
+        forwardAmount = throttleApplication.forwardAmount;
+        sprint = throttleApplication.sprint;
       }
 
       const planarSpeedSq = velocity.x * velocity.x + velocity.z * velocity.z;
