@@ -336,6 +336,61 @@ export function resolveQaWalkRouteSteeringState({
   };
 }
 
+export type QaWalkRouteSteeringState = ReturnType<typeof resolveQaWalkRouteSteeringState>;
+
+export type QaWalkRouteSteeringMovementState = {
+  forwardAmount: number;
+  sprint: boolean;
+  strafeAmount: number;
+  targetYaw: number;
+};
+
+export type QaWalkRouteSteeringRefs = {
+  routeBlockedSince: QaWalkMutableRef<number>;
+  routeSmoothedYaw: QaWalkMutableRef<number | null>;
+  routeTargetId: QaWalkMutableRef<string | null>;
+};
+
+export type QaWalkRouteSteeringApplication = QaWalkRouteSteeringMovementState & {
+  appliedRoute: boolean;
+  routeBlockDwelled: boolean;
+  routeHardBlocked: boolean;
+};
+
+export function applyQaWalkRouteSteeringState({
+  current,
+  refs,
+  steering,
+}: {
+  current: QaWalkRouteSteeringMovementState;
+  refs: QaWalkRouteSteeringRefs;
+  steering: QaWalkRouteSteeringState;
+}): QaWalkRouteSteeringApplication {
+  refs.routeBlockedSince.current = steering.routeBlockedSince;
+  if (!steering.route) {
+    refs.routeSmoothedYaw.current = null;
+    refs.routeTargetId.current = null;
+    return {
+      ...current,
+      appliedRoute: false,
+      routeBlockDwelled: steering.routeBlockDwelled,
+      routeHardBlocked: steering.routeHardBlocked,
+    };
+  }
+
+  refs.routeSmoothedYaw.current = steering.route.smoothedYaw;
+  refs.routeTargetId.current = steering.route.targetId;
+  return {
+    appliedRoute: true,
+    forwardAmount: steering.route.forwardAmount,
+    routeBlockDwelled: steering.routeBlockDwelled,
+    routeHardBlocked: steering.routeHardBlocked,
+    sprint: steering.route.sprint,
+    strafeAmount: steering.route.strafeAmount,
+    targetYaw: steering.route.targetYaw,
+  };
+}
+
 export function resolveQaWalkClearanceThrottle({
   forwardAmount,
   forwardClearance,

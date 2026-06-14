@@ -74,6 +74,7 @@ import {
   applyQaWalkRecoveryMovementFrame,
   applyQaWalkRecoveryPlacementPlan,
   applyQaWalkRecoveryStartPlan,
+  applyQaWalkRouteSteeringState,
   applyQaWalkSteeringDecisionFrame,
   applyQaWalkTubeMovementFrame,
   getQaWalkIntentDistance,
@@ -1709,9 +1710,6 @@ export function PlayerController() {
         viewClearance,
         overheadClearance,
       });
-      qaWalkRouteBlockedSince.current = routeSteering.routeBlockedSince;
-      const routeHardBlocked = routeSteering.routeHardBlocked;
-      const routeBlockDwelled = routeSteering.routeBlockDwelled;
       const travelMovementFrame = resolveQaWalkTravelMovementFrame({
         desiredYaw,
         elapsedSeconds: elapsed,
@@ -1727,17 +1725,26 @@ export function PlayerController() {
       let strafeAmount = travelMovementFrame.strafeAmount;
       let recoveryReason = "";
       let sprint = travelMovementFrame.sprint;
-      if (routeSteering.route) {
-        qaWalkRouteSmoothedYaw.current = routeSteering.route.smoothedYaw;
-        qaWalkRouteTargetId.current = routeSteering.route.targetId;
-        targetYaw = routeSteering.route.targetYaw;
-        forwardAmount = routeSteering.route.forwardAmount;
-        strafeAmount = routeSteering.route.strafeAmount;
-        sprint = routeSteering.route.sprint;
-      } else {
-        qaWalkRouteSmoothedYaw.current = null;
-        qaWalkRouteTargetId.current = null;
-      }
+      const routeSteeringApplication = applyQaWalkRouteSteeringState({
+        current: {
+          forwardAmount,
+          sprint,
+          strafeAmount,
+          targetYaw,
+        },
+        refs: {
+          routeBlockedSince: qaWalkRouteBlockedSince,
+          routeSmoothedYaw: qaWalkRouteSmoothedYaw,
+          routeTargetId: qaWalkRouteTargetId,
+        },
+        steering: routeSteering,
+      });
+      targetYaw = routeSteeringApplication.targetYaw;
+      forwardAmount = routeSteeringApplication.forwardAmount;
+      strafeAmount = routeSteeringApplication.strafeAmount;
+      sprint = routeSteeringApplication.sprint;
+      const routeHardBlocked = routeSteeringApplication.routeHardBlocked;
+      const routeBlockDwelled = routeSteeringApplication.routeBlockDwelled;
       const tubeMovementFrame = resolveQaWalkTubeMovementFrame({
         elapsedSeconds: elapsed,
         positionX: pos.x,
