@@ -24,6 +24,12 @@ export type PlayerDirectStatusCastPlan = {
   eventDetail: DirectStatusCastEventDetail;
 };
 
+export type PlayerDirectStatusCastPlanApplier = {
+  updatePlayer: (targetId: string, update: PlayerDirectStatusCastPlan["targetUpdate"]) => void;
+  emitGameNetworkEvent: (eventName: "applyStatusEffect", payload: PlayerDirectStatusNetworkPayload) => void;
+  dispatchDirectStatusCast: (detail: DirectStatusCastEventDetail) => void;
+};
+
 export function createPlayerDirectStatusCastPlan({
   spell,
   hand,
@@ -52,4 +58,16 @@ export function createPlayerDirectStatusCastPlan({
     },
     eventDetail: { spell, hand, targetId },
   };
+}
+
+export function applyPlayerDirectStatusCastPlan(
+  plan: PlayerDirectStatusCastPlan | null,
+  applier: PlayerDirectStatusCastPlanApplier,
+) {
+  if (!plan) return false;
+
+  applier.updatePlayer(plan.targetId, plan.targetUpdate);
+  applier.emitGameNetworkEvent("applyStatusEffect", plan.networkPayload);
+  applier.dispatchDirectStatusCast(plan.eventDetail);
+  return true;
 }

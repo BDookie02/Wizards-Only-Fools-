@@ -252,6 +252,7 @@ import {
 } from "./systems/player/playerGrabEventRuntime";
 import {
   PLAYER_DIRECT_STATUS_HAND_CHARGE_MS,
+  applyPlayerDirectStatusCastPlan,
   createPlayerDirectStatusCastPlan,
 } from "./systems/player/playerDirectStatusCastingRuntime";
 import { resolvePlayerSelfBuffCastPlan } from "./systems/player/playerSelfBuffCastingRuntime";
@@ -649,12 +650,12 @@ export function PlayerController() {
         targetId: target.id,
         nowMs: getPlayerEventEpochMs(),
       });
-      if (!directStatusPlan) return false;
 
-      store.updatePlayer(directStatusPlan.targetId, directStatusPlan.targetUpdate);
-      emitGameNetworkEvent("applyStatusEffect", directStatusPlan.networkPayload);
-      dispatchDirectStatusCast(directStatusPlan.eventDetail);
-      return true;
+      return applyPlayerDirectStatusCastPlan(directStatusPlan, {
+        updatePlayer: store.updatePlayer,
+        emitGameNetworkEvent,
+        dispatchDirectStatusCast,
+      });
     };
 
     const stopHandCasting = (hand: HandType) => {
