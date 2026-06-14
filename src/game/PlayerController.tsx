@@ -221,7 +221,7 @@ import {
   isPlayerReleaseSuppressedSpell,
   isPlayerSelfBuffSpell,
   pulsePlayerHandCharging,
-  resetPlayerCastingHandRuntime,
+  resetPlayerCastingHandFrameGate,
   resetPlayerCastingHandsRuntime,
   resetPlayerControllerAfterCastRelease,
   stopPlayerCastingHands,
@@ -2392,26 +2392,17 @@ export function PlayerController() {
       const handSpell = getPlayerSpellForHand(storeState, hand);
       const runeReady = hasPlayerRunePowerForHand(storeState, hand);
 
-      if (!storeState.isMagicArmed) {
-        resetPlayerCastingHandRuntime({
+      if (
+        resetPlayerCastingHandFrameGate({
           activeCastingHands,
           chargingHands,
           flamethrowerTimers,
           hand,
+          isMagicArmed: storeState.isMagicArmed,
+          runeReady,
           setHandCharging: useGameStore.getState().setHandCharging,
-        });
-        continue;
-      }
-
-      if (!runeReady) {
-        resetPlayerCastingHandRuntime({
-          activeCastingHands,
-          chargingHands,
-          flamethrowerTimers,
-          hand,
-          mode: "charging-only",
-          setHandCharging: useGameStore.getState().setHandCharging,
-        });
+        })
+      ) {
         continue;
       }
 

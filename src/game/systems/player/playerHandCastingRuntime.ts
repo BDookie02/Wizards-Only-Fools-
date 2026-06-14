@@ -172,6 +172,49 @@ export function resetPlayerCastingHandsRuntime({
   }
 }
 
+export function resetPlayerCastingHandFrameGate({
+  activeCastingHands,
+  chargingHands,
+  flamethrowerTimers,
+  hand,
+  isMagicArmed,
+  runeReady,
+  setHandCharging,
+}: {
+  activeCastingHands: PlayerCastingHandsRef;
+  chargingHands: PlayerHandChargingState;
+  flamethrowerTimers: PlayerHandTimersRef;
+  hand: HandType;
+  isMagicArmed: boolean;
+  runeReady: boolean;
+  setHandCharging: (hand: HandType, charging: boolean) => void;
+}) {
+  if (!isMagicArmed) {
+    resetPlayerCastingHandRuntime({
+      activeCastingHands,
+      chargingHands,
+      flamethrowerTimers,
+      hand,
+      setHandCharging,
+    });
+    return true;
+  }
+
+  if (!runeReady) {
+    resetPlayerCastingHandRuntime({
+      activeCastingHands,
+      chargingHands,
+      flamethrowerTimers,
+      hand,
+      mode: "charging-only",
+      setHandCharging,
+    });
+    return true;
+  }
+
+  return false;
+}
+
 export function stopPlayerCastingHands(
   hands: readonly HandType[],
   handlers: {
