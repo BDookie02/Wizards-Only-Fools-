@@ -16,11 +16,8 @@ import {
   getSettingsScrollPanelStyle,
   isSettingsIndexFocused,
 } from "./settingsPanelRuntime";
-import {
-  cn,
-  focusedMenuClass,
-  settingsTabButtons,
-} from "./settingsPanelClassNames";
+import { settingsTabButtons } from "./settingsPanelClassNames";
+import { SettingsBackButton } from "./SettingsBackButton";
 import { SettingsCharacterPane } from "./SettingsCharacterPane";
 import { SettingsKeybindsPane } from "./SettingsKeybindsPane";
 import { SettingsTabButton } from "./SettingsTabButton";
@@ -193,18 +190,12 @@ export function SettingsPanel({
         />
       )}
 
-      <button
-        data-settings-index={settingsBackIndex}
-        className={cn(
-          "mt-1 w-full border-[3px] border-gray-600 bg-gray-800 px-5 py-0.5 font-mono tracking-widest text-white uppercase transition-all hover:bg-gray-700",
-          settingsFocus(settingsBackIndex) ? focusedMenuClass : ""
-        )}
-        style={{ fontSize: "var(--settings-body-font-size)" }}
-        onMouseEnter={() => setPauseMenuIndex(settingsBackIndex)}
-        onClick={onBack}
-      >
-        Back
-      </button>
+      <SettingsBackButton
+        index={settingsBackIndex}
+        focused={settingsFocus(settingsBackIndex)}
+        onFocus={() => setPauseMenuIndex(settingsBackIndex)}
+        onBack={onBack}
+      />
     </div>
   );
 }
