@@ -8,6 +8,37 @@ export type PlayerControllerHotbarAction = {
   direction: 1 | -1;
 };
 
+export type PlayerControllerCastButtonAction =
+  | { type: "none"; interactionHandled: false }
+  | { type: "interaction"; interactionHandled: true }
+  | { type: "start"; interactionHandled: false }
+  | { type: "release"; interactionHandled: false };
+
+export type PlayerControllerCastButtonResolutionOptions = {
+  interactionAlreadyHandled: boolean;
+  magicArmed: boolean;
+  pressed: boolean;
+  questInteractionHandled: boolean;
+  wasPressed: boolean;
+};
+
+export function resolvePlayerControllerCastButtonAction({
+  interactionAlreadyHandled,
+  magicArmed,
+  pressed,
+  questInteractionHandled,
+  wasPressed,
+}: PlayerControllerCastButtonResolutionOptions): PlayerControllerCastButtonAction {
+  if (interactionAlreadyHandled || questInteractionHandled) {
+    return { type: "interaction", interactionHandled: true };
+  }
+
+  const shouldCast = magicArmed && pressed;
+  if (shouldCast && !wasPressed) return { type: "start", interactionHandled: false };
+  if (!shouldCast && wasPressed) return { type: "release", interactionHandled: false };
+  return { type: "none", interactionHandled: false };
+}
+
 export function handlePlayerControllerCastButtonForHand(
   hand: HandType,
   pressed: boolean,
@@ -18,24 +49,23 @@ export function handlePlayerControllerCastButtonForHand(
   startHandCast: (hand: HandType) => void,
   releaseHandCast: (hand: HandType) => void,
 ) {
-  if (interactionHandled) {
-    controllerCastingDown[hand] = pressed;
-    return true;
-  }
+  const wasPressed = controllerCastingDown[hand] ?? false;
+  const shouldCheckQuestInteraction = !interactionHandled && pressed && !wasPressed;
+  const action = resolvePlayerControllerCastButtonAction({
+    interactionAlreadyHandled: interactionHandled,
+    magicArmed,
+    pressed,
+    questInteractionHandled: shouldCheckQuestInteraction && requestQuestVillagerInteraction(),
+    wasPressed,
+  });
 
-  if (pressed && !controllerCastingDown[hand] && requestQuestVillagerInteraction()) {
-    controllerCastingDown[hand] = true;
-    return true;
-  }
-
-  const shouldCast = magicArmed && pressed;
-  if (shouldCast && !controllerCastingDown[hand]) {
+  if (action.type === "start") {
     startHandCast(hand);
-  } else if (!shouldCast && controllerCastingDown[hand]) {
+  } else if (action.type === "release") {
     releaseHandCast(hand);
   }
   controllerCastingDown[hand] = pressed;
-  return false;
+  return action.interactionHandled;
 }
 
 export function consumePlayerControllerHotbarPress(
